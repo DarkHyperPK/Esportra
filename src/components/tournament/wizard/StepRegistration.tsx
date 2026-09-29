@@ -1,281 +1,155 @@
 import React, { useCallback, useEffect } from 'react';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { motion } from 'framer-motion';
-import { Switch } from '@/components/ui/switch';
-import { Calendar, Clock, UserCheck, Bell, Mail } from 'lucide-react';
-import { WizardStepProps } from '@/types/tournamentWizard';
+import { CONTROL_CLASS, CONTROL_ERROR_CLASS, Field, FormSection, InlineNotice, Timeline, ToggleRow } from '@/components/ui/kit';
+import { WizardStepProps, type TournamentWizardData } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 import { getInviteParticipantLabel } from '@/utils/tournamentInviteUtils';
 import { toLocalDateTimeInputValue } from '@/utils/tournamentLifecycle';
+import { WizardStepFrame } from './WizardStepFrame';
 
-const StepRegistration: React.FC<WizardStepProps> = ({
-    data,
-    updateData,
-    errors,
-    isEditMode,
-    activeInvitationCount = 0,
-}) => {
-    const inviteParticipantLabel = getInviteParticipantLabel(data.teamSize);
-    const openRegistrationSlots = data.maxTeams > 0
-        ? Math.max(data.maxTeams - (data.invitedTeamsEnabled ? data.reservedInviteSlots : 0), 0)
-        : null;
+const when = (value: Date) => value.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode, activeInvitationCount = 0 }) => {
+    const noun = getInviteParticipantLabel(data.teamSize);
+    const reserved = data.invitedTeamsEnabled ? data.reservedInviteSlots : 0;
+    const openSlots = data.maxTeams > 0 ? Math.max(data.maxTeams - reserved, 0) : null;
+    const invitesLocked = Boolean(isEditMode && activeInvitationCount > 0);
 
     const handleInvitedTeamsToggle = (enabled: boolean) => {
         if (!enabled) {
-            if (isEditMode && activeInvitationCount > 0) return;
+            if (invitesLocked) return;
             updateData({ invitedTeamsEnabled: false, reservedInviteSlots: 0 });
             return;
         }
-
-        const defaultSlots = data.maxTeams > 0
-            ? Math.min(Math.max(2, Math.floor(data.maxTeams / 4)), data.maxTeams)
-            : 4;
-
-        updateData({
-            invitedTeamsEnabled: true,
-            reservedInviteSlots: data.reservedInviteSlots > 0 ? data.reservedInviteSlots : defaultSlots,
-        });
+        const defaultSlots = data.maxTeams > 0 ? Math.min(Math.max(2, Math.floor(data.maxTeams / 4)), data.maxTeams) : 4;
+        updateData({ invitedTeamsEnabled: true, reservedInviteSlots: data.reservedInviteSlots > 0 ? data.reservedInviteSlots : defaultSlots });
     };
-    const getDefaultRegistrationOpen = useCallback(() => {
-        return new Date().toISOString().split('T')[0] + 'T00:00';
-    }, []);
 
+    const getDefaultRegistrationOpen = useCallback(() => new Date().toISOString().split('T')[0] + 'T00:00', []);
     const getDefaultRegistrationClose = useCallback(() => {
         if (!data.startDate) return '';
-        const startDate = new Date(`${data.startDate}T${data.startTime || '00:00'}`);
-        const closeDate = new Date(startDate);
+        const closeDate = new Date(`${data.startDate}T${data.startTime || '00:00'}`);
         closeDate.setDate(closeDate.getDate() - 1);
         closeDate.setHours(23, 59, 0, 0);
         return toLocalDateTimeInputValue(closeDate);
     }, [data.startDate, data.startTime]);
 
-    // Auto-set defaults on mount
     useEffect(() => {
-        const updates: Partial<any> = {};
-
-        if (!data.registrationOpens) {
-            updates.registrationOpens = getDefaultRegistrationOpen();
-        }
-        if (!data.registrationCloses && data.startDate) {
-            updates.registrationCloses = getDefaultRegistrationClose();
-        }
-
-        if (Object.keys(updates).length > 0) {
-            updateData(updates);
-        }
+        const updates: Partial<TournamentWizardData> = {};
+        if (!data.registrationOpens) updates.registrationOpens = getDefaultRegistrationOpen();
+        if (!data.registrationCloses && data.startDate) updates.registrationCloses = getDefaultRegistrationClose();
+        if (Object.keys(updates).length > 0) updateData(updates);
     }, [data.startDate, data.startTime, data.registrationOpens, data.registrationCloses, updateData, getDefaultRegistrationOpen, getDefaultRegistrationClose]);
 
+    const start = data.startDate && data.startTime ? new Date(`${data.startDate}T${data.startTime}`) : null;
+    const timeline = start ? [
+        { label: 'Registration opens', value: 'As soon as it is published' },
+        { label: 'Registration closes', value: data.registrationCloses ? when(new Date(data.registrationCloses)) : 'Not set' },
+        ...(data.checkInRequired ? [{ label: 'Check-in opens', value: when(new Date(start.getTime() - data.checkInWindowMinutes * 60_000)) }] : []),
+        { label: 'Tournament starts', value: when(start), emphasis: true },
+    ] : null;
+
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+        <WizardStepFrame
+            title="Sign-ups and check-in"
+            description="When players can register, whether they need to confirm before start, and any spots you hold for invited teams."
         >
-            <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">Registration Settings</h2>
-                <p className="text-gray-400">Configure how players sign up and check in</p>
-            </div>
+            <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_220px]">
+                <div className="min-w-0">
+                    <FormSection title="Registration deadline">
+                        <Field
+                            label="Registration closes"
+                            htmlFor="registrationCloses"
+                            hint="Defaults to the night before. Leave time to seed the bracket."
+                            error={errors.registrationCloses}
+                        >
+                            <Input
+                                id="registrationCloses"
+                                type="datetime-local"
+                                value={data.registrationCloses}
+                                onChange={(e) => updateData({ registrationCloses: e.target.value })}
+                                className={cn(CONTROL_CLASS, errors.registrationCloses && CONTROL_ERROR_CLASS)}
+                            />
+                        </Field>
+                    </FormSection>
 
-            {/* Registration Period */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="space-y-4">
-                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    <Calendar className="w-4 h-4" />
-                    Registration Period
-                </Label>
-
-                <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="registrationCloses" className="text-sm text-gray-400">
-                            Registration Closes at *
-                        </Label>
-                        <Input
-                            id="registrationCloses"
-                            type="datetime-local"
-                            value={data.registrationCloses}
-                            onChange={(e) => updateData({ registrationCloses: e.target.value })}
-                            className={cn(errors.registrationCloses && 'border-red-500', "font-bold tracking-tight")}
-                        />
-                        {errors.registrationCloses && (
-                            <p className="text-sm text-red-500">{errors.registrationCloses}</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Check-in Settings - Optional */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
-                <div className="flex items-center gap-3">
-                    <UserCheck className="w-5 h-5 text-emerald-400" />
-                    <div>
-                        <div className="font-medium text-white">Require Check-In</div>
-                        <div className="text-sm text-gray-400">
-                            Teams must confirm attendance before the tournament starts
-                        </div>
-                    </div>
-                    <Switch
-                        checked={data.checkInRequired}
-                        onCheckedChange={(checked) => updateData({
-                            checkInRequired: checked,
-                            autoRemoveUnchecked: checked ? (data.autoRemoveUnchecked ?? true) : false,
-                        })}
-                        className="ml-auto"
-                    />
-                </div>
-
-                {data.checkInRequired && (
-                    <div className="space-y-4 pt-4 border-t border-white/10">
-                        <div className="space-y-2">
-                            <Label htmlFor="checkInWindow" className="flex items-center gap-2 text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <Clock className="w-4 h-4" />
-                                Check-in window (minutes before start)
-                            </Label>
-                            <div className="flex items-center gap-3">
-                                <Input
-                                    id="checkInWindow"
-                                    type="number"
-                                    min={5}
-                                    max={120}
-                                    value={data.checkInWindowMinutes}
-                                    onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value) || 30 })}
-                                    className="w-24 font-bold tracking-tight"
-                                />
-                                <span className="text-sm text-gray-400">minutes</span>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                                Teams can check in starting {data.checkInWindowMinutes} minutes before the tournament starts
-                            </p>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-medium text-white text-sm">Auto-remove no-shows</div>
-                                <div className="text-xs text-gray-400">
-                                    Automatically remove teams who don't check in
+                    <FormSection title="Before it starts">
+                        <ToggleRow
+                            id="check-in"
+                            title="Require check-in"
+                            description="Teams confirm they're present shortly before start, so no-shows don't leave holes in the bracket."
+                            checked={data.checkInRequired}
+                            onCheckedChange={(checked) => updateData({ checkInRequired: checked, autoRemoveUnchecked: checked ? (data.autoRemoveUnchecked ?? true) : false })}
+                        >
+                            <Field label="Check-in opens" htmlFor="checkInWindow" hint="Minutes before the start time. Between 5 and 120.">
+                                <div className="flex items-center gap-3">
+                                    <Input
+                                        id="checkInWindow" type="number" min={5} max={120} value={data.checkInWindowMinutes}
+                                        onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value, 10) || 30 })}
+                                        className={cn(CONTROL_CLASS, 'w-24')}
+                                    />
+                                    <span className="text-sm text-zinc-400">minutes before</span>
                                 </div>
-                            </div>
-                            <Switch
+                            </Field>
+                            <ToggleRow
+                                id="auto-remove"
+                                title="Remove no-shows automatically"
+                                description="Teams that haven't checked in when the window closes are dropped from the bracket."
                                 checked={data.autoRemoveUnchecked}
                                 onCheckedChange={(checked) => updateData({ autoRemoveUnchecked: checked })}
                             />
-                        </div>
-                    </div>
-                )}
-            </div>
+                        </ToggleRow>
+                    </FormSection>
 
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                        <Mail className="w-5 h-5 text-rose-400 mt-0.5" />
-                        <div>
-                            <div className="font-medium text-white">Reserved slots for invited participants</div>
-                            <div className="text-sm text-gray-400">
-                                Hold guaranteed spots for email invites. You send invite codes from tournament management after creation.
+                    <FormSection title="Invited teams">
+                        <ToggleRow
+                            id="invited-teams"
+                            title={`Hold spots for invited ${noun}`}
+                            description="Reserve guaranteed places. You email invite codes from the dashboard after the tournament is created."
+                            checked={data.invitedTeamsEnabled}
+                            onCheckedChange={handleInvitedTeamsToggle}
+                            disabled={invitesLocked}
+                        >
+                            <div className="grid gap-5 sm:grid-cols-2">
+                                <Field label="Reserved spots" htmlFor="reservedInviteSlots" error={errors.reservedInviteSlots}>
+                                    <Input
+                                        id="reservedInviteSlots" type="number" min={Math.max(1, activeInvitationCount)} max={data.maxTeams > 0 ? data.maxTeams : 1024}
+                                        value={data.reservedInviteSlots}
+                                        onChange={(e) => updateData({ reservedInviteSlots: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                        className={cn(CONTROL_CLASS, errors.reservedInviteSlots && CONTROL_ERROR_CLASS)}
+                                    />
+                                </Field>
+                                <Field label="Invite codes expire after" htmlFor="inviteExpiryDays" hint="Days. Between 1 and 365." error={errors.inviteExpiryDays}>
+                                    <Input
+                                        id="inviteExpiryDays" type="number" min={1} max={365} value={data.inviteExpiryDays}
+                                        onChange={(e) => updateData({ inviteExpiryDays: Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 7)) })}
+                                        className={cn(CONTROL_CLASS, errors.inviteExpiryDays && CONTROL_ERROR_CLASS)}
+                                    />
+                                </Field>
                             </div>
-                        </div>
-                    </div>
-                    <Switch
-                        checked={data.invitedTeamsEnabled}
-                        onCheckedChange={handleInvitedTeamsToggle}
-                        disabled={isEditMode && activeInvitationCount > 0}
-                        aria-label="Enable reserved invite slots"
-                    />
+                            <p className="text-[13px] text-zinc-400">
+                                {openSlots !== null
+                                    ? <><span className="font-semibold text-white">{data.reservedInviteSlots}</span> held for invites, <span className="font-semibold text-white">{openSlots}</span> open to everyone (of {data.maxTeams}).</>
+                                    : <><span className="font-semibold text-white">{data.reservedInviteSlots}</span> held for invites. Set a maximum in the Format step to cap open sign-ups.</>}
+                            </p>
+                        </ToggleRow>
+                        {invitesLocked && (
+                            <InlineNotice tone="warning">
+                                {activeInvitationCount} invitation{activeInvitationCount === 1 ? ' is' : 's are'} still active. Revoke {activeInvitationCount === 1 ? 'it' : 'them'} before turning this off or holding fewer spots.
+                            </InlineNotice>
+                        )}
+                    </FormSection>
                 </div>
-                {isEditMode && activeInvitationCount > 0 && (
-                    <p className="text-xs text-amber-300">
-                        {activeInvitationCount} active invitation{activeInvitationCount === 1 ? '' : 's'} — revoke them before disabling invited participants or lowering reserved slots below this count.
-                    </p>
-                )}
 
-                {data.invitedTeamsEnabled && (
-                    <div className="space-y-4 pt-4 border-t border-white/10">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reservedInviteSlots" className="text-sm text-gray-400">
-                                            Reserved invite slots *
-                                        </Label>
-                                        <Input
-                                            id="reservedInviteSlots"
-                                            type="number"
-                                            min={Math.max(1, activeInvitationCount)}
-                                            max={data.maxTeams > 0 ? data.maxTeams : 1024}
-                                            value={data.reservedInviteSlots}
-                                            onChange={(e) => updateData({
-                                                reservedInviteSlots: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                            })}
-                                            className={cn(errors.reservedInviteSlots && 'border-red-500', 'font-bold tracking-tight')}
-                                        />
-                                        {errors.reservedInviteSlots && (
-                                            <p className="text-sm text-red-500">{errors.reservedInviteSlots}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="inviteExpiryDays" className="text-sm text-gray-400">
-                                            Invite code expiry (days)
-                                        </Label>
-                                        <Input
-                                            id="inviteExpiryDays"
-                                            type="number"
-                                            min={1}
-                                            max={365}
-                                            value={data.inviteExpiryDays}
-                                            onChange={(e) => updateData({
-                                                inviteExpiryDays: Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 7)),
-                                            })}
-                                            className={cn(errors.inviteExpiryDays && 'border-red-500', 'font-bold tracking-tight')}
-                                        />
-                                        {errors.inviteExpiryDays && (
-                                            <p className="text-sm text-red-500">{errors.inviteExpiryDays}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                        <p className="text-xs text-gray-500">
-                            {data.maxTeams > 0 ? (
-                                <>
-                                    <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved,{' '}
-                                    <span className="text-emerald-400">{openRegistrationSlots}</span> open registration slots
-                                    {' '}(max {data.maxTeams} {inviteParticipantLabel}).
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved.
-                                    Set max {inviteParticipantLabel} in Format &amp; Rules to cap open registration.
-                                </>
-                            )}
-                        </p>
+                {timeline && (
+                    <div className="md:pt-1">
+                        <div className="md:sticky md:top-24">
+                            <Timeline title="How it plays out" items={timeline} />
+                        </div>
                     </div>
                 )}
             </div>
-
-            {/* Summary Info */}
-            {data.startDate && data.startTime && (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                    <div className="flex items-start gap-3">
-                        <Bell className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="text-white font-medium">Timeline Summary</p>
-                            <ul className="mt-2 space-y-1 text-gray-400">
-                                <li>• Registration opens: Immediately</li>
-                                <li>• Registration closes: {data.registrationCloses ? new Date(data.registrationCloses).toLocaleString() : 'Not set'}</li>
-                                {data.checkInRequired && (
-                                    <li>• Check-in starts: {data.checkInWindowMinutes} min before tournament</li>
-                                )}
-                                {data.invitedTeamsEnabled && (
-                                    <li>• Invited participants: {data.reservedInviteSlots} reserved slot{data.reservedInviteSlots === 1 ? '' : 's'} (codes expire in {data.inviteExpiryDays} days)</li>
-                                )}
-                                <li>• Tournament starts: {new Date(`${data.startDate}T${data.startTime}`).toLocaleString()}</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </motion.div>
+        </WizardStepFrame>
     );
 };
 

@@ -187,7 +187,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                     : 'border-white/10 bg-white/[0.02]'
                             )}
                         >
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-gray-300 shrink-0">
+                            <span className="flex items-center justify-center w-6 h-6 bg-white/10 font-mono text-xs font-bold text-gray-300 shrink-0">
                                 {i + 1}
                             </span>
                             <div className="flex-1 min-w-0">
@@ -197,12 +197,12 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                 {FORMAT_LABELS[stage.format] ?? stage.format}
                             </span>
                             {stage.bo_mode === 'per_round' ? (
-                                <span className="text-xs text-emerald-400 shrink-0">Per-round</span>
+                                <span className="text-xs text-zinc-400 shrink-0">Per-round</span>
                             ) : stage.best_of ? (
                                 <span className="text-xs text-gray-500 shrink-0">BO{stage.best_of}</span>
                             ) : null}
                             {stage.advancement_count ? (
-                                <span className="flex items-center gap-0.5 text-xs text-emerald-400 shrink-0">
+                                <span className="flex items-center gap-0.5 text-xs text-zinc-400 shrink-0">
                                     <ChevronRight className="w-3 h-3" />{stage.advancement_count} advance
                                 </span>
                             ) : null}

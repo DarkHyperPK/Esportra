@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { CommandButton } from '@/components/management/CommandSurface';
+import { CONTROL_CLASS, InlineNotice, PageIntro } from '@/components/ui/kit';
 import { useTournamentTemplates } from '@/hooks/useTournamentTemplates';
+import { cn } from '@/lib/utils';
 import type { TournamentTemplateDto } from '@/types/tournamentTemplate';
 
 interface Props {
@@ -9,114 +12,120 @@ interface Props {
   onBack: () => void;
 }
 
-export const GameTemplateSelectScreen: React.FC<Props> = ({ onSelect, onBack }) => {
-  const { data: templates, isLoading, isError } = useTournamentTemplates();
-  const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set());
+const formatLabel = (t: TournamentTemplateDto) =>
+  t.gameType === 'battle_royale' ? 'Battle royale · points' : `Bracket · Best of ${t.defaultBestOf}`;
 
-  const gameTypeBadge = (t: TournamentTemplateDto): string => {
-    if (t.gameType === 'battle_royale') return 'BR';
-    return t.gameType === 'bracket' ? 'Bracket' : '';
-  };
+function GameCard({ template, onSelect }: { template: TournamentTemplateDto; onSelect: () => void }) {
+  const [logoFailed, setLogoFailed] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'group relative flex flex-col bg-white/[0.02] text-left transition-colors',
+        'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(244,63,94,0.6)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+      )}
+    >
+      <span className="relative flex aspect-[16/9] items-center justify-center overflow-hidden border-b border-white/[0.06] bg-black/30">
+        {template.logoUrl && !logoFailed ? (
+          <img
+            src={template.logoUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setLogoFailed(true)}
+            className="h-full w-full object-contain p-6 transition-transform duration-200 group-hover:scale-[1.04]"
+          />
+        ) : (
+          <span className="font-heading text-2xl font-black tracking-tight text-white/20">
+            {template.gameName.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+        {template.isPublisherEndorsed && (
+          <span className="absolute left-2 top-2 bg-rose-500 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
+            Official
+          </span>
+        )}
+      </span>
+      <span className="px-3 py-3">
+        <span className="block truncate text-sm font-semibold text-white">{template.gameName}</span>
+        <span className="mt-0.5 block text-xs text-zinc-500">{formatLabel(template)}</span>
+      </span>
+    </button>
+  );
+}
+
+export const GameTemplateSelectScreen: React.FC<Props> = ({ onSelect, onBack }) => {
+  const { data: templates, isLoading, isError, refetch } = useTournamentTemplates();
+  const [query, setQuery] = useState('');
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (templates ?? []).filter((t) => !needle || t.gameName.toLowerCase().includes(needle));
+  }, [templates, query]);
 
   return (
-    <div className="w-full">
-      {/* Top bar */}
-      <div className="px-6 md:px-10 lg:px-14 py-6 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded-none"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="font-mono text-xs uppercase tracking-wider">Back</span>
-        </button>
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-8 inline-flex items-center gap-2 text-sm text-zinc-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        Change setup path
+      </button>
+
+      <PageIntro
+        eyebrow="Quick start · Step 1 of 2"
+        title="Pick a game"
+        description="Each game comes with its usual rules, series length and team size. You can change any of it afterwards."
+        aside={
+          (templates?.length ?? 0) > 8 ? (
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
+              <Input
+                aria-label="Search games"
+                placeholder="Search games"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className={cn(CONTROL_CLASS, 'pl-9')}
+              />
+            </div>
+          ) : undefined
+        }
+      />
+
+      <div className="mt-10">
+        {isLoading && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" aria-busy="true" aria-label="Loading games">
+            {Array.from({ length: 10 }, (_, i) => <div key={i} className="aspect-[4/3] animate-pulse bg-white/[0.04]" />)}
+          </div>
+        )}
+
+        {isError && (
+          <InlineNotice
+            tone="critical"
+            title="We couldn't load the game list"
+            action={<CommandButton variant="secondary" size="sm" onClick={() => void refetch()}>Try again</CommandButton>}
+          >
+            Check your connection, or use Full setup instead.
+          </InlineNotice>
+        )}
+
+        {templates && visible.length === 0 && (
+          <p className="text-sm text-zinc-500">
+            No games match “{query}”. Try another name, or use Full setup to pick from every supported game.
+          </p>
+        )}
+
+        {visible.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visible.map((template) => (
+              <GameCard key={template.id} template={template} onSelect={() => onSelect(template)} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Section heading */}
-      <div className="px-6 md:px-10 lg:px-14 mb-8">
-        <div className="font-mono text-[10px] uppercase tracking-[0.45em] text-rose-400 mb-3">
-          Quick Template
-        </div>
-        <h1 className="font-heading text-3xl md:text-4xl font-black uppercase tracking-tight text-white">
-          Select a Game
-        </h1>
-      </div>
-
-      {isLoading && (
-        <div className="px-6 md:px-10 lg:px-14 py-10 flex items-center gap-3 text-gray-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="font-mono text-xs uppercase tracking-wider">Loading templates…</span>
-        </div>
-      )}
-
-      {isError && (
-        <div className="px-6 md:px-10 lg:px-14 py-10 flex items-center gap-3 text-red-400">
-          <AlertCircle className="w-5 h-5" />
-          <span className="text-sm">Failed to load game templates. Please try again.</span>
-        </div>
-      )}
-
-      {templates && templates.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 w-full px-6 md:px-10 lg:px-14 pb-10">
-          {templates.map((template) => (
-            <motion.button
-              key={template.id}
-              type="button"
-              onClick={() => onSelect(template)}
-              whileHover={{
-                y: -4,
-                scale: 1.02,
-                transition: { type: 'spring', stiffness: 380, damping: 28 },
-              }}
-              whileTap={{
-                scale: 0.96,
-                transition: { type: 'spring', stiffness: 500, damping: 30 },
-              }}
-              className={[
-                'group relative aspect-[3/2] border border-white/10 rounded-none overflow-hidden',
-                'bg-[#0a0a0a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
-              ].join(' ')}
-            >
-              {/* Logo — stretched to fill card like a banner */}
-              {template.logoUrl && !logoErrors.has(template.id) ? (
-                <img
-                  src={template.logoUrl}
-                  alt={template.gameName}
-                  className="absolute inset-0 w-full h-full object-contain p-5 group-hover:scale-[1.04] transition-transform duration-200"
-                  onError={() => setLogoErrors(prev => new Set([...prev, template.id]))}
-                  loading="lazy"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center px-6">
-                  <span className="text-base font-bold uppercase tracking-tight text-white/30 text-center">
-                    {template.gameName}
-                  </span>
-                </div>
-              )}
-
-              {/* Bottom scrim */}
-              <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/90 to-transparent" />
-
-              {/* Bottom label */}
-              <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
-                <span className="block font-bold text-xs uppercase tracking-wide text-white leading-tight mb-0.5">
-                  {template.gameName}
-                </span>
-                <div className="flex items-center gap-2">
-                  {gameTypeBadge(template) && (
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-gray-500">
-                      {gameTypeBadge(template)}
-                    </span>
-                  )}
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-gray-500">
-                    Bo{template.defaultBestOf}
-                  </span>
-                </div>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

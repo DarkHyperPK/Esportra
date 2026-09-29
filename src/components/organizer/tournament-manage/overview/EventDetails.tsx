@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { EYEBROW_CLASS, PANEL_CLASS } from '../tone';
+import { EYEBROW_CLASS, PANEL_CLASS } from '@/components/ui/kit/tone';
 
 export interface EventDetailRow {
   label: string;

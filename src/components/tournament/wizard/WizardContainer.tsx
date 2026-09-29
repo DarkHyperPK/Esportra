@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from 'lucide-react';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAuth } from '@/hooks/useAuth';
 import { isSuperAdminUser } from '@/lib/adminAccess';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ActionBar, PageIntro } from '@/components/ui/kit';
+import { CommandButton, CommandShell } from '@/components/management/CommandSurface';
 import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
@@ -14,10 +26,7 @@ import StepPrizeDistribution from './StepPrizeDistribution';
 import StepRegistration from './StepRegistration';
 import StepSettings from './StepSettings';
 import StepReview from './StepReview';
-import { WIZARD_STEPS } from '@/types/tournamentWizard';
-import { CommandButton, CommandHeader, CommandSection, CommandShell } from '@/components/management/CommandSurface';
-
-import { TournamentWizardData } from '@/types/tournamentWizard';
+import { WIZARD_STEPS, type TournamentWizardData } from '@/types/tournamentWizard';
 
 interface WizardContainerProps {
     initialData?: TournamentWizardData;
@@ -26,6 +35,10 @@ interface WizardContainerProps {
     activeInvitationCount?: number;
 }
 
+/**
+ * Full setup / edit wizard. One question per step, a readable column, the
+ * stepper on top and a sticky bar that always names the next step.
+ */
 const WizardContainer: React.FC<WizardContainerProps> = ({
     initialData,
     tournamentId,
@@ -36,6 +49,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     const admin = useAdmin();
     const { profile } = useAuth();
     const isSuperAdmin = isSuperAdminUser(admin, profile);
+    const [confirmReset, setConfirmReset] = useState(false);
     const {
         currentStep,
         data,
@@ -50,26 +64,24 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
         submitTournament,
     } = useTournamentWizard(initialData, tournamentId, { activeInvitationCount });
 
+    const isEditing = Boolean(tournamentId);
+    const locked = isEditing && !isSuperAdmin;
+    const isLastStep = currentStep === WIZARD_STEPS.length;
+    const isFirstStep = currentStep === 1;
+    const nextTitle = WIZARD_STEPS[currentStep]?.title;
+
     const renderStep = () => {
         switch (currentStep) {
             case 1:
-                return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} />;
+                return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={locked} />;
             case 2:
-                return <StepFormatRules data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} tournamentId={tournamentId} participantsCount={participantsCount} />;
+                return <StepFormatRules data={data} updateData={updateData} errors={errors} isEditMode={locked} tournamentId={tournamentId} participantsCount={participantsCount} />;
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
-                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} />;
+                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} isEditMode={locked} />;
             case 5:
-                return (
-                    <StepRegistration
-                        data={data}
-                        updateData={updateData}
-                        errors={errors}
-                        isEditMode={!!tournamentId && !isSuperAdmin}
-                        activeInvitationCount={activeInvitationCount}
-                    />
-                );
+                return <StepRegistration data={data} updateData={updateData} errors={errors} isEditMode={locked} activeInvitationCount={activeInvitationCount} />;
             case 6:
                 return <StepSettings data={data} updateData={updateData} errors={errors} />;
             case 7:
@@ -79,89 +91,94 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
         }
     };
 
-    const isLastStep = currentStep === WIZARD_STEPS.length;
-    const isFirstStep = currentStep === 1;
+    const primaryLabel = isLastStep
+        ? (isEditing ? 'Save changes' : 'Create tournament')
+        : `Continue to ${nextTitle?.toLowerCase() ?? 'next step'}`;
 
     return (
         <CommandShell>
-            <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
-                <CommandHeader
-                    eyebrow={tournamentId ? 'Tournament Command' : 'Tournament Setup'}
-                    title={tournamentId ? 'Edit Tournament' : 'Create Tournament'}
-                    description={tournamentId ? 'Update the operating contract for this tournament.' : 'Configure a tournament with backend-validated game modes, roster rules, and registration settings.'}
+            <div className="mx-auto max-w-4xl px-4 pb-6 pt-8 sm:px-6 md:pt-12">
+                <PageIntro
+                    eyebrow={isEditing ? 'Edit tournament' : 'Full setup'}
+                    title={isEditing ? (data.name || 'Edit tournament') : 'Create a tournament'}
+                    description={isEditing
+                        ? 'Changes apply as soon as you save. Some fields lock once players have registered.'
+                        : 'Seven short steps. Your progress saves on this device, so you can leave and come back.'}
                 />
 
-                <WizardProgress
-                    currentStep={currentStep}
-                    stepValidation={stepValidation}
-                    onStepClick={goToStep}
-                    steps={WIZARD_STEPS}
+                <div className="mt-10">
+                    <WizardProgress currentStep={currentStep} stepValidation={stepValidation} onStepClick={goToStep} steps={WIZARD_STEPS} />
+                </div>
+
+                <div className="mt-10 max-w-2xl">
+                    <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
+                </div>
+
+                <ActionBar
+                    sticky
+                    className="mt-10"
+                    start={
+                        <>
+                            {!isFirstStep && (
+                                <CommandButton variant="secondary" size="sm" onClick={prevStep}>
+                                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                                    Back
+                                </CommandButton>
+                            )}
+                            {!isEditing && (
+                                <CommandButton variant="ghost" size="sm" onClick={() => setConfirmReset(true)}>
+                                    <RotateCcw className="h-4 w-4" aria-hidden />
+                                    <span className="hidden sm:inline">Start over</span>
+                                </CommandButton>
+                            )}
+                        </>
+                    }
+                    status={isEditing ? undefined : 'Saved on this device'}
+                    end={
+                        <CommandButton
+                            variant="primary"
+                            size="md"
+                            slide
+                            onClick={isLastStep ? submitTournament : nextStep}
+                            disabled={isSubmitting || (isLastStep && Object.keys(errors).length > 0)}
+                            className="min-w-[200px]"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                    {isEditing ? 'Saving' : 'Creating'}
+                                </>
+                            ) : (
+                                <>
+                                    {primaryLabel}
+                                    {!isLastStep && <ArrowRight className="h-4 w-4" aria-hidden />}
+                                </>
+                            )}
+                        </CommandButton>
+                    }
                 />
-
-                <CommandSection className="relative overflow-hidden">
-                    <div className="pointer-events-none absolute inset-0 opacity-20">
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                        {renderStep()}
-                    </AnimatePresence>
-                </CommandSection>
-
-                <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        {!isFirstStep && (
-                            <CommandButton variant="secondary" onClick={prevStep}>
-                                <ArrowLeft className="h-4 w-4" />
-                                Back
-                            </CommandButton>
-                        )}
-
-                        {!tournamentId && (
-                            <CommandButton variant="ghost" onClick={clearDraft}>
-                                <Trash2 className="h-4 w-4" />
-                                Clear Draft
-                            </CommandButton>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {!tournamentId && (
-                            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-gray-500 md:block">
-                                Draft auto-saved
-                            </span>
-                        )}
-
-                        {isLastStep ? (
-                            <CommandButton
-                                onClick={submitTournament}
-                                disabled={isSubmitting || Object.keys(errors).length > 0}
-                                className="min-w-[180px]"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        {tournamentId ? 'Saving' : 'Creating'}
-                                    </>
-                                ) : (
-                                    tournamentId ? 'Save Changes' : 'Create Tournament'
-                                )}
-                            </CommandButton>
-                        ) : (
-                            <CommandButton onClick={nextStep}>
-                                Next
-                                <ArrowRight className="h-4 w-4" />
-                            </CommandButton>
-                        )}
-                    </div>
-                </div>
-
-                <div className="text-center font-mono text-[10px] uppercase tracking-widest text-gray-500">
-                    {tournamentId
-                        ? 'Changes apply immediately after saving.'
-                        : 'Your progress is automatically saved.'}
-                </div>
             </div>
+
+            <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+                <AlertDialogContent className="border-white/10 bg-card text-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Start over?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                            This clears everything you've entered and takes you back to step 1. It can't be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                            <CommandButton variant="secondary" size="sm">Keep my progress</CommandButton>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                            <CommandButton variant="danger" size="sm" onClick={() => { clearDraft(); setConfirmReset(false); }}>
+                                Clear and start over
+                            </CommandButton>
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </CommandShell>
     );
 };

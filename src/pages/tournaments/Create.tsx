@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { deriveHasOrganization, fetchMeRoles } from '@/lib/meRoles';
 import Footer from '@/components/Footer';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
+import { Building2, LogIn, Repeat } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
-import { Button } from '@/components/ui/button';
 import { QuickCreateFlow } from '@/components/tournament/quick-create';
+import { CreateGateScreen } from '@/components/tournament/quick-create/CreateGateScreen';
 
 const CreateTournament = () => {
   const { user } = useAuth();
@@ -42,96 +41,62 @@ const CreateTournament = () => {
     checkOrganization();
   }, [user?.id, currentRole, admin]);
 
+  const gate = (content: React.ReactNode) => (
+    <div className="flex min-h-screen flex-col bg-transparent text-white">
+      <main className="flex-grow">{content}</main>
+      <Footer />
+    </div>
+  );
+
   if (!user) {
-    return (
-      <div className="min-h-screen bg-transparent text-white flex flex-col">
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              You must be signed in to create tournaments.
-            </AlertDescription>
-          </Alert>
-        </main>
-        <Footer />
-      </div>
+    return gate(
+      <CreateGateScreen
+        icon={<LogIn className="h-6 w-6" aria-hidden />}
+        eyebrow="New tournament"
+        title="Sign in to create a tournament"
+        description="Tournaments belong to an organizer account, so we know who runs them and who gets paid."
+        actionLabel="Sign in"
+        onAction={() => navigate('/auth/signin')}
+      />,
     );
   }
 
   if (!canCreate) {
-    return (
-      <div className="min-h-screen bg-transparent text-white flex flex-col">
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <div className="text-center max-w-md mx-auto p-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-              <Trophy className="h-8 w-8 text-white" />
-            </div>
-            <div className="text-esports-primary text-xl font-semibold mb-2">Player Mode</div>
-            <div className="text-esports-secondary text-sm mb-4">
-              You're currently in Player mode. Switch to Organizer mode to create tournaments.
-            </div>
-            <div className="text-xs text-gray-500">
-              As a player, you can create teams and join tournaments but not create them. Switch roles to access organizer features.
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
+    return gate(
+      <CreateGateScreen
+        icon={<Repeat className="h-6 w-6" aria-hidden />}
+        eyebrow="Player mode"
+        title="Switch to organizer mode"
+        description="You're browsing as a player. Players join teams and tournaments; organizers create and run them. Switch roles from the account menu in the top bar."
+      />,
     );
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-esports-accent" />
-          <span className="text-gray-400">Loading...</span>
+    return gate(
+      <div className="mx-auto w-full max-w-5xl px-4 py-16" aria-busy="true" aria-label="Loading">
+        <div className="h-3 w-32 animate-pulse bg-white/[0.04]" />
+        <div className="mt-4 h-10 w-2/3 animate-pulse bg-white/[0.04]" />
+        <div className="mt-10 grid gap-3 md:grid-cols-2">
+          <div className="h-72 animate-pulse bg-white/[0.04]" />
+          <div className="h-72 animate-pulse bg-white/[0.04]" />
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (!hasOrganization && !admin.hasPermission('tournaments:create')) {
-    return (
-      <div className="min-h-screen bg-transparent text-white flex flex-col">
-        <main className="flex-grow container mx-auto px-4 py-20 relative z-10">
-          <div className="max-w-lg mx-auto text-center">
-            <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-8">
-              <Building2 className="h-12 w-12 text-amber-400" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold font-heading mb-4">
-              Setup Your Organization First
-            </h1>
-            <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
-              Before you can host tournaments, you need to create your organization.
-              This will be your public brand that players will see.
-            </p>
-            <div className="grid grid-cols-1 gap-3 mb-10 text-left max-w-sm mx-auto">
-              {[
-                'Your organization name appears on all tournaments',
-                'Build a recognizable esports brand',
-                'Get a public profile page for your org',
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 text-sm text-gray-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-esports-accent flex-shrink-0" />
-                  {item}
-                </div>
-              ))}
-            </div>
-            <Button
-              onClick={() => navigate('/organizer/setup-organization')}
-              className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-esports-purple to-esports-accent hover:from-esports-purple/90 hover:to-esports-accent/90 shadow-lg shadow-esports-purple/25 gap-2"
-            >
-              Setup Organization
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-            <p className="text-gray-500 text-sm mt-6">
-              Takes less than 2 minutes to complete
-            </p>
-          </div>
-        </main>
-        <Footer />
-      </div>
+    return gate(
+      <CreateGateScreen
+        icon={<Building2 className="h-6 w-6" aria-hidden />}
+        eyebrow="One step first"
+        title="Set up your organization"
+        description="Every tournament runs under an organization. It's the name players see on your events and your public profile."
+        points={['Your name and logo on every tournament', 'A public page players can follow', 'Staff you add can help run every event']}
+        actionLabel="Set up organization"
+        onAction={() => navigate('/organizer/setup-organization')}
+        footnote="Takes about 2 minutes."
+      />,
     );
   }
 

@@ -178,7 +178,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             {value ? (
                 // Preview
                 <div className={cn(
-                    "relative rounded-xl overflow-hidden border border-zinc-800 bg-black/20 group",
+                    "relative rounded-none overflow-hidden border border-zinc-800 bg-black/20 group",
                     aspectRatio === 'banner' || aspectRatio === 'video' ? "aspect-video" : "aspect-square w-32"
                 )}>
                     <img
@@ -209,7 +209,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 // Upload zone
                 <div
                     className={cn(
-                        "group relative rounded-xl border transition-all cursor-pointer overflow-hidden",
+                        "group relative rounded-none border transition-all cursor-pointer overflow-hidden",
                         aspectRatio === 'banner' || aspectRatio === 'video' ? "aspect-video" : "aspect-square w-32",
                         isDragging
                             ? "border-rose-500/40 bg-rose-500/5 shadow-[0_0_30px_-5px_rgba(244,63,94,0.15)]"
@@ -222,7 +222,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                     onClick={() => inputRef.current?.click()}
                 >
                     {isUploading ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-xl">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-none">
                             <Loader2 className="w-8 h-8 text-rose-500 animate-spin mb-2" />
                             <span className="text-sm font-medium text-white">Uploading...</span>
                         </div>
@@ -230,7 +230,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
                     <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
                         <div className={cn(
-                            "w-11 h-11 rounded-xl flex items-center justify-center transition-colors",
+                            "w-11 h-11 rounded-none flex items-center justify-center transition-colors",
                             isDragging
                                 ? "bg-rose-500/10 border border-rose-500/30"
                                 : "bg-zinc-800/80 border border-zinc-700/50 group-hover:border-zinc-600"
@@ -272,7 +272,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
             {/* Cropper Dialog */}
             <Dialog open={!!imageSrc} onOpenChange={(open) => !open && setImageSrc(null)}>
-                <DialogContent className="max-w-4xl h-[80vh] flex flex-col bg-[#0a0a0c] border border-white/10 p-0 overflow-hidden">
+                <DialogContent className="max-w-4xl h-[80vh] flex flex-col bg-card border border-white/10 p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="text-white">Adjust Image</DialogTitle>
                         <DialogDescription>Drag to reposition. Use slider to zoom.</DialogDescription>
@@ -297,7 +297,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                         )}
                     </div>
 
-                    <div className="p-6 bg-[#0a0a0c] border-t border-white/10 z-20 space-y-4">
+                    <div className="p-6 bg-card border-t border-white/10 z-20 space-y-4">
                         <div className="flex items-center gap-4">
                             <span className="text-xs font-mono text-gray-400 uppercase tracking-widest w-20">Zoom</span>
                             <Slider

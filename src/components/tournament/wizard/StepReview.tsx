@@ -1,23 +1,13 @@
 import React from 'react';
+import { Pencil } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { motion } from 'framer-motion';
-import {
-    Check,
-    Edit2,
-    Trophy,
-    UserCheck,
-    Gamepad2,
-    Globe,
-    MapPin,
-    Eye,
-    EyeOff,
-    Settings
-} from 'lucide-react';
-import { GhostButton } from '@/components/ui/app-buttons';
+import { EYEBROW_CLASS, InlineNotice, PANEL_CLASS } from '@/components/ui/kit';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
-import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getBRConfig, getEffectiveGameFeatures, getParticipantMode, isBattleRoyale } from '@/utils/gameFeatures';
+import { cn } from '@/lib/utils';
+import { WizardStepFrame } from './WizardStepFrame';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -25,224 +15,129 @@ interface StepReviewProps {
     errors: Record<string, string>;
 }
 
+type Row = { label: string; value: string; muted?: boolean };
+
+const when = (date: string, time?: string) => {
+    if (!date) return 'Not set';
+    const value = time ? new Date(`${date}T${time}`) : new Date(date);
+    return value.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', ...(time ? { hour: 'numeric', minute: '2-digit' } : {}) });
+};
+const plainText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const isFree = (fee: string) => !fee || fee.toLowerCase() === 'free' || fee === '0';
+
+function ReviewSection({ title, step, rows, onEdit }: { title: string; step: number; rows: Row[]; onEdit: (step: number) => void }) {
+    return (
+        <section className="border-t border-white/[0.07] py-5 first:border-t-0 first:pt-0">
+            <div className="mb-3 flex items-center justify-between">
+                <h3 className="font-heading text-base font-bold text-white">{title}</h3>
+                <button type="button" onClick={() => onEdit(step)} className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-white">
+                    <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+                </button>
+            </div>
+            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                {rows.map((row) => (
+                    <div key={row.label} className="min-w-0">
+                        <dt className="text-xs text-zinc-500">{row.label}</dt>
+                        <dd className={cn('mt-0.5 truncate text-sm', row.muted ? 'text-zinc-500' : 'text-zinc-100')} title={row.value}>{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
+    );
+}
+
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
-    const hasErrors = Object.keys(errors).length > 0;
+    const errorList = Object.values(errors).filter(Boolean);
     const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
-    const participantMode = getParticipantMode(data.game || '', data.gameMode);
-    const isSoloMode = participantMode === 'solo';
-    const teamSizeLabel = isSoloMode
-        ? 'Solo (Individual)'
-        : data.teamSize === 2
-            ? 'Duo (2 players)'
-            : data.teamSize === 3
-                ? 'Trio (3 players)'
-                : `${data.teamSize} players`;
-    const maxParticipantsUnit = isSoloMode ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads';
+    const solo = getParticipantMode(data.game || '', data.gameMode) === 'solo';
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
+    const unit = solo ? 'players' : data.teamSize === 2 ? 'duos' : data.teamSize === 3 ? 'trios' : isBR ? 'squads' : 'teams';
+    const description = plainText(data.description || '');
+    const prizePool = parseFloat(data.prizePool) || 0;
 
-    const formatDate = (dateStr: string, timeStr?: string) => {
-        if (!dateStr) return 'Not set';
-        const date = timeStr ? new Date(`${dateStr}T${timeStr}`) : new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: timeStr ? '2-digit' : undefined,
-            minute: timeStr ? '2-digit' : undefined,
-        });
-    };
-
-    const getLaunchStateIcon = () => {
-        switch (data.launchState) {
-            case 'public': return <Eye className="w-4 h-4" />;
-            case 'private': return <EyeOff className="w-4 h-4" />;
-            case 'draft': return <EyeOff className="w-4 h-4" />;
-        }
-    };
-
-    const sections = [
+    const sections: { title: string; step: number; rows: Row[] }[] = [
         {
-            step: 1,
-            title: 'Basic Information',
-            icon: <Gamepad2 className="w-5 h-5" />,
-            items: [
-                { label: 'Tournament Name', value: data.name || 'Not set' },
-                { label: 'Game', value: data.game || 'Not selected' },
-                { label: 'Type', value: data.isOnline ? 'Online' : 'LAN', icon: data.isOnline ? <Globe className="w-4 h-4" /> : <MapPin className="w-4 h-4" /> },
-                { label: 'Launch State', value: LAUNCH_STATE_LABELS[data.launchState] ?? data.launchState, icon: getLaunchStateIcon() },
-                { label: 'Start', value: formatDate(data.startDate, data.startTime) },
-                ...(data.endDate ? [{ label: 'End', value: formatDate(data.endDate, data.endTime) }] : []),
-                ...(!data.isOnline && data.venue ? [{ label: 'Venue', value: data.venue }] : []),
-            ]
+            title: 'Basics', step: 1, rows: [
+                { label: 'Game', value: data.game || 'Not chosen', muted: !data.game },
+                { label: 'Where', value: data.isOnline ? 'Online' : data.venue || 'LAN, venue not set' },
+                { label: 'Starts', value: when(data.startDate, data.startTime) },
+                { label: 'Ends', value: data.endDate ? when(data.endDate, data.endTime) : 'Not set', muted: !data.endDate },
+                { label: 'Visibility', value: LAUNCH_STATE_LABELS[data.launchState] ?? data.launchState },
+            ],
         },
         {
-            step: 2,
-            title: isBR ? 'Format & Scoring' : 'Format & Stages',
-            icon: <Trophy className="w-5 h-5" />,
-            items: isBR ? [
-                { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
-                { label: 'Team Format', value: teamSizeLabel },
-                { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
-                { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
-                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
-                { label: 'Stages', value: 'Configure format and matches per lobby in Stages tab' },
+            title: isBR ? 'Format and scoring' : 'Format', step: 2, rows: isBR ? [
+                { label: 'Team size', value: solo ? 'Solo' : `${data.teamSize} players` },
+                { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : brConfig?.scoringPresets?.[data.brScoringPreset]?.name || 'Not chosen' },
+                { label: 'Kill cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
+                { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most first places' : data.brTiebreaker === 'most_kills' ? 'Most kills' : 'Best average placement' },
+                { label: 'Capacity', value: data.maxTeams ? `${data.maxTeams} ${unit}` : 'No limit' },
             ] : [
-                { label: 'Total Stages', value: `${data.stages.length} stage(s)` },
-                ...data.stages.map((stage, i) => ({
-                    label: `Stage ${i + 1}`,
-                    value: `${stage.name} (${BRACKET_TYPE_LABELS[stage.format]})`
-                })),
-                { label: 'Max Teams', value: 'Configured in Manage Stages' },
-                { label: 'Team Size', value: 'Configured in Manage Stages' }
-            ]
+                { label: 'Stages', value: data.stages.length ? data.stages.map((s) => `${s.name} (${BRACKET_TYPE_LABELS[s.format]})`).join(' → ') : 'One default bracket' },
+                { label: 'Capacity', value: data.maxTeams ? `${data.maxTeams} ${unit}` : 'No limit' },
+                { label: 'Team size', value: solo ? 'Solo' : `${data.teamSize} players` },
+                ...(features.mapPool ? [{ label: 'Map pool', value: `${data.mapPoolIds?.length ?? 0} maps` }] : []),
+            ],
         },
         {
-            step: 3,
-            title: 'Branding & Details',
-            icon: <Gamepad2 className="w-5 h-5" />,
-            items: [
-                { label: 'Prize Pool', value: data.prizePool ? formatCurrency(parseFloat(data.prizePool), data.currency) : 'Not set' },
-                { label: 'Entry Fee', value: data.entryFee && data.entryFee !== 'Free' && data.entryFee !== '0' ? formatCurrency(parseFloat(data.entryFee), data.currency) : 'Free' },
-                { label: 'Banner', value: data.bannerUrl ? '✓ Uploaded' : '✗ Not uploaded' },
-                { label: 'Description', value: data.description ? `${data.description.substring(0, 50)}...` : 'Not set' },
-            ]
+            title: 'Branding', step: 3, rows: [
+                { label: 'Banner', value: data.bannerUrl ? 'Added' : 'None yet', muted: !data.bannerUrl },
+                { label: 'Stream', value: data.streamUrl || 'None', muted: !data.streamUrl },
+                { label: 'Description', value: description ? `${description.slice(0, 90)}${description.length > 90 ? '…' : ''}` : 'Not written yet', muted: !description },
+            ],
         },
         {
-            step: 4,
-            title: 'Registration',
-            icon: <UserCheck className="w-5 h-5" />,
-            items: [
-                { label: 'Registration Closes', value: data.registrationCloses ? new Date(data.registrationCloses).toLocaleString() : 'Not set' },
-                { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
-                { label: 'Auto-remove no-shows', value: 'Enabled' },
-                { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
-                ...(data.invitedTeamsEnabled
-                    ? [
-                        {
-                            label: 'Invited participants',
-                            value: `${data.reservedInviteSlots} reserved slot${data.reservedInviteSlots === 1 ? '' : 's'} (${data.inviteExpiryDays}-day codes)`,
-                        },
-                        ...(data.maxTeams > 0
-                            ? [{
-                                label: 'Open registration',
-                                value: `${Math.max(data.maxTeams - data.reservedInviteSlots, 0)} of ${data.maxTeams} ${data.teamSize > 1 ? 'team' : 'player'} slots`,
-                            }]
-                            : []),
-                    ]
-                    : []),
-            ]
+            title: 'Prizes', step: 4, rows: [
+                { label: 'Prize pool', value: prizePool > 0 ? formatCurrency(prizePool, data.currency) : 'No cash prize', muted: prizePool <= 0 },
+                { label: 'Entry fee', value: isFree(data.entryFee) ? 'Free' : formatCurrency(parseFloat(data.entryFee), data.currency) },
+                { label: 'Split', value: data.prizeDistribution?.placements?.length ? data.prizeDistribution.placements.map((p) => `${p.percentage}%`).join(' / ') : 'Not set', muted: !data.prizeDistribution?.placements?.length },
+            ],
         },
         {
-            step: 5,
-            title: 'Settings',
-            icon: <Settings className="w-5 h-5" />,
-            items: [
-                ...(features.mapVeto
-                    ? [{ label: 'Map Veto', value: data.mapVetoEnabled ? 'Enabled' : 'Disabled' }]
-                    : []),
-                ...(features.assistedReporting
-                    ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
-                    : []),
-                ...(!features.mapVeto && !features.assistedReporting && !isBR
-                    ? [{ label: 'Game Settings', value: 'No game-specific settings' }]
-                    : []),
-            ]
+            title: 'Registration', step: 5, rows: [
+                { label: 'Closes', value: data.registrationCloses ? when(...(data.registrationCloses.split('T') as [string, string])) : 'Not set', muted: !data.registrationCloses },
+                { label: 'Check-in', value: data.checkInRequired ? `Opens ${data.checkInWindowMinutes} min before start` : 'Not required' },
+                ...(data.checkInRequired ? [{ label: 'No-shows', value: data.autoRemoveUnchecked ? 'Removed automatically' : 'Kept until you remove them' }] : []),
+                ...(data.invitedTeamsEnabled ? [{ label: 'Held for invites', value: `${data.reservedInviteSlots} spots, codes last ${data.inviteExpiryDays} days` }] : []),
+            ],
+        },
+        {
+            title: 'Match settings', step: 6, rows: [
+                ...(features.mapVeto ? [{ label: 'Map veto', value: data.mapVetoEnabled ? 'On' : 'Off' }] : []),
+                ...(features.assistedReporting ? [{ label: 'Results from Riot', value: data.assistedMatchReporting ? 'On' : 'Off' }] : []),
+                { label: 'Discord required', value: (data.discordLinkCount ?? 0) > 0 ? ((data.discordLinkCount ?? 0) === 1 ? 'Captain only' : `${data.discordLinkCount} per team`) : 'No' },
+            ],
         },
     ];
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+        <WizardStepFrame
+            title="Check and create"
+            description="Everything in one place. Anything that looks wrong is one click from being fixed."
+            errorSummary={errorList}
         >
-            <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">Review & Create</h2>
-                <p className="text-gray-400">Review your tournament settings before creating</p>
+            <div className={cn(PANEL_CLASS, 'mb-8 overflow-hidden')}>
+                <div className="relative h-36 bg-black/40">
+                    {data.bannerUrl && <img src={data.bannerUrl} alt="" className="h-full w-full object-cover" />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                    <div className="absolute inset-x-5 bottom-4">
+                        <p className={EYEBROW_CLASS}>{data.game || 'Game not chosen'}</p>
+                        <p className="mt-1 truncate font-heading text-2xl font-black tracking-tight text-white">{data.name || 'Untitled tournament'}</p>
+                    </div>
+                </div>
             </div>
 
-            {hasErrors && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <p className="text-red-400 font-medium">Please fix the following errors:</p>
-                    <ul className="mt-2 space-y-1">
-                        {Object.entries(errors).map(([key, value]) => (
-                            <li key={key} className="text-sm text-red-300">• {value}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {/* Tournament Preview Card */}
-            {data.bannerUrl && (
-                <div className="relative rounded-lg overflow-hidden">
-                    <img
-                        src={data.bannerUrl}
-                        alt="Tournament banner"
-                        className="w-full h-40 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-4 left-4">
-                        <div>
-                            <h3 className="text-xl font-bold text-white">{data.name || 'Tournament Name'}</h3>
-                            <p className="text-sm text-gray-300">{data.game}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Sections */}
-            <div className="space-y-4">
-                {sections.map((section) => (
-                    <div
-                        key={section.step}
-                        className="p-4 bg-white/[0.02] rounded-lg border border-white/10"
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="text-emerald-400">{section.icon}</div>
-                                <h3 className="font-semibold text-white">{section.title}</h3>
-                            </div>
-                            <GhostButton
-                                type="button"
-                                size="sm"
-                                onClick={() => onEdit(section.step)}
-                            >
-                                <Edit2 className="w-4 h-4 mr-1" />
-                                Edit
-                            </GhostButton>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {section.items.map((item, i) => (
-                                <div key={i} className="space-y-1">
-                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">{item.label}</div>
-                                    <div className="text-sm text-white flex items-center gap-1">
-                                        {(item as any).icon}
-                                        {item.value}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
+            <div>
+                {sections.map((section) => <ReviewSection key={section.step} {...section} onEdit={onEdit} />)}
             </div>
 
-            {/* Ready indicator */}
-            {!hasErrors && (
-                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <Check className="w-5 h-5 text-green-500" />
-                    </div>
-                    <div>
-                        <p className="font-medium text-green-400">Ready to create!</p>
-                        <p className="text-sm text-green-300/70">All required fields are filled. Click "Create Tournament" below.</p>
-                    </div>
-                </div>
+            {errorList.length === 0 && (
+                <InlineNotice tone="success" className="mt-6">
+                    Everything required is filled in. Create it now and finish the rest from the dashboard any time.
+                </InlineNotice>
             )}
-        </motion.div>
+        </WizardStepFrame>
     );
 };
 

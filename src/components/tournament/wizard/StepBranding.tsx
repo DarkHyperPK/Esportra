@@ -1,71 +1,43 @@
 import React, { useState } from 'react';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { motion } from 'framer-motion';
-import { FileText, Link as LinkIcon } from 'lucide-react';
+import { ChipGroup, CONTROL_CLASS, CONTROL_ERROR_CLASS, Field, FormSection } from '@/components/ui/kit';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { WizardStepFrame } from './WizardStepFrame';
+
+const DESCRIPTION_LIMIT = 5000;
+const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-
-    const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-
     const organizerName = sanitize(profile?.username || profile?.full_name || 'unknown-organizer');
     const tournamentName = sanitize(data.name || 'unnamed-tournament');
+    const length = data.description.length;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+        <WizardStepFrame
+            title="Make it recognizable"
+            description="A banner and a clear description are what make players click and sign up."
         >
-            <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">Branding & Details</h2>
-                <p className="text-gray-400">Make your tournament stand out with images and information</p>
-            </div>
-
-            {/* Image Uploads */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="max-w-2xl space-y-4">
-                <div className="flex gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setBannerMode('upload')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            bannerMode === 'upload'
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
-                        }`}
-                    >
-                        Upload Custom
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setBannerMode('artwork')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            bannerMode === 'artwork'
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
-                        }`}
-                    >
-                        Use Artwork from Esportra Partners
-                    </button>
-                </div>
-
+            <FormSection title="Banner" description="Used as the card background in listings and as the header on your tournament page.">
+                <ChipGroup
+                    label="Banner source"
+                    value={bannerMode}
+                    onChange={setBannerMode}
+                    options={[{ value: 'upload', label: 'Upload your own' }, { value: 'artwork', label: 'Choose partner artwork' }]}
+                />
                 {bannerMode === 'upload' ? (
                     <ImageUploader
                         value={data.bannerUrl}
                         onChange={(url) => updateData({ bannerUrl: url })}
                         aspectRatio="banner"
-                        label="Tournament Card Banner"
-                        helperText="This image will be displayed as the background of your tournament card and page header."
+                        label="Banner image"
+                        helperText="Wide images work best. Keep text away from the edges; they get cropped on phones."
                         bucket="system.assets.website"
                         folder={`Tournament-card-banners/${organizerName}`}
                         customFileName={tournamentName}
@@ -78,63 +50,44 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                             updateData({ bannerUrl: url });
                             setBannerMode('upload');
                         }}
-                        uploadConfig={{
-                            bucket: 'system.assets.website',
-                            folder: `Tournament-card-banners/${organizerName}`,
-                        }}
+                        uploadConfig={{ bucket: 'system.assets.website', folder: `Tournament-card-banners/${organizerName}` }}
                     />
                 )}
-            </div>
+            </FormSection>
 
-            {/* Description */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="space-y-2">
-                <Label htmlFor="description" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    <FileText className="w-4 h-4" />
-                    Tournament Description *
-                </Label>
-                <RichTextEditor
-                    content={data.description || ''}
-                    onChange={(content) => updateData({ description: content })}
-                    className={errors.description ? 'border-red-500' : ''}
-                />
-                <div className="flex justify-between text-xs">
-                    {errors.description ? (
-                        <p className="text-red-500">{errors.description}</p>
-                    ) : (
-                        <p className="text-gray-500">Minimum 20 characters</p>
-                    )}
-                    <p className={cn(
-                        "text-gray-500",
-                        data.description.length > 4800 && "text-yellow-500",
-                        data.description.length > 5000 && "text-red-500"
-                    )}>
-                        {data.description.length}/5000
-                    </p>
-                </div>
-            </div>
+            <FormSection title="Description" description="What's at stake, who it's for and anything players must know before they sign up.">
+                <Field
+                    label="Tournament description"
+                    error={errors.description}
+                    hint={
+                        <span className="flex justify-between gap-4">
+                            <span>At least 20 characters.</span>
+                            <span className={cn('tabular-nums', length > DESCRIPTION_LIMIT * 0.96 && 'text-amber-300', length > DESCRIPTION_LIMIT && 'text-red-300')}>
+                                {length}/{DESCRIPTION_LIMIT}
+                            </span>
+                        </span>
+                    }
+                >
+                    <RichTextEditor
+                        content={data.description || ''}
+                        onChange={(content) => updateData({ description: content })}
+                        className={errors.description ? 'border-red-500/70' : ''}
+                    />
+                </Field>
+            </FormSection>
 
-            {/* Stream Link */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="space-y-4">
-                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    <LinkIcon className="w-4 h-4" />
-                    Stream Link (optional)
-                </Label>
-                <div className="max-w-md space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        📺 Stream URL
-                    </div>
+            <FormSection title="Stream">
+                <Field label="Stream link" htmlFor="streamUrl" optional hint="Twitch, YouTube or Kick. Shown on the tournament page while matches are live." error={errors.streamUrl}>
                     <Input
-                        placeholder="https://twitch.tv/..."
+                        id="streamUrl"
+                        placeholder="https://twitch.tv/yourchannel"
                         value={data.streamUrl}
                         onChange={(e) => updateData({ streamUrl: e.target.value })}
-                        className={cn(errors.streamUrl && 'border-red-500')}
+                        className={cn(CONTROL_CLASS, errors.streamUrl && CONTROL_ERROR_CLASS)}
                     />
-                    {errors.streamUrl && <p className="text-xs text-red-500">{errors.streamUrl}</p>}
-                </div>
-            </div>
-        </motion.div>
+                </Field>
+            </FormSection>
+        </WizardStepFrame>
     );
 };
 

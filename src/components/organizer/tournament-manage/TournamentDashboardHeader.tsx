@@ -12,8 +12,8 @@ import { CommandButton, CommandIconButton } from '@/components/management/Comman
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import { formatDashboardDate } from '@/hooks/useTournamentOverviewModel';
-import { StatusPill } from './StatusPill';
-import { EYEBROW_CLASS, type Tone } from './tone';
+import { StatusPill } from '@/components/ui/kit/StatusPill';
+import { EYEBROW_CLASS, type Tone } from '@/components/ui/kit/tone';
 
 interface TournamentDashboardHeaderProps {
   tournament: DashboardTournament;

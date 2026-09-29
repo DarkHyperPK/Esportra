@@ -33,7 +33,7 @@ import type { CompletionSummary } from '@/hooks/useCompletionState';
 import type { DashboardNavGroup, DashboardSectionId } from '@/services/tournamentDashboard/dashboardNav';
 import { TournamentDashboardNav } from './TournamentDashboardNav';
 import { TournamentDashboardHeader } from './TournamentDashboardHeader';
-import type { Tone } from './tone';
+import type { Tone } from '@/components/ui/kit/tone';
 import { MobileDrawer } from './MobileDrawer';
 import { CompletionBanner } from './CompletionBanner';
 import { PublishButton } from './PublishButton';

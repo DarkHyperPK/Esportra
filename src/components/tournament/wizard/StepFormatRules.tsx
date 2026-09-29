@@ -1,30 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { motion } from 'framer-motion';
-import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
-import { OutlineButton } from '@/components/ui/app-buttons';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CONTROL_CLASS, CONTROL_ERROR_CLASS, Field, FormSection, InlineNotice } from '@/components/ui/kit';
 import { WizardStepProps } from '@/types/tournamentWizard';
-import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
+import TournamentMapPoolSelector from './TournamentMapPoolSelector';
 import InlineStageEditor from './InlineStageEditor';
-
+import { GameModeSection } from './GameModeSection';
+import { BRScoringSection } from './BRScoringSection';
+import { WizardStepFrame } from './WizardStepFrame';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 
-/* ──────────────────────────────────────────────────────────────
-   Main Component
-   ────────────────────────────────────────────────────────────── */
+const BRACKET_SIZES = [4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
+function brUnitNames(teamSize: number) {
+    if (teamSize === 1) return { one: 'player', many: 'players' };
+    if (teamSize === 2) return { one: 'duo', many: 'duos' };
+    if (teamSize === 3) return { one: 'trio', many: 'trios' };
+    return { one: 'squad', many: 'squads' };
+}
+
+function brCapacityOptions(teamSize: number, unitsPerLobby: number) {
+    const raw = [1, 2, 3, 4, 5, 8, 10].map((n) => n * unitsPerLobby);
+    const fixed = teamSize === 1 ? [20, 30, 40, 60, 100, 150, 200] : teamSize === 2 ? [10, 16, 20, 30, 50, 60, 100] : [8, 10, 16, 20, 30, 40, 50];
+    return [...new Set([...raw, ...fixed])].filter((n) => n >= 4 && n <= 500).sort((a, b) => a - b);
+}
 
 const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode, tournamentId, participantsCount }) => {
     const { toast } = useToast();
@@ -43,115 +47,26 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const hasMapPool = gameFeatures.mapPool;
     const mapPoolSizeLimit = gameFeatures.mapPoolSize ?? 7;
     const mapVetoEnabled = gameFeatures.mapVeto && (data.mapVetoEnabled ?? true);
-    const organizerMapPoolOnly = hasMapPool && !mapVetoEnabled;
     const exactMapPoolRequired = hasMapPool && mapVetoEnabled;
     const activeTeamSize = activeGameMode?.teamSize ?? data.teamSize ?? 1;
     const isGameModeLocked = Boolean(isEditMode || tournamentId);
+    const activeModeGroup = selectedGameModeGroups.find((group) =>
+        group.modes.some((mode) => activeGameModeValue === mode.value || activeGameModeValue === mode.key),
+    );
 
     const handleGameModeChange = (modeValue: string) => {
-        const mode = selectedGameModes.find((candidate) =>
-            (candidate.key || candidate.value) === modeValue || candidate.value === modeValue
-        );
+        const mode = selectedGameModes.find((c) => (c.key || c.value) === modeValue || c.value === modeValue);
         if (!mode) return;
-
         const modeFeatures = getEffectiveGameFeatures(data.game || '', mode.value);
-        const updates: Partial<typeof data> = {
-            gameMode: mode.value,
-            teamSize: mode.teamSize,
-            mapVetoEnabled: modeFeatures.mapVeto,
-            mapPoolIds: [],
-        };
-
+        const updates: Partial<typeof data> = { gameMode: mode.value, teamSize: mode.teamSize, mapVetoEnabled: modeFeatures.mapVeto, mapPoolIds: [] };
         if (isBR && brConfig) {
             const unitsPerLobby = deriveDefaultLobbyUnits(mode.teamSize, brConfig.playersPerLobby);
             const validOptions = [20, 30, 40, 60, 100, 150, 200];
-            const target = unitsPerLobby * 5;
-            updates.maxTeams = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
+            updates.maxTeams = validOptions.find((n) => n >= unitsPerLobby * 5) ?? validOptions[validOptions.length - 1];
             updates.brDefaultLobbySize = unitsPerLobby;
         }
-
         updateData(updates);
     };
-
-    const activeModeGroup = selectedGameModeGroups.find((group) =>
-        group.modes.some((mode) => activeGameModeValue === mode.value || activeGameModeValue === mode.key)
-    );
-
-    const handleModeGroupChange = (groupKey: string) => {
-        const group = selectedGameModeGroups.find((candidate) => candidate.key === groupKey);
-        const mode = group?.modes[0];
-        if (mode) handleGameModeChange(mode.key || mode.value);
-    };
-
-    const renderGameModeSelector = () => selectedGameModes.length > 1 ? (
-        <div className="space-y-3">
-            <div className="w-full h-px bg-white/5 my-6" />
-            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                <Users className="w-4 h-4" />
-                Game Mode
-            </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {selectedGameModeGroups.map((group) => {
-                    const isSelected = activeModeGroup?.key === group.key;
-                    return (
-                        <button
-                            key={group.key}
-                            type="button"
-                            disabled={isGameModeLocked}
-                            onClick={() => handleModeGroupChange(group.key)}
-                            className={cn(
-                                "rounded-none border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                                isSelected
-                                    ? "border-rose-500 bg-rose-500 text-white"
-                                    : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/30 hover:text-white"
-                            )}
-                        >
-                            <div className="font-bold text-sm uppercase tracking-wide">{group.label}</div>
-                            <div className="text-xs opacity-70 mt-1">
-                                {group.modes.length > 1
-                                    ? `${group.modes.length} variants`
-                                    : group.modes[0].participantMode === 'solo' || group.modes[0].teamSize === 1
-                                        ? 'Individual'
-                                        : `${group.modes[0].teamSize} players`}
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
-            {activeModeGroup && activeModeGroup.modes.length > 1 && (
-                <div className="grid grid-cols-2 gap-3">
-                    {activeModeGroup.modes.map((mode) => {
-                        const modeValue = mode.key || mode.value;
-                        const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
-                        return (
-                            <button
-                                key={modeValue}
-                                type="button"
-                                disabled={isGameModeLocked}
-                                onClick={() => handleGameModeChange(modeValue)}
-                                className={cn(
-                                    "rounded-none border p-3 text-center font-mono text-xs font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                                    isSelected
-                                        ? "border-white bg-white text-matte-black"
-                                        : "border-white/10 bg-black/40 text-gray-400 hover:border-white/25 hover:text-white"
-                                )}
-                            >
-                                {mode.variantLabel || mode.name}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-            <p className="text-sm text-gray-400">
-                {activeGameMode?.participantMode === 'solo' || activeTeamSize === 1
-                    ? 'This mode registers participants individually.'
-                    : `This mode requires ${activeTeamSize} starters${activeGameMode?.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`}
-            </p>
-            {isGameModeLocked && (
-                <p className="text-sm text-gray-400">Game mode is locked after tournament creation to protect registrations and match integrity.</p>
-            )}
-        </div>
-    ) : null;
 
     useEffect(() => {
         if (!selectedGame || !activeGameMode) return;
@@ -160,487 +75,160 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         }
     }, [selectedGame, activeGameMode, data.game, data.gameMode, data.teamSize, updateData]);
 
-    // Map Pool State
     const [availableMaps, setAvailableMaps] = useState<{ id: string; map_name: string; map_image_url?: string }[]>([]);
     const [loadingMaps, setLoadingMaps] = useState(false);
 
-    // Fetch maps when game changes — only for games with map pools
     useEffect(() => {
         const fetchMaps = async () => {
             if (!data.game || !hasMapPool) {
                 setAvailableMaps([]);
                 return;
             }
-
             setLoadingMaps(true);
             try {
-                // Normalize game name for DB query
                 const gameLower = data.game.toLowerCase();
-                const isCS2 = ['cs2', 'counter-strike 2'].includes(gameLower);
-                const isR6 = ['r6', 'r6s', 'rainbow six siege', 'rainbow-six-siege'].includes(gameLower);
-                const dbGameName = isCS2
+                const dbGameName = ['cs2', 'counter-strike 2'].includes(gameLower)
                     ? 'Counter-Strike 2'
-                    : isR6
-                        ? 'Rainbow Six Siege'
-                        : data.game;
-
+                    : ['r6', 'r6s', 'rainbow six siege', 'rainbow-six-siege'].includes(gameLower) ? 'Rainbow Six Siege' : data.game;
                 const maps = await apiClient.get<{ id: string; map_name: string; map_image_url?: string }[]>(
-                    `/api/games/maps?game=${encodeURIComponent(dbGameName)}${activeGameModeValue ? `&mode=${encodeURIComponent(activeGameModeValue)}` : ''}`
+                    `/api/games/maps?game=${encodeURIComponent(dbGameName)}${activeGameModeValue ? `&mode=${encodeURIComponent(activeGameModeValue)}` : ''}`,
                 );
-
                 setAvailableMaps(maps || []);
-
-                // Auto-select only on initial load for this game/mode (not when user toggles maps).
+                // Auto-select only on initial load for this game/mode (not when the user toggles maps).
                 if (maps && maps.length > 0) {
-                    if (!data.mapPoolIds || data.mapPoolIds.length === 0) {
-                        updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
-                    }
+                    if (!data.mapPoolIds || data.mapPoolIds.length === 0) updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map((m) => m.id) });
                 } else {
                     updateData({ mapPoolIds: [] });
                 }
-            } catch (err) {
-                console.error('[StepFormatRules] Error fetching maps:', err);
+            } catch {
                 setAvailableMaps([]);
             } finally {
                 setLoadingMaps(false);
             }
         };
-
         fetchMaps();
         // Intentionally omit data.mapPoolIds — selection changes must not re-fetch the catalog.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, updateData]);
 
+    const handleMaxTeams = (value: string) => {
+        const next = parseInt(value, 10);
+        if (participantsCount && next !== 0 && next < participantsCount) {
+            toast({
+                title: 'That limit is too low',
+                description: `${participantsCount} teams have already registered. Choose ${participantsCount} or more.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+        updateData({ maxTeams: next });
+    };
+
+    const errorSummary = Object.values(errors).filter(Boolean) as string[];
+    const modeSection = selectedGameModes.length > 1 ? (
+        <GameModeSection
+            groups={selectedGameModeGroups}
+            activeGroup={activeModeGroup}
+            activeMode={activeGameMode}
+            activeModeValue={activeGameModeValue}
+            teamSize={activeTeamSize}
+            locked={isGameModeLocked}
+            onGroupChange={(key) => {
+                const mode = selectedGameModeGroups.find((g) => g.key === key)?.modes[0];
+                if (mode) handleGameModeChange(mode.key || mode.value);
+            }}
+            onModeChange={handleGameModeChange}
+        />
+    ) : null;
+
+    const brUnits = brUnitNames(data.teamSize ?? 1);
+    const unitsPerLobby = brConfig ? deriveDefaultLobbyUnits(data.teamSize ?? 1, brConfig.playersPerLobby) : deriveDefaultLobbyUnits(data.teamSize ?? 1);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+        <WizardStepFrame
+            title={isBR ? 'Format and scoring' : 'Format and rules'}
+            description={isBR
+                ? 'How many teams play, how points are scored and how ties are broken.'
+                : 'How teams progress, how big the bracket is and which maps are played.'}
+            errorSummary={errorSummary}
         >
-            <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">Format & Rules</h2>
-                <p className="text-gray-400">
-                    {isBR
-                        ? 'Configure the points-based tournament format'
-                        : 'Configure the tournament structure and match settings'}
-                </p>
-            </div>
-
-            {Object.keys(errors).length > 0 && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                    <p className="text-sm font-medium text-red-400">Fix these before continuing:</p>
-                    <ul className="mt-2 space-y-1">
-                        {Object.entries(errors).map(([key, value]) => (
-                            <li key={key} className="text-sm text-red-300">• {value}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
-                    {/* Game Mode (Solo / Duo / Squad) */}
-                    {renderGameModeSelector()}
-
-                    {/* Scoring System */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Trophy className="w-4 h-4" />
-                            Scoring System
-                        </Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {Object.entries(brConfig.scoringPresets).map(([key, preset]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    disabled={isEditMode}
-                                    onClick={() => !isEditMode && updateData({
-                                        brScoringPreset: key,
-                                        brKillCap: preset.killCap,
-                                        brCustomScoring: null,
-                                    })}
-                                    className={cn(
-                                        "p-4 rounded-none border text-left transition-all",
-                                        data.brScoringPreset === key
-                                            ? "border-rose-500 bg-rose-500/10"
-                                            : "border-white/10 hover:border-white/20 bg-white/[0.02]",
-                                        isEditMode && "opacity-50 cursor-not-allowed"
-                                    )}
-                                >
-                                    <div className="font-semibold text-white text-sm">{preset.name}</div>
-                                    <div className="text-xs text-gray-400 mt-1">
-                                        1st: {preset.placements[0]}pts • Kill: {preset.killPoints}pt
-                                        {preset.killCap ? ` (cap ${preset.killCap})` : ''}
-                                    </div>
-                                </button>
-                            ))}
-                            <button
-                                type="button"
-                                disabled={isEditMode}
-                                onClick={() => !isEditMode && updateData({
-                                    brScoringPreset: 'custom',
-                                    brCustomScoring: data.brCustomScoring || {
-                                        name: 'Custom',
-                                        placements: [10, 6, 5, 4, 3, 2, 1, 1],
-                                        killPoints: 1,
-                                        killCap: null,
-                                    },
-                                })}
-                                className={cn(
-                                    "p-4 rounded-none border text-left transition-all",
-                                    data.brScoringPreset === 'custom'
-                                        ? "border-rose-500 bg-rose-500/10"
-                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]",
-                                    isEditMode && "opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                <div className="font-semibold text-white text-sm">Custom</div>
-                                <div className="text-xs text-gray-400 mt-1">
-                                    Define your own placement &amp; kill point values
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Scoring Preview */}
-                    {data.brScoringPreset && data.brScoringPreset !== 'custom' && brConfig.scoringPresets[data.brScoringPreset] && (
-                        <div className="space-y-3">
-                            <div className="w-full h-px bg-white/5 my-4" />
-                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Placement Points</Label>
-                            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                                {brConfig.scoringPresets[data.brScoringPreset].placements.map((pts, i) => (
-                                    <div key={i} className="text-center p-2 rounded-none bg-white/[0.03] border border-white/5">
-                                        <div className="text-[10px] text-gray-500 font-bold">#{i + 1}</div>
-                                        <div className={cn(
-                                            "text-sm font-bold",
-                                            i === 0 ? "text-amber-400" : i === 1 ? "text-gray-300" : i === 2 ? "text-amber-600" : "text-gray-400"
-                                        )}>
-                                            {pts}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-gray-400">
-                                <span>Kill Points: <span className="text-white font-bold">{brConfig.scoringPresets[data.brScoringPreset].killPoints} per kill</span></span>
-                                {brConfig.scoringPresets[data.brScoringPreset].killCap && (
-                                    <span>Kill Cap: <span className="text-white font-bold">{brConfig.scoringPresets[data.brScoringPreset].killCap} per game</span></span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Custom Scoring Editor */}
-                    {data.brScoringPreset === 'custom' && data.brCustomScoring && (
-                        <div className="space-y-4">
-                            <div className="w-full h-px bg-white/5 my-4" />
-                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Custom Placement Points</Label>
-                            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                                {data.brCustomScoring.placements.map((pts, i) => (
-                                    <div key={i} className="text-center">
-                                        <div className="text-[10px] text-gray-500 font-bold mb-1">#{i + 1}</div>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={100}
-                                            value={pts}
-                                            disabled={isEditMode}
-                                            onChange={(e) => {
-                                                const newPlacements = [...data.brCustomScoring!.placements];
-                                                newPlacements[i] = parseInt(e.target.value) || 0;
-                                                updateData({
-                                                    brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
-                                                });
-                                            }}
-                                            className="text-center text-sm h-8 [color-scheme:dark]"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                            {!isEditMode && (
-                            <div className="flex items-center gap-2">
-                                <OutlineButton
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => {
-                                        const newPlacements = [...data.brCustomScoring!.placements, 0];
-                                        updateData({
-                                            brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
-                                        });
-                                    }}
-                                >
-                                    <Plus className="w-3 h-3 mr-1" /> Add Position
-                                </OutlineButton>
-                                {data.brCustomScoring.placements.length > 3 && (
-                                    <OutlineButton
-                                        type="button"
-                                        size="sm"
-                                        onClick={() => {
-                                            const newPlacements = data.brCustomScoring!.placements.slice(0, -1);
-                                            updateData({
-                                                brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
-                                            });
-                                        }}
-                                    >
-                                        <Trash2 className="w-3 h-3 mr-1" /> Remove Last
-                                    </OutlineButton>
-                                )}
-                            </div>
-                            )}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-gray-500">Points per Kill</Label>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        max={10}
-                                        value={data.brCustomScoring.killPoints}
-                                        disabled={isEditMode}
-                                        onChange={(e) => updateData({
-                                            brCustomScoring: { ...data.brCustomScoring!, killPoints: parseInt(e.target.value) || 0 }
-                                        })}
-                                        className="[color-scheme:dark]"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-gray-500">Kill Cap per Game (0 = no cap)</Label>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        max={50}
-                                        value={data.brKillCap ?? 0}
-                                        disabled={isEditMode}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            updateData({
-                                                brKillCap: val === 0 ? null : val,
-                                                brCustomScoring: { ...data.brCustomScoring!, killCap: val === 0 ? null : val }
-                                            });
-                                        }}
-                                        className="[color-scheme:dark]"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Kill cap & tiebreaker — tournament-wide scoring rules */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kill Point Cap</Label>
-                        <Select
-                            value={data.brKillCap === null ? '0' : String(data.brKillCap)}
-                            onValueChange={(v) => {
-                                const val = parseInt(v);
-                                updateData({ brKillCap: val === 0 ? null : val });
-                            }}
-                            disabled={isEditMode}
+                    {modeSection}
+                    <BRScoringSection config={brConfig} data={data} locked={Boolean(isEditMode)} updateData={updateData} />
+                    <FormSection title="Capacity">
+                        <Field
+                            label={`Maximum ${brUnits.many}`}
+                            htmlFor="br-max"
+                            error={errors.maxTeams}
+                            hint={brConfig.playersPerLobby
+                                ? `One lobby fits ${unitsPerLobby} ${brUnits.many}${(data.teamSize ?? 1) > 1 ? ` of ${data.teamSize} players` : ''}. Lobby sizes can be tuned per stage later.`
+                                : undefined}
                         >
-                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0">No Cap</SelectItem>
-                                <SelectItem value="3">3 kills per game</SelectItem>
-                                <SelectItem value="5">5 kills per game</SelectItem>
-                                <SelectItem value="6">6 kills per game</SelectItem>
-                                <SelectItem value="8">8 kills per game</SelectItem>
-                                <SelectItem value="10">10 kills per game</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            Maximum kill points a unit can earn per game. Applies to all stages.
-                        </p>
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tiebreaker Rule</Label>
-                        <Select
-                            value={data.brTiebreaker}
-                            onValueChange={(v) => updateData({ brTiebreaker: v as typeof data.brTiebreaker })}
-                            disabled={isEditMode}
-                        >
-                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="most_wins">Most Wins (1st places)</SelectItem>
-                                <SelectItem value="most_kills">Most Total Kills</SelectItem>
-                                <SelectItem value="head_to_head">Best Placement Average</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            How to break ties when units have equal total points.
-                        </p>
-                    </div>
-
-                    {/* Max Participants for BR — label and options adapt to solo/duo/squad */}
-                    {(() => {
-                        const ts = data.teamSize ?? 1;
-                        const unitSingular = ts === 1 ? 'player'  : ts === 2 ? 'duo'  : ts === 3 ? 'trio'  : 'squad';
-                        const unitPlural   = ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
-                        const labelStr = ts === 1 ? 'Maximum Players' : ts === 2 ? 'Maximum Duos' : ts === 3 ? 'Maximum Trios' : 'Maximum Squads';
-                        const unitsPerLobby = brConfig
-                            ? deriveDefaultLobbyUnits(ts, brConfig.playersPerLobby)
-                            : deriveDefaultLobbyUnits(ts);
-                        // Options: multiples of lobby size up to a reasonable cap, plus common fixed sizes
-                        const raw = [1, 2, 3, 4, 5, 8, 10].map(n => n * unitsPerLobby);
-                        const fixed = ts === 1 ? [20, 30, 40, 60, 100, 150, 200] : ts === 2 ? [10, 16, 20, 30, 50, 60, 100] : [8, 10, 16, 20, 30, 40, 50];
-                        const options = [...new Set([...raw, ...fixed])].filter(n => n >= 4 && n <= 500).sort((a, b) => a - b);
-                        return (
-                            <div className="space-y-3">
-                                <div className="w-full h-px bg-white/5 my-6" />
-                                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                    <Users className="w-4 h-4" />
-                                    {labelStr}
-                                </Label>
-                                <Select
-                                    value={String(data.maxTeams)}
-                                    onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
-                                    disabled={isEditMode}
-                                >
-                                    <SelectTrigger className={cn('w-full font-bold tracking-tight', errors.maxTeams && 'border-red-500')} disabled={isEditMode}>
-                                        <SelectValue placeholder={`Select max ${unitPlural}`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {options.map(n => (
-                                            <SelectItem key={n} value={String(n)}>
-                                                {n} {unitPlural}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-sm text-gray-400">
-                                    {brConfig.playersPerLobby
-                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''} Lobby capacity is set per stage after creation.`
-                                        : `Set the maximum number of ${unitPlural}.`}
-                                </p>
-                                {errors.maxTeams && (
-                                    <p className="text-sm text-red-500">{errors.maxTeams}</p>
-                                )}
-                            </div>
-                        );
-                    })()}
-
+                            <Select value={String(data.maxTeams)} onValueChange={(v) => updateData({ maxTeams: parseInt(v, 10) })} disabled={isEditMode}>
+                                <SelectTrigger id="br-max" className={cn(CONTROL_CLASS, errors.maxTeams && CONTROL_ERROR_CLASS)}>
+                                    <SelectValue placeholder={`Choose a limit`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {brCapacityOptions(data.teamSize ?? 1, unitsPerLobby).map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{n} {brUnits.many}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    </FormSection>
                 </>
             ) : (
                 <>
-                    {/* ── Bracket Format (existing) ───────────────────────── */}
+                    <FormSection
+                        title="Stages"
+                        description={tournamentId ? undefined : 'Most events use one bracket. Add a group or Swiss stage before playoffs for longer events.'}
+                    >
+                        {tournamentId ? (
+                            <InlineNotice tone="neutral">
+                                Stages, advancement and seeding are managed from the dashboard, under Format and stages.
+                            </InlineNotice>
+                        ) : (
+                            <InlineStageEditor stages={data.stages} maxTeams={data.maxTeams} onChange={(stages) => updateData({ stages })} />
+                        )}
+                    </FormSection>
 
-                    {/* Stage Configuration */}
-                    {tournamentId ? (
-                        <div className="p-4 bg-white/[0.03] rounded-none border border-white/10">
-                            <div className="flex items-center gap-3">
-                                <Layers className="w-5 h-5 text-rose-400" />
-                                <div>
-                                    <div className="font-medium text-white">Tournament Stages</div>
-                                    <div className="text-sm text-gray-400">
-                                        Configure stages, advancement counts, and settings in the "Stages" tab of tournament management.
-                                    </div>
-                                </div>
-                            </div>
+                    {modeSection}
+
+                    <FormSection title="Size">
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <Field label="Maximum teams" htmlFor="max-teams" hint="If fewer sign up, the bracket shrinks to fit.">
+                                <Select value={String(data.maxTeams)} onValueChange={handleMaxTeams} disabled={isEditMode}>
+                                    <SelectTrigger id="max-teams" className={CONTROL_CLASS}><SelectValue placeholder="Choose a limit" /></SelectTrigger>
+                                    <SelectContent>
+                                        {BRACKET_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                            <Field
+                                label="Players per team"
+                                htmlFor="team-size"
+                                hint={activeGameMode ? `Set by ${activeGameMode.name}.` : 'Include substitutes.'}
+                            >
+                                <Input
+                                    id="team-size" type="number" min={1} max={10} value={activeTeamSize} disabled={Boolean(activeGameMode)}
+                                    onChange={(e) => updateData({ teamSize: parseInt(e.target.value, 10) || 1 })}
+                                    className={CONTROL_CLASS}
+                                />
+                            </Field>
                         </div>
-                    ) : (
-                        <div className="space-y-3">
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <Layers className="w-4 h-4" />
-                                Tournament Stages
-                            </Label>
-                            <InlineStageEditor
-                                stages={data.stages}
-                                maxTeams={data.maxTeams}
-                                onChange={(stages) => updateData({ stages })}
-                            />
-                        </div>
-                    )}
-                    {renderGameModeSelector()}
+                    </FormSection>
 
-                    {/* Max Teams */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Users className="w-4 h-4" />
-                            Maximum Teams
-                        </Label>
-                        <Select
-                            value={String(data.maxTeams)}
-                            onValueChange={(value) => {
-                                const newValue = parseInt(value);
-                                if (participantsCount && newValue !== 0 && newValue < participantsCount) {
-                                    toast({
-                                        title: "Invalid Configuration",
-                                        description: `Cannot set Max Teams to ${newValue} when ${participantsCount} teams are already registered.`,
-                                        variant: "destructive"
-                                    });
-                                    return;
-                                }
-                                updateData({ maxTeams: newValue })
-                            }}
-                            disabled={isEditMode}
-                        >
-                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
-                                <SelectValue placeholder="Select max teams" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="4">4 Teams</SelectItem>
-                                <SelectItem value="8">8 Teams</SelectItem>
-                                <SelectItem value="16">16 Teams</SelectItem>
-                                <SelectItem value="32">32 Teams</SelectItem>
-                                <SelectItem value="64">64 Teams</SelectItem>
-                                <SelectItem value="128">128 Teams</SelectItem>
-                                <SelectItem value="256">256 Teams</SelectItem>
-                                <SelectItem value="512">512 Teams</SelectItem>
-                                <SelectItem value="1024">1024 Teams</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            If fewer teams register, the bracket will automatically adjust.
-                        </p>
-                    </div>
-
-
-                    {/* Team Size */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Users className="w-4 h-4" />
-                            Team Size
-                        </Label>
-                        <Input
-                            type="number"
-                            min={1}
-                            max={10}
-                            value={activeTeamSize}
-                            disabled={Boolean(activeGameMode)}
-                            onChange={(e) => updateData({ teamSize: parseInt(e.target.value) || 1 })}
-                            className="[color-scheme:dark] font-bold tracking-tight disabled:cursor-not-allowed disabled:opacity-70"
-                        />
-                        <p className="text-sm text-gray-400">
-                            {activeGameMode
-                                ? `${activeGameMode.name} requires ${activeTeamSize} players per team${activeGameMode.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`
-                                : `Maximum players per team (including substitutes).`}
-                        </p>
-                    </div>
-
-
-                    {/* Map Pool Selection - Only show for games with map pools */}
                     {hasMapPool && data.game && (
-                        <div className="space-y-4">
-                            <div className="w-full h-px bg-white/5 my-6" />
-                            <MapPoolSectionLabel />
-                            <p className="text-sm text-gray-400">
-                                {organizerMapPoolOnly
-                                    ? 'Select maps for this tournament. Skirmish uses an organizer-managed map pool — there is no captain map veto.'
-                                    : exactMapPoolRequired
-                                        ? `Select exactly ${mapPoolSizeLimit} maps for this tournament. These will be used in map veto during matches.`
-                                        : 'Select maps for this tournament. These will be used in map veto during matches.'}
-                            </p>
-                            {errors.mapPoolIds && (
-                                <p className="text-sm text-rose-400">{errors.mapPoolIds}</p>
-                            )}
+                        <FormSection
+                            title="Map pool"
+                            description={!mapVetoEnabled
+                                ? 'Pick the maps you will rotate through. There is no captain veto in this mode.'
+                                : exactMapPoolRequired
+                                    ? `Pick exactly ${mapPoolSizeLimit} maps. Captains ban and pick from these before each match.`
+                                    : 'Pick the maps captains ban and pick from before each match.'}
+                        >
+                            {errors.mapPoolIds && <p role="alert" className="text-xs text-red-300">{errors.mapPoolIds}</p>}
                             <TournamentMapPoolSelector
                                 game={data.game}
                                 requiredCount={mapPoolSizeLimit}
@@ -650,29 +238,24 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 mapVetoEnabled={exactMapPoolRequired}
                                 loading={loadingMaps}
                             />
-                        </div>
+                        </FormSection>
                     )}
                 </>
             )}
 
-            {/* ── Tournament Rules ── */}
-            <div className="space-y-3 mt-6">
-                <Label className="text-white text-sm font-semibold flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-rose-400" />
-                    Tournament Rules
-                    <span className="text-zinc-500 text-xs font-normal">(optional)</span>
-                </Label>
-                <textarea
-                    value={data.rules || ''}
-                    onChange={(e) => updateData({ rules: e.target.value })}
-                    placeholder="Enter your tournament rules here. Each rule on a new line, e.g.:\n1. All participants must check in 30 minutes before start.\n2. No unauthorized software allowed.\n3. Disputes must be filed within 5 minutes of match end."
-                    rows={8}
-                    className="w-full rounded-none bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-600 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500/40 resize-y"
-                />
-                <p className="text-xs text-zinc-500">These rules will be displayed on the tournament's public page under the Rules tab.</p>
-            </div>
-
-        </motion.div>
+            <FormSection title="Rules">
+                <Field label="Tournament rules" htmlFor="rules" optional hint="Shown on the public page under Rules. One rule per line reads best.">
+                    <Textarea
+                        id="rules"
+                        value={data.rules || ''}
+                        onChange={(e) => updateData({ rules: e.target.value })}
+                        placeholder={'1. Check in 30 minutes before your first match.\n2. No third-party software.\n3. Report disputes within 5 minutes of the match ending.'}
+                        rows={7}
+                        className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')}
+                    />
+                </Field>
+            </FormSection>
+        </WizardStepFrame>
     );
 };
 

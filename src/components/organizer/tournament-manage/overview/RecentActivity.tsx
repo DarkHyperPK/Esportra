@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
-import { EYEBROW_CLASS, PANEL_CLASS } from '../tone';
+import { EYEBROW_CLASS, PANEL_CLASS } from '@/components/ui/kit/tone';
 
 interface RecentActivityProps {
   participants: DashboardParticipant[];
