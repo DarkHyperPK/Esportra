@@ -1,11 +1,12 @@
 /**
  * TournamentNavItem.tsx
  *
- * Reusable nav item button for the tournament dashboard rail.
- * Supports icon, label, active state, right element (chevron/badge/external icon).
+ * One row in the tournament dashboard rail. Active state is a quiet surface
+ * plus a thin rose marker, so the accent points at "you are here" without
+ * shouting.
  */
 
-import { ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface TournamentNavItemProps {
@@ -15,7 +16,6 @@ interface TournamentNavItemProps {
   onClick: () => void;
   disabled?: boolean;
   rightElement?: React.ReactNode;
-  external?: boolean;
 }
 
 export function TournamentNavItem({
@@ -32,28 +32,25 @@ export function TournamentNavItem({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'relative z-20 flex h-8 w-full items-center gap-2 px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70',
-        active
-          ? 'bg-rose-500 text-white'
-          : 'text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200',
-        disabled && 'pointer-events-none opacity-50'
+        'group relative flex h-9 w-full items-center gap-2.5 pl-3 pr-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400/60',
+        active ? 'bg-white/[0.06] font-semibold text-white' : 'text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-100',
+        disabled && 'pointer-events-none opacity-50',
       )}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-zinc-400')} />
-      <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">
-        {label}
-      </span>
-      {rightElement ? (
-        rightElement
-      ) : (
-        <ChevronRight
-          className={cn(
-            'h-4 w-4 shrink-0 transition-opacity',
-            active ? 'text-white opacity-100' : 'text-zinc-500 opacity-0'
-          )}
+      {active && (
+        <motion.span
+          layoutId="tournament-nav-marker"
+          className="absolute inset-y-1 left-0 w-0.5 bg-rose-500"
+          transition={{ type: 'spring', stiffness: 500, damping: 40 }}
         />
       )}
+      <Icon
+        aria-hidden
+        className={cn('h-4 w-4 shrink-0 transition-colors', active ? 'text-rose-300' : 'text-zinc-500 group-hover:text-zinc-300')}
+      />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {rightElement}
     </button>
   );
 }

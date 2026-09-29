@@ -7,7 +7,6 @@
 
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -19,7 +18,28 @@ import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useCompletionState } from '@/hooks/useCompletionState';
 import { TournamentDashboardShell } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
 import { PanelRouter } from '@/components/organizer/tournament-manage/PanelRouter';
+import { DashboardLoadingState } from '@/components/organizer/tournament-manage/DashboardLoadingState';
+import { DashboardErrorState } from '@/components/organizer/tournament-manage/DashboardErrorState';
+import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
+import { useTournamentOverviewModel } from '@/hooks/useTournamentOverviewModel';
+import { getApiErrorMessage } from '@/lib/apiClient';
+import {
+  buildDashboardNav,
+  listReachableTargets,
+  listVisibleSections,
+  resolveActiveSection,
+  resolveDefaultSection,
+} from '@/services/tournamentDashboard/dashboardNav';
+import type { StaffPermission } from '@/types/staff';
 import { isBattleRoyaleTournament, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+
+const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
+  'scores:update': 'Scores',
+  'teams:manage': 'Teams',
+  'bracket:edit': 'Brackets',
+  'announcements:send': 'Announcements',
+  'disputes:assist': 'Disputes',
+};
 
 const TournamentDashboard = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -30,13 +50,6 @@ const TournamentDashboard = () => {
   const { currentRole, isLoading: roleLoading } = useRole();
   const admin = useAdmin();
   const queryClient = useQueryClient();
-
-  // Default to basic-info tab on first visit (post-Quick-Create user journey)
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      setSearchParams({ tab: 'basic-info' }, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
 
   // Fetch tournament data
   const {
@@ -128,6 +141,45 @@ const TournamentDashboard = () => {
     };
   }, [staffPermissions, canActAsOwner]);
 
+  const { badgeCount: disputeBadgeCount } = useOrganizerDisputeUnread(tournament?.id, permissions.canAssistDisputes);
+
+  const navGroups = useMemo(() => buildDashboardNav({
+    slug: slug ?? '',
+    isBR,
+    isPaid: parseFloat(tournament?.entry_fee || '0') > 0,
+    ...permissions,
+    disputeBadgeCount,
+  }), [slug, isBR, tournament?.entry_fee, permissions, disputeBadgeCount]);
+  const visibleSections = useMemo(() => listVisibleSections(navGroups), [navGroups]);
+  const reachable = useMemo(() => listReachableTargets(navGroups), [navGroups]);
+  const defaultSection = resolveDefaultSection(tournament?.status ?? '', visibleSections);
+  const requestedTab = searchParams.get('tab');
+  const activeTab = resolveActiveSection(requestedTab, visibleSections, defaultSection);
+
+  // Drafts land on Basic info (post-Quick-Create journey); live events on the Overview.
+  // Unknown or forbidden tabs are rewritten to what is actually shown.
+  useEffect(() => {
+    if (!tournament || accessLoading) return;
+    if (requestedTab !== activeTab && requestedTab !== 'advanced') {
+      setSearchParams({ tab: activeTab }, { replace: true });
+    }
+  }, [tournament, accessLoading, requestedTab, activeTab, setSearchParams]);
+
+  const overview = useTournamentOverviewModel({
+    tournament,
+    participants,
+    stages,
+    mockCount,
+    completionSummary,
+    disputeCount: disputeBadgeCount,
+    reachable,
+    isBattleRoyale: isBR,
+  });
+
+  const staffSummary = hasTournamentStaffAccess
+    ? staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm as StaffPermission] ?? perm).join(', ') || 'Limited access'
+    : null;
+
   // Handle update (invalidates queries)
   const handleUpdate = () => {
     void refetchDashboard();
@@ -136,33 +188,20 @@ const TournamentDashboard = () => {
 
   // Loading state
   if (dashboardLoading || accessLoading || roleLoading || admin.loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent text-white">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
-          <p className="text-sm text-zinc-400">Loading tournament dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardLoadingState />;
   }
 
   // Error state
-  if (dashboardError || !tournament) {
+  if (dashboardError || !tournament || !overview) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent text-white">
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-bold text-red-400">Failed to load tournament</p>
-          <p className="text-sm text-zinc-400">
-            {dashboardError ? (dashboardError as Error).message : 'Tournament not found.'}
-          </p>
-          <button
-            onClick={() => navigate('/organizer/dashboard?tab=tournaments')}
-            className="mt-4 border border-white/10 bg-white/[0.02] px-4 py-2 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:border-white/25 hover:bg-white/[0.06]"
-          >
-            Back to Tournaments
-          </button>
-        </div>
-      </div>
+      <DashboardErrorState
+        title={dashboardError ? 'Could not load this tournament' : 'Tournament not found'}
+        message={dashboardError
+          ? getApiErrorMessage(dashboardError, { context: 'generic' })
+          : "It may have been deleted, or you don't have permission to manage it."}
+        onBack={() => navigate('/organizer/dashboard?tab=tournaments')}
+        onRetry={dashboardError ? () => void refetchDashboard() : undefined}
+      />
     );
   }
 
@@ -170,10 +209,15 @@ const TournamentDashboard = () => {
     <TournamentDashboardShell
       tournament={tournament}
       completionSummary={completionSummary}
-      permissions={permissions}
-      isBattleRoyale={isBR}
+      navGroups={navGroups}
+      activeTab={activeTab}
+      canActAsOwner={permissions.canActAsOwner}
+      phaseLabel={overview.phaseLabel}
+      phaseTone={overview.phaseTone}
+      staffSummary={staffSummary}
     >
       <PanelRouter
+        activeTab={activeTab}
         tournament={tournament}
         participants={participants}
         stages={stages}
@@ -182,6 +226,8 @@ const TournamentDashboard = () => {
         isBattleRoyale={isBR}
         isSuperAdmin={isSuperAdmin}
         mockCount={mockCount}
+        overview={overview}
+        onNavigateTab={(tab) => setSearchParams({ tab }, { replace: true })}
         onUpdate={handleUpdate}
       />
     </TournamentDashboardShell>

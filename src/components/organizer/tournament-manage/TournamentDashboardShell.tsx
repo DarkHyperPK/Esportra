@@ -3,8 +3,9 @@
  *
  * Outer layout shell for the tournament dashboard.
  * CommandShell > CommandPageGrid with rail and content column.
- * Mobile drawer for < 768px breakpoint.
- * Includes CompletionBanner, PublishButton, dirty-state navigation guard.
+ * Header (identity + actions) sits above every panel; the rail only navigates.
+ * Mobile drawer for < 768px breakpoint, with a sticky publish bar for drafts.
+ * Includes CompletionBanner, dirty-state navigation guard.
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -29,7 +30,10 @@ import {
 } from '@/components/management/CommandSurface';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import type { CompletionSummary } from '@/hooks/useCompletionState';
+import type { DashboardNavGroup, DashboardSectionId } from '@/services/tournamentDashboard/dashboardNav';
 import { TournamentDashboardNav } from './TournamentDashboardNav';
+import { TournamentDashboardHeader } from './TournamentDashboardHeader';
+import type { Tone } from './tone';
 import { MobileDrawer } from './MobileDrawer';
 import { CompletionBanner } from './CompletionBanner';
 import { PublishButton } from './PublishButton';
@@ -54,15 +58,12 @@ export function useDirtyState() {
 interface TournamentDashboardShellProps {
   tournament: DashboardTournament;
   completionSummary: CompletionSummary;
-  permissions: {
-    canManageTeams: boolean;
-    canAssistDisputes: boolean;
-    canSendAnnouncements: boolean;
-    canEditBracket: boolean;
-    canManageStaff: boolean;
-    canActAsOwner: boolean;
-  };
-  isBattleRoyale: boolean;
+  navGroups: DashboardNavGroup[];
+  activeTab: DashboardSectionId;
+  canActAsOwner: boolean;
+  phaseLabel: string;
+  phaseTone: Tone;
+  staffSummary?: string | null;
   children: React.ReactNode;
 }
 
@@ -82,8 +83,12 @@ const panelVariants = {
 export function TournamentDashboardShell({
   tournament,
   completionSummary,
-  permissions,
-  isBattleRoyale,
+  navGroups,
+  activeTab,
+  canActAsOwner,
+  phaseLabel,
+  phaseTone,
+  staffSummary,
   children,
 }: TournamentDashboardShellProps) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,8 +96,7 @@ export function TournamentDashboardShell({
   const [isDirty, setIsDirty] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
-
-  const activeTab = searchParams.get('tab') || 'overview';
+  const isDraft = tournament.status === 'draft';
 
   // Clear dirty state whenever the active tab changes (panel unmounts/remounts)
   useEffect(() => {
@@ -131,6 +135,24 @@ export function TournamentDashboardShell({
     }
   }, [searchParams, setSearchParams]);
 
+  const nav = (
+    <TournamentDashboardNav
+      groups={navGroups}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      completionSummary={completionSummary}
+      isDraft={isDraft}
+    />
+  );
+  const publishButton = (
+    <PublishButton
+      tournament={tournament}
+      completionSummary={completionSummary}
+      canActAsOwner={canActAsOwner}
+      onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
+    />
+  );
+
   return (
     <DirtyStateContext.Provider value={{ setDirty }}>
       <CommandShell>
@@ -139,47 +161,15 @@ export function TournamentDashboardShell({
           rail={
             <>
               {/* Desktop Rail */}
-              <CommandRail className="hidden md:block lg:sticky lg:top-20">
-                <TournamentDashboardNav
-                  tournament={tournament}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  completionSummary={completionSummary}
-                  permissions={permissions}
-                  isBattleRoyale={isBattleRoyale}
-                />
-                {/* Publish button lives in the rail — only for draft tournaments */}
-                {tournament.status === 'draft' && permissions.canActAsOwner && (
-                  <div className="mt-3 border-t border-white/[0.07] pt-3">
-                    <p className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">
-                      DRAFT
-                    </p>
-                    <PublishButton
-                      tournament={tournament}
-                      completionSummary={completionSummary}
-                      canActAsOwner={permissions.canActAsOwner}
-                      onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
-                    />
-                  </div>
-                )}
-              </CommandRail>
+              <CommandRail className="hidden bg-card/80 md:block lg:sticky lg:top-20">{nav}</CommandRail>
 
               {/* Mobile Drawer */}
-              <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-                <TournamentDashboardNav
-                  tournament={tournament}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  completionSummary={completionSummary}
-                  permissions={permissions}
-                  isBattleRoyale={isBattleRoyale}
-                />
-              </MobileDrawer>
+              <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>{nav}</MobileDrawer>
             </>
           }
         >
           {/* Mobile Header Bar */}
-          <div className="flex items-center gap-3 border border-white/10 bg-[#0a0a0c]/92 p-3 md:hidden">
+          <div className="flex items-center gap-3 border border-white/10 bg-card/90 p-2 md:hidden">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
@@ -188,22 +178,26 @@ export function TournamentDashboardShell({
             >
               <Menu className="h-5 w-5 text-white" />
             </button>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{tournament.name}</p>
-            </div>
-            <PublishButton
-              tournament={tournament}
-              completionSummary={completionSummary}
-              canActAsOwner={permissions.canActAsOwner}
-              onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
-            />
+            <p className="min-w-0 flex-1 truncate text-sm text-zinc-400">
+              {navGroups.flatMap((g) => g.items).find((item) => item.id === activeTab)?.label ?? 'Overview'}
+            </p>
           </div>
 
-          {/* Completion Banner */}
-          <CompletionBanner
-            completionSummary={completionSummary}
-            tournamentStatus={tournament.status}
+          <TournamentDashboardHeader
+            tournament={tournament}
+            phaseLabel={phaseLabel}
+            phaseTone={phaseTone}
+            staffSummary={staffSummary}
+            publishSlot={isDraft && canActAsOwner ? publishButton : null}
           />
+
+          {/* Completion Banner */}
+          {activeTab !== 'overview' && (
+            <CompletionBanner
+              completionSummary={completionSummary}
+              tournamentStatus={tournament.status}
+            />
+          )}
 
           {/* Content Area with Panel Transition */}
           <DashboardPanelProvider>
@@ -214,7 +208,7 @@ export function TournamentDashboardShell({
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="overflow-hidden border border-white/[0.07] bg-[#0d0e12] pb-16 md:pb-0"
+                className="overflow-hidden border border-white/[0.07] bg-card/70 pb-16 md:pb-0"
               >
                 {children}
               </motion.div>
@@ -222,22 +216,17 @@ export function TournamentDashboardShell({
           </DashboardPanelProvider>
 
           {/* Mobile sticky publish bar */}
-          {tournament.status === 'draft' && (
-            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between border-t border-white/10 bg-[#08080a]/95 p-3 backdrop-blur-sm md:hidden">
-              <p className="text-xs text-zinc-500">Draft</p>
-              <PublishButton
-                tournament={tournament}
-                completionSummary={completionSummary}
-                canActAsOwner={permissions.canActAsOwner}
-                onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
-              />
+          {isDraft && canActAsOwner && (
+            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-background/95 p-3 backdrop-blur-sm md:hidden">
+              <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">Draft</p>
+              <div className="w-32">{publishButton}</div>
             </div>
           )}
         </CommandPageGrid>
 
         {/* Dirty-state navigation guard */}
         <AlertDialog open={pendingTab !== null} onOpenChange={(o) => !o && setPendingTab(null)}>
-          <AlertDialogContent className="border-white/10 bg-[#0d0d0f] text-white">
+          <AlertDialogContent className="border-white/10 bg-card text-white">
             <AlertDialogHeader>
               <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
               <AlertDialogDescription className="text-zinc-400">

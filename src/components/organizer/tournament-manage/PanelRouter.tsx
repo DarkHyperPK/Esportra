@@ -6,7 +6,6 @@
  * Phase 3: Configuration panels.
  */
 
-import { useSearchParams } from 'react-router-dom';
 import {
   CommandHeader,
   CommandEmptyState,
@@ -38,12 +37,14 @@ import PaymentManagement from '@/components/organizer/PaymentManagement';
 
 import type { DashboardTournament, DashboardParticipant, DashboardStage } from '@/hooks/useTournamentDashboard';
 import type { CompletionSummary } from '@/hooks/useCompletionState';
+import type { TournamentOverviewModel } from '@/hooks/useTournamentOverviewModel';
 import { getBRConfig } from '@/utils/gameFeatures';
 import { resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
 import { getEditableFields } from '@/utils/tournamentEditability';
 import { LayoutDashboard } from 'lucide-react';
 
 interface PanelRouterProps {
+  activeTab: string;
   tournament: DashboardTournament;
   participants: DashboardParticipant[];
   stages: DashboardStage[];
@@ -59,10 +60,13 @@ interface PanelRouterProps {
   isBattleRoyale: boolean;
   isSuperAdmin: boolean;
   mockCount?: number;
+  overview: TournamentOverviewModel;
+  onNavigateTab: (tab: string) => void;
   onUpdate: () => void;
 }
 
 export function PanelRouter({
+  activeTab,
   tournament,
   participants,
   stages,
@@ -70,10 +74,10 @@ export function PanelRouter({
   isBattleRoyale,
   isSuperAdmin,
   mockCount = 0,
+  overview,
+  onNavigateTab,
   onUpdate,
 }: PanelRouterProps) {
-  const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'overview';
 
   const brConf = isBattleRoyale ? getBRConfig(tournament.game || '') : null;
   const brSettings = isBattleRoyale ? tournament.settings : null;
@@ -108,9 +112,8 @@ export function PanelRouter({
       <OverviewPanel
         tournament={tournament}
         participants={participants}
-        stages={stages}
-        canActAsOwner={permissions.canActAsOwner}
-        isBattleRoyale={isBattleRoyale}
+        model={overview}
+        onNavigateTab={onNavigateTab}
       />
     );
   }
