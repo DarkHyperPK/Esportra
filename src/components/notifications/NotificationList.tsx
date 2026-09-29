@@ -16,6 +16,9 @@ interface NotificationListProps {
   /** Background of the sticky day headers; must match the surface behind the list. */
   headerBgClass?: string;
   renderItem: (n: Notification) => ReactNode;
+  /** Unread act-now items shown above the feed as larger cards. */
+  priority?: Notification[];
+  renderPriority?: (n: Notification) => ReactNode;
 }
 
 function Skeleton({ rows = 5 }: { rows?: number }) {
@@ -23,7 +26,7 @@ function Skeleton({ rows = 5 }: { rows?: number }) {
     <ul aria-busy="true" aria-label="Loading notifications">
       {Array.from({ length: rows }, (_, i) => (
         <li key={i} className="flex gap-3 border-b border-white/[0.05] px-5 py-4">
-          <span className="h-9 w-9 shrink-0 bg-white/[0.05]" />
+          <span className="h-11 w-11 shrink-0 bg-white/[0.05]" />
           <span className="flex-1 space-y-2 pt-0.5">
             <span className="block h-2 w-20 bg-white/[0.05]" />
             <span className="block h-3 w-3/4 bg-white/[0.07]" />
@@ -37,11 +40,11 @@ function Skeleton({ rows = 5 }: { rows?: number }) {
 
 /** Day-grouped list with designed loading, error and empty states. */
 export function NotificationList({
-  items, isLoading, hasError, onRetry, empty, density = 'comfortable', headerBgClass = 'bg-background', renderItem,
+  items, isLoading, hasError, onRetry, empty, density = 'comfortable', headerBgClass = 'bg-background', renderItem, priority = [], renderPriority,
 }: NotificationListProps) {
   const groups = useMemo(() => groupNotificationsByDay(items), [items]);
 
-  if (isLoading && items.length === 0) return <Skeleton rows={density === 'compact' ? 6 : 5} />;
+  if (isLoading && items.length === 0 && priority.length === 0) return <Skeleton rows={density === 'compact' ? 6 : 5} />;
 
   return (
     <div>
@@ -56,7 +59,17 @@ export function NotificationList({
         </InlineNotice>
       )}
 
-      {items.length === 0 && !hasError ? (
+      {priority.length > 0 && renderPriority && (
+        <section aria-label="Act now" className={cn('border-b border-white/[0.07]', density === 'compact' ? 'px-4 py-4' : 'px-5 py-5')}>
+          <h3 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-white">
+            Act now
+            <span className="bg-white px-1.5 py-px tabular-nums text-matte-black">{priority.length}</span>
+          </h3>
+          <div className="space-y-3">{priority.map((n) => renderPriority(n))}</div>
+        </section>
+      )}
+
+      {items.length === 0 && priority.length > 0 ? null : items.length === 0 && !hasError ? (
         <div className="flex flex-col items-start px-6 py-14 sm:px-8">
           <span className="flex h-10 w-10 items-center justify-center border border-white/10 text-zinc-500">
             <BellOff className="h-4 w-4" aria-hidden />

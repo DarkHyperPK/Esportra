@@ -9,6 +9,8 @@ import { useNotificationActions } from '@/hooks/useNotificationActions';
 import { NotificationList } from './NotificationList';
 import { NotificationItem } from './NotificationItem';
 import { NotificationFilters } from './NotificationFilters';
+import { NotificationPriorityCard } from './NotificationPriorityCard';
+import { isPriorityNotification } from '@/utils/notificationSubject';
 
 /**
  * The bell and its inbox sheet. Opening it no longer marks everything read:
@@ -20,10 +22,10 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
   const actions = useNotificationActions({ onNavigate: () => setIsOpen(false) });
   const { notifications, unreadCount } = actions;
 
-  const items = useMemo(
-    () => (filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications),
-    [filter, notifications],
-  );
+  const { priority, items } = useMemo(() => {
+    const visible = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
+    return { priority: visible.filter(isPriorityNotification), items: visible.filter((n) => !isPriorityNotification(n)) };
+  }, [filter, notifications]);
   const badge = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
@@ -51,7 +53,7 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
 
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 border-l border-white/10 bg-background p-0 sm:max-w-[440px] [&>button]:rounded-none [&>button]:border [&>button]:border-white/10 [&>button]:p-1 [&>button]:ring-offset-0 [&>button]:focus:ring-white/40 [&>button]:data-[state=open]:bg-transparent"
+        className="flex w-full flex-col gap-0 border-l border-white/10 bg-background p-0 sm:max-w-[440px] [&>button]:rounded-none [&>button]:border [&>button]:border-white/10 [&>button]:p-1 [&>button:focus]:!ring-offset-0 [&>button:focus]:!ring-white/40 [&>button]:data-[state=open]:bg-transparent"
       >
         <header className="border-b border-white/[0.07] px-5 pb-4 pt-5">
           <p className={EYEBROW_CLASS}>Inbox</p>
@@ -78,6 +80,18 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
           <NotificationList
             items={items}
             density="compact"
+            priority={priority}
+            renderPriority={(n) => (
+              <NotificationPriorityCard
+                key={n.id}
+                notification={n}
+                compact
+                staffInvite={actions.staffInvites[n.id]}
+                onOpen={(x) => void actions.open(x)}
+                onMarkRead={(x) => void actions.markRead(x)}
+                onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+              />
+            )}
             isLoading={actions.isLoading}
             hasError={actions.hasError}
             onRetry={() => void actions.refresh()}

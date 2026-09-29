@@ -3,13 +3,14 @@ import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CommandButton, CommandIconButton } from '@/components/management/CommandSurface';
-import { StatusPill, TONE_SURFACE, TONE_TEXT } from '@/components/ui/kit';
+import { StatusPill, TONE_TEXT } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/contexts/notification-context';
 import type { StaffInviteState } from '@/hooks/useNotificationActions';
 import { getNotificationKind } from '@/utils/notificationRegistry';
 import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
 import { MatchScheduleNotificationBody } from './MatchScheduleNotificationBody';
+import { NotificationVisual } from './NotificationVisual';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -39,7 +40,6 @@ export function NotificationItem({
 }: NotificationItemProps) {
   const [expanded, setExpanded] = useState(false);
   const kind = getNotificationKind(n.type);
-  const Icon = kind.icon;
   const compact = density === 'compact';
   const hasSchedule = Boolean(getDenseScheduleNotificationMeta(n));
   const isAnnouncement = n.type === 'tournament_announcement';
@@ -60,18 +60,7 @@ export function NotificationItem({
     onOpen(n);
   };
 
-  const iconWell = (
-    <span
-      aria-hidden
-      className={cn(
-        'mt-0.5 flex shrink-0 items-center justify-center border',
-        compact ? 'h-8 w-8' : 'h-9 w-9',
-        n.is_read ? 'border-white/[0.07] bg-white/[0.02] text-zinc-500' : cn(TONE_SURFACE[kind.tone], TONE_TEXT[kind.tone]),
-      )}
-    >
-      <Icon className="h-4 w-4" />
-    </span>
-  );
+  const iconWell = <NotificationVisual notification={n} />;
 
   return (
     <li
@@ -120,7 +109,7 @@ export function NotificationItem({
         </button>
 
         {(isAnnouncement || isPendingStaffInvite || staffInvite === 'accepted' || staffInvite === 'declined') && (
-          <div className={cn('mt-3 flex flex-wrap items-center gap-2', compact ? 'pl-11' : 'pl-12')}>
+          <div className="mt-3 flex flex-wrap items-center gap-2 pl-[3.5rem]">
             {isAnnouncement && (
               <>
                 <CommandButton variant="ghost" size="sm" onClick={handleMain} aria-expanded={expanded}>

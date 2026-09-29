@@ -7,6 +7,8 @@ import { NotificationFilters, type NotificationFilterOption } from '@/components
 import { NotificationItem } from '@/components/notifications/NotificationItem';
 import { NotificationList } from '@/components/notifications/NotificationList';
 import { useNotificationActions } from '@/hooks/useNotificationActions';
+import { NotificationPriorityCard } from '@/components/notifications/NotificationPriorityCard';
+import { isPriorityNotification } from '@/utils/notificationSubject';
 import { CATEGORY_LABELS, getNotificationKind, isSyntheticNotification, type NotificationCategory } from '@/utils/notificationRegistry';
 
 const FILTER_CATEGORIES: NotificationCategory[] = ['matches', 'teams', 'tournaments', 'disputes'];
@@ -28,11 +30,13 @@ const NotificationsPage = () => {
     })),
   ], [notifications, unreadCount]);
 
-  const items = useMemo(() => {
+  const visible = useMemo(() => {
     if (filter === 'all') return notifications;
     if (filter === 'unread') return notifications.filter((n) => !n.is_read);
     return notifications.filter((n) => getNotificationKind(n.type).category === filter);
   }, [filter, notifications]);
+  const priority = useMemo(() => visible.filter(isPriorityNotification), [visible]);
+  const items = useMemo(() => visible.filter((n) => !isPriorityNotification(n)), [visible]);
 
   const selectedIds = [...selected].filter((id) => items.some((n) => n.id === id));
   const deletableCount = selectedIds.filter((id) => !isSyntheticNotification(id)).length;
@@ -84,6 +88,17 @@ const NotificationsPage = () => {
         <div className="mt-5 border border-white/[0.07] bg-card/40">
           <NotificationList
             items={items}
+            priority={priority}
+            renderPriority={(n) => (
+              <NotificationPriorityCard
+                key={n.id}
+                notification={n}
+                staffInvite={actions.staffInvites[n.id]}
+                onOpen={(x) => void actions.open(x)}
+                onMarkRead={(x) => void actions.markRead(x)}
+                onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+              />
+            )}
             isLoading={actions.isLoading}
             hasError={actions.hasError}
             onRetry={() => void actions.refresh()}
