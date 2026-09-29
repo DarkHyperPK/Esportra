@@ -9,9 +9,9 @@ export const LAUNCH_STATE_LABELS: Record<LaunchState, string> = {
 };
 
 export const LAUNCH_STATE_DESCRIPTIONS: Record<LaunchState, string> = {
-  draft: 'Accessible via direct link (slug or ID). Hidden from browse and search.',
-  private: 'Accessible via direct link (slug or ID). Hidden from browse and search.',
-  public: 'Listed in discovery. Anyone can find and join.',
+  draft: 'Hidden while you finish setting up. Nobody can sign up until you publish.',
+  private: 'Link only. Hidden from browse and search; people with the link can sign up once it is published.',
+  public: 'Listed on Esportra. Anyone can find it and sign up.',
 };
 
 /** Map API fields to wizard launch state. */

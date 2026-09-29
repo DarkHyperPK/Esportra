@@ -32,7 +32,7 @@ export function TournamentNavItem({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'group relative flex h-9 w-full items-center gap-2.5 pl-3 pr-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400/60',
+        'group relative flex h-9 w-full items-center gap-2.5 pl-3 pr-2 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40',
         active ? 'bg-white/[0.06] font-semibold text-white' : 'text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-100',
         disabled && 'pointer-events-none opacity-50',
       )}

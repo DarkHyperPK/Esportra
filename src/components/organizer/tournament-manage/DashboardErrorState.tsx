@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { CommandButton, CommandShell } from '@/components/management/CommandSurface';
 import { cn } from '@/lib/utils';
-import { PANEL_CLASS } from './tone';
+import { PANEL_CLASS } from '@/components/ui/kit/tone';
 
 interface DashboardErrorStateProps {
   title: string;

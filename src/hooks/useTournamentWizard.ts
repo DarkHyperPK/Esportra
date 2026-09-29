@@ -186,7 +186,7 @@ export const useTournamentWizard = (
         setErrors(result.errors);
         setStepValidation(prev => ({ ...prev, [currentStep]: false }));
         toast({
-            title: 'Fix these items to continue',
+            title: 'A few things need fixing',
             description: summarizeWizardErrors(result.errors),
             variant: 'destructive',
         });
@@ -210,7 +210,7 @@ export const useTournamentWizard = (
 
     const submitTournament = useCallback(async () => {
         if (!user) {
-            toast({ title: 'Authentication Required', description: 'Please sign in to create a tournament.', variant: 'destructive' });
+            toast({ title: 'Sign in to continue', description: 'You need to be signed in to create a tournament.', variant: 'destructive' });
             return;
         }
 
@@ -220,7 +220,7 @@ export const useTournamentWizard = (
             const errorStep = firstWizardErrorStep(allValid.errors);
             if (errorStep < 7) setCurrentStep(errorStep);
             toast({
-                title: 'Fix these items before creating',
+                title: 'A few things need fixing before you create it',
                 description: summarizeWizardErrors(allValid.errors),
                 variant: 'destructive',
             });
@@ -232,7 +232,7 @@ export const useTournamentWizard = (
         if (tournamentId && activeInvitationCount > 0 && reservedSlots < activeInvitationCount) {
             const message = `Reserved slots cannot be less than ${activeInvitationCount} active invitation${activeInvitationCount === 1 ? '' : 's'}. Revoke invitations first.`;
             setErrors({ reservedInviteSlots: message });
-            toast({ title: 'Validation Error', description: message, variant: 'destructive' });
+            toast({ title: 'Check the invite slots', description: message, variant: 'destructive' });
             return;
         }
 
@@ -352,7 +352,7 @@ export const useTournamentWizard = (
                     });
                 }
 
-                toast({ title: 'Tournament Updated', description: 'Your tournament has been updated successfully.' });
+                toast({ title: 'Changes saved', description: 'Your tournament is up to date.' });
                 queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
                 queryClient.invalidateQueries({ queryKey: ['tournament'] });
                 navigate(`/organizer/tournament/${tournamentId}`);
@@ -442,11 +442,11 @@ export const useTournamentWizard = (
                 });
 
                 clearDraft();
-                toast({ title: 'Tournament Created!', description: 'Your tournament has been created successfully.' });
+                toast({ title: 'Tournament created', description: 'Finish anything left from the dashboard, then publish when you are ready.' });
                 navigate(`/organizer/tournament/${tournament.slug}`);
             }
         } catch (err: any) {
-            toast({ title: 'Error', description: err.message || 'Failed to save tournament', variant: 'destructive' });
+            toast({ title: "Couldn't save the tournament", description: err.message || 'Please try again.', variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }

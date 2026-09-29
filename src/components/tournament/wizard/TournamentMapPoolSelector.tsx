@@ -50,14 +50,14 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index, dis
             className={cn(
                 'group relative aspect-video rounded-none overflow-hidden border-2 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60',
                 isSelected
-                    ? 'border-rose-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500'
+                    ? 'border-rose-500 ring-1 ring-rose-500'
                     : 'border-white/10 hover:border-white/30 opacity-70 hover:opacity-100',
             )}
             onClick={() => onToggle(map.id)}
         >
             {!isImgLoaded && !imgFailed && (
                 <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-rose-500/20 border-t-emerald-500/80 animate-spin" />
+                    <div className="w-8 h-8 rounded-full border-2 border-rose-500/20 border-t-rose-500 animate-spin" />
                 </div>
             )}
 
@@ -85,7 +85,7 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index, dis
             />
 
             {isSelected && (
-                <div className="absolute top-2 right-2 z-20 bg-emerald-500 rounded-full p-1 shadow-lg">
+                <div className="absolute top-2 right-2 z-20 bg-rose-500 p-1">
                     <Check className="h-3 w-3 text-white" strokeWidth={3} />
                 </div>
             )}

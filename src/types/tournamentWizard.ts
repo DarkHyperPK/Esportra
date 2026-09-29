@@ -117,13 +117,13 @@ export interface WizardStep {
 }
 
 export const WIZARD_STEPS: Omit<WizardStep, 'isValid' | 'isComplete'>[] = [
-    { id: 1, title: 'Basic Info', description: 'Name, game, and schedule' },
-    { id: 2, title: 'Format & Rules', description: 'Bracket type and settings' },
-    { id: 3, title: 'Branding', description: 'Images and description' },
-    { id: 4, title: 'Prizes', description: 'Prize pool, fees, and distribution' },
-    { id: 5, title: 'Registration', description: 'Sign-up and check-in' },
-    { id: 6, title: 'Settings', description: 'Match and game settings' },
-    { id: 7, title: 'Review', description: 'Confirm and create' },
+    { id: 1, title: 'Basics', description: 'Name, game, date and visibility' },
+    { id: 2, title: 'Format', description: 'Stages, series length and rules' },
+    { id: 3, title: 'Branding', description: 'Banner, logo and description' },
+    { id: 4, title: 'Prizes', description: 'Prize pool, entry fee and payouts' },
+    { id: 5, title: 'Registration', description: 'Sign-ups, invites and check-in' },
+    { id: 6, title: 'Match settings', description: 'Linked accounts and servers' },
+    { id: 7, title: 'Review', description: 'Check everything and create' },
 ];
 
 export const DEFAULT_WIZARD_DATA: TournamentWizardData = {

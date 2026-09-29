@@ -1,7 +1,7 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AttentionItem } from '@/services/tournamentDashboard/attention';
-import { EYEBROW_CLASS, PANEL_CLASS, TONE_DOT } from '../tone';
+import { EYEBROW_CLASS, PANEL_CLASS, TONE_DOT } from '@/components/ui/kit/tone';
 
 interface AttentionListProps {
   items: AttentionItem[];

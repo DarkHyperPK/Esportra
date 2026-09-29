@@ -163,13 +163,13 @@ describe('QuickCreateForm bye-note visibility', () => {
       target: { value: '6' },
     });
 
-    expect(screen.getByText(/byes will be added/i)).toBeInTheDocument();
+    expect(screen.getByText(/first-round bye/i)).toBeInTheDocument();
   });
 
   it('QuickCreateForm_HidesByeNote_WhenPowerOf2Teams', () => {
     renderForm();
     // Standard Cup (SE) is pre-selected, chip 8 is pre-selected → power of 2
-    expect(screen.queryByText(/byes will be added/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/first-round bye/i)).not.toBeInTheDocument();
   });
 
   it('QuickCreateForm_HidesByeNote_ForMajorFormat', () => {
@@ -180,10 +180,10 @@ describe('QuickCreateForm bye-note visibility', () => {
       target: { value: '6' },
     });
     // Major Format still has an elimination stage, so bye note shows
-    const majorBtn = screen.getByText('Major Format').closest('button')!;
+    const majorBtn = screen.getByText('Swiss, then playoffs').closest('button')!;
     fireEvent.click(majorBtn);
 
-    expect(screen.getByText(/byes will be added/i)).toBeInTheDocument();
+    expect(screen.getByText(/first-round bye/i)).toBeInTheDocument();
   });
 });
 
@@ -202,9 +202,9 @@ describe('QuickCreateForm submission', () => {
     // Clear the pre-filled name
     fireEvent.change(screen.getByLabelText(/tournament name/i), { target: { value: '' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
-    expect(await screen.findByText('Tournament name is required')).toBeInTheDocument();
+    expect(await screen.findByText('Give your tournament a name.')).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -214,9 +214,9 @@ describe('QuickCreateForm submission', () => {
     // Clear the pre-filled date
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
-    expect(await screen.findByText('Start date is required')).toBeInTheDocument();
+    expect(await screen.findByText('Pick a start date.')).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -229,7 +229,7 @@ describe('QuickCreateForm submission', () => {
     );
     fillRequiredFields();
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
@@ -242,8 +242,8 @@ describe('QuickCreateForm submission', () => {
     renderForm();
     fillRequiredFields();
 
-    // publishImmediately defaults to false — do not interact with checkbox
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    // Save as draft is the default — do not change the choice
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
@@ -256,10 +256,10 @@ describe('QuickCreateForm submission', () => {
     renderForm();
     fillRequiredFields();
 
-    // Toggle the "Publish immediately" checkbox
-    fireEvent.click(screen.getByRole('checkbox'));
+    // Choose "Publish now" instead of the default draft
+    fireEvent.click(screen.getByRole('radio', { name: /publish now/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create and publish/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
@@ -273,7 +273,7 @@ describe('QuickCreateForm submission', () => {
     fillRequiredFields();
     // Standard Cup is pre-selected — submits 1 stage (single_elimination)
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
@@ -289,10 +289,10 @@ describe('QuickCreateForm submission', () => {
     renderForm();
     fillRequiredFields();
     // Select World Cup Style
-    const worldCupBtn = screen.getByText('World Cup Style').closest('button')!;
+    const worldCupBtn = screen.getByText('Groups, then playoffs').closest('button')!;
     fireEvent.click(worldCupBtn);
 
-    fireEvent.click(screen.getByRole('button', { name: /create tournament/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
