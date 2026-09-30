@@ -155,7 +155,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     } finally {
       setSaving(false);
     }
-  }, [isDirty, saving, form, mapsAreDirty, selectedMapIds, tournament.id, toast, onSave]);
+  }, [isDirty, saving, form, mapsAreDirty, selectedMapIds, tournament.id, toast, onSave, queryClient]);
 
   const lockNote = 'Locked once the tournament is live.';
 
