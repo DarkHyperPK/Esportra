@@ -1,10 +1,10 @@
-import { STEPS_FIELD, type SectionSpec } from './fieldSpecs';
+import type { SectionSpec } from './fieldSpecs';
 
 export const PLATFORM_SECTIONS: SectionSpec[] = [
   {
     id: 'outlook',
-    title: 'Where we are headed',
-    fields: [{ kind: 'text', path: 'outlook', label: 'Outlook', multiline: true, max: 600 }],
+    title: 'Platform intro',
+    fields: [{ kind: 'text', path: 'outlook', label: 'Sentence under the platform headline', multiline: true, max: 600 }],
   },
   {
     id: 'audiences',
@@ -46,13 +46,5 @@ export const PLATFORM_SECTIONS: SectionSpec[] = [
         { kind: 'text', path: 'tiers', label: 'Available to', max: 80 },
       ],
     }],
-  },
-  {
-    id: 'portal',
-    title: 'Portal and process',
-    fields: [
-      { kind: 'list', path: 'portalPoints', label: 'Partner portal points', max: 200 },
-      STEPS_FIELD,
-    ],
   },
 ];

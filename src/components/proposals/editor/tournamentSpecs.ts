@@ -1,4 +1,4 @@
-import { STEPS_FIELD, TOKEN_HINT, type SectionSpec } from './fieldSpecs';
+import { TOKEN_HINT, type SectionSpec } from './fieldSpecs';
 
 export const TOURNAMENT_SECTIONS: SectionSpec[] = [
   {
@@ -7,7 +7,6 @@ export const TOURNAMENT_SECTIONS: SectionSpec[] = [
     description: 'Empty fields are hidden from the document.',
     fields: [
       { kind: 'text', path: 'event.name', label: 'Event name', max: 80 },
-      { kind: 'text', path: 'event.edition', label: 'Edition line', max: 80 },
       { kind: 'text', path: 'event.game', label: 'Game', max: 60 },
       { kind: 'text', path: 'event.startDate', label: 'Start date', inputType: 'date' },
       { kind: 'text', path: 'event.channels', label: 'Stream channels', max: 120 },
@@ -18,13 +17,9 @@ export const TOURNAMENT_SECTIONS: SectionSpec[] = [
   },
   {
     id: 'audience',
-    title: 'Who the partner reaches',
-    description: TOKEN_HINT,
-    fields: [
-      { kind: 'text', path: 'audienceHeading', label: 'Heading', max: 120 },
-      { kind: 'text', path: 'audienceBody', label: 'Paragraph', multiline: true, max: 1200 },
-      { kind: 'list', path: 'audiencePoints', label: 'Audience points', max: 200 },
-    ],
+    title: 'Event line',
+    description: 'One sentence under the event name. ' + TOKEN_HINT,
+    fields: [{ kind: 'text', path: 'audienceBody', label: 'Sentence', multiline: true, max: 300 }],
   },
   {
     id: 'tiers',
@@ -50,8 +45,8 @@ export const TOURNAMENT_SECTIONS: SectionSpec[] = [
   },
   {
     id: 'placements',
-    title: 'Placement table and process',
-    description: 'Give each placement one cell per package, in package order. Use — for not included.',
+    title: 'Placements by package',
+    description: 'Decides the “From Silver” labels on the placements page. One cell per package, in package order; use — for not included.',
     fields: [
       {
         kind: 'repeat', path: 'zoneRows', label: 'Placements', itemLabel: 'Placement', titleKey: 'zone',
@@ -61,7 +56,6 @@ export const TOURNAMENT_SECTIONS: SectionSpec[] = [
           { kind: 'list', path: 'cells', label: 'Cells, one per package', max: 60 },
         ],
       },
-      STEPS_FIELD,
     ],
   },
 ];

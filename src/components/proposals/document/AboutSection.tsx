@@ -1,34 +1,31 @@
 import type { Proposal } from '@/schemas/proposal';
 import { DocSection } from './DocSection';
-import { StatsGrid } from './StatsGrid';
-import { BODY, CAPTION } from './docStyles';
+import { CAPTION, NUMBER } from './docStyles';
 
-interface AboutSectionProps {
-  doc: Proposal;
-  title: string;
-  eyebrow: string;
-  number: string;
-}
-
-/** Who Esportra is, the numbers that have already happened, and recognition. */
-export function AboutSection({ doc, title, eyebrow, number }: AboutSectionProps) {
+/** Who we are, in one paragraph, and the numbers that have already happened. */
+export function AboutSection({ doc, number, title }: { doc: Proposal; number: string; title: string }) {
+  const stats = doc.stats.filter((s) => s.value.trim()).slice(0, 3);
   const recognition = doc.recognition.filter((r) => r.trim());
   return (
-    <DocSection number={number} anchor="about" eyebrow={eyebrow} title={title} standfirst={doc.about || undefined}>
-      <StatsGrid stats={doc.stats} />
-      {recognition.length > 0 && (
-        <div className="pd-avoid mt-10">
-          <p className={`${CAPTION} mb-4`}>Recognition</p>
-          <ul className="space-y-2">
-            {recognition.map((line, i) => (
-              <li key={`${i}-${line}`} className="border-l-2 border-[color:var(--pd-strong-line)] pl-4 text-[15px] text-[color:var(--pd-label)]">
-                {line}
-              </li>
-            ))}
-          </ul>
-        </div>
+    <DocSection doc={doc} number={number} anchor="about" eyebrow="Who we are" title={title} intro={doc.about}>
+      {stats.length > 0 && (
+        <dl className="pd-avoid grid grid-cols-3 gap-6 border-t border-[color:var(--pd-line)] pt-10">
+          {stats.map((stat, i) => (
+            <div key={`${stat.label}-${i}`}>
+              <dt className="sr-only">{stat.label}</dt>
+              <dd className={`${NUMBER} text-6xl leading-none md:text-8xl print:text-7xl`}>{stat.value}</dd>
+              <dd className="mt-3 max-w-[16ch] text-[13px] leading-snug text-[color:var(--pd-muted)]">{stat.label}</dd>
+            </div>
+          ))}
+        </dl>
       )}
-      {doc.kind === 'platform' && doc.outlook && <p className={`${BODY} mt-10 max-w-2xl`}>{doc.outlook}</p>}
+      {recognition.length > 0 && (
+        <ul className="pd-avoid mt-14 space-y-2">
+          {recognition.map((line, i) => (
+            <li key={`${i}-${line}`} className={`${CAPTION} leading-relaxed`}>{line}</li>
+          ))}
+        </ul>
+      )}
     </DocSection>
   );
 }

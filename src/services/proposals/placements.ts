@@ -58,3 +58,33 @@ export function resolveZoneSlots(doc: Proposal): ZoneSlot[] {
 export function slotFor(slots: ZoneSlot[], key: ZoneKey): ZoneSlot | undefined {
   return slots.find((s) => s.key === key);
 }
+
+export interface PlacementGroup {
+  key: 'page' | 'ticker' | 'stream';
+  title: string;
+  body: string;
+  /** Earliest tier that includes any zone in the group. */
+  from: string;
+}
+
+const GROUPS: Array<Omit<PlacementGroup, 'from'> & { zones: ZoneKey[] }> = [
+  { key: 'page', title: 'Tournament page', body: 'Banner, sidebar and card placements where players register, check in and follow the bracket.', zones: ['header', 'sidebar', 'badge', 'matchbar'] },
+  { key: 'stream', title: 'Live stream', body: 'Overlay and break-screen branding on every broadcast.', zones: ['overlay'] },
+  { key: 'ticker', title: 'Partner ticker', body: 'A standing place in the partner ticker across Esportra.', zones: ['ticker'] },
+];
+
+/** Three plain-language groups for the "where you appear" page, each with its entry tier. */
+export function placementGroups(doc: Proposal): PlacementGroup[] {
+  const slots = resolveZoneSlots(doc);
+  const order = doc.tiers.map((t) => t.name);
+  const rank = (name: string) => {
+    const i = order.indexOf(name);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return GROUPS.flatMap(({ zones, ...group }) => {
+    const found = slots.filter((s) => zones.includes(s.key) && s.from);
+    if (found.length === 0) return [];
+    const first = [...found].sort((a, b) => rank(a.from) - rank(b.from))[0];
+    return [{ ...group, from: first.from }];
+  });
+}

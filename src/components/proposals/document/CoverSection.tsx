@@ -1,77 +1,55 @@
 import type { Proposal } from '@/schemas/proposal';
-import { brandLabel, fillTokens, formatLongDate, joinFacts, kindLabel } from '@/services/proposals/format';
+import { brandLabel, fillTokens, formatLongDate, joinFacts } from '@/services/proposals/format';
 import { BrandMark } from './BrandMark';
-import { CAPTION, CELL, DISPLAY, FLEX_GRID, NUMBER, TITLE } from './docStyles';
-
-export interface CoverFact {
-  label: string;
-  value: string;
-}
+import { CAPTION } from './docStyles';
+import { Headline } from './Headline';
 
 interface CoverSectionProps {
   doc: Proposal;
   headline: string;
-  line: string;
-  facts: CoverFact[];
+  facts: string[];
 }
 
 /**
- * Cinematic cover: the brand texture, one line at hero scale, then who it is
- * for and who sent it, and the three facts a reader needs first.
+ * The cover. With a cover photo, the photo fills the page under a dark fade.
+ * Without one, the real tournament page is lifted off the right edge.
  */
-export function CoverSection({ doc, headline, line, facts }: CoverSectionProps) {
-  const shown = facts.filter((f) => f.value.trim());
-  const detail = joinFacts([doc.prospect.industry, doc.prospect.attention && `Attn ${doc.prospect.attention}`]);
+export function CoverSection({ doc, headline, facts }: CoverSectionProps) {
+  const photo = doc.images.cover.trim();
+  const product = !photo && doc.images.page.trim();
   return (
-    <section
-      data-doc-section="cover"
-      className="pd-section pd-cover flex min-h-[92vh] flex-col px-5 py-8 sm:px-10 md:px-16 md:py-12"
-    >
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
+    <section data-doc-section="cover" className="pd-section pd-cover relative flex min-h-[92vh] flex-col overflow-hidden px-6 py-10 sm:px-12 md:px-20 md:py-14">
+      {photo && (
+        <>
+          <img src={photo} alt="" className="absolute inset-0 z-[-2] h-full w-full object-cover" />
+          <div aria-hidden className="absolute inset-0 z-[-1] bg-gradient-to-t from-[color:var(--pd-bg)] via-[color:var(--pd-bg)]/70 to-[color:var(--pd-bg)]/30" />
+        </>
+      )}
+      {product && (
+        <img
+          src={product}
+          alt=""
+          className="pd-lift absolute -right-24 top-[14%] z-[-2] hidden w-[46%] max-w-[520px] rotate-[4deg] opacity-90 md:block print:-right-28 print:block print:w-[38%]"
+        />
+      )}
+
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl items-center justify-between">
         <BrandMark />
-        <span className={`${CAPTION} text-right`}>{joinFacts([kindLabel(doc.kind), formatLongDate(doc.preparedOn)])}</span>
+        <span className={CAPTION}>{formatLongDate(doc.preparedOn)}</span>
       </div>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-16">
-        <p className={`${CAPTION} mb-7 flex items-center gap-3`}>
-          <span aria-hidden className="h-0.5 w-6 bg-[color:var(--pd-cue)]" />
-          Partner proposal
+      <div className="mx-auto mt-auto w-full max-w-5xl pt-32">
+        <p className={`${CAPTION} mb-6 flex items-center gap-3`}>
+          <span aria-hidden className="h-px w-8 bg-[color:var(--pd-strong-line)]" />
+          Proposal for {brandLabel(doc)}
         </p>
-        <h1 className={`${DISPLAY} max-w-4xl text-balance text-[3.25rem] leading-[0.94] tracking-[-0.03em] sm:text-7xl md:text-[6.5rem]`}>
-          {headline}
-        </h1>
-        {line && (
-          <p className="mt-8 max-w-xl text-lg leading-relaxed text-[color:var(--pd-label)] md:text-[1.35rem]">
-            {fillTokens(line, doc)}
+        <Headline as="h1" text={headline} doc={doc} className="max-w-[11ch] text-[3rem] sm:text-7xl md:text-[5.5rem] print:text-[4.1rem]" />
+        {doc.coverLine && (
+          <p className="mt-8 max-w-md text-pretty text-base leading-relaxed text-[color:var(--pd-label)] md:text-lg">
+            {fillTokens(doc.coverLine, doc)}
           </p>
         )}
-      </div>
-
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-8 grid gap-8 sm:grid-cols-2">
-          <div className="border-l-2 border-[color:var(--pd-strong-line)] pl-5">
-            <p className={CAPTION}>Prepared for</p>
-            <p className={`${TITLE} mt-2 text-3xl md:text-4xl`}>{brandLabel(doc)}</p>
-            {detail && <p className={`${CAPTION} mt-3`}>{detail}</p>}
-          </div>
-          <div className="border-l-2 border-[color:var(--pd-line)] pl-5 sm:justify-self-end">
-            <p className={CAPTION}>Prepared by</p>
-            <p className={`${TITLE} mt-2 text-lg`}>{doc.sender.name}</p>
-            <p className={`${CAPTION} mt-2`}>{joinFacts([doc.sender.title, doc.sender.company])}</p>
-          </div>
-        </div>
-        {shown.length > 0 && (
-          <div className={FLEX_GRID}>
-            {shown.map((fact) => (
-              <div key={fact.label} className={`${CELL} min-w-[150px] flex-1 p-4 md:p-5`}>
-                <p className={CAPTION}>{fact.label}</p>
-                <p className={/^\d[\d,.]*$/.test(fact.value.trim()) ? `${NUMBER} mt-2 text-4xl leading-none` : `${TITLE} mt-2 text-base md:text-lg`}>
-                  {fact.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        {facts.length > 0 && <p className={`${CAPTION} mt-10`}>{joinFacts(facts)}</p>}
       </div>
     </section>
   );

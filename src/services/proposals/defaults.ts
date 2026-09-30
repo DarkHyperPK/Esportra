@@ -12,6 +12,7 @@ const SENDER = {
   email: 'business@esportra.com',
   website: 'esportra.com',
   discord: 'discord.gg/esportra',
+  phone: '',
 };
 
 const PARTNERS = [
@@ -31,21 +32,17 @@ const STATS = [
 ];
 
 const ABOUT =
-  'Esportra is a competitive platform for tournaments, matches and the venues they happen in. '
-  + 'Organizers run events with automated brackets, check-in and match rooms. '
-  + 'Teams register, play and keep a record of their results. Built in Pakistan.';
+  'Esportra runs competitive gaming end to end: registration, brackets, match rooms and results, '
+  + 'in one platform built in Pakistan.';
 
 const TOURNAMENT_TERMS = [
-  'Prices are in PKR and apply per tournament.',
-  'Each package covers Genesis Stage 2 only.',
-  'Placements are scheduled with the Esportra team and confirmed before the event.',
-  'Brand assets are used only for the placements agreed in this proposal.',
+  'Prices in PKR, per package, for Genesis Stage 2 only.',
+  'Every placement is confirmed with you before the event.',
   'Reports contain aggregate figures only. No personal player data is shared.',
 ];
 
 const PLATFORM_TERMS = [
-  'Platform partnership terms are agreed directly with each partner.',
-  'Brand assets are used only for the placements agreed in this proposal.',
+  'Terms are agreed directly with each partner.',
   'Reports contain aggregate figures only. No personal player data is shared.',
 ];
 
@@ -191,7 +188,10 @@ function base(now: Date) {
     recognition: [...RECOGNITION],
     stats: STATS.map((s) => ({ ...s })),
     about: ABOUT,
-    closingLine: 'Every match, official.',
+    closingLine: 'Let’s [build.]',
+    closingNote:
+      'The platform is live and the players are already here. We would like {brand} to be part of what comes next.',
+    images: { cover: '', page: '/proposals/tournament-page.jpg', stream: '/proposals/stream-overlay.jpg' },
   };
 }
 
@@ -200,8 +200,8 @@ export function createTournamentProposal(now = new Date()): TournamentProposal {
     ...base(now),
     kind: 'tournament',
     title: 'Genesis Stage 2 · Tournament partner',
-    coverHeadline: '',
-    coverLine: 'Put {brand} inside the match, not beside it.',
+    coverHeadline: 'Be where the players [already are.]',
+    coverLine: 'Genesis Stage 2 puts {brand} in front of competitive Valorant players, on the platform and on stream.',
     terms: [...TOURNAMENT_TERMS],
     event: {
       name: 'Esportra Genesis Stage 2',
@@ -215,7 +215,7 @@ export function createTournamentProposal(now = new Date()): TournamentProposal {
     },
     audienceHeading: 'Who you reach',
     audienceBody:
-      'Genesis Stage 2 puts {brand} in front of competitive Valorant players while they sign up, check in and play.',
+      'Streamed live on YouTube and Facebook, with {brand} on the page and on screen.',
     audiencePoints: [
       'Competitive Valorant squads registered on Esportra',
       'Their teammates, friends and communities following along',
@@ -232,7 +232,7 @@ export function createPlatformProposal(now = new Date()): PlatformProposal {
     ...base(now),
     kind: 'platform',
     title: 'Platform partner',
-    coverHeadline: 'Be part of the match, not the ad break.',
+    coverHeadline: 'Be where the players [already are.]',
     coverLine: 'Year-round presence where competitive players register, play and follow their results.',
     terms: [...PLATFORM_TERMS],
     audiences: PLATFORM_AUDIENCES.map((a) => ({ ...a })),

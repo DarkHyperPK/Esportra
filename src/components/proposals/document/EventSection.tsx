@@ -1,48 +1,43 @@
 import type { TournamentProposal } from '@/schemas/proposal';
-import { brandLabel, fillTokens, formatLongDate } from '@/services/proposals/format';
+import { fillTokens, formatLongDate } from '@/services/proposals/format';
 import { DocSection } from './DocSection';
-import { BODY, CAPTION, CELL, FLEX_GRID, TITLE } from './docStyles';
+import { CAPTION } from './docStyles';
 
-function Fact({ label, value }: { label: string; value: string }) {
-  if (!value.trim()) return null;
-  return (
-    <div className={`${CELL} min-w-[180px] flex-1 basis-[30%] p-5`}>
-      <p className={CAPTION}>{label}</p>
-      <p className={`${TITLE} mt-2 text-lg`}>{value}</p>
-    </div>
-  );
+/** "Esportra Genesis Stage 2" → "Esportra Genesis [Stage 2]": the last two words carry the accent. */
+function accentTail(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 3) return name.trim();
+  return `${words.slice(0, -2).join(' ')} [${words.slice(-2).join(' ')}]`;
 }
 
-/** The event's facts (empty ones are skipped) and who the partner reaches. */
+/** The event as three facts, set large. Empty facts are left out. */
 export function EventSection({ doc, number }: { doc: TournamentProposal; number: string }) {
   const { event } = doc;
-  const points = doc.audiencePoints.filter((p) => p.trim());
+  const facts = [
+    { label: 'Game', value: event.game },
+    { label: 'Starts', value: formatLongDate(event.startDate) },
+    { label: 'Streams', value: event.channels },
+    { label: 'Format', value: event.format },
+    { label: 'Prize pool', value: event.prizePool },
+  ].filter((f) => f.value.trim());
   return (
-    <DocSection number={number} anchor="event" eyebrow="The event" title={event.name || 'The event'} standfirst={event.edition || undefined}>
-      <div className={`${FLEX_GRID} pd-avoid`}>
-        <Fact label="Game" value={event.game} />
-        <Fact label="Starts" value={formatLongDate(event.startDate)} />
-        <Fact label="Streams" value={event.channels} />
-        <Fact label="Format" value={event.format} />
-        <Fact label="Prize pool" value={event.prizePool} />
-      </div>
-      {event.next && <p className={`${CAPTION} mt-4`}>{event.next}</p>}
-
-      <div className="pd-avoid mt-14 grid gap-8 md:grid-cols-[1fr_1.2fr] md:gap-16">
-        <div>
-          <h3 className={`${TITLE} text-2xl md:text-3xl`}>{fillTokens(doc.audienceHeading, doc)}</h3>
-          <p className={`${BODY} mt-4`}>{fillTokens(doc.audienceBody, doc)}</p>
-        </div>
-        {points.length > 0 && (
-          <ul className="space-y-0 border-t border-[color:var(--pd-line)]" aria-label={`Who ${brandLabel(doc)} reaches`}>
-            {points.map((point, i) => (
-              <li key={`${i}-${point}`} className="border-b border-[color:var(--pd-line)] py-4 text-[15px] text-[color:var(--pd-label)]">
-                {fillTokens(point, doc)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+    <DocSection
+      doc={doc}
+      number={number}
+      anchor="event"
+      eyebrow="The event"
+      title={accentTail(event.name) || 'The event'}
+      intro={fillTokens(doc.audienceBody, doc)}
+    >
+      <dl className="pd-avoid divide-y divide-[color:var(--pd-line)] border-y border-[color:var(--pd-line)]">
+        {facts.map((fact) => (
+          <div key={fact.label} className="flex items-baseline justify-between gap-6 py-6 print:py-5">
+            <dt className={CAPTION}>{fact.label}</dt>
+            <dd className="text-right font-heading text-2xl font-bold tracking-tight text-[color:var(--pd-ink)] md:text-4xl">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {event.next && <p className={`${CAPTION} mt-6`}>{event.next}</p>}
     </DocSection>
   );
 }

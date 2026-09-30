@@ -14,15 +14,10 @@ export function TournamentProposalDocument({ doc }: { doc: TournamentProposal })
     <>
       <CoverSection
         doc={doc}
-        headline={doc.coverHeadline.trim() || doc.event.name || 'Tournament partner proposal'}
-        line={doc.coverLine}
-        facts={[
-          { label: 'Game', value: doc.event.game },
-          { label: 'Starts', value: formatLongDate(doc.event.startDate) },
-          { label: 'Streams', value: doc.event.channels },
-        ]}
+        headline={doc.coverHeadline.trim() || doc.event.name || 'Tournament partner'}
+        facts={[doc.event.name, doc.event.game, formatLongDate(doc.event.startDate)]}
       />
-      <AboutSection doc={doc} number="02" eyebrow="Esportra" title="A stage that takes every team seriously." />
+      <AboutSection doc={doc} number="02" title="Where competitive gaming [lives.]" />
       <EventSection doc={doc} number="03" />
       <TournamentPackages doc={doc} number="04" />
       <PlacementsSection doc={doc} number="05" />

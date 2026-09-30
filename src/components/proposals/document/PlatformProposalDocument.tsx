@@ -10,13 +10,8 @@ export const PLATFORM_PAGES = 6;
 export function PlatformProposalDocument({ doc }: { doc: PlatformProposal }) {
   return (
     <>
-      <CoverSection
-        doc={doc}
-        headline={doc.coverHeadline.trim() || 'Partner with the platform.'}
-        line={doc.coverLine}
-        facts={doc.stats.slice(0, 3).map((s) => ({ label: s.label, value: s.value }))}
-      />
-      <AboutSection doc={doc} number="02" eyebrow="Esportra" title="Where competitive play gets organised." />
+      <CoverSection doc={doc} headline={doc.coverHeadline.trim() || 'Platform partner'} facts={['Platform partnership', 'Esportra']} />
+      <AboutSection doc={doc} number="02" title="Where competitive gaming [lives.]" />
       <PlatformAudiences doc={doc} number="03" />
       <PlatformTiers doc={doc} number="04" />
       <PlacementsSection doc={doc} number="05" />

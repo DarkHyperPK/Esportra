@@ -156,3 +156,15 @@ describe('readiness', () => {
     expect(parsed.kind === 'platform' && parsed.coverHeadline).toBe('Be part of the match, not the ad break.');
   });
 });
+
+describe('placement groups', () => {
+  it('names the earliest tier per group', async () => {
+    const { placementGroups } = await import('../placements');
+    expect(placementGroups(createTournamentProposal(NOW)).map((g) => [g.key, g.from])).toEqual([
+      ['page', 'Silver'], ['stream', 'Silver'], ['ticker', 'Title'],
+    ]);
+    expect(placementGroups(createPlatformProposal(NOW)).map((g) => [g.key, g.from])).toEqual([
+      ['page', 'Ascendant'], ['stream', 'Radiant'], ['ticker', 'Partner'],
+    ]);
+  });
+});

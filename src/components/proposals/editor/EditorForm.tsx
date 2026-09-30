@@ -3,13 +3,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import type { ReadinessIssue } from '@/services/proposals/readiness';
 import type { EditorOps } from './editorOps';
 import { FieldList } from './FieldList';
-import { ABOUT_SECTION, CLOSE_SECTIONS, COVER_SECTION, PROSPECT_SECTION, type SectionSpec } from './fieldSpecs';
+import { ABOUT_SECTION, CLOSE_SECTIONS, COVER_SECTION, IMAGES_SECTION, PROSPECT_SECTION, type SectionSpec } from './fieldSpecs';
 import { PLATFORM_SECTIONS } from './platformSpecs';
 import { TOURNAMENT_SECTIONS } from './tournamentSpecs';
 
 function sectionsFor(kind: Proposal['kind']): SectionSpec[] {
   const own = kind === 'tournament' ? TOURNAMENT_SECTIONS : PLATFORM_SECTIONS;
-  return [PROSPECT_SECTION, COVER_SECTION, ABOUT_SECTION, ...own, ...CLOSE_SECTIONS];
+  return [PROSPECT_SECTION, COVER_SECTION, IMAGES_SECTION, ABOUT_SECTION, ...own, ...CLOSE_SECTIONS];
 }
 
 interface EditorFormProps {

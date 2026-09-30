@@ -22,7 +22,7 @@ export interface SectionSpec {
   fields: FieldSpec[];
 }
 
-const TOKEN_HINT = 'Use {brand} and {industry} to insert the prospect’s details.';
+const TOKEN_HINT = 'Use {brand} and {industry} to insert the prospect’s details. Put words in [square brackets] to set them in the rose italic accent.';
 
 export const PROSPECT_SECTION: SectionSpec = {
   id: 'prospect',
@@ -44,7 +44,19 @@ export const COVER_SECTION: SectionSpec = {
   fields: [
     { kind: 'text', path: 'coverHeadline', label: 'Cover headline', hint: 'Tournament proposals use the event name when this is empty.', max: 120 },
     { kind: 'text', path: 'coverLine', label: 'Cover line', multiline: true, max: 240 },
-    { kind: 'text', path: 'closingLine', label: 'Closing line', hint: 'Headline of the last page.', max: 200 },
+    { kind: 'text', path: 'closingLine', label: 'Closing headline', hint: 'Headline of the last page.', max: 200 },
+    { kind: 'text', path: 'closingNote', label: 'Closing note', multiline: true, hint: 'Two sentences at most.', max: 600 },
+  ],
+};
+
+export const IMAGES_SECTION: SectionSpec = {
+  id: 'images',
+  title: 'Images',
+  description: 'Paths to files in public/proposals/ or full https links. Leave the cover empty to show the tournament page instead.',
+  fields: [
+    { kind: 'text', path: 'images.cover', label: 'Cover photo', hint: 'Optional. A real photo of your scene, dark and uncluttered.', max: 300 },
+    { kind: 'text', path: 'images.page', label: 'Tournament page image', max: 300 },
+    { kind: 'text', path: 'images.stream', label: 'Stream overlay image', hint: 'Swap this per brand: the default mockup shows earlier partners’ logos.', max: 300 },
   ],
 };
 
@@ -96,17 +108,10 @@ export const CLOSE_SECTIONS: SectionSpec[] = [
       { kind: 'text', path: 'sender.email', label: 'Email', inputType: 'email', max: 120 },
       { kind: 'text', path: 'sender.website', label: 'Website', max: 120 },
       { kind: 'text', path: 'sender.discord', label: 'Discord', max: 120 },
+      { kind: 'text', path: 'sender.phone', label: 'Phone', hint: 'Optional. Shown under your name on the last page.', max: 40 },
     ],
   },
 ];
 
-export const STEPS_FIELD: FieldSpec = {
-  kind: 'repeat', path: 'steps', label: 'Steps', itemLabel: 'Step', titleKey: 'title',
-  blank: () => ({ title: '', body: '' }),
-  fields: [
-    { kind: 'text', path: 'title', label: 'Title', max: 80 },
-    { kind: 'text', path: 'body', label: 'Description', multiline: true, max: 400 },
-  ],
-};
 
 export { TOKEN_HINT };

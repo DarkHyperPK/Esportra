@@ -1,45 +1,34 @@
 import type { PlatformProposal } from '@/schemas/proposal';
 import { DocSection } from './DocSection';
-import { BODY, CAPTION, CELL, DISPLAY, GRID } from './docStyles';
+import { CAPTION } from './docStyles';
 import { TierBand } from './TierBand';
 
 export function PlatformAudiences({ doc, number }: { doc: PlatformProposal; number: string }) {
   const audiences = doc.audiences.filter((a) => a.who.trim());
   return (
-    <DocSection
-      number={number}
-      anchor="audiences"
-      eyebrow="The platform"
-      title="One platform. Everyone in the scene."
-      standfirst="Your brand sits where each of them already spends time on Esportra."
-    >
-      {audiences.length > 0 && (
-        <div className={`${GRID} pd-avoid grid-cols-1 sm:grid-cols-2 print:grid-cols-2`}>
-          {audiences.map((a, i) => (
-            <div key={`${a.who}-${i}`} className={`${CELL} p-6 md:p-8`}>
-              <p className={`${CAPTION} tabular-nums`}>{String(i + 1).padStart(2, '0')}</p>
-              <h3 className="mt-6 font-heading text-2xl font-bold tracking-tight text-[color:var(--pd-ink)]">{a.who}</h3>
-              <p className={`${BODY} mt-3`}>{a.body}</p>
-            </div>
-          ))}
-        </div>
-      )}
+    <DocSection doc={doc} number={number} anchor="audiences" eyebrow="The platform" title="The whole scene, [in one place.]" intro={doc.outlook}>
+      <ol className="pd-avoid divide-y divide-[color:var(--pd-line)] border-y border-[color:var(--pd-line)]">
+        {audiences.map((a, i) => (
+          <li key={`${a.who}-${i}`} className="grid gap-2 py-6 sm:grid-cols-[3rem_1fr_1.4fr] sm:items-baseline sm:gap-6 print:grid-cols-[3rem_1fr_1.4fr] print:py-5">
+            <span className={`${CAPTION} tabular-nums`}>{String(i + 1).padStart(2, '0')}</span>
+            <span className="font-heading text-2xl font-bold tracking-tight text-[color:var(--pd-ink)]">{a.who}</span>
+            <span className="text-[14px] leading-snug text-[color:var(--pd-muted)]">{a.body}</span>
+          </li>
+        ))}
+      </ol>
     </DocSection>
   );
 }
 
 function TierColumn({ tier }: { tier: PlatformProposal['tiers'][number] }) {
   return (
-    <article className={`${CELL} pd-avoid flex flex-col p-6 md:p-8 print:p-6`}>
+    <article className="pd-avoid flex flex-col border-l border-[color:var(--pd-line)] pl-6 first:border-l-0 first:pl-0">
       <p className={CAPTION}>{tier.label}</p>
-      <h3 className={`${DISPLAY} mt-3 text-4xl print:text-3xl`}>{tier.name}</h3>
+      <h3 className="mt-3 font-heading text-4xl font-extrabold uppercase tracking-[-0.03em] text-[color:var(--pd-ink)]">{tier.name}</h3>
       <p className="mt-3 text-[14px] leading-snug text-[color:var(--pd-muted)]">{tier.summary}</p>
-      <ul className="mt-6 flex-1 space-y-3 print:space-y-2 print:mt-4 border-t border-[color:var(--pd-line)] pt-5">
+      <ul className="mt-6 space-y-3 print:mt-4 print:space-y-2">
         {tier.points.filter((p) => p.trim()).map((point, i) => (
-          <li key={`${i}-${point}`} className="flex gap-3 text-[14px] leading-snug text-[color:var(--pd-label)] print:text-[12.5px]">
-            <span aria-hidden className="mt-2 h-1 w-1 shrink-0 bg-[color:var(--pd-hint)]" />
-            {point}
-          </li>
+          <li key={`${i}-${point}`} className="text-[14px] leading-snug text-[color:var(--pd-label)] print:text-[13px]">{point}</li>
         ))}
       </ul>
     </article>
@@ -47,8 +36,7 @@ function TierColumn({ tier }: { tier: PlatformProposal['tiers'][number] }) {
 }
 
 const COLS: Record<number, string> = {
-  1: 'md:grid-cols-1', 2: 'md:grid-cols-2 print:grid-cols-2',
-  3: 'md:grid-cols-3 print:grid-cols-3', 4: 'md:grid-cols-2 lg:grid-cols-4 print:grid-cols-4',
+  1: 'grid-cols-1', 2: 'sm:grid-cols-2 print:grid-cols-2', 3: 'sm:grid-cols-3 print:grid-cols-3', 4: 'sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4',
 };
 
 export function PlatformTiers({ doc, number }: { doc: PlatformProposal; number: string }) {
@@ -56,27 +44,15 @@ export function PlatformTiers({ doc, number }: { doc: PlatformProposal; number: 
   const standard = doc.tiers.filter((t) => !t.featured);
   const featured = doc.tiers.filter((t) => t.featured);
   return (
-    <DocSection
-      number={number}
-      anchor="tiers"
-      eyebrow="Partnership levels"
-      title="Choose the level of presence."
-      standfirst="Each level adds reach and insight. Terms are agreed directly with each partner."
-    >
+    <DocSection doc={doc} number={number} anchor="tiers" eyebrow="Partnership levels" title="Choose your [presence.]" intro="Quoted by value. Terms are agreed directly with each partner.">
       {standard.length > 0 && (
-        <div className={`${GRID} grid-cols-1 ${COLS[standard.length] ?? 'md:grid-cols-3 print:grid-cols-3'}`}>
+        <div className={`grid gap-y-10 ${COLS[standard.length] ?? 'sm:grid-cols-3 print:grid-cols-3'}`}>
           {standard.map((tier, i) => <TierColumn key={`${tier.name}-${i}`} tier={tier} />)}
         </div>
       )}
-      <div className="mt-6 space-y-6 print:mt-4">
+      <div className="mt-12 space-y-6 print:mt-8">
         {featured.map((tier, i) => (
-          <TierBand
-            key={`${tier.name}-${i}`}
-            caption={tier.label}
-            name={tier.name}
-            summary={tier.summary}
-            points={tier.points}
-          />
+          <TierBand key={`${tier.name}-${i}`} caption={tier.label} name={tier.name} summary={tier.summary} points={tier.points} />
         ))}
       </div>
     </DocSection>

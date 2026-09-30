@@ -15,6 +15,9 @@
   --pd-slot: #fafafa;
   --pd-slot-ink: #09090b;
   --pd-screen: #111114;
+  --pd-number: #27272a;
+  --pd-glow: rgba(255, 255, 255, 0.05);
+  --pd-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
   background: var(--pd-bg);
   color: var(--pd-ink);
   -webkit-print-color-adjust: exact;
@@ -38,6 +41,9 @@
   --pd-slot: #09090b;
   --pd-slot-ink: #fafafa;
   --pd-screen: #f4f4f5;
+  --pd-number: #e4e4e7;
+  --pd-glow: rgba(9, 9, 11, 0.035);
+  --pd-shadow: 0 30px 60px -24px rgba(9, 9, 11, 0.35), 0 0 0 1px rgba(9, 9, 11, 0.08);
 }
 
 .proposal-doc .pd-logo { filter: var(--pd-logo-filter); }
@@ -48,7 +54,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  z-index: -2;
+  z-index: -3;
   background: url('/proposals/streak-shards.svg') center / cover no-repeat;
   filter: var(--pd-texture-filter);
   opacity: var(--pd-texture-opacity);
@@ -61,6 +67,14 @@
   background: linear-gradient(100deg, var(--pd-bg) 18%, transparent 70%),
     linear-gradient(to top, var(--pd-bg) 4%, transparent 40%);
 }
+
+/* Depth by luminance: one soft light from the top-left of every page. */
+.proposal-doc .pd-glow {
+  background-image: radial-gradient(ellipse 70% 55% at 0% 0%, var(--pd-glow), transparent 70%);
+}
+
+/* A product image lifted off the page. */
+.proposal-doc .pd-lift { box-shadow: var(--pd-shadow); }
 
 /* The 45° notch: the one rare hero moment (the exclusive package). */
 .proposal-doc .pd-notch {

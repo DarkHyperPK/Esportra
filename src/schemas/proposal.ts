@@ -13,6 +13,7 @@ export const senderSchema = z.object({
   email: text(120),
   website: text(120),
   discord: text(120),
+  phone: text(40).default(''),
 });
 
 export const prospectSchema = z.object({
@@ -73,6 +74,12 @@ const commonShape = {
   terms: z.array(text(300)).max(12),
   // Added later: defaults keep proposals saved before these fields readable.
   closingLine: text(200).default('Every match, official.'),
+  closingNote: text(600).default(''),
+  images: z.object({
+    cover: text(300),
+    page: text(300),
+    stream: text(300),
+  }).default({ cover: '', page: '/proposals/tournament-page.jpg', stream: '/proposals/stream-overlay.jpg' }),
 };
 
 export const tournamentProposalSchema = z.object({
