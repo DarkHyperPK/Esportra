@@ -6,9 +6,9 @@ export function PartnersBlock({ partners }: { partners: ProposalPartner[] }) {
   const shown = partners.filter((p) => p.name.trim());
   if (shown.length === 0) return null;
   return (
-    <div className="pd-avoid text-center">
-      <p className={`${CAPTION} mb-5`}>Already on board</p>
-      <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+    <div className="pd-avoid flex flex-wrap items-center gap-x-10 gap-y-4">
+      <p className={CAPTION}>Already on board</p>
+      <ul className="flex flex-wrap items-center gap-x-10 gap-y-4">
         {shown.map((partner, i) => (
           <li key={`${partner.name}-${i}`} className="flex h-10 items-center">
             {partner.logoUrl ? (

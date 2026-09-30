@@ -168,3 +168,13 @@ describe('placement groups', () => {
     ]);
   });
 });
+
+describe('countdown', () => {
+  it('counts whole days to the event and hides past or missing dates', async () => {
+    const { daysUntil } = await import('../format');
+    expect(daysUntil('2026-09-30', '2026-11-06')).toBe(37);
+    expect(daysUntil('2026-11-06', '2026-11-06')).toBe(0);
+    expect(daysUntil('2026-11-07', '2026-11-06')).toBeUndefined();
+    expect(daysUntil('2026-09-30', '')).toBeUndefined();
+  });
+});

@@ -8,18 +8,19 @@ interface HeadlineProps {
   className?: string;
 }
 
+/** Rose bar under the lit words, like a cue light under a scorebug value. */
+const CUE_BAR = 'bg-[linear-gradient(transparent_78%,var(--pd-cue)_78%,var(--pd-cue)_90%,transparent_90%)] [box-decoration-break:clone]';
+
 /**
- * Display headline in heavy caps. Words written in [square brackets] turn into
- * the accent: light italic in the cue colour, the page's one lit phrase.
+ * Sentence-case display headline. Words in [square brackets] get the page's
+ * one cue: a rose bar underneath, never a colour change on the letters.
  */
 export function Headline({ text, doc, as = 'h2', className = '' }: HeadlineProps) {
   const parts = fillTokens(text, doc).split(/(\[[^\]]*\])/g).filter(Boolean);
-  const classes = `text-balance font-heading font-extrabold uppercase leading-[0.95] tracking-[-0.035em] text-[color:var(--pd-ink)] ${className}`;
+  const classes = `text-balance font-heading font-extrabold leading-[0.98] tracking-[-0.035em] text-[color:var(--pd-ink)] ${className}`;
   const content = parts.map((part, i) =>
     part.startsWith('[') && part.endsWith(']') ? (
-      <em key={i} className="block font-normal italic tracking-[-0.02em] text-[color:var(--pd-cue)]">
-        {part.slice(1, -1)}
-      </em>
+      <span key={i} className={CUE_BAR}>{part.slice(1, -1)}</span>
     ) : (
       <span key={i}>{part}</span>
     ),

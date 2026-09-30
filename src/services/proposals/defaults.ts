@@ -188,9 +188,9 @@ function base(now: Date) {
     recognition: [...RECOGNITION],
     stats: STATS.map((s) => ({ ...s })),
     about: ABOUT,
-    closingLine: 'Let’s [build.]',
+    closingLine: 'Your [move].',
     closingNote:
-      'The platform is live and the players are already here. We would like {brand} to be part of what comes next.',
+      'The platform is live and the players are already on it. We would like {brand} on the stage with them.',
     images: { cover: '', page: '/proposals/tournament-page.jpg', stream: '/proposals/stream-overlay.jpg' },
   };
 }
@@ -200,7 +200,7 @@ export function createTournamentProposal(now = new Date()): TournamentProposal {
     ...base(now),
     kind: 'tournament',
     title: 'Genesis Stage 2 · Tournament partner',
-    coverHeadline: 'Be where the players [already are.]',
+    coverHeadline: '',
     coverLine: 'Genesis Stage 2 puts {brand} in front of competitive Valorant players, on the platform and on stream.',
     terms: [...TOURNAMENT_TERMS],
     event: {
@@ -232,7 +232,7 @@ export function createPlatformProposal(now = new Date()): PlatformProposal {
     ...base(now),
     kind: 'platform',
     title: 'Platform partner',
-    coverHeadline: 'Be where the players [already are.]',
+    coverHeadline: '',
     coverLine: 'Year-round presence where competitive players register, play and follow their results.',
     terms: [...PLATFORM_TERMS],
     audiences: PLATFORM_AUDIENCES.map((a) => ({ ...a })),

@@ -40,3 +40,12 @@ export function kindLabel(kind: Proposal['kind']): string {
 export function joinFacts(facts: Array<string | undefined>): string {
   return facts.filter((f): f is string => Boolean(f && f.trim())).join(' · ');
 }
+
+/** Whole days from one ISO date to another; undefined when either is missing or the event has passed. */
+export function daysUntil(fromIso: string, toIso: string): number | undefined {
+  const parse = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? Date.parse(`${iso}T00:00:00Z`) : NaN);
+  const from = parse(fromIso);
+  const to = parse(toIso);
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) return undefined;
+  return Math.round((to - from) / 86_400_000);
+}

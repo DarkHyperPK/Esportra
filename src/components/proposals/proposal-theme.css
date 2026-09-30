@@ -16,6 +16,7 @@
   --pd-slot-ink: #09090b;
   --pd-screen: #111114;
   --pd-number: #27272a;
+  --pd-drop: rgba(0, 0, 0, 0.65);
   --pd-glow: rgba(255, 255, 255, 0.05);
   --pd-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
   background: var(--pd-bg);
@@ -42,6 +43,7 @@
   --pd-slot-ink: #fafafa;
   --pd-screen: #f4f4f5;
   --pd-number: #e4e4e7;
+  --pd-drop: rgba(9, 9, 11, 0.22);
   --pd-glow: rgba(9, 9, 11, 0.035);
   --pd-shadow: 0 30px 60px -24px rgba(9, 9, 11, 0.35), 0 0 0 1px rgba(9, 9, 11, 0.08);
 }
@@ -75,6 +77,14 @@
 
 /* A product image lifted off the page. */
 .proposal-doc .pd-lift { box-shadow: var(--pd-shadow); }
+
+/* Shadow that survives clip-path: set on a wrapper of a cut panel. */
+.proposal-doc .pd-drop { filter: drop-shadow(0 28px 36px var(--pd-drop)); }
+
+/* Cut edges: one corner clipped at 45°, the brand's shape language. */
+.proposal-doc .pd-cut { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); }
+.proposal-doc .pd-cut-r { clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%, 0 22px); }
+.proposal-doc .pd-chip { clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
 
 /* The 45° notch: the one rare hero moment (the exclusive package). */
 .proposal-doc .pd-notch {
