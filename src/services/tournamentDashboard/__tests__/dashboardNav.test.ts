@@ -81,18 +81,22 @@ describe('buildDashboardNav', () => {
 describe('resolveDefaultSection', () => {
   const ownerSections = listVisibleSections(buildDashboardNav(owner));
 
-  it('opens drafts on basic info', () => {
-    expect(resolveDefaultSection('draft', ownerSections)).toBe('basic-info');
+  it('opens stageless drafts on format-stages', () => {
+    expect(resolveDefaultSection('draft', ownerSections, 0)).toBe('format-stages');
+  });
+
+  it('opens drafts with stages on basic info', () => {
+    expect(resolveDefaultSection('draft', ownerSections, 1)).toBe('basic-info');
   });
 
   it('opens live tournaments on the overview', () => {
-    expect(resolveDefaultSection('open', ownerSections)).toBe('overview');
-    expect(resolveDefaultSection('ongoing', ownerSections)).toBe('overview');
+    expect(resolveDefaultSection('open', ownerSections, 0)).toBe('overview');
+    expect(resolveDefaultSection('ongoing', ownerSections, 1)).toBe('overview');
   });
 
   it('falls back to overview when basic info is not visible', () => {
     const staffSections = listVisibleSections(buildDashboardNav(scoreStaff));
-    expect(resolveDefaultSection('draft', staffSections)).toBe('overview');
+    expect(resolveDefaultSection('draft', staffSections, 1)).toBe('overview');
   });
 });
 

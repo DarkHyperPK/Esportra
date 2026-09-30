@@ -21,7 +21,6 @@ import {
   CONTROL_ERROR_CLASS,
   Field,
   FormSection,
-  InlineNotice,
   PageIntro,
 } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
@@ -31,9 +30,8 @@ import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { cn } from '@/lib/utils';
 import { getDefaultTeamSize, getGameByName, getGameModeGroups, getGameModes } from '@/utils/gameFeatures';
 import type { TournamentTemplateDto } from '@/types/tournamentTemplate';
-import { BR_FORMATS, STAGE_TEMPLATES, formatStart, getNextSaturday } from './quickCreateOptions';
+import { formatStart, getNextSaturday } from './quickCreateOptions';
 import { QuickCreateSummary } from './QuickCreateSummary';
-import { isPowerOf2, nextPowerOf2 } from './utils';
 
 interface Props {
   template: TournamentTemplateDto;
@@ -62,25 +60,15 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
   const [freeTeams, setFreeTeams] = useState('');
   const [isOnline, setIsOnline] = useState(true);
   const [venueAddress, setVenueAddress] = useState('');
-  const [selectedStageTemplate, setSelectedStageTemplate] = useState(isBR ? 'battle_royale' : 'standard_cup');
-  const [brSubFormat, setBrSubFormat] = useState('static_groups');
-  const [publishImmediately, setPublishImmediately] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const effectiveNumTeams = chipSelected ?? (freeTeams !== '' ? parseInt(freeTeams, 10) || 0 : 0);
   const teamSize = getDefaultTeamSize(template.gameName, selectedMode);
   const teamNoun = isBR ? 'squads' : 'teams';
-  const stageTemplate = STAGE_TEMPLATES.find((t) => t.key === selectedStageTemplate);
-  const hasElimStage = stageTemplate?.stages.some((s) => s.format.endsWith('_elimination')) ?? false;
-  const showByeNote = hasElimStage && effectiveNumTeams >= 2 && !isPowerOf2(effectiveNumTeams);
-  const bracketSize = nextPowerOf2(effectiveNumTeams);
   const currentModeLabel =
     gameModes.find((m) => (m.key ?? m.value) === selectedMode || m.value === selectedMode)?.name ?? selectedMode;
   const activeGroupKey = gameModeGroups.find((g) => g.modes.some((m) => (m.key ?? m.value) === selectedMode || m.value === selectedMode))?.key ?? null;
-  const formatLabel = isBR
-    ? BR_FORMATS.find((f) => f.key === brSubFormat)?.label ?? 'Battle royale'
-    : stageTemplate?.label ?? 'Single elimination';
   const today = new Date().toISOString().split('T')[0];
 
   const clearError = (key: keyof Errors) => setErrors((prev) => {
@@ -116,16 +104,6 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
       const registrationDeadline = computedDeadline < minDeadline ? minDeadline : computedDeadline;
       const organizationId = await fetchCurrentOrganizationId();
 
-      const stages = isBR
-        ? [{ name: 'Main Stage', format: 'battle_royale', bestOf: template.defaultBestOf, capacity: effectiveNumTeams, stageOrder: 1, config: { br: { format: brSubFormat } } }]
-        : (stageTemplate?.stages ?? []).map((s, i) => ({
-          name: s.name,
-          format: s.format,
-          bestOf: template.defaultBestOf,
-          capacity: effectiveNumTeams,
-          stageOrder: i + 1,
-        }));
-
       const result = await apiClient.post<{ slug: string }>('/api/tournaments', {
         name: name.trim(),
         game: template.gameName,
@@ -136,8 +114,8 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
         startDate: startDateTime.toISOString(),
         endDate: endDateTime.toISOString(),
         registrationDeadline: registrationDeadline.toISOString(),
-        status: publishImmediately ? 'published' : 'draft',
-        isPublic: publishImmediately,
+        status: 'draft',
+        isPublic: false,
         organizationId: organizationId ?? undefined,
         entryFee: 0,
         prizePool: 0,
@@ -146,7 +124,7 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
         tournamentType: isBR ? 'battle_royale' : 'bracket',
         templateId: template.id,
         venueAddress: !isOnline && venueAddress.trim() ? venueAddress.trim() : undefined,
-        stages,
+        stages: [],
         mapPoolIds: [],
         settings: {},
       });
@@ -161,8 +139,8 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
       setIsSubmitting(false);
     }
   }, [
-    name, startDate, startTime, effectiveNumTeams, teamNoun, stageTemplate, brSubFormat, selectedMode,
-    isOnline, venueAddress, publishImmediately, template, teamSize, isBR, navigate, toast,
+    name, startDate, startTime, effectiveNumTeams, teamNoun, selectedMode,
+    isOnline, venueAddress, template, teamSize, isBR, navigate, toast,
   ]);
 
   return (
@@ -270,48 +248,7 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
                 />
               </div>
             </Field>
-            {showByeNote && (
-              <InlineNotice tone="neutral">
-                {effectiveNumTeams} {teamNoun} don't fill a bracket, so {bracketSize - effectiveNumTeams} get a first-round bye
-                (bracket of {bracketSize}).
-              </InlineNotice>
-            )}
           </FormSection>
-
-          {!isBR ? (
-            <FormSection title="Bracket style" description="How teams are knocked out. You can add or change stages later.">
-              <ChoiceGroup label="Bracket style" columns={2}>
-                {STAGE_TEMPLATES.map((tmpl) => (
-                  <ChoiceCard
-                    key={tmpl.key}
-                    selected={selectedStageTemplate === tmpl.key}
-                    onSelect={() => setSelectedStageTemplate(tmpl.key)}
-                    title={tmpl.label}
-                    description={tmpl.desc}
-                    meta={
-                      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                        {tmpl.stages.map((s) => s.name).join(' → ')}
-                      </span>
-                    }
-                  />
-                ))}
-              </ChoiceGroup>
-            </FormSection>
-          ) : (
-            <FormSection title="Lobby format" description="How squads are split across lobbies. Points decide the standings.">
-              <ChoiceGroup label="Lobby format" columns={2}>
-                {BR_FORMATS.map((format) => (
-                  <ChoiceCard
-                    key={format.key}
-                    selected={brSubFormat === format.key}
-                    onSelect={() => setBrSubFormat(format.key)}
-                    title={format.label}
-                    description={format.desc}
-                  />
-                ))}
-              </ChoiceGroup>
-            </FormSection>
-          )}
 
           <FormSection title="Where it's played">
             <ChoiceGroup label="Where it's played" columns={2}>
@@ -343,30 +280,13 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
             )}
           </FormSection>
 
-          <FormSection title="After you create it">
-            <ChoiceGroup label="After you create it" columns={2}>
-              <ChoiceCard
-                selected={!publishImmediately}
-                onSelect={() => setPublishImmediately(false)}
-                title="Save as draft"
-                description="Add prizes and branding first. Only you can see it."
-              />
-              <ChoiceCard
-                selected={publishImmediately}
-                onSelect={() => setPublishImmediately(true)}
-                title="Publish now"
-                description="Listed publicly and open for sign-ups straight away."
-              />
-            </ChoiceGroup>
-          </FormSection>
-
           <ActionBar
             sticky
             className="mt-2"
             status="You can change all of this later."
             end={
               <CommandButton variant="primary" size="md" slide onClick={handleSubmit} disabled={isSubmitting} className="min-w-[200px]">
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Creating" /> : publishImmediately ? 'Create and publish' : 'Create draft'}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Creating" /> : 'Create draft'}
               </CommandButton>
             }
           />
@@ -383,10 +303,8 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
               startLabel={formatStart(startDate, startTime)}
               teams={effectiveNumTeams}
               teamNoun={teamNoun}
-              formatLabel={formatLabel}
               isOnline={isOnline}
               venue={venueAddress}
-              publish={publishImmediately}
             />
           </div>
         </div>

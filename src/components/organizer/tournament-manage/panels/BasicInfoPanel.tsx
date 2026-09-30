@@ -6,11 +6,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Globe, MapPin } from 'lucide-react';
 import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CONTROL_CLASS, Field, FORM_MEASURE_CLASS } from '@/components/ui/kit';
+import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FORM_MEASURE_CLASS } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { PanelSaveBar } from '../PanelSaveBar';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +44,8 @@ interface FormState {
   startDate: string;
   endDate: string;
   region: string;
+  isOnline: boolean;
+  venueAddress: string;
 }
 
 function toDatetimeLocal(isoString: string | null | undefined): string {
@@ -69,6 +71,8 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
     startDate: toDatetimeLocal(tournament.start_date),
     endDate: toDatetimeLocal(tournament.end_date),
     region: tournament.region || '',
+    isOnline: !tournament.venue_address,
+    venueAddress: tournament.venue_address ?? '',
   };
 
   const [form, setForm] = useState<FormState>(initialState);
@@ -79,6 +83,8 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
     startDate: toDatetimeLocal(tournament.start_date),
     endDate: toDatetimeLocal(tournament.end_date),
     region: tournament.region || '',
+    isOnline: !tournament.venue_address,
+    venueAddress: tournament.venue_address ?? '',
   });
 
   // Reset form when tournament changes
@@ -93,7 +99,9 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
     form.rules !== (tournament.rules ?? '') ||
     form.startDate !== toDatetimeLocal(tournament.start_date) ||
     form.endDate !== toDatetimeLocal(tournament.end_date) ||
-    form.region !== (tournament.region || '');
+    form.region !== (tournament.region || '') ||
+    form.isOnline !== !tournament.venue_address ||
+    form.venueAddress !== (tournament.venue_address ?? '');
 
   // Signal shell so the dirty-state guard can intercept nav changes
   useEffect(() => {
@@ -116,6 +124,8 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
         region: form.region.trim() || undefined,
+        venueAddress: form.isOnline ? undefined : (form.venueAddress.trim() || undefined),
+        clearVenueAddress: form.isOnline,
       });
       toast({ title: 'Saved', description: 'Players see the new details straight away.' });
       onSave();
@@ -170,6 +180,35 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
             </div>
+          </Field>
+
+          <Field label="Where it's played">
+            <ChoiceGroup label="Where it's played" columns={2}>
+              <ChoiceCard
+                selected={form.isOnline}
+                onSelect={() => setForm((s) => ({ ...s, isOnline: true }))}
+                icon={<Globe className="h-5 w-5" aria-hidden />}
+                title="Online"
+                description="Players join from home."
+              />
+              <ChoiceCard
+                selected={!form.isOnline}
+                onSelect={() => setForm((s) => ({ ...s, isOnline: false }))}
+                icon={<MapPin className="h-5 w-5" aria-hidden />}
+                title="LAN"
+                description="Everyone plays at one venue."
+              />
+            </ChoiceGroup>
+            {!form.isOnline && (
+              <div className="mt-3">
+                <Input
+                  placeholder="Street, city"
+                  value={form.venueAddress}
+                  onChange={(e) => setForm((s) => ({ ...s, venueAddress: e.target.value }))}
+                  className={CONTROL_CLASS}
+                />
+              </div>
+            )}
           </Field>
 
           <Field label="Game" lockedReason={isFieldLocked("game") ? "The game is locked once a tournament is created." : undefined}>

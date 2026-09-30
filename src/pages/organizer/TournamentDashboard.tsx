@@ -185,7 +185,7 @@ const TournamentDashboard = () => {
   }), [slug, isBR, tournament?.entry_fee, permissions, disputeBadgeCount]);
   const visibleSections = useMemo(() => listVisibleSections(navGroups), [navGroups]);
   const reachable = useMemo(() => listReachableTargets(navGroups), [navGroups]);
-  const defaultSection = resolveDefaultSection(tournament?.status ?? '', visibleSections);
+  const defaultSection = resolveDefaultSection(tournament?.status ?? '', visibleSections, stages.length);
   const requestedTab = searchParams.get('tab');
   const activeTab = resolveActiveSection(requestedTab, visibleSections, defaultSection);
 

@@ -132,11 +132,18 @@ export function listReachableTargets(groups: DashboardNavGroup[]): Set<string> {
 }
 
 /**
- * Drafts open on Basic info (the setup journey after Quick Create);
- * everything else opens on the Overview, where the action queue lives.
+ * New drafts with no stages land on Format & Stages so the organizer
+ * knows the first thing to configure. Other drafts land on Basic info.
+ * Live events land on Overview where the action queue lives.
  */
-export function resolveDefaultSection(status: string, visible: DashboardSectionId[]): DashboardSectionId {
-  return status === 'draft' && visible.includes('basic-info') ? 'basic-info' : 'overview';
+export function resolveDefaultSection(
+  status: string,
+  visible: DashboardSectionId[],
+  stageCount: number,
+): DashboardSectionId {
+  if (status === 'draft' && stageCount === 0 && visible.includes('format-stages')) return 'format-stages';
+  if (status === 'draft' && visible.includes('basic-info')) return 'basic-info';
+  return 'overview';
 }
 
 /** Falls back to the default panel when the requested one is unknown or not allowed. */

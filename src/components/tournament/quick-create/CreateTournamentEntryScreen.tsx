@@ -51,7 +51,7 @@ export const CreateTournamentEntryScreen: React.FC<Props> = ({ onQuickTemplate, 
         meta={
           <PathFacts
             time="About 1 minute"
-            items={['Game rules and series length preset', 'Pick a bracket style and team count', 'Prizes and branding later, in the dashboard']}
+            items={['Game rules and series length preset', 'Name it, set the date, choose your team size', 'Prizes and branding later, in the dashboard']}
           />
         }
         className="min-h-[300px]"

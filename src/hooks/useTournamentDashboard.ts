@@ -53,6 +53,7 @@ export interface DashboardTournament {
     payment_instructions?: string | null;
     manual_payout_notes?: string | null;
     check_in_window_minutes?: number | null;
+    venue_address?: string | null;
     // Legacy/Computed fields
     date?: string;
     time?: string;

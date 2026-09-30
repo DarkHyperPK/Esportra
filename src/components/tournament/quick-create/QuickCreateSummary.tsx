@@ -9,10 +9,8 @@ interface QuickCreateSummaryProps {
   startLabel: string | null;
   teams: number;
   teamNoun: string;
-  formatLabel: string;
   isOnline: boolean;
   venue: string;
-  publish: boolean;
 }
 
 /** Live preview of the draft Quick start will create. */
@@ -35,9 +33,8 @@ export function QuickCreateSummary(props: QuickCreateSummaryProps) {
           value: props.teams >= 2 ? `${props.teams} ${props.teamNoun} · ${props.teamSize}v${props.teamSize}` : 'Choose a team count',
           muted: props.teams < 2,
         },
-        { label: 'Format', value: props.formatLabel },
         { label: 'Where', value: props.isOnline ? 'Online' : props.venue.trim() || 'LAN · venue to be added' },
-        { label: 'Visibility', value: props.publish ? 'Public, open for sign-ups' : 'Draft, only you can see it' },
+        { label: 'Visibility', value: 'Draft, only you can see it' },
       ]}
       footer={
         <p className="text-xs leading-relaxed text-zinc-500">
