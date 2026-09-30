@@ -37,6 +37,17 @@ export const PROSPECT_SECTION: SectionSpec = {
   ],
 };
 
+export const COVER_SECTION: SectionSpec = {
+  id: 'cover',
+  title: 'Cover and closing lines',
+  description: 'The first and last thing a reader sees. ' + TOKEN_HINT,
+  fields: [
+    { kind: 'text', path: 'coverHeadline', label: 'Cover headline', hint: 'Tournament proposals use the event name when this is empty.', max: 120 },
+    { kind: 'text', path: 'coverLine', label: 'Cover line', multiline: true, max: 240 },
+    { kind: 'text', path: 'closingLine', label: 'Closing line', hint: 'Headline of the last page.', max: 200 },
+  ],
+};
+
 export const ABOUT_SECTION: SectionSpec = {
   id: 'about',
   title: 'About Esportra and the numbers',

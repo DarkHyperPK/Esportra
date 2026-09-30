@@ -22,14 +22,14 @@ export function PlacementMatrix({ doc }: { doc: TournamentProposal }) {
         <tbody>
           {doc.zoneRows.map((row, r) => (
             <tr key={`${row.zone}-${r}`}>
-              <th scope="row" className="border-b border-[color:var(--pd-line)] py-3.5 pr-4 text-[14px] font-medium text-[color:var(--pd-ink)]">
+              <th scope="row" className="border-b border-[color:var(--pd-line)] py-3.5 pr-4 text-[14px] font-medium print:py-1.5 print:text-[13px] text-[color:var(--pd-ink)]">
                 {row.zone}
               </th>
               {doc.tiers.map((tier, c) => {
                 const cell = (row.cells[c] ?? '—').trim();
                 const none = NONE.has(cell);
                 return (
-                  <td key={tier.name} className={`border-b border-[color:var(--pd-line)] px-3 py-3.5 text-[13px] ${none ? 'text-[color:var(--pd-hint)]' : 'text-[color:var(--pd-label)]'}`}>
+                  <td key={tier.name} className={`border-b border-[color:var(--pd-line)] px-3 py-3.5 text-[13px] print:py-1.5 print:text-[12px] ${none ? 'text-[color:var(--pd-hint)]' : 'text-[color:var(--pd-label)]'}`}>
                     {none ? <span aria-label="Not included">—</span> : cell}
                   </td>
                 );

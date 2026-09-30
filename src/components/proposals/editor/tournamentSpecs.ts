@@ -43,7 +43,7 @@ export const TOURNAMENT_SECTIONS: SectionSpec[] = [
         { kind: 'text', path: 'tagline', label: 'Tagline', max: 120 },
         { kind: 'text', path: 'availability', label: 'Availability', max: 80 },
         { kind: 'toggle', path: 'includesPrevious', label: 'Includes the tier above it', hint: 'Shows "Everything in …, plus".' },
-        { kind: 'toggle', path: 'featured', label: 'Highlight this package', hint: 'Lifts it one tone. No colour change.' },
+        { kind: 'toggle', path: 'featured', label: 'Feature this package', hint: 'Sets it apart as a full-width band with the notch. Use it for one package only.' },
         { kind: 'list', path: 'features', label: 'What it adds', max: 200 },
       ],
     }],

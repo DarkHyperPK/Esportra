@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { proposalSchema, type Proposal } from '@/schemas/proposal';
 import { appendAtPath, moveAtPath, removeAtPath, setAtPath } from '@/services/proposals/path';
@@ -16,6 +16,14 @@ export function useProposalEditor(id: string | undefined) {
   const { get, save, available } = useProposalHistory();
   const [draft, setDraft] = useState<Proposal | undefined>(() => (id ? get(id) : undefined));
   const [dirty, setDirty] = useState(false);
+
+  // Flush a pending change when the editor closes, so leaving within the autosave pause loses nothing.
+  const pending = useRef<{ draft: Proposal | undefined; dirty: boolean }>({ draft, dirty });
+  pending.current = { draft, dirty };
+  useEffect(() => () => {
+    const { draft: last, dirty: unsaved } = pending.current;
+    if (unsaved && last) save(last);
+  }, [save]);
 
   useEffect(() => {
     if (!dirty || !draft) return undefined;

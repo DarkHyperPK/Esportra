@@ -7,15 +7,14 @@ interface AboutSectionProps {
   doc: Proposal;
   title: string;
   eyebrow: string;
-  number?: string;
+  number: string;
 }
 
 /** Who Esportra is, the numbers that have already happened, and recognition. */
-export function AboutSection({ doc, title, eyebrow, number = '01' }: AboutSectionProps) {
+export function AboutSection({ doc, title, eyebrow, number }: AboutSectionProps) {
   const recognition = doc.recognition.filter((r) => r.trim());
   return (
-    <DocSection number={number} eyebrow={eyebrow} title={title}>
-      {doc.about && <p className={`${BODY} mb-10 max-w-2xl text-base md:text-lg`}>{doc.about}</p>}
+    <DocSection number={number} anchor="about" eyebrow={eyebrow} title={title} standfirst={doc.about || undefined}>
       <StatsGrid stats={doc.stats} />
       {recognition.length > 0 && (
         <div className="pd-avoid mt-10">

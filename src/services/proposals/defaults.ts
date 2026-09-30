@@ -191,6 +191,7 @@ function base(now: Date) {
     recognition: [...RECOGNITION],
     stats: STATS.map((s) => ({ ...s })),
     about: ABOUT,
+    closingLine: 'Every match, official.',
   };
 }
 
@@ -199,6 +200,8 @@ export function createTournamentProposal(now = new Date()): TournamentProposal {
     ...base(now),
     kind: 'tournament',
     title: 'Genesis Stage 2 · Tournament partner',
+    coverHeadline: '',
+    coverLine: 'Put {brand} inside the match, not beside it.',
     terms: [...TOURNAMENT_TERMS],
     event: {
       name: 'Esportra Genesis Stage 2',
@@ -229,6 +232,8 @@ export function createPlatformProposal(now = new Date()): PlatformProposal {
     ...base(now),
     kind: 'platform',
     title: 'Platform partner',
+    coverHeadline: 'Be part of the match, not the ad break.',
+    coverLine: 'Year-round presence where competitive players register, play and follow their results.',
     terms: [...PLATFORM_TERMS],
     audiences: PLATFORM_AUDIENCES.map((a) => ({ ...a })),
     tiers: PLATFORM_TIERS.map((t) => ({ ...t, points: [...t.points] })),

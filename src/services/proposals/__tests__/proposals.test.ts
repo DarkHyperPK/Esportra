@@ -117,3 +117,42 @@ describe('storage', () => {
     expect(mergeImported([doc], [copy])).toHaveLength(2);
   });
 });
+
+describe('placements', () => {
+  it('maps tournament rows to drawn zones with the first tier that includes them', async () => {
+    const { resolveZoneSlots } = await import('../placements');
+    const slots = resolveZoneSlots(createTournamentProposal(NOW));
+    expect(slots.map((s) => [s.key, s.from])).toEqual([
+      ['ticker', 'Title'], ['header', 'Platinum'], ['sidebar', 'Gold'],
+      ['badge', 'Silver'], ['matchbar', 'Platinum'], ['overlay', 'Silver'],
+    ]);
+    expect(slots[0].marker).toBe('01');
+  });
+
+  it('maps platform zones and leaves out zones the document does not offer', async () => {
+    const { resolveZoneSlots } = await import('../placements');
+    const doc = createPlatformProposal(NOW);
+    expect(resolveZoneSlots(doc).find((s) => s.key === 'sidebar')?.from).toBe('Ascendant');
+    const fewer = { ...doc, zones: doc.zones.filter((z) => z.name === 'Ticker') };
+    expect(resolveZoneSlots(fewer).map((s) => s.key)).toEqual(['ticker']);
+  });
+});
+
+describe('readiness', () => {
+  it('flags a missing brand, logo-less partners and mismatched placement rows', async () => {
+    const { checkReadiness } = await import('../readiness');
+    const doc = createTournamentProposal(NOW);
+    const sections = checkReadiness(doc).map((i) => i.sectionId);
+    expect(sections).toContain('prospect');
+    expect(sections).toContain('partners');
+    const broken = { ...doc, zoneRows: [{ zone: 'Sidebar', cells: ['—'] }] };
+    expect(checkReadiness(broken).some((i) => i.sectionId === 'placements')).toBe(true);
+  });
+
+  it('reads older saved proposals by filling the new fields', () => {
+    const { closingLine: _c, coverHeadline: _h, coverLine: _l, ...legacy } = createPlatformProposal(NOW);
+    const parsed = proposalSchema.parse(legacy);
+    expect(parsed.closingLine).toBe('Every match, official.');
+    expect(parsed.kind === 'platform' && parsed.coverHeadline).toBe('Be part of the match, not the ad break.');
+  });
+});

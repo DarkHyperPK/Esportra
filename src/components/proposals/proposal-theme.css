@@ -10,6 +10,11 @@
   --pd-strong-line: rgba(255, 255, 255, 0.22);
   --pd-cue: #f43f5e;
   --pd-logo-filter: none;
+  --pd-texture-filter: none;
+  --pd-texture-opacity: 1;
+  --pd-slot: #fafafa;
+  --pd-slot-ink: #09090b;
+  --pd-screen: #111114;
   background: var(--pd-bg);
   color: var(--pd-ink);
   -webkit-print-color-adjust: exact;
@@ -27,23 +32,53 @@
   --pd-strong-line: rgba(9, 9, 11, 0.4);
   --pd-cue: #e11d48;
   --pd-logo-filter: brightness(0);
+  /* The stage texture inverted: pale shards on paper. */
+  --pd-texture-filter: invert(1);
+  --pd-texture-opacity: 0.55;
+  --pd-slot: #09090b;
+  --pd-slot-ink: #fafafa;
+  --pd-screen: #f4f4f5;
 }
 
 .proposal-doc .pd-logo { filter: var(--pd-logo-filter); }
 
-/* Stage only: a quiet hairline field behind the cover. */
-.proposal-doc[data-theme='stage'] .pd-cover {
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    radial-gradient(ellipse at 15% 0%, rgba(255, 255, 255, 0.06), transparent 55%);
-  background-size: 96px 96px, 96px 96px, auto;
+/* Cover: the brand's streak-shard texture, faded toward the text side. */
+.proposal-doc .pd-cover { position: relative; isolation: isolate; overflow: hidden; }
+.proposal-doc .pd-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: url('/proposals/streak-shards.svg') center / cover no-repeat;
+  filter: var(--pd-texture-filter);
+  opacity: var(--pd-texture-opacity);
+}
+.proposal-doc .pd-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg, var(--pd-bg) 18%, transparent 70%),
+    linear-gradient(to top, var(--pd-bg) 4%, transparent 40%);
+}
+
+/* The 45° notch: the one rare hero moment (the exclusive package). */
+.proposal-doc .pd-notch {
+  clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
+}
+
+/* A partner's placement in the mockups: white speaks. */
+.proposal-doc .pd-slot {
+  background: var(--pd-slot);
+  color: var(--pd-slot-ink);
 }
 
 @media print {
   @page { size: A4; margin: 0; }
   .proposal-doc .pd-section {
     min-height: 296mm;
+    display: flex;
+    flex-direction: column;
     break-after: page;
     break-inside: avoid;
     padding: 16mm 14mm;

@@ -1,26 +1,30 @@
 import type { TournamentProposal } from '@/schemas/proposal';
-import { fillTokens } from '@/services/proposals/format';
+import { fillTokens, joinFacts } from '@/services/proposals/format';
 import { DocSection } from './DocSection';
-import { BODY, CAPTION, CELL, CELL_RAISED, GRID, NUMBER } from './docStyles';
+import { CAPTION, CELL, GRID, NUMBER } from './docStyles';
+import { TierBand } from './TierBand';
 
-function TierCard({ doc, index }: { doc: TournamentProposal; index: number }) {
+type Tier = TournamentProposal['tiers'][number];
+
+function leadIn(tiers: Tier[], index: number): string | undefined {
+  const previous = index > 0 ? tiers[index - 1] : undefined;
+  return tiers[index].includesPrevious && previous ? `Everything in ${previous.name}, plus` : undefined;
+}
+
+function TierColumn({ doc, index }: { doc: TournamentProposal; index: number }) {
   const tier = doc.tiers[index];
-  const previous = index > 0 ? doc.tiers[index - 1] : undefined;
-  const features = tier.features.filter((f) => f.trim());
+  const lead = leadIn(doc.tiers, index);
   return (
-    <article className={`${tier.featured ? CELL_RAISED : CELL} pd-avoid flex flex-col p-6 md:p-7 print:p-4`}>
-      <p className={CAPTION}>{tier.name}</p>
-      <p className="mt-1 min-h-[2.75rem] text-[13px] text-[color:var(--pd-muted)]">{tier.tagline}</p>
-      <p className={`${CAPTION} mt-6`}>{tier.currency}</p>
-      <p className={`${NUMBER} text-4xl leading-none lg:text-[2rem] print:text-[1.6rem]`}>{tier.price.toLocaleString('en-US')}</p>
-      <p className={`${CAPTION} mt-3`}>{tier.availability}</p>
-      <div className="mt-6 flex-1 border-t border-[color:var(--pd-line)] pt-5">
-        {tier.includesPrevious && previous && (
-          <p className={`${CAPTION} mb-3`}>Everything in {previous.name}, plus</p>
-        )}
-        <ul className="space-y-3">
-          {features.map((feature, i) => (
-            <li key={`${i}-${feature}`} className="flex gap-3 text-[14px] leading-snug text-[color:var(--pd-label)]">
+    <article className={`${CELL} pd-avoid flex flex-col p-6 md:p-7 print:p-5`}>
+      <p className={CAPTION}>{joinFacts([tier.name, tier.availability])}</p>
+      <p className="mt-2 text-[14px] leading-snug text-[color:var(--pd-muted)]">{tier.tagline}</p>
+      <p className={`${CAPTION} mt-8 print:mt-5`}>{tier.currency}</p>
+      <p className={`${NUMBER} text-[2.5rem] leading-none print:text-[2rem]`}>{tier.price.toLocaleString('en-US')}</p>
+      <div className="mt-7 flex-1 border-t border-[color:var(--pd-line)] pt-5 print:mt-5 print:pt-4">
+        {lead && <p className={`${CAPTION} mb-3`}>{lead}</p>}
+        <ul className="space-y-3 print:space-y-2">
+          {tier.features.filter((f) => f.trim()).map((feature, i) => (
+            <li key={`${i}-${feature}`} className="flex gap-3 text-[14px] leading-snug print:text-[12.5px] text-[color:var(--pd-label)]">
               <span aria-hidden className="mt-2 h-1 w-1 shrink-0 bg-[color:var(--pd-hint)]" />
               {fillTokens(feature, doc)}
             </li>
@@ -31,25 +35,42 @@ function TierCard({ doc, index }: { doc: TournamentProposal; index: number }) {
   );
 }
 
-const LG_COLS: Record<number, string> = {
-  1: 'lg:grid-cols-1 print:grid-cols-1',
-  2: 'lg:grid-cols-2 print:grid-cols-2',
-  3: 'lg:grid-cols-3 print:grid-cols-3',
-  4: 'lg:grid-cols-4 print:grid-cols-4',
-  5: 'lg:grid-cols-5 print:grid-cols-5',
-  6: 'lg:grid-cols-3 print:grid-cols-3',
+const COUNT_WORDS: Record<number, string> = { 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six' };
+
+const COLS: Record<number, string> = {
+  1: 'md:grid-cols-1', 2: 'md:grid-cols-2 print:grid-cols-2', 3: 'md:grid-cols-3 print:grid-cols-3',
+  4: 'md:grid-cols-2 lg:grid-cols-4 print:grid-cols-4', 5: 'md:grid-cols-3 print:grid-cols-3',
 };
 
-export function TournamentPackages({ doc }: { doc: TournamentProposal }) {
+/** Standard packages side by side on the scoreboard grid; the featured one as a band beneath. */
+export function TournamentPackages({ doc, number }: { doc: TournamentProposal; number: string }) {
   if (doc.tiers.length === 0) return null;
+  const standard = doc.tiers.map((t, i) => ({ t, i })).filter(({ t }) => !t.featured);
+  const featured = doc.tiers.map((t, i) => ({ t, i })).filter(({ t }) => t.featured);
   return (
-    <DocSection number="03" eyebrow="Packages" title="Four ways to be part of it.">
-      <p className={`${BODY} -mt-6 mb-10 max-w-2xl md:-mt-10`}>
-        Each package covers {doc.event.name || 'the tournament'} and lists exactly what you receive.
-      </p>
-      <div className={`${GRID} grid-cols-1 sm:grid-cols-2 ${LG_COLS[doc.tiers.length] ?? 'lg:grid-cols-4 print:grid-cols-4'}`}>
-        {doc.tiers.map((tier, i) => (
-          <TierCard key={`${tier.name}-${i}`} doc={doc} index={i} />
+    <DocSection
+      number={number}
+      anchor="tiers"
+      eyebrow="Packages"
+      title={`${COUNT_WORDS[doc.tiers.length] ?? doc.tiers.length} ${doc.tiers.length === 1 ? 'way' : 'ways'} to be part of it.`}
+      standfirst={`Each package covers ${doc.event.name || 'the tournament'} and lists exactly what you receive.`}
+    >
+      {standard.length > 0 && (
+        <div className={`${GRID} grid-cols-1 ${COLS[standard.length] ?? 'md:grid-cols-3 print:grid-cols-3'}`}>
+          {standard.map(({ i }) => <TierColumn key={i} doc={doc} index={i} />)}
+        </div>
+      )}
+      <div className="mt-6 space-y-6 print:mt-4">
+        {featured.map(({ t, i }) => (
+          <TierBand
+            key={i}
+            caption={t.availability}
+            name={t.name}
+            summary={t.tagline}
+            price={{ currency: t.currency, amount: t.price }}
+            leadIn={leadIn(doc.tiers, i)}
+            points={t.features.map((f) => fillTokens(f, doc))}
+          />
         ))}
       </div>
     </DocSection>

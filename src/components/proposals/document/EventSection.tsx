@@ -14,12 +14,11 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 /** The event's facts (empty ones are skipped) and who the partner reaches. */
-export function EventSection({ doc }: { doc: TournamentProposal }) {
+export function EventSection({ doc, number }: { doc: TournamentProposal; number: string }) {
   const { event } = doc;
   const points = doc.audiencePoints.filter((p) => p.trim());
   return (
-    <DocSection number="02" eyebrow="The event" title={event.name || 'The event'}>
-      {event.edition && <p className={`${BODY} -mt-6 mb-10 md:-mt-10`}>{event.edition}</p>}
+    <DocSection number={number} anchor="event" eyebrow="The event" title={event.name || 'The event'} standfirst={event.edition || undefined}>
       <div className={`${FLEX_GRID} pd-avoid`}>
         <Fact label="Game" value={event.game} />
         <Fact label="Starts" value={formatLongDate(event.startDate)} />

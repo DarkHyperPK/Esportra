@@ -1,7 +1,7 @@
 import type { Proposal } from '@/schemas/proposal';
-import { brandLabel, formatLongDate, joinFacts } from '@/services/proposals/format';
+import { brandLabel, fillTokens, formatLongDate, joinFacts, kindLabel } from '@/services/proposals/format';
 import { BrandMark } from './BrandMark';
-import { CAPTION, CELL, DISPLAY, GRID, TITLE } from './docStyles';
+import { CAPTION, CELL, DISPLAY, FLEX_GRID, NUMBER, TITLE } from './docStyles';
 
 export interface CoverFact {
   label: string;
@@ -10,46 +10,69 @@ export interface CoverFact {
 
 interface CoverSectionProps {
   doc: Proposal;
-  kicker: string;
   headline: string;
+  line: string;
   facts: CoverFact[];
 }
 
-/** Cover: one hero (the headline), a lower-third naming the prospect, three facts on the scoreboard grid. */
-export function CoverSection({ doc, kicker, headline, facts }: CoverSectionProps) {
+/**
+ * Cinematic cover: the brand texture, one line at hero scale, then who it is
+ * for and who sent it, and the three facts a reader needs first.
+ */
+export function CoverSection({ doc, headline, line, facts }: CoverSectionProps) {
   const shown = facts.filter((f) => f.value.trim());
-  const detail = joinFacts([doc.prospect.industry, doc.prospect.attention && `Attn: ${doc.prospect.attention}`]);
+  const detail = joinFacts([doc.prospect.industry, doc.prospect.attention && `Attn ${doc.prospect.attention}`]);
   return (
-    <section className="pd-section pd-cover flex min-h-[88vh] flex-col justify-between px-5 py-10 sm:px-10 md:px-16 md:py-14">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
+    <section
+      data-doc-section="cover"
+      className="pd-section pd-cover flex min-h-[92vh] flex-col px-5 py-8 sm:px-10 md:px-16 md:py-12"
+    >
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
         <BrandMark />
-        <span className={CAPTION}>{formatLongDate(doc.preparedOn)}</span>
+        <span className={`${CAPTION} text-right`}>{joinFacts([kindLabel(doc.kind), formatLongDate(doc.preparedOn)])}</span>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl py-16 md:py-24">
-        <p className={`${CAPTION} mb-6 flex items-center gap-3`}>
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-16">
+        <p className={`${CAPTION} mb-7 flex items-center gap-3`}>
           <span aria-hidden className="h-0.5 w-6 bg-[color:var(--pd-cue)]" />
-          {kicker}
+          Partner proposal
         </p>
-        <h1 className={`${DISPLAY} max-w-4xl text-5xl leading-[0.98] sm:text-6xl md:text-7xl`}>{headline}</h1>
-
-        <div className="mt-14 border-l-2 border-[color:var(--pd-strong-line)] pl-5">
-          <p className={CAPTION}>Prepared for</p>
-          <p className={`${TITLE} mt-2 text-3xl md:text-4xl`}>{brandLabel(doc)}</p>
-          {detail && <p className={`${CAPTION} mt-3`}>{detail}</p>}
-        </div>
+        <h1 className={`${DISPLAY} max-w-4xl text-balance text-[3.25rem] leading-[0.94] tracking-[-0.03em] sm:text-7xl md:text-[6.5rem]`}>
+          {headline}
+        </h1>
+        {line && (
+          <p className="mt-8 max-w-xl text-lg leading-relaxed text-[color:var(--pd-label)] md:text-[1.35rem]">
+            {fillTokens(line, doc)}
+          </p>
+        )}
       </div>
 
-      {shown.length > 0 && (
-        <div className={`${GRID} mx-auto w-full max-w-5xl`} style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}>
-          {shown.map((fact) => (
-            <div key={fact.label} className={`${CELL} p-4 md:p-6`}>
-              <p className={CAPTION}>{fact.label}</p>
-              <p className={`${TITLE} mt-2 text-base md:text-xl`}>{fact.value}</p>
-            </div>
-          ))}
+      <div className="mx-auto w-full max-w-5xl">
+        <div className="mb-8 grid gap-8 sm:grid-cols-2">
+          <div className="border-l-2 border-[color:var(--pd-strong-line)] pl-5">
+            <p className={CAPTION}>Prepared for</p>
+            <p className={`${TITLE} mt-2 text-3xl md:text-4xl`}>{brandLabel(doc)}</p>
+            {detail && <p className={`${CAPTION} mt-3`}>{detail}</p>}
+          </div>
+          <div className="border-l-2 border-[color:var(--pd-line)] pl-5 sm:justify-self-end">
+            <p className={CAPTION}>Prepared by</p>
+            <p className={`${TITLE} mt-2 text-lg`}>{doc.sender.name}</p>
+            <p className={`${CAPTION} mt-2`}>{joinFacts([doc.sender.title, doc.sender.company])}</p>
+          </div>
         </div>
-      )}
+        {shown.length > 0 && (
+          <div className={FLEX_GRID}>
+            {shown.map((fact) => (
+              <div key={fact.label} className={`${CELL} min-w-[150px] flex-1 p-4 md:p-5`}>
+                <p className={CAPTION}>{fact.label}</p>
+                <p className={/^\d[\d,.]*$/.test(fact.value.trim()) ? `${NUMBER} mt-2 text-4xl leading-none` : `${TITLE} mt-2 text-base md:text-lg`}>
+                  {fact.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

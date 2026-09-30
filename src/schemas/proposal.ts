@@ -71,11 +71,15 @@ const commonShape = {
   partners: z.array(partnerSchema).max(12),
   recognition: z.array(text(200)).max(8),
   terms: z.array(text(300)).max(12),
+  // Added later: defaults keep proposals saved before these fields readable.
+  closingLine: text(200).default('Every match, official.'),
 };
 
 export const tournamentProposalSchema = z.object({
   ...commonShape,
   kind: z.literal('tournament'),
+  coverHeadline: text(120).default(''),
+  coverLine: text(240).default('Put {brand} inside the match, not beside it.'),
   event: eventSchema,
   about: text(1200),
   stats: z.array(statSchema).max(6),
@@ -90,6 +94,8 @@ export const tournamentProposalSchema = z.object({
 export const platformProposalSchema = z.object({
   ...commonShape,
   kind: z.literal('platform'),
+  coverHeadline: text(120).default('Be part of the match, not the ad break.'),
+  coverLine: text(240).default('Year-round presence where competitive players register, play and follow their results.'),
   about: text(1200),
   stats: z.array(statSchema).max(6),
   audiences: z.array(audienceSchema).max(6),

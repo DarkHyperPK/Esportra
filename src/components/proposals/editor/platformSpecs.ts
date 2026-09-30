@@ -29,7 +29,7 @@ export const PLATFORM_SECTIONS: SectionSpec[] = [
         { kind: 'text', path: 'name', label: 'Name', max: 40 },
         { kind: 'text', path: 'label', label: 'Label', max: 60 },
         { kind: 'text', path: 'summary', label: 'Summary', multiline: true, max: 300 },
-        { kind: 'toggle', path: 'featured', label: 'Highlight this level', hint: 'Lifts it one tone. No colour change.' },
+        { kind: 'toggle', path: 'featured', label: 'Feature this level', hint: 'Sets it apart as a full-width band with the notch. Use it for one level only.' },
         { kind: 'list', path: 'points', label: 'What it includes', max: 200 },
       ],
     }],
