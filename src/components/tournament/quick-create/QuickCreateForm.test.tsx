@@ -148,42 +148,27 @@ describe('nextPowerOf2', () => {
   });
 });
 
-// ── Bye-note visibility ───────────────────────────────────────────────────────
+// ── Form sections ─────────────────────────────────────────────────────────────
 
-describe('QuickCreateForm bye-note visibility', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('QuickCreateForm sections', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('QuickCreateForm_NoBracketStyleSection', () => {
+    renderForm();
+    expect(screen.queryByText(/bracket style/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lobby format/i)).not.toBeInTheDocument();
   });
 
-  it('QuickCreateForm_ShowsByeNote_WhenNonPowerOf2TeamsWithSE', () => {
+  it('QuickCreateForm_NoPublishOption', () => {
     renderForm();
-    // Standard Cup (SE) is pre-selected, first chip (8) is pre-selected.
-    // Type 6 in free input — clears chip, sets non-power-of-2 count.
-    fireEvent.change(screen.getByPlaceholderText(/or type a number/i), {
-      target: { value: '6' },
-    });
-
-    expect(screen.getByText(/first-round bye/i)).toBeInTheDocument();
+    expect(screen.queryByText(/publish now/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/after you create it/i)).not.toBeInTheDocument();
   });
 
-  it('QuickCreateForm_HidesByeNote_WhenPowerOf2Teams', () => {
+  it('QuickCreateForm_NoByeNote', () => {
     renderForm();
-    // Standard Cup (SE) is pre-selected, chip 8 is pre-selected → power of 2
+    fireEvent.change(screen.getByPlaceholderText(/or type a number/i), { target: { value: '6' } });
     expect(screen.queryByText(/first-round bye/i)).not.toBeInTheDocument();
-  });
-
-  it('QuickCreateForm_HidesByeNote_ForMajorFormat', () => {
-    renderForm();
-    // Select Major Format (Swiss → SE) — Swiss stage doesn't need power-of-2
-    // but the SE playoff does. Type 6 teams, then switch to Major Format.
-    fireEvent.change(screen.getByPlaceholderText(/or type a number/i), {
-      target: { value: '6' },
-    });
-    // Major Format still has an elimination stage, so bye note shows
-    const majorBtn = screen.getByText('Swiss, then playoffs').closest('button')!;
-    fireEvent.click(majorBtn);
-
-    expect(screen.getByText(/first-round bye/i)).toBeInTheDocument();
   });
 });
 
@@ -252,53 +237,17 @@ describe('QuickCreateForm submission', () => {
     expect(payload.isPublic).toBe(false);
   });
 
-  it('QuickCreateForm_SetsStatusPublished_WhenPublishChecked', async () => {
+  it('QuickCreateForm_AlwaysSubmitsEmptyStages', async () => {
     renderForm();
     fillRequiredFields();
-
-    // Choose "Publish now" instead of the default draft
-    fireEvent.click(screen.getByRole('radio', { name: /publish now/i }));
-
-    fireEvent.click(screen.getByRole('button', { name: /create and publish/i }));
-
-    await waitFor(() => expect(post).toHaveBeenCalled());
-
-    const payload = post.mock.calls[0][1];
-    expect(payload.status).toBe('published');
-    expect(payload.isPublic).toBe(true);
-  });
-
-  it('QuickCreateForm_IncludesStageFromTemplate_StandardCup', async () => {
-    renderForm();
-    fillRequiredFields();
-    // Standard Cup is pre-selected — submits 1 stage (single_elimination)
 
     fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
 
     const payload = post.mock.calls[0][1];
-    expect(payload.stages).toHaveLength(1);
-    expect(payload.stages[0]).toMatchObject({
-      name: 'Main Bracket',
-      format: 'single_elimination',
-    });
-  });
-
-  it('QuickCreateForm_IncludesTwoStages_WhenWorldCupSelected', async () => {
-    renderForm();
-    fillRequiredFields();
-    // Select World Cup Style
-    const worldCupBtn = screen.getByText('Groups, then playoffs').closest('button')!;
-    fireEvent.click(worldCupBtn);
-
-    fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
-
-    await waitFor(() => expect(post).toHaveBeenCalled());
-
-    const payload = post.mock.calls[0][1];
-    expect(payload.stages).toHaveLength(2);
-    expect(payload.stages[0]).toMatchObject({ name: 'Group Stage', format: 'round_robin' });
-    expect(payload.stages[1]).toMatchObject({ name: 'Playoffs', format: 'single_elimination' });
+    expect(payload.stages).toEqual([]);
+    expect(payload.status).toBe('draft');
+    expect(payload.isPublic).toBe(false);
   });
 });
