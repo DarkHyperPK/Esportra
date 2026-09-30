@@ -22,16 +22,11 @@ export interface CompletionSummary {
   blockingPanels: string[];
 }
 
-/**
- * Computes completion state for all configuration panels.
- * @param tournament Tournament data
- * @param stages Tournament stages
- * @param distributionComplete Whether prize distribution sums to 100%. Pass undefined while loading.
- */
 export function useCompletionState(
   tournament: DashboardTournament | undefined,
   stages: DashboardStage[],
-  distributionComplete?: boolean
+  distributionComplete?: boolean,
+  mapPoolEmpty?: boolean
 ): CompletionSummary {
   return useMemo(() => {
     if (!tournament) {
@@ -143,11 +138,13 @@ export function useCompletionState(
       isComplete: true,
     };
 
-    // ── Advanced Settings Panel ──
-    panels['advanced'] = {
+    // ── Match Settings Panel (nav id: 'settings') ──
+    const settingsRecommended: string[] = [];
+    if (mapPoolEmpty) settingsRecommended.push('map_pool');
+    panels['settings'] = {
       requiredMissing: [],
-      recommendedMissing: [],
-      isComplete: true,
+      recommendedMissing: settingsRecommended,
+      isComplete: settingsRecommended.length === 0,
     };
 
     // ── Summary ──
@@ -165,5 +162,5 @@ export function useCompletionState(
       canPublish: totalRequiredMissing === 0,
       blockingPanels,
     };
-  }, [tournament, stages, distributionComplete]);
+  }, [tournament, stages, distributionComplete, mapPoolEmpty]);
 }

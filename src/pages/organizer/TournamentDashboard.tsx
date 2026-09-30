@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { useTournamentDashboard } from '@/hooks/useTournamentDashboard';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
@@ -33,7 +34,7 @@ import {
   resolveDefaultSection,
 } from '@/services/tournamentDashboard/dashboardNav';
 import type { StaffPermission } from '@/types/staff';
-import { isBattleRoyaleTournament, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getPersistedTournamentFormat, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 
 const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
   'scores:update': 'Scores',
@@ -125,6 +126,21 @@ const TournamentDashboard = () => {
     );
   }, [tournament]);
 
+  // Map pool completion check — only fetch when game supports veto and it's enabled
+  const mapVetoEnabled = useMemo(() => {
+    if (!tournament) return false;
+    const features = getEffectiveGameFeatures(tournament.game || '', tournament.game_mode);
+    return features.mapVeto && (tournament.settings?.mapVetoEnabled ?? features.mapVeto ?? false);
+  }, [tournament]);
+
+  const { data: mapPoolData } = useQuery({
+    queryKey: ['map-pool', tournament?.id],
+    queryFn: () => apiClient.get<{ id: string }[]>(`/api/tournaments/${tournament!.id}/map-pool`),
+    enabled: !!tournament && mapVetoEnabled,
+  });
+
+  const mapPoolEmpty = mapVetoEnabled && Array.isArray(mapPoolData) && mapPoolData.length === 0;
+
   // Only fetch when prize pool is set — avoids an extra request for free tournaments
   const prizePool = parseFloat(tournament?.prize_pool || '0');
   const { data: prizeDistribution, isLoading: prizeDistributionLoading } = usePrizeDistribution(
@@ -138,7 +154,7 @@ const TournamentDashboard = () => {
   }, [prizeDistribution, prizeDistributionLoading]);
 
   // Compute completion state
-  const completionSummary = useCompletionState(tournament, stages, distributionComplete);
+  const completionSummary = useCompletionState(tournament, stages, distributionComplete, mapPoolEmpty);
 
   // Permission flags for nav visibility
   const permissions = useMemo(() => {

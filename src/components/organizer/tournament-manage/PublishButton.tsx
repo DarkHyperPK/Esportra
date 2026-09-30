@@ -31,7 +31,11 @@ const PANEL_LABELS: Record<string, string> = {
   'registration': 'Registration',
   'prize-payouts': 'Prize & Payouts',
   'branding': 'Branding',
-  'settings': 'Settings',
+  'settings': 'Match Settings',
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  map_pool: 'Map pool',
 };
 
 export function PublishButton({
@@ -146,7 +150,7 @@ export function PublishButton({
                         </span>
                         <ul className="mt-0.5 list-disc pl-4">
                           {fields.map((f) => (
-                            <li key={f} className="text-xs text-zinc-500">{f}</li>
+                            <li key={f} className="text-xs text-zinc-500">{FIELD_LABELS[f] ?? f}</li>
                           ))}
                         </ul>
                       </li>

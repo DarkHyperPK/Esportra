@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { CommandButton, CommandHeader, CommandSection } from '@/components/management/CommandSurface';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
 import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
@@ -22,7 +21,6 @@ interface AdvancedSettingsPanelProps {
 type ScoreReportedBy = 'players' | 'admins';
 
 interface FormState {
-  discordWebhookUrl: string;
   mapVetoEnabled: boolean;
   assistedReportingEnabled: boolean;
   scoreReportedBy: ScoreReportedBy;
@@ -40,10 +38,10 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
   const [saving, setSaving] = useState(false);
-  const [savingMapPool, setSavingMapPool] = useState(false);
   const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
   const savedMapIdsRef = useRef<string[]>([]);
 
+  const queryClient = useQueryClient();
   const gameFeatures = getEffectiveGameFeatures(tournament.game || '', tournament.game_mode);
   const settings = useMemo(() => tournament.settings ?? {}, [tournament.settings]);
 
@@ -53,7 +51,6 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
   };
 
   const [form, setForm] = useState<FormState>({
-    discordWebhookUrl: settings.discordWebhookUrl || '',
     mapVetoEnabled: settings.mapVetoEnabled ?? gameFeatures.mapVeto ?? false,
     assistedReportingEnabled: resolveAssistedReporting(tournament),
     scoreReportedBy: (settings.scoreReportedBy as ScoreReportedBy) || 'players',
@@ -65,7 +62,6 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
   const resetForm = () => {
     const s = tournament.settings ?? {};
     setForm({
-      discordWebhookUrl: s.discordWebhookUrl || '',
       mapVetoEnabled: s.mapVetoEnabled ?? gameFeatures.mapVeto ?? false,
       assistedReportingEnabled: resolveAssistedReporting(tournament),
       scoreReportedBy: (s.scoreReportedBy as ScoreReportedBy) || 'players',
@@ -87,14 +83,6 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     enabled: gameFeatures.mapVeto,
   });
 
-  useEffect(() => {
-    if (Array.isArray(mapPoolData) && mapPoolData.length > 0) {
-      const ids = mapPoolData.map((m) => m.id);
-      setSelectedMapIds(ids);
-      savedMapIdsRef.current = ids;
-    }
-  }, [mapPoolData]);
-
   // Available maps for the game
   const { data: availableMapsData, isLoading: mapsLoading } = useQuery({
     queryKey: ['available-maps', tournament.game],
@@ -102,10 +90,23 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     enabled: gameFeatures.mapVeto && !!tournament.game,
   });
 
+  useEffect(() => {
+    if (Array.isArray(mapPoolData) && mapPoolData.length > 0) {
+      const ids = mapPoolData.map((m) => m.id);
+      setSelectedMapIds(ids);
+      savedMapIdsRef.current = ids;
+    } else if (
+      Array.isArray(mapPoolData) && mapPoolData.length === 0 &&
+      form.mapVetoEnabled && availableMapsData?.length
+    ) {
+      const poolSize = gameFeatures.mapPoolSize || 7;
+      setSelectedMapIds(availableMapsData.slice(0, poolSize).map((m) => m.id));
+    }
+  }, [mapPoolData, availableMapsData, form.mapVetoEnabled, gameFeatures.mapPoolSize]);
+
   const mapsAreDirty = [...selectedMapIds].sort().join() !== [...savedMapIdsRef.current].sort().join();
 
   const isDirty =
-    form.discordWebhookUrl !== (settings.discordWebhookUrl || '') ||
     form.mapVetoEnabled !== (settings.mapVetoEnabled ?? gameFeatures.mapVeto ?? false) ||
     form.assistedReportingEnabled !== resolveAssistedReporting(tournament) ||
     form.scoreReportedBy !== ((settings.scoreReportedBy as ScoreReportedBy) || 'players') ||
@@ -125,17 +126,28 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     if (!isDirty || saving) return;
     setSaving(true);
     try {
-      await apiClient.put(`/api/tournaments/${tournament.id}`, {
-        assistedReportingEnabled: form.assistedReportingEnabled,
-        requiredAccountLinks: form.requiredAccountLinks,
-        discordLinkCount: form.discordLinkCount,
-        serverRegion: form.serverRegion.trim() || undefined,
-        settings: {
-          discordWebhookUrl: form.discordWebhookUrl.trim() || undefined,
-          mapVetoEnabled: form.mapVetoEnabled,
-          scoreReportedBy: form.scoreReportedBy,
-        },
-      });
+      const promises: Promise<unknown>[] = [
+        apiClient.put(`/api/tournaments/${tournament.id}`, {
+          assistedReportingEnabled: form.assistedReportingEnabled,
+          requiredAccountLinks: form.requiredAccountLinks,
+          discordLinkCount: form.discordLinkCount,
+          serverRegion: form.serverRegion.trim() || undefined,
+          settings: {
+            mapVetoEnabled: form.mapVetoEnabled,
+            scoreReportedBy: form.scoreReportedBy,
+          },
+        }),
+      ];
+      if (mapsAreDirty) {
+        promises.push(
+          apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, { mapIds: selectedMapIds })
+        );
+      }
+      await Promise.all(promises);
+      if (mapsAreDirty) {
+        savedMapIdsRef.current = [...selectedMapIds];
+        queryClient.invalidateQueries({ queryKey: ['map-pool', tournament.id] });
+      }
       toast({ title: 'Saved', description: 'Match settings updated.' });
       onSave();
     } catch (err: any) {
@@ -143,23 +155,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     } finally {
       setSaving(false);
     }
-  }, [isDirty, saving, form, tournament.id, toast, onSave]);
-
-  const handleSaveMapPool = useCallback(async () => {
-    if (savingMapPool) return;
-    setSavingMapPool(true);
-    try {
-      await apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, {
-        mapIds: selectedMapIds,
-      });
-      savedMapIdsRef.current = [...selectedMapIds];
-      toast({ title: 'Map pool saved', description: 'Captains will veto from these maps.' });
-    } catch (err: any) {
-      toast({ title: "Couldn't save the map pool", description: err.message || 'Please try again.', variant: 'destructive' });
-    } finally {
-      setSavingMapPool(false);
-    }
-  }, [savingMapPool, selectedMapIds, tournament.id, toast]);
+  }, [isDirty, saving, form, mapsAreDirty, selectedMapIds, tournament.id, toast, onSave]);
 
   const lockNote = 'Locked once the tournament is live.';
 
@@ -168,7 +164,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
       <CommandHeader
         eyebrow="Configure"
         title="Match settings"
-        description="Who reports results, how maps are chosen, which accounts players need, and where notifications go."
+        description="Who reports results, how maps are chosen, and which accounts players need."
       />
 
       <CommandSection>
@@ -199,7 +195,13 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
               <ToggleRow id="st-veto" title="Map veto before each match"
                 description="Captains take turns banning and picking from your map pool."
                 checked={form.mapVetoEnabled} disabled={isFieldLocked('map_pool')}
-                onCheckedChange={(checked) => setForm((s) => ({ ...s, mapVetoEnabled: checked }))}>
+                onCheckedChange={(checked) => {
+                  setForm((s) => ({ ...s, mapVetoEnabled: checked }));
+                  if (checked && selectedMapIds.length === 0 && availableMapsData?.length) {
+                    const poolSize = gameFeatures.mapPoolSize || 7;
+                    setSelectedMapIds(availableMapsData.slice(0, poolSize).map((m) => m.id));
+                  }
+                }}>
                 <TournamentMapPoolSelector
                   game={tournament.game || ''}
                   requiredCount={gameFeatures.mapPoolSize || 7}
@@ -209,28 +211,16 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
                   mapVetoEnabled={form.mapVetoEnabled}
                   loading={mapsLoading}
                 />
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-zinc-500">The map pool saves separately from the settings below.</p>
-                  <CommandButton onClick={handleSaveMapPool} disabled={savingMapPool} variant="secondary" size="sm">
-                    {savingMapPool ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Saving" /> : 'Save map pool'}
-                  </CommandButton>
-                </div>
               </ToggleRow>
             </FormSection>
           )}
 
-          <FormSection title="Accounts and notifications">
+          <FormSection title="Account requirements">
             <Field label="Discord accounts required per team" htmlFor="st-discord" hint="0 means Discord isn't required. 1 is the captain only."
               lockedReason={isFieldLocked('discord_link_count') ? lockNote : undefined}>
               <Input id="st-discord" type="number" min={0} max={4} value={form.discordLinkCount}
                 onChange={(e) => setForm((s) => ({ ...s, discordLinkCount: parseInt(e.target.value, 10) || 0 }))}
                 disabled={isFieldLocked('discord_link_count')} className={cn(CONTROL_CLASS, 'w-28')} />
-            </Field>
-            <Field label="Discord webhook" htmlFor="st-webhook" optional hint="Posts registrations, results and disputes into a channel on your server."
-              lockedReason={isFieldLocked('discord_webhook_url') ? lockNote : undefined}>
-              <Input id="st-webhook" value={form.discordWebhookUrl} placeholder="https://discord.com/api/webhooks/…"
-                onChange={(e) => setForm((s) => ({ ...s, discordWebhookUrl: e.target.value }))}
-                disabled={isFieldLocked('discord_webhook_url')} className={CONTROL_CLASS} />
             </Field>
           </FormSection>
         </div>
