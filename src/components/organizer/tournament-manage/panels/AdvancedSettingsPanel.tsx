@@ -100,9 +100,16 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
       form.mapVetoEnabled && availableMapsData?.length
     ) {
       const poolSize = gameFeatures.mapPoolSize || 7;
-      setSelectedMapIds(availableMapsData.slice(0, poolSize).map((m) => m.id));
+      const defaultIds = availableMapsData.slice(0, poolSize).map((m) => m.id);
+      setSelectedMapIds(defaultIds);
+      apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, { mapIds: defaultIds })
+        .then(() => {
+          savedMapIdsRef.current = defaultIds;
+          queryClient.invalidateQueries({ queryKey: ['map-pool', tournament.id] });
+        })
+        .catch(() => {});
     }
-  }, [mapPoolData, availableMapsData, form.mapVetoEnabled, gameFeatures.mapPoolSize]);
+  }, [mapPoolData, availableMapsData, form.mapVetoEnabled, gameFeatures.mapPoolSize, tournament.id, queryClient]);
 
   const mapsAreDirty = [...selectedMapIds].sort().join() !== [...savedMapIdsRef.current].sort().join();
 
@@ -199,7 +206,14 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
                   setForm((s) => ({ ...s, mapVetoEnabled: checked }));
                   if (checked && selectedMapIds.length === 0 && availableMapsData?.length) {
                     const poolSize = gameFeatures.mapPoolSize || 7;
-                    setSelectedMapIds(availableMapsData.slice(0, poolSize).map((m) => m.id));
+                    const defaultIds = availableMapsData.slice(0, poolSize).map((m) => m.id);
+                    setSelectedMapIds(defaultIds);
+                    apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, { mapIds: defaultIds })
+                      .then(() => {
+                        savedMapIdsRef.current = defaultIds;
+                        queryClient.invalidateQueries({ queryKey: ['map-pool', tournament.id] });
+                      })
+                      .catch(() => {});
                   }
                 }}>
                 <TournamentMapPoolSelector
