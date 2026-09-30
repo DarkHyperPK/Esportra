@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { CommandButton, CommandHeader, CommandSection } from '@/components/management/CommandSurface';
@@ -42,6 +42,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
   const [saving, setSaving] = useState(false);
   const [savingMapPool, setSavingMapPool] = useState(false);
   const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
+  const savedMapIdsRef = useRef<string[]>([]);
 
   const gameFeatures = getEffectiveGameFeatures(tournament.game || '', tournament.game_mode);
   const settings = useMemo(() => tournament.settings ?? {}, [tournament.settings]);
@@ -88,7 +89,9 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
 
   useEffect(() => {
     if (Array.isArray(mapPoolData) && mapPoolData.length > 0) {
-      setSelectedMapIds(mapPoolData.map((m) => m.id));
+      const ids = mapPoolData.map((m) => m.id);
+      setSelectedMapIds(ids);
+      savedMapIdsRef.current = ids;
     }
   }, [mapPoolData]);
 
@@ -99,6 +102,8 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     enabled: gameFeatures.mapVeto && !!tournament.game,
   });
 
+  const mapsAreDirty = [...selectedMapIds].sort().join() !== [...savedMapIdsRef.current].sort().join();
+
   const isDirty =
     form.discordWebhookUrl !== (settings.discordWebhookUrl || '') ||
     form.mapVetoEnabled !== (settings.mapVetoEnabled ?? gameFeatures.mapVeto ?? false) ||
@@ -106,7 +111,8 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     form.scoreReportedBy !== ((settings.scoreReportedBy as ScoreReportedBy) || 'players') ||
     form.serverRegion !== (tournament.server_region || '') ||
     form.requiredAccountLinks !== (settings.requiredAccountLinks ?? 1) ||
-    form.discordLinkCount !== (settings.discordLinkCount ?? 0);
+    form.discordLinkCount !== (settings.discordLinkCount ?? 0) ||
+    mapsAreDirty;
 
   useEffect(() => {
     setDirty(isDirty);
@@ -125,7 +131,6 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
         discordLinkCount: form.discordLinkCount,
         serverRegion: form.serverRegion.trim() || undefined,
         settings: {
-          ...settings,
           discordWebhookUrl: form.discordWebhookUrl.trim() || undefined,
           mapVetoEnabled: form.mapVetoEnabled,
           scoreReportedBy: form.scoreReportedBy,
@@ -138,7 +143,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     } finally {
       setSaving(false);
     }
-  }, [isDirty, saving, form, tournament.id, settings, toast, onSave]);
+  }, [isDirty, saving, form, tournament.id, toast, onSave]);
 
   const handleSaveMapPool = useCallback(async () => {
     if (savingMapPool) return;
@@ -147,6 +152,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
       await apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, {
         mapIds: selectedMapIds,
       });
+      savedMapIdsRef.current = [...selectedMapIds];
       toast({ title: 'Map pool saved', description: 'Captains will veto from these maps.' });
     } catch (err: any) {
       toast({ title: "Couldn't save the map pool", description: err.message || 'Please try again.', variant: 'destructive' });

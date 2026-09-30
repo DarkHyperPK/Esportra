@@ -9,14 +9,16 @@ import {
     TournamentAnnouncement,
 } from "@/lib/tournamentAnnouncements";
 import { Button } from "@/components/ui/button";
+import { InlineNotice } from "@/components/ui/kit";
 import { Megaphone, Trash2, Send, Loader2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface TournamentAnnouncementPanelProps {
     tournamentId: string;
+    canActAsOwner: boolean;
 }
 
-const TournamentAnnouncementPanel = ({ tournamentId }: TournamentAnnouncementPanelProps) => {
+const TournamentAnnouncementPanel = ({ tournamentId, canActAsOwner }: TournamentAnnouncementPanelProps) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [announcements, setAnnouncements] = useState<TournamentAnnouncement[]>([]);
@@ -88,7 +90,7 @@ const TournamentAnnouncementPanel = ({ tournamentId }: TournamentAnnouncementPan
                             {announcements.length}
                         </span>
                     </div>
-                    {!isComposing && (
+                    {canActAsOwner && !isComposing && (
                         <Button
                             onClick={() => setIsComposing(true)}
                             className="bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 text-xs"
@@ -100,7 +102,13 @@ const TournamentAnnouncementPanel = ({ tournamentId }: TournamentAnnouncementPan
                     )}
                 </div>
 
-                {isComposing && (
+                {!canActAsOwner && (
+                    <InlineNotice tone="neutral">
+                        Only the organizer can send announcements. You can read all messages here.
+                    </InlineNotice>
+                )}
+
+                {canActAsOwner && isComposing && (
                     <div className="space-y-3 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 mb-4">
                         <input
                             type="text"

@@ -85,6 +85,7 @@ const TournamentDisputesPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const disputeId = searchParams.get('dispute');
+  const returnTo = searchParams.get('returnTo');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -175,12 +176,12 @@ const TournamentDisputesPage: React.FC = () => {
   const tournamentBase = `/organizer/tournament/${slug}`;
 
   const goToDispute = useCallback((id: string) => {
-    setSearchParams({ dispute: id }, { replace: true });
-  }, [setSearchParams]);
+    setSearchParams(returnTo ? { dispute: id, returnTo } : { dispute: id }, { replace: true });
+  }, [setSearchParams, returnTo]);
 
   const goToList = useCallback(() => {
-    setSearchParams({}, { replace: true });
-  }, [setSearchParams]);
+    setSearchParams(returnTo ? { returnTo } : {}, { replace: true });
+  }, [setSearchParams, returnTo]);
 
   const openOrganizerBracket = useCallback(async (matchId: string | null) => {
     if (!slug || !tournament?.id) return;
@@ -543,7 +544,7 @@ const TournamentDisputesPage: React.FC = () => {
         <header className="shrink-0 w-full border-b border-white/[0.06] bg-[#0a0a0c] px-4 py-2 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate(tournamentBase)}
+            onClick={() => navigate(returnTo ?? tournamentBase)}
             className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

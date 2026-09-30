@@ -5,23 +5,17 @@
  * Redirects to organization settings since staff is managed organization-wide.
  */
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck, ExternalLink } from 'lucide-react';
 import {
   CommandHeader,
   CommandSection,
   CommandButton,
 } from '@/components/management/CommandSurface';
-import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 
-interface StaffPanelProps {
-  tournament: DashboardTournament;
-  editableFields: Set<string>;
-  onSave: () => void;
-}
-
-export function StaffPanel({ tournament: _tournament, editableFields: _editableFields }: StaffPanelProps) {
+export function StaffPanel() {
   const navigate = useNavigate();
+  const { slug: tournamentSlug } = useParams<{ slug: string }>();
 
   return (
     <>
@@ -41,10 +35,21 @@ export function StaffPanel({ tournament: _tournament, editableFields: _editableF
               Add or remove staff, and choose what each person can do (scores, teams, brackets, announcements, disputes), from your organization settings.
               Changes apply to this tournament straight away.
             </p>
-            <CommandButton variant="secondary" size="sm" onClick={() => navigate('/organizer/settings?tab=staff')}>
+            <CommandButton
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                navigate(
+                  `/organizer/settings?tab=staff${tournamentSlug ? `&returnFrom=/organizer/tournament/${tournamentSlug}` : ''}`,
+                )
+              }
+            >
               Manage staff
               <ExternalLink className="h-4 w-4" aria-hidden />
             </CommandButton>
+            <p className="text-zinc-500 text-sm mt-2">
+              You'll be returned here after managing staff.
+            </p>
           </div>
         </div>
       </CommandSection>

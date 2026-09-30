@@ -15,6 +15,8 @@ import type { CompletionSummary } from '@/hooks/useCompletionState';
 interface CompletionBannerProps {
   completionSummary: CompletionSummary;
   tournamentStatus: string;
+  tournamentId: string;
+  userId: string | undefined;
 }
 
 const enterVariants = {
@@ -33,8 +35,11 @@ const PANEL_LABELS: Record<string, string> = {
   'advanced': 'Settings',
 };
 
-export function CompletionBanner({ completionSummary, tournamentStatus }: CompletionBannerProps) {
-  const [dismissed, setDismissed] = useState(false);
+export function CompletionBanner({ completionSummary, tournamentStatus, tournamentId, userId }: CompletionBannerProps) {
+  const storageKey = userId ? `banner-dismissed-${tournamentId}-${userId}` : null;
+  const [dismissed, setDismissed] = useState(() =>
+    storageKey ? localStorage.getItem(storageKey) === 'true' : false
+  );
   const shouldReduceMotion = useReducedMotion();
   const [, setSearchParams] = useSearchParams();
 
@@ -111,7 +116,10 @@ export function CompletionBanner({ completionSummary, tournamentStatus }: Comple
           </div>
           <button
             type="button"
-            onClick={() => setDismissed(true)}
+            onClick={() => {
+              if (storageKey) localStorage.setItem(storageKey, 'true');
+              setDismissed(true);
+            }}
             aria-label="Dismiss"
             className="rounded p-1 text-zinc-500 transition-colors hover:bg-white/10 hover:text-zinc-200"
           >

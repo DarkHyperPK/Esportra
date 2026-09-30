@@ -92,7 +92,7 @@ function buildCommunityGroup(ctx: DashboardNavContext): DashboardNavItem[] {
         kind: 'link',
         id: 'disputes',
         label: 'Disputes',
-        href: `/organizer/tournament/${ctx.slug}/disputes`,
+        href: `/organizer/tournament/${ctx.slug}/disputes?returnTo=/organizer/tournament/${ctx.slug}`,
         badge: ctx.disputeBadgeCount > 0 ? ctx.disputeBadgeCount : undefined,
       }
       : null,

@@ -118,8 +118,14 @@ export function useStageRealtime({
       onVersionCreated?.(payload);
     };
 
+    const handleMatchUpdated = () => {
+      if (!active) return;
+      queryClient.invalidateQueries({ queryKey: ['active-matches', tournamentId] });
+    };
+
     conn.on('StageUpdated', handleStageUpdated);
     conn.on('VersionCreated', handleVersionCreated);
+    conn.on('MatchUpdated', handleMatchUpdated);
 
     const join = () => {
       if (!active) return;
@@ -133,6 +139,7 @@ export function useStageRealtime({
       active = false;
       conn.off('StageUpdated', handleStageUpdated);
       conn.off('VersionCreated', handleVersionCreated);
+      conn.off('MatchUpdated', handleMatchUpdated);
       void leaveTournamentGroup(conn, tournamentId);
     };
   }, [conn, isEnabled, onStageUpdated, onVersionCreated, queryClient, tournamentId]);

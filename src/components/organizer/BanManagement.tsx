@@ -47,29 +47,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
       setLoading(true);
       const bansData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bans`);
 
-      // Enrich with user/team names
-      const enriched = await Promise.all(
-        (bansData || []).map(async (ban: any) => {
-          const enrichedBan: BanRecord = { ...ban };
-
-          if (ban.user_id) {
-            const profile = await apiClient.get<any>(`/api/profiles/${ban.user_id}`).catch(() => null);
-            enrichedBan.user_name = profile?.username || profile?.full_name || 'Unknown User';
-          }
-
-          if (ban.team_id) {
-            const team = await apiClient.get<any>(`/api/teams/${ban.team_id}`).catch(() => null);
-            enrichedBan.team_name = team?.name || 'Unknown Team';
-          }
-
-          const bannedBy = await apiClient.get<any>(`/api/profiles/${ban.banned_by}`).catch(() => null);
-          enrichedBan.banned_by_name = bannedBy?.username || bannedBy?.full_name || 'Unknown';
-
-          return enrichedBan;
-        })
-      );
-
-      setBans(enriched);
+      setBans((bansData as BanRecord[]) || []);
     } catch (error: any) {
       console.error('Error fetching bans:', error);
       toast({

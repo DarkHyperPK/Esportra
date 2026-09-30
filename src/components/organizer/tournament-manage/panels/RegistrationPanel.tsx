@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
+import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, InlineNotice, ToggleRow } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
@@ -16,13 +16,11 @@ import { useDirtyState } from '@/components/organizer/tournament-manage/Tourname
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import { PanelSaveBar } from '../PanelSaveBar';
 
-type CheckInLevel = 'none' | 'tournament' | 'match' | 'both';
+type CheckInLevel = 'none' | 'tournament';
 
 const CHECK_IN_OPTIONS: { value: CheckInLevel; label: string; description: string }[] = [
   { value: 'none', label: 'No check-in', description: 'Everyone registered is expected to show up.' },
   { value: 'tournament', label: 'Once, before start', description: 'Teams confirm once. No-shows are caught before seeding.' },
-  { value: 'match', label: 'Before every match', description: 'Both teams confirm before each match can begin.' },
-  { value: 'both', label: 'Both', description: 'Once before start, and again before every match.' },
 ];
 
 interface RegistrationPanelProps {
@@ -55,7 +53,10 @@ function toDatetimeLocal(isoString: string | null | undefined): string {
 }
 
 function resolveCheckInLevel(t: DashboardTournament): CheckInLevel {
-  if (t.settings?.checkInLevel) return t.settings.checkInLevel as CheckInLevel;
+  const saved = t.settings?.checkInLevel as string | undefined;
+  if (saved === 'tournament') return 'tournament';
+  if (saved === 'none') return 'none';
+  if (saved === 'match' || saved === 'both') return 'tournament';
   if (t.check_in_required) return 'tournament';
   return 'none';
 }
@@ -124,7 +125,6 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
         reservedInviteSlots: form.invitedTeamsEnabled ? form.reservedInviteSlots : 0,
         inviteExpiryDays: form.inviteExpiryDays,
         settings: {
-          ...tournament.settings,
           checkInLevel: form.checkInLevel,
           checkInWindowMinutes: form.checkInWindowMinutes,
           invitedTeamsEnabled: form.invitedTeamsEnabled,
@@ -174,6 +174,9 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
                   onSelect={() => setForm((s) => ({ ...s, checkInLevel: opt.value }))} title={opt.label} description={opt.description} />
               ))}
             </ChoiceGroup>
+            <InlineNotice tone="neutral">
+              Per-match check-in is in development. Once it ships, you'll configure it here.
+            </InlineNotice>
             {checkInEnabled && (
               <>
                 <div className="grid gap-5 sm:grid-cols-2">

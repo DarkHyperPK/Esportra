@@ -32,7 +32,7 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP
 
 const PAYOUT_METHODS = [
   { value: 'manual', label: 'You pay winners directly', description: 'Bank transfer, wallet or cash, outside Esportra.' },
-  { value: 'gateway', label: 'Esportra holds and pays out', description: 'Entry fees are held and released to winners automatically.' },
+  { value: 'gateway', label: 'Esportra holds and pays out', description: 'Stripe-powered prize escrow — in development. Manual payouts available now.' },
 ];
 
 interface FormState {

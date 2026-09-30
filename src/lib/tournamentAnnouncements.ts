@@ -43,7 +43,7 @@ export const createAnnouncement = async ({
     // The server handles inserting, fetching tournament info, notifying participants
     const announcement = await apiClient.post<TournamentAnnouncement>(
         `/api/tournaments/${tournamentId}/announcements`,
-        { sender_id: senderId, title, content }
+        { title, content }
     );
 
     // Audit logging (still client-side since it uses org context)
@@ -61,8 +61,8 @@ export const createAnnouncement = async ({
                 details: { title }
             });
         }
-    } catch (err) {
-        console.error("Failed to log audit event:", err);
+    } catch {
+        /* audit logging is non-critical */
     }
 
     return announcement;

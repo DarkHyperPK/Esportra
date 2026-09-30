@@ -26,10 +26,12 @@ export interface CompletionSummary {
  * Computes completion state for all configuration panels.
  * @param tournament Tournament data
  * @param stages Tournament stages
+ * @param distributionComplete Whether prize distribution sums to 100%. Pass undefined while loading.
  */
 export function useCompletionState(
   tournament: DashboardTournament | undefined,
-  stages: DashboardStage[]
+  stages: DashboardStage[],
+  distributionComplete?: boolean
 ): CompletionSummary {
   return useMemo(() => {
     if (!tournament) {
@@ -54,14 +56,6 @@ export function useCompletionState(
     }
     if (!tournament.description || tournament.description.trim() === '') {
       basicRecommended.push('description');
-    }
-    // Note: 'rules' field may not exist on DashboardTournament
-    // Uncomment this once the field is added to the interface
-    // if (!tournament.rules || tournament.rules.trim() === '') {
-    //   basicRecommended.push('rules');
-    // }
-    if (!tournament.game_mode || tournament.game_mode.trim() === '') {
-      basicRecommended.push('game_mode');
     }
 
     panels['basic-info'] = {
@@ -110,9 +104,11 @@ export function useCompletionState(
 
     const prizePool = parseFloat(tournament.prize_pool || '0');
     if (prizePool > 0) {
-      // If prize pool is set, check if payout distribution sums to 100%
-      // (This would require checking the actual payout data — placeholder logic here)
-      // For now, we consider it recommended if prize_pool > 0
+      // Require distribution to sum to 100% when a prize pool is set.
+      // distributionComplete === undefined means still loading — don't block publish.
+      if (distributionComplete === false) {
+        prizeRequired.push('distribution');
+      }
     } else {
       prizeRecommended.push('prize_pool');
     }
@@ -154,20 +150,6 @@ export function useCompletionState(
       isComplete: true,
     };
 
-    // ── Map Veto Panel ──
-    const vetoRequired: string[] = [];
-    const vetoRecommended: string[] = [];
-
-    // Check if game supports veto (game-specific logic would go here)
-    // For now, we consider it recommended if no veto_sequence is configured
-    // (This would require checking the actual veto data — placeholder logic)
-
-    panels['map-veto'] = {
-      requiredMissing: vetoRequired,
-      recommendedMissing: vetoRecommended,
-      isComplete: vetoRequired.length === 0 && vetoRecommended.length === 0,
-    };
-
     // ── Summary ──
     const allPanels = Object.values(panels);
     const totalRequiredMissing = allPanels.reduce((sum, p) => sum + p.requiredMissing.length, 0);
@@ -183,5 +165,5 @@ export function useCompletionState(
       canPublish: totalRequiredMissing === 0,
       blockingPanels,
     };
-  }, [tournament, stages]);
+  }, [tournament, stages, distributionComplete]);
 }

@@ -189,7 +189,9 @@ export function useTournamentDashboard(slug: string | undefined) {
                 payment_receipt_url:      p.payment_receipt_url ?? null,
                 payment_rejection_reason: p.payment_rejection_reason ?? null,
                 entry_fee_paid:           p.entry_fee_paid ?? null,
-                user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
+                entry_fee_amount:         p.entry_fee_amount ?? null,
+                currency:                 p.currency ?? null,
+                user:             p.username ? { username: p.username, avatar_url: (p as any).user_avatar_url ?? null, full_name: (p as any).user_full_name ?? null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 

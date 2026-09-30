@@ -64,6 +64,7 @@ interface TournamentDashboardShellProps {
   phaseLabel: string;
   phaseTone: Tone;
   staffSummary?: string | null;
+  userId?: string;
   children: React.ReactNode;
 }
 
@@ -89,6 +90,7 @@ export function TournamentDashboardShell({
   phaseLabel,
   phaseTone,
   staffSummary,
+  userId,
   children,
 }: TournamentDashboardShellProps) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -196,6 +198,8 @@ export function TournamentDashboardShell({
             <CompletionBanner
               completionSummary={completionSummary}
               tournamentStatus={tournament.status}
+              tournamentId={tournament.id}
+              userId={userId}
             />
           )}
 

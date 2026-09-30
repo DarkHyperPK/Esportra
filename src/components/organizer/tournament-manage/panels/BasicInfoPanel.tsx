@@ -40,6 +40,7 @@ interface BasicInfoPanelProps {
 interface FormState {
   name: string;
   description: string;
+  rules: string;
   startDate: string;
   endDate: string;
   region: string;
@@ -64,6 +65,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
   const initialState: FormState = {
     name: tournament.name || '',
     description: tournament.description || '',
+    rules: tournament.rules ?? '',
     startDate: toDatetimeLocal(tournament.start_date),
     endDate: toDatetimeLocal(tournament.end_date),
     region: tournament.region || '',
@@ -73,6 +75,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
   const resetForm = () => setForm({
     name: tournament.name || '',
     description: tournament.description || '',
+    rules: tournament.rules ?? '',
     startDate: toDatetimeLocal(tournament.start_date),
     endDate: toDatetimeLocal(tournament.end_date),
     region: tournament.region || '',
@@ -87,6 +90,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
   const isDirty =
     form.name !== (tournament.name || '') ||
     form.description !== (tournament.description || '') ||
+    form.rules !== (tournament.rules ?? '') ||
     form.startDate !== toDatetimeLocal(tournament.start_date) ||
     form.endDate !== toDatetimeLocal(tournament.end_date) ||
     form.region !== (tournament.region || '');
@@ -108,6 +112,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
       await apiClient.put(`/api/tournaments/${tournament.id}`, {
         name: form.name.trim() || undefined,
         description: form.description.trim() || undefined,
+        rules: form.rules.trim() || undefined,
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
         region: form.region.trim() || undefined,
@@ -140,6 +145,12 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
               className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')} />
           </Field>
 
+          <Field label="Rules" htmlFor="bi-rules" hint="Optional. Shown on the tournament page.">
+            <Textarea id="bi-rules" value={form.rules} onChange={(e) => setForm((s) => ({ ...s, rules: e.target.value }))}
+              placeholder="e.g. No subs after round 2. Screenshots required for disputes…" rows={5}
+              className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')} />
+          </Field>
+
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Starts" htmlFor="bi-start" hint="Your local time." lockedReason={isFieldLocked('start_date') ? lockNote : undefined}>
               <Input id="bi-start" type="datetime-local" value={form.startDate} onChange={(e) => setForm((s) => ({ ...s, startDate: e.target.value }))}
@@ -161,7 +172,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
             </div>
           </Field>
 
-          <Field label="Game" lockedReason={isFieldLocked('game') ? 'The game can’t change once players have registered.' : undefined}>
+          <Field label="Game" lockedReason={isFieldLocked("game") ? "The game is locked once a tournament is created." : undefined}>
             <p className="text-sm text-zinc-200">{tournament.game || 'Not set'}</p>
           </Field>
         </div>

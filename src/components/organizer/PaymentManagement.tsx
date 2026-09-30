@@ -2,10 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { CancelButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { cn } from '@/lib/utils';
-import { buttonVariants } from '@/components/ui/button-variants';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -180,46 +178,44 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
 
   if (paidParticipants.length === 0) {
     return (
-      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 mb-6">
-        <CardContent className="p-0 flex flex-col items-center gap-2 py-8">
+      <div className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden p-6 mb-6">
+        <div className="flex flex-col items-center gap-2 py-8">
           <DollarSign className="w-8 h-8 text-zinc-600" />
           <p className="text-zinc-500 text-sm">No paid registrations yet.</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <>
-      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
-        <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6">
+      <div className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden p-6 sm:p-8 mb-6">
+        <div className="p-0 border-b border-white/5 pb-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
+            <p className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
               <DollarSign className="w-5 h-5 text-rose-500" />
               Payment Review
               {counts.pending > 0 && (
                 <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 ml-2">{counts.pending} pending</Badge>
               )}
-            </CardTitle>
+            </p>
             <div className="flex gap-2 flex-wrap">
               {(['pending', 'approved', 'rejected', 'all'] as PaymentFilter[]).map(f => (
-                <button
-                  type="button"
+                <CommandButton
                   key={f}
+                  variant={filter === f ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setFilter(f)}
-                  className={cn(
-                    buttonVariants({ variant: filter === f ? 'default' : 'outline', size: 'sm' }),
-                    filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white',
-                  )}
+                  className={filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white'}
                 >
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                   {f !== 'all' && <span className="ml-1 text-xs opacity-70">({counts[f]})</span>}
-                </button>
+                </CommandButton>
               ))}
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
+        </div>
+        <div className="p-0">
           {filtered.length === 0 ? (
             <p className="text-zinc-500 text-sm text-center py-6">No {filter} payments.</p>
           ) : (
@@ -266,26 +262,27 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <OutlineButton type="button" size="sm" onClick={() => viewReceipt(p)} className="gap-1">
+                        <CommandButton variant="outline" size="sm" onClick={() => viewReceipt(p)} className="gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
-                        </OutlineButton>
+                        </CommandButton>
                       )}
                       {!p.payment_receipt_url && p.payment_status === 'pending' && (
                         <span className="text-xs text-amber-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No receipt</span>
                       )}
                       {p.payment_status === 'pending' && (
                         <>
-                          <SuccessButton size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
+                          <CommandButton variant="default" size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
-                          </SuccessButton>
-                          <button
-                            type="button"
+                          </CommandButton>
+                          <CommandButton
+                            variant="outline"
+                            size="sm"
                             onClick={() => openRejectDialog(p)}
                             disabled={processingId === p.id}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1')}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1"
                           >
                             <XCircle className="w-3.5 h-3.5" /> Reject
-                          </button>
+                          </CommandButton>
                         </>
                       )}
                       {p.payment_status === 'rejected' && p.payment_rejection_reason && (
@@ -344,8 +341,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
               </Pagination>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Receipt Viewer Dialog */}
       <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) closeReceiptDialog(); }}>
@@ -402,10 +399,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             rows={3}
           />
           <DialogFooter>
-            <CancelButton type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</CancelButton>
-            <DangerButton onClick={handleReject} disabled={processingId === rejectTarget?.id}>
+            <CommandButton variant="ghost" type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</CommandButton>
+            <CommandButton variant="destructive" onClick={handleReject} disabled={processingId === rejectTarget?.id}>
               Reject Payment
-            </DangerButton>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

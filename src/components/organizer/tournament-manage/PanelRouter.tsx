@@ -222,7 +222,7 @@ export function PanelRouter({
     return (
       <>
         <CommandHeader eyebrow="Community" title="Announcements" description="Messages to every registered team, shown on the tournament page and sent as notifications." />
-        <TournamentAnnouncementPanel tournamentId={tournament.id} />
+        <TournamentAnnouncementPanel tournamentId={tournament.id} canActAsOwner={permissions.canSendAnnouncements} />
       </>
     );
   }
@@ -266,6 +266,7 @@ export function PanelRouter({
       <FormatStagesPanel
         tournament={tournament}
         stages={stages}
+        participants={participants}
         isBattleRoyale={isBattleRoyale}
         isSuperAdmin={isSuperAdmin}
         onUpdate={onUpdate}
@@ -305,11 +306,7 @@ export function PanelRouter({
 
   if (activeTab === 'staff') {
     return (
-      <StaffPanel
-        tournament={tournament}
-        editableFields={editableFields}
-        onSave={onUpdate}
-      />
+      <StaffPanel />
     );
   }
 

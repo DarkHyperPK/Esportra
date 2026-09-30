@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, Send, RotateCcw, X, Upload } from 'lucide-react';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   CommandButton,
   CommandHeader,
   CommandSection,
@@ -109,6 +119,7 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
   const [stagedEmails, setStagedEmails] = useState<string[]>([]);
   const [showCsv, setShowCsv] = useState(false);
   const [csvText, setCsvText] = useState('');
+  const [showCsvConfirm, setShowCsvConfirm] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [, setSearchParams] = useSearchParams();
@@ -146,6 +157,10 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
   const handleSendCodes = async () => {
     const emails = [...stagedEmails];
     if (emails.length === 0) return;
+    if (remainingSlots <= 0) {
+      toast({ title: 'No slots available', description: 'All reserved invite slots are taken.', variant: 'destructive' });
+      return;
+    }
     try {
       const drafted = await createDrafts.mutateAsync({ emails });
       const ids = drafted.map((d) => d.id);
@@ -224,6 +239,11 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
 
   const effectiveSlots = summary?.reservedSlots ?? 0;
   const remainingSlots = (summary?.remainingSlots ?? 0) - stagedEmails.length;
+
+  const parsedEmailCount = csvText
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0).length;
 
   const counts = (['draft', 'sent', 'redeemed', 'expired', 'revoked'] as InvitationStatus[])
     .map((status) => ({ status, count: allInvitations.filter((i) => i.status === status).length }))
@@ -315,7 +335,7 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <CommandButton variant="primary" size="sm" slide onClick={handleSendCodes} disabled={stagedEmails.length === 0 || isSending}>
+              <CommandButton variant="primary" size="sm" slide onClick={handleSendCodes} disabled={stagedEmails.length === 0 || isSending || remainingSlots <= 0}>
                 {isSending ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Sending" /> : <Send className="h-4 w-4" aria-hidden />}
                 {stagedEmails.length > 0 ? `Send ${stagedEmails.length} invite${stagedEmails.length > 1 ? 's' : ''}` : 'Send invites'}
               </CommandButton>
@@ -332,7 +352,18 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
                   <Textarea id="inv-csv" value={csvText} onChange={(e) => setCsvText(e.target.value)} rows={4}
                     placeholder={'captain1@team.com, captain2@team.com\ncaptain3@team.com'}
                     className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm')} />
-                  <CommandButton variant="secondary" size="sm" onClick={handleCsvImport} disabled={!csvText.trim() || importCsv.isPending}>
+                  <CommandButton
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (parsedEmailCount > Math.max(remainingSlots, 0)) {
+                        toast({ title: 'Over capacity', description: `Only ${Math.max(remainingSlots, 0)} slot${remainingSlots === 1 ? '' : 's'} remaining.`, variant: 'destructive' });
+                        return;
+                      }
+                      setShowCsvConfirm(true);
+                    }}
+                    disabled={!csvText.trim() || importCsv.isPending}
+                  >
                     {importCsv.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Importing" /> : <Upload className="h-4 w-4" aria-hidden />}
                     Import and send
                   </CommandButton>
@@ -377,6 +408,22 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
           </div>
         )}
       </CommandSection>
+
+      <AlertDialog open={showCsvConfirm} onOpenChange={setShowCsvConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send invites?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send invitations to {parsedEmailCount} address{parsedEmailCount !== 1 ? 'es' : ''}.
+              Invites are sent immediately and cannot be recalled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCsvImport}>Send invites</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

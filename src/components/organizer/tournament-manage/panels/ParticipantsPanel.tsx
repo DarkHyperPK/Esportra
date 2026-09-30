@@ -65,8 +65,10 @@ export function ParticipantsPanel({
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [checkInFilter, setCheckInFilter] = useState<'all' | 'checked' | 'unchecked'>('all');
   const [managedParticipant, setManagedParticipant] = useState<DashboardParticipant | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
   const { toast } = useToast();
 
   const activeParticipants = useMemo(
@@ -77,16 +79,22 @@ export function ParticipantsPanel({
     [participants]
   );
 
+  const checkInFiltered = useMemo(() => {
+    if (checkInFilter === 'checked') return activeParticipants.filter((p) => !!p.checked_in_at);
+    if (checkInFilter === 'unchecked') return activeParticipants.filter((p) => !p.checked_in_at);
+    return activeParticipants;
+  }, [activeParticipants, checkInFilter]);
+
   const filteredParticipants = useMemo(() => {
-    if (!search.trim()) return activeParticipants;
+    if (!search.trim()) return checkInFiltered;
     const q = search.toLowerCase();
-    return activeParticipants.filter(
+    return checkInFiltered.filter(
       (p) =>
         p.team_name?.toLowerCase().includes(q) ||
         p.gamer_tag?.toLowerCase().includes(q) ||
         p.user?.username?.toLowerCase().includes(q)
     );
-  }, [activeParticipants, search]);
+  }, [checkInFiltered, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE));
   const pagedParticipants = filteredParticipants.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -139,6 +147,20 @@ export function ParticipantsPanel({
       toast({ title: "Couldn't check them in", description: err.message, variant: 'destructive' });
     } finally {
       setCheckingIn(false);
+    }
+  };
+
+  const handleBulkCheckIn = async () => {
+    setBulkCheckingIn(true);
+    try {
+      await Promise.all(
+        filteredParticipants.map((p) =>
+          apiClient.post(`/api/tournaments/${tournament.id}/participants/${p.id}/check-in`, {}).catch(() => null)
+        )
+      );
+      onUpdate?.();
+    } finally {
+      setBulkCheckingIn(false);
     }
   };
 
@@ -200,6 +222,12 @@ export function ParticipantsPanel({
 
       {/* Search + View toggle */}
       <CommandSection>
+        {tournament.check_in_required && (() => {
+          const windowMinutes = tournament.settings?.checkInWindowMinutes ?? tournament.check_in_window_minutes;
+          return windowMinutes != null && windowMinutes > 0 ? (
+            <p className="mb-3 text-sm text-zinc-400">Check-in window: {windowMinutes} min</p>
+          ) : null;
+        })()}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
@@ -236,6 +264,36 @@ export function ParticipantsPanel({
             </button>
           </div>
         </div>
+        {tournament.check_in_required && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {(['all', 'checked', 'unchecked'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => { setCheckInFilter(f); setPage(1); }}
+                className={cn(
+                  'h-8 rounded px-3 text-xs font-medium transition-colors',
+                  checkInFilter === f
+                    ? 'bg-white/15 text-white'
+                    : 'bg-white/[0.04] text-zinc-400 hover:bg-white/10 hover:text-zinc-200'
+                )}
+              >
+                {f === 'all' ? 'All' : f === 'checked' ? 'Checked in' : 'Not checked in'}
+              </button>
+            ))}
+            {checkInFilter === 'unchecked' && filteredParticipants.length > 0 && canActAsOwner && (
+              <CommandButton
+                variant="secondary"
+                size="sm"
+                onClick={handleBulkCheckIn}
+                disabled={bulkCheckingIn}
+                className="ml-auto"
+              >
+                {bulkCheckingIn ? 'Checking in…' : `Check in all (${filteredParticipants.length})`}
+              </CommandButton>
+            )}
+          </div>
+        )}
       </CommandSection>
 
       {/* Participants */}

@@ -16,12 +16,14 @@ import { isSuperAdminUser } from '@/lib/adminAccess';
 import { useTournamentDashboard } from '@/hooks/useTournamentDashboard';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useCompletionState } from '@/hooks/useCompletionState';
+import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
 import { TournamentDashboardShell } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
 import { PanelRouter } from '@/components/organizer/tournament-manage/PanelRouter';
 import { DashboardLoadingState } from '@/components/organizer/tournament-manage/DashboardLoadingState';
 import { DashboardErrorState } from '@/components/organizer/tournament-manage/DashboardErrorState';
 import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
 import { useTournamentOverviewModel } from '@/hooks/useTournamentOverviewModel';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import {
   buildDashboardNav,
@@ -66,6 +68,9 @@ const TournamentDashboard = () => {
   } = useTournamentAccess(slug);
 
   const tournament = dashboardData?.tournament;
+
+  useStageRealtime({ tournamentId: tournament?.id, dashboardSlug: slug, dashboardUserId: profile?.id });
+
   const stages = useMemo(() => dashboardData?.stages ?? [], [dashboardData?.stages]);
   const participants = useMemo(() => dashboardData?.participants ?? [], [dashboardData?.participants]);
   const mockCount = dashboardData?.mockCount ?? 0;
@@ -120,8 +125,20 @@ const TournamentDashboard = () => {
     );
   }, [tournament]);
 
+  // Only fetch when prize pool is set — avoids an extra request for free tournaments
+  const prizePool = parseFloat(tournament?.prize_pool || '0');
+  const { data: prizeDistribution, isLoading: prizeDistributionLoading } = usePrizeDistribution(
+    prizePool > 0 ? tournament?.id : undefined
+  );
+  const distributionComplete = useMemo(() => {
+    if (prizeDistributionLoading) return undefined;
+    if (!prizeDistribution?.placements?.length) return false;
+    const total = prizeDistribution.placements.reduce((sum, p) => sum + (p.percentage || 0), 0);
+    return Math.abs(total - 100) < 0.01;
+  }, [prizeDistribution, prizeDistributionLoading]);
+
   // Compute completion state
-  const completionSummary = useCompletionState(tournament, stages);
+  const completionSummary = useCompletionState(tournament, stages, distributionComplete);
 
   // Permission flags for nav visibility
   const permissions = useMemo(() => {
@@ -215,6 +232,7 @@ const TournamentDashboard = () => {
       phaseLabel={overview.phaseLabel}
       phaseTone={overview.phaseTone}
       staffSummary={staffSummary}
+      userId={profile?.id}
     >
       <PanelRouter
         activeTab={activeTab}
