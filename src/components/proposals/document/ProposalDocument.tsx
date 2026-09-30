@@ -8,7 +8,7 @@ import { TOURNAMENT_PAGES, TournamentProposalDocument } from './TournamentPropos
 /** Renders either proposal kind on the chosen ground. Pure: all content comes from `doc`. */
 export function ProposalDocument({ doc }: { doc: Proposal }) {
   const meta = {
-    footer: joinFacts(['Esportra', brandLabel(doc)]),
+    footer: joinFacts(['Esportra', doc.prospect.brandName.trim() ? brandLabel(doc) : undefined]),
     total: doc.kind === 'tournament' ? TOURNAMENT_PAGES : PLATFORM_PAGES,
   };
   return (

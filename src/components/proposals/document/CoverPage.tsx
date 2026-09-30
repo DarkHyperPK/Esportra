@@ -24,7 +24,7 @@ export function CoverPage({ doc, title, facts }: { doc: Proposal; title: string;
       <Chevron />
       <div className="flex flex-1 flex-col">
         <span className="w-fit rounded-full border border-[color:var(--pd-cue)] px-4 py-1.5 text-[13px] font-bold uppercase tracking-[0.2em] text-[color:var(--pd-ink)]">
-          Proposal for {brandLabel(doc)} · ’{doc.preparedOn.slice(2, 4)}
+          {doc.prospect.brandName.trim() ? `Proposal for ${brandLabel(doc)}` : `Official ${doc.kind === 'tournament' ? 'sponsorship' : 'partnership'} proposal`} · ’{doc.preparedOn.slice(2, 4)}
         </span>
         <div className="mt-8">
           <Title doc={doc} text={title} size="cover" as="h1" />

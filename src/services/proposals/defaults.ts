@@ -17,7 +17,7 @@ const SENDER = {
 
 const PARTNERS = [
   { name: 'SystemOptix', logoUrl: '/proposals/systemoptix-logo.png', note: '' },
-  { name: 'ASUS', logoUrl: '', note: '' },
+  { name: 'ASUS', logoUrl: '/proposals/asus-logo.svg', note: '' },
 ];
 
 const RECOGNITION = [

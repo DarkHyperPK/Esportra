@@ -27,7 +27,7 @@ const TOKEN_HINT = 'Use {brand} and {industry} to insert the prospect’s detail
 export const PROSPECT_SECTION: SectionSpec = {
   id: 'prospect',
   title: 'Prospect',
-  description: 'Who this copy is prepared for. Everything else reads from these.',
+  description: 'Optional. Leave the brand empty for a general proposal; add it to tailor one copy.',
   fields: [
     { kind: 'text', path: 'title', label: 'History name', hint: 'Only shown in your proposals list.', max: 120 },
     { kind: 'text', path: 'prospect.brandName', label: 'Brand name', max: 80 },

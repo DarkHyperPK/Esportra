@@ -49,8 +49,8 @@ describe('format', () => {
 
   it('fills brand and industry tokens with fallbacks', () => {
     const doc = createTournamentProposal(NOW);
-    expect(brandLabel(doc)).toBe('Your brand');
-    expect(fillTokens('For {brand} in {industry}', doc)).toBe('For Your brand in your industry');
+    expect(brandLabel(doc)).toBe('your brand');
+    expect(fillTokens('For {brand} in {industry}', doc)).toBe('For your brand in your industry');
     const named = { ...doc, prospect: { ...doc.prospect, brandName: 'TapShop', industry: 'gaming retail' } };
     expect(fillTokens('For {brand} in {industry}', named)).toBe('For TapShop in gaming retail');
   });
@@ -139,12 +139,13 @@ describe('placements', () => {
 });
 
 describe('readiness', () => {
-  it('flags a missing brand, logo-less partners and mismatched placement rows', async () => {
+  it('flags logo-less partners and mismatched placement rows, but not a missing brand', async () => {
     const { checkReadiness } = await import('../readiness');
     const doc = createTournamentProposal(NOW);
     const sections = checkReadiness(doc).map((i) => i.sectionId);
-    expect(sections).toContain('prospect');
-    expect(sections).toContain('partners');
+    expect(sections).not.toContain('prospect');
+    const noLogo = { ...doc, partners: [{ name: 'Acme', logoUrl: '', note: '' }] };
+    expect(checkReadiness(noLogo).map((i) => i.sectionId)).toContain('partners');
     const broken = { ...doc, zoneRows: [{ zone: 'Sidebar', cells: ['—'] }] };
     expect(checkReadiness(broken).some((i) => i.sectionId === 'placements')).toBe(true);
   });

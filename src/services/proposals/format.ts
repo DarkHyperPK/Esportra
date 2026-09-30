@@ -5,7 +5,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export const FALLBACK_BRAND = 'Your brand';
+export const FALLBACK_BRAND = 'your brand';
 
 /** "2026-11-06" → "6 November 2026". Returns the input when it isn't an ISO date. */
 export function formatLongDate(iso: string): string {

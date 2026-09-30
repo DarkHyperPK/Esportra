@@ -8,7 +8,6 @@ export interface ReadinessIssue {
 
 function common(doc: Proposal): ReadinessIssue[] {
   const issues: ReadinessIssue[] = [];
-  if (!doc.prospect.brandName.trim()) issues.push({ sectionId: 'prospect', message: 'Add the brand’s name. The document says “Your brand” until you do.' });
   if (!doc.sender.email.trim()) issues.push({ sectionId: 'sender', message: 'Add a contact email.' });
   for (const partner of doc.partners) {
     if (partner.name.trim() && !partner.logoUrl.trim()) {
