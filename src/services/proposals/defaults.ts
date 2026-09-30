@@ -188,9 +188,13 @@ function base(now: Date) {
     recognition: [...RECOGNITION],
     stats: STATS.map((s) => ({ ...s })),
     about: ABOUT,
-    closingLine: 'Your [move].',
+    closingLine: 'Let’s build the future of [esports together].',
+    badges: [
+      { label: 'Recognized by', value: 'MoITT & Ignite NTF' },
+      { label: 'Featured', value: 'Top 10 incubatee startup' },
+    ],
     closingNote:
-      'The platform is live and the players are already on it. We would like {brand} on the stage with them.',
+      'Position {brand} at the heart of Pakistan’s competitive gaming community.',
     images: { cover: '', page: '/proposals/tournament-page.jpg', stream: '/proposals/stream-overlay.jpg' },
   };
 }
@@ -200,7 +204,7 @@ export function createTournamentProposal(now = new Date()): TournamentProposal {
     ...base(now),
     kind: 'tournament',
     title: 'Genesis Stage 2 · Tournament partner',
-    coverHeadline: '',
+    coverHeadline: 'Genesis Series [Stage 2]',
     coverLine: 'Genesis Stage 2 puts {brand} in front of competitive Valorant players, on the platform and on stream.',
     terms: [...TOURNAMENT_TERMS],
     event: {
@@ -232,7 +236,7 @@ export function createPlatformProposal(now = new Date()): PlatformProposal {
     ...base(now),
     kind: 'platform',
     title: 'Platform partner',
-    coverHeadline: '',
+    coverHeadline: 'Platform [Partnership]',
     coverLine: 'Year-round presence where competitive players register, play and follow their results.',
     terms: [...PLATFORM_TERMS],
     audiences: PLATFORM_AUDIENCES.map((a) => ({ ...a })),

@@ -75,6 +75,11 @@ const commonShape = {
   // Added later: defaults keep proposals saved before these fields readable.
   closingLine: text(200).default('Every match, official.'),
   closingNote: text(600).default(''),
+  /** Short recognition badges for the cover: a caption and a value. */
+  badges: z.array(z.object({ label: text(40), value: text(60) })).max(3).default([
+    { label: 'Recognized by', value: 'MoITT & Ignite NTF' },
+    { label: 'Featured', value: 'Top 10 incubatee startup' },
+  ]),
   images: z.object({
     cover: text(300),
     page: text(300),

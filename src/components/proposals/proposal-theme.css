@@ -1,100 +1,65 @@
-/* Proposal document tokens. Stage = Broadcast ground; Paper = Daylight, for print. */
+/*
+ * Genesis skin for partner proposals: crimson HUD on near-black, Rajdhani
+ * display, thin pink frame lines with cut corners. Paper flips the ground for print.
+ */
 .proposal-doc {
-  --pd-bg: #09090b;
-  --pd-panel: #111114;
-  --pd-ink: #fafafa;
-  --pd-label: #e4e4e7;
-  --pd-muted: #a1a1aa;
-  --pd-hint: #71717a;
-  --pd-line: rgba(255, 255, 255, 0.09);
-  --pd-strong-line: rgba(255, 255, 255, 0.22);
-  --pd-cue: #f43f5e;
+  --pd-bg: #07050a;
+  --pd-panel: #120b10;
+  --pd-panel-lit: #230a15;
+  --pd-ink: #ffffff;
+  --pd-label: #e7e2e5;
+  --pd-muted: #b3a9b0;
+  --pd-hint: #7d7179;
+  --pd-line: rgba(250, 32, 98, 0.22);
+  --pd-soft-line: rgba(255, 255, 255, 0.08);
+  --pd-cue: #fa2062;
+  --pd-cue-soft: rgba(250, 32, 98, 0.12);
+  --pd-glow-a: rgba(250, 32, 98, 0.28);
+  --pd-glow-b: rgba(120, 10, 45, 0.35);
   --pd-logo-filter: none;
-  --pd-texture-filter: none;
-  --pd-texture-opacity: 1;
-  --pd-slot: #fafafa;
-  --pd-slot-ink: #09090b;
-  --pd-screen: #111114;
-  --pd-number: #27272a;
-  --pd-drop: rgba(0, 0, 0, 0.65);
-  --pd-glow: rgba(255, 255, 255, 0.05);
-  --pd-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --pd-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(250, 32, 98, 0.25);
   background: var(--pd-bg);
   color: var(--pd-ink);
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 
 .proposal-doc[data-theme='paper'] {
-  --pd-bg: #ffffff;
-  --pd-panel: #f4f4f5;
-  --pd-ink: #09090b;
-  --pd-label: #27272a;
-  --pd-muted: #52525b;
-  --pd-hint: #71717a;
-  --pd-line: rgba(9, 9, 11, 0.13);
-  --pd-strong-line: rgba(9, 9, 11, 0.4);
-  --pd-cue: #e11d48;
+  --pd-bg: #fbf8f9;
+  --pd-panel: #ffffff;
+  --pd-panel-lit: #fff0f4;
+  --pd-ink: #140a10;
+  --pd-label: #2a1e25;
+  --pd-muted: #5b4d55;
+  --pd-hint: #8a7a83;
+  --pd-line: rgba(214, 16, 78, 0.28);
+  --pd-soft-line: rgba(20, 10, 16, 0.1);
+  --pd-cue: #d6104e;
+  --pd-cue-soft: rgba(214, 16, 78, 0.08);
+  --pd-glow-a: rgba(214, 16, 78, 0.12);
+  --pd-glow-b: rgba(214, 16, 78, 0.06);
   --pd-logo-filter: brightness(0);
-  /* The stage texture inverted: pale shards on paper. */
-  --pd-texture-filter: invert(1);
-  --pd-texture-opacity: 0.55;
-  --pd-slot: #09090b;
-  --pd-slot-ink: #fafafa;
-  --pd-screen: #f4f4f5;
-  --pd-number: #e4e4e7;
-  --pd-drop: rgba(9, 9, 11, 0.22);
-  --pd-glow: rgba(9, 9, 11, 0.035);
-  --pd-shadow: 0 30px 60px -24px rgba(9, 9, 11, 0.35), 0 0 0 1px rgba(9, 9, 11, 0.08);
+  --pd-shadow: 0 24px 50px -24px rgba(20, 10, 16, 0.35), 0 0 0 1px rgba(214, 16, 78, 0.25);
 }
 
 .proposal-doc .pd-logo { filter: var(--pd-logo-filter); }
-
-/* Cover: the brand's streak-shard texture, faded toward the text side. */
-.proposal-doc .pd-cover { position: relative; isolation: isolate; overflow: hidden; }
-.proposal-doc .pd-cover::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -3;
-  background: url('/proposals/streak-shards.svg') center / cover no-repeat;
-  filter: var(--pd-texture-filter);
-  opacity: var(--pd-texture-opacity);
-}
-.proposal-doc .pd-cover::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(100deg, var(--pd-bg) 18%, transparent 70%),
-    linear-gradient(to top, var(--pd-bg) 4%, transparent 40%);
-}
-
-/* Depth by luminance: one soft light from the top-left of every page. */
-.proposal-doc .pd-glow {
-  background-image: radial-gradient(ellipse 70% 55% at 0% 0%, var(--pd-glow), transparent 70%);
-}
-
-/* A product image lifted off the page. */
 .proposal-doc .pd-lift { box-shadow: var(--pd-shadow); }
 
-/* Shadow that survives clip-path: set on a wrapper of a cut panel. */
-.proposal-doc .pd-drop { filter: drop-shadow(0 28px 36px var(--pd-drop)); }
-
-/* Cut edges: one corner clipped at 45°, the brand's shape language. */
-.proposal-doc .pd-cut { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%); }
-.proposal-doc .pd-cut-r { clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%, 0 22px); }
-.proposal-doc .pd-chip { clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%); }
-
-/* The 45° notch: the one rare hero moment (the exclusive package). */
-.proposal-doc .pd-notch {
-  clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
+/* Every page: two crimson glows and faint diagonal scan lines. */
+.proposal-doc .pd-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-image:
+    radial-gradient(ellipse 55% 40% at 100% 8%, var(--pd-glow-a), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 0% 100%, var(--pd-glow-b), transparent 70%),
+    repeating-linear-gradient(135deg, transparent 0 22px, var(--pd-cue-soft) 22px 23px);
 }
 
-/* A partner's placement in the mockups: white speaks. */
-.proposal-doc .pd-slot {
-  background: var(--pd-slot);
-  color: var(--pd-slot-ink);
+/* Panel with a cut top-right corner; the border is drawn by the wrapper. */
+.proposal-doc .pd-cut-frame {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
 }
 
 @media print {
@@ -105,7 +70,6 @@
     flex-direction: column;
     break-after: page;
     break-inside: avoid;
-    padding: 16mm 14mm;
   }
   .proposal-doc .pd-section:last-child { break-after: auto; }
   .proposal-doc .pd-avoid { break-inside: avoid; }

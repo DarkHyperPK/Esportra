@@ -42,7 +42,16 @@ export const COVER_SECTION: SectionSpec = {
   title: 'Cover and closing lines',
   description: 'The first and last thing a reader sees. ' + TOKEN_HINT,
   fields: [
-    { kind: 'text', path: 'coverLine', label: 'Cover sentence', hint: 'One sentence under the partnership lockup.', multiline: true, max: 240 },
+    { kind: 'text', path: 'coverHeadline', label: 'Cover title', hint: 'Words in [brackets] print in pink on their own line.', max: 120 },
+    {
+      kind: 'repeat', path: 'badges', label: 'Cover badges', itemLabel: 'Badge', titleKey: 'value',
+      blank: () => ({ label: '', value: '' }),
+      fields: [
+        { kind: 'text', path: 'label', label: 'Caption', max: 40 },
+        { kind: 'text', path: 'value', label: 'Badge', max: 60 },
+      ],
+    },
+    { kind: 'text', path: 'coverLine', label: 'Cover sentence', hint: 'One sentence under the title.', multiline: true, max: 240 },
     { kind: 'text', path: 'closingLine', label: 'Closing headline', hint: 'Headline of the last page.', max: 200 },
     { kind: 'text', path: 'closingNote', label: 'Closing note', multiline: true, hint: 'Two sentences at most.', max: 600 },
   ],

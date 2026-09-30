@@ -2,17 +2,18 @@
 const ANCHORS: Record<string, string> = {
   prospect: 'cover',
   cover: 'cover',
+  badges: 'cover',
   images: 'placements',
   about: 'about',
-  outlook: 'audiences',
-  event: 'event',
-  audience: 'event',
-  audiences: 'audiences',
+  outlook: 'about',
+  event: 'about',
+  audience: 'about',
+  audiences: 'about',
   tiers: 'tiers',
   placements: 'placements',
   zones: 'placements',
   partners: 'close',
-  terms: 'close',
+  terms: 'tiers',
   sender: 'close',
 };
 
