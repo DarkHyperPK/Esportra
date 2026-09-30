@@ -87,6 +87,9 @@ const SponsorsPipelineSection = lazyWithRetry(() => import("./pages/admin/partne
 const SponsorsPartnersSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Partners"));
 const SponsorsPlacementsSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Placements"));
 const SponsorsAuditSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Audit"));
+const ProposalsHistory = lazyWithRetry(() => import("./pages/admin/proposals/ProposalsHistory"));
+const ProposalEditor = lazyWithRetry(() => import("./pages/admin/proposals/ProposalEditor"));
+const ProposalView = lazyWithRetry(() => import("./pages/admin/proposals/ProposalView"));
 const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
 const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
@@ -346,6 +349,12 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Admin Routes - Nested under single AdminLayout for smooth navigation */}
+                {/* Chrome-free proposal view for printing; sits outside AdminLayout on purpose */}
+                <Route path="/admin/proposals/:id/view" element={
+                  <AdminProtectedRoute>
+                    <AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><ProposalView /></AdminRouteGuard>
+                  </AdminProtectedRoute>
+                } />
                 <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
                   <Route index element={<Navigate to="dashboard" replace />} />
 
@@ -361,6 +370,9 @@ const AppContent = React.memo(() => {
                   <Route path="tools/verification-system" element={<AdminRouteGuard requiredPermission="verification:view" requiredRoles={ADMIN_ROLE_SETS.verification}><VerificationSystemTool /></AdminRouteGuard>} />
                   <Route path="tools/audit-logs" element={<AdminRouteGuard requiredPermission="audit:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AuditLogsTool /></AdminRouteGuard>} />
                   <Route path="tools/analytics" element={<AdminRouteGuard requiredPermission="analytics:view" requiredRoles={ADMIN_ROLE_SETS.analytics}><AnalyticsTool /></AdminRouteGuard>} />
+                  {/* Partner proposals (super admin): saved per browser, no backend */}
+                  <Route path="proposals" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><ProposalsHistory /></AdminRouteGuard>} />
+                  <Route path="proposals/:id" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><ProposalEditor /></AdminRouteGuard>} />
                   <Route path="tools/sponsor-management" element={<Navigate to="/admin/partners/sponsors/overview" replace />} />
                   <Route path="tools/sponsor-ad-manager" element={<Navigate to="/admin/partners/sponsors/placements" replace />} />
                   <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />

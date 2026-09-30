@@ -11,6 +11,7 @@ import {
   CalendarClock,
   Database,
   FileText,
+  FileSignature,
   Flag,
   Gamepad2,
   Home,
@@ -83,6 +84,7 @@ const adminNavGroups: AdminNavGroup[] = [
     label: 'Partners',
     items: [
       { label: 'Sponsors', href: '/admin/partners/sponsors', icon: Flag, permission: 'sponsors:view' },
+      { label: 'Proposals', href: '/admin/proposals', icon: FileSignature, superOnly: true },
     ],
   },
   {

@@ -1,0 +1,53 @@
+/* Proposal document tokens. Stage = Broadcast ground; Paper = Daylight, for print. */
+.proposal-doc {
+  --pd-bg: #09090b;
+  --pd-panel: #111114;
+  --pd-ink: #fafafa;
+  --pd-label: #e4e4e7;
+  --pd-muted: #a1a1aa;
+  --pd-hint: #71717a;
+  --pd-line: rgba(255, 255, 255, 0.09);
+  --pd-strong-line: rgba(255, 255, 255, 0.22);
+  --pd-cue: #f43f5e;
+  --pd-logo-filter: none;
+  background: var(--pd-bg);
+  color: var(--pd-ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.proposal-doc[data-theme='paper'] {
+  --pd-bg: #ffffff;
+  --pd-panel: #f4f4f5;
+  --pd-ink: #09090b;
+  --pd-label: #27272a;
+  --pd-muted: #52525b;
+  --pd-hint: #71717a;
+  --pd-line: rgba(9, 9, 11, 0.13);
+  --pd-strong-line: rgba(9, 9, 11, 0.4);
+  --pd-cue: #e11d48;
+  --pd-logo-filter: brightness(0);
+}
+
+.proposal-doc .pd-logo { filter: var(--pd-logo-filter); }
+
+/* Stage only: a quiet hairline field behind the cover. */
+.proposal-doc[data-theme='stage'] .pd-cover {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(ellipse at 15% 0%, rgba(255, 255, 255, 0.06), transparent 55%);
+  background-size: 96px 96px, 96px 96px, auto;
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+  .proposal-doc .pd-section {
+    min-height: 296mm;
+    break-after: page;
+    break-inside: avoid;
+    padding: 16mm 14mm;
+  }
+  .proposal-doc .pd-section:last-child { break-after: auto; }
+  .proposal-doc .pd-avoid { break-inside: avoid; }
+}
