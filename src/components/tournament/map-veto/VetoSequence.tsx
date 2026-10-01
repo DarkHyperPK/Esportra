@@ -44,7 +44,7 @@ function isBan(action: string) {
 
 function mapLabel(item: VetoSequenceItem) {
     if (item.mapName) return item.mapName;
-    return item.status === 'done' ? 'Map not recorded' : '—';
+    return item.status === 'done' ? 'Map not recorded' : '';
 }
 
 const TrackStep: React.FC<{ item: VetoSequenceItem; index: number }> = ({ item, index }) => {
@@ -61,7 +61,7 @@ const TrackStep: React.FC<{ item: VetoSequenceItem; index: number }> = ({ item, 
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: ARRIVE_EASE, delay: reduceMotion ? 0 : Math.min(index, 6) * 0.035 }}
             className={cn(
-                'relative flex w-[8.5rem] shrink-0 flex-col bg-card sm:w-[9.5rem]',
+                'relative flex min-w-[8.5rem] flex-1 shrink-0 flex-col bg-card',
                 isCurrent && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]',
                 item.status === 'upcoming' && 'bg-background',
             )}

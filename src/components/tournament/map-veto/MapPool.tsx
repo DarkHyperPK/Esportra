@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, VetoService, isVetoLive } from '@/hooks/useMapVetoMachine';
 import { MapPoolTile, type MapPoolTileStatus } from './MapPoolTile';
 import { MapPoolSidePick } from './MapPoolSidePick';
+import { buildVetoSelectedMapEntries } from './buildVetoSelectedMapEntries';
 import { getVetoLayoutConfig, type VetoLayoutMode } from './vetoLayoutConfig';
 import {
     MAP_FLASH_MS,
@@ -75,6 +76,8 @@ interface MapPoolProps {
     layoutMode?: VetoLayoutMode;
     /** When false, ban/pick animations wait for server state instead of firing on click. */
     transitionOnClick?: boolean;
+    /** Hide the turn instruction when a turn banner above already says it. */
+    showInstruction?: boolean;
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -89,10 +92,13 @@ export const MapPool: React.FC<MapPoolProps> = ({
     team2Name,
     team1Id,
     team2Id,
+    team1Logo,
+    team2Logo,
     bestOf,
     game = 'valorant',
     layoutMode = 'embedded',
     transitionOnClick = true,
+    showInstruction = true,
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
@@ -234,15 +240,30 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
     const availableMapsToShow = availableMaps;
 
+    const seriesOrder = buildVetoSelectedMapEntries({
+        veto,
+        bestOf: currentBestOf,
+        game,
+        mapLookup,
+        team1Name,
+        team2Name,
+        team1Id,
+        team2Id,
+    });
+
     const getMapStatus = (mapId: string): MapPoolTileStatus => {
         const mapIdStr = String(mapId);
         const pickedMap = allPickedMaps.find((pick) => String(pick.map_id) === mapIdStr);
+        const isTeam1Ban = team1Banned.some((id) => String(id) === mapIdStr);
+        const isBanned = isTeam1Ban || team2Banned.some((id) => String(id) === mapIdStr);
+        const actorIsTeam1 = isBanned ? isTeam1Ban : pickedMap?.team === 'team1';
+        const actorKnown = isBanned || Boolean(pickedMap);
         return {
-            isBanned: allBannedMaps.some((id) => String(id) === mapIdStr),
-            isTeam1Ban: team1Banned.some((id) => String(id) === mapIdStr),
+            isBanned,
             isPicked: Boolean(pickedMap) || veto.selected_map_id === mapId,
-            pickedBy: pickedMap?.teamName,
-            pickedSide: pickedMap?.side,
+            actorName: actorKnown ? (actorIsTeam1 ? team1Name : team2Name) : undefined,
+            actorLogo: actorKnown ? (actorIsTeam1 ? team1Logo : team2Logo) : undefined,
+            mapNumber: seriesOrder.find((entry) => String(entry.map_id) === mapIdStr)?.mapNumber,
         };
     };
 
@@ -298,8 +319,8 @@ export const MapPool: React.FC<MapPoolProps> = ({
         return (
             <section aria-label="Side choice">
                 <div className="mb-3 flex items-baseline justify-between gap-3">
-                    <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">Starting side</span>
-                    <span className="truncate text-xs text-zinc-400">{instruction}</span>
+                    <h3 className="font-heading text-lg font-bold tracking-tight text-white">Starting side</h3>
+                    {showInstruction ? <span className="truncate text-xs text-zinc-400">{instruction}</span> : null}
                 </div>
                 {map ? (
                     <MapPoolSidePick
@@ -323,10 +344,12 @@ export const MapPool: React.FC<MapPoolProps> = ({
     return (
         <section aria-label="Map pool">
             <div className="mb-3 flex items-baseline justify-between gap-3">
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                    Map pool · {remainingCount} of {availableMapsToShow.length} left
-                </span>
-                <span className={cn('truncate text-xs', isUserTurn ? 'text-white' : 'text-zinc-400')}>{instruction}</span>
+                <h3 className="font-heading text-lg font-bold tracking-tight text-white">
+                    Map pool <span className="ml-1.5 font-mono text-[11px] font-semibold tracking-[0.2em] text-zinc-500">{remainingCount} LEFT</span>
+                </h3>
+                {showInstruction ? (
+                    <span className={cn('truncate text-xs', isUserTurn ? 'text-white' : 'text-zinc-400')}>{instruction}</span>
+                ) : null}
             </div>
 
             <LayoutGroup>
@@ -343,7 +366,6 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     key={map.id}
                                     map={map}
                                     status={status}
-                                    bannedByName={status.isTeam1Ban ? team1Name : team2Name}
                                     currentAction={currentAction}
                                     canInteract={canInteract}
                                     isLoading={actionLoading === map.id && !flashAction}

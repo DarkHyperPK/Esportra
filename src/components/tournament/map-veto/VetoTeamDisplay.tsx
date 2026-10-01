@@ -98,7 +98,8 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
     className,
 }) => {
     const activeCaption = getVetoActiveCaption(currentAction);
-    const idleCaption = completed ? 'Veto done' : activeSide ? 'Waiting' : 'Ready';
+    // Only the team on the clock gets a caption; the other side stays quiet.
+    const idleCaption = '\u00a0';
 
     return (
         <div

@@ -3,21 +3,23 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GameMap } from '@/hooks/useMapVetoMachine';
 import { VetoMapArt } from './VetoMapArt';
-import { getSideFullLabel, getVetoActionHoverClasses } from './vetoActionPresentation';
+import { VetoCrest } from './VetoCrest';
+import { getVetoActionHoverClasses } from './vetoActionPresentation';
 import { mapOverlayMotion, type MapTransitionAction } from './mapPoolAnimations';
 
 export interface MapPoolTileStatus {
     isBanned: boolean;
-    isTeam1Ban: boolean;
     isPicked: boolean;
-    pickedBy?: string;
-    pickedSide?: 'attack' | 'defend';
+    /** Team that banned or picked this map. */
+    actorName?: string;
+    actorLogo?: string | null;
+    /** Position in the series for picked maps (1-based). */
+    mapNumber?: number;
 }
 
 interface MapPoolTileProps {
     map: GameMap;
     status: MapPoolTileStatus;
-    bannedByName?: string;
     currentAction: 'ban' | 'pick' | 'pick_side';
     canInteract: boolean;
     isLoading: boolean;
@@ -28,35 +30,45 @@ interface MapPoolTileProps {
 
 const TILE_TRANSITION = { duration: 0.22, ease: [0.2, 0, 0, 1] } as const;
 
-function verb(action: MapPoolTileProps['currentAction']) {
-    return action === 'pick' ? 'Pick' : 'Ban';
+function ariaLabel(map: GameMap, status: MapPoolTileStatus, canInteract: boolean, verb: string) {
+    if (canInteract) return `${verb} ${map.map_name}`;
+    if (status.isBanned) return `${map.map_name}, banned${status.actorName ? ` by ${status.actorName}` : ''}`;
+    if (status.isPicked) return `${map.map_name}, map ${status.mapNumber ?? ''} picked${status.actorName ? ` by ${status.actorName}` : ''}`;
+    return map.map_name;
 }
 
-const TileCaption: React.FC<{ status: MapPoolTileStatus; bannedByName?: string; canInteract: boolean }> = ({ status, bannedByName, canInteract }) => {
-    if (status.isBanned) {
-        return <>Banned · {bannedByName}</>;
-    }
-    if (status.isPicked) {
-        return (
-            <span className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Picked{status.pickedBy ? ` · ${status.pickedBy}` : ''}
-                {status.pickedSide ? ` · ${getSideFullLabel(status.pickedSide)}` : ''}
-            </span>
-        );
-    }
-    return <>{canInteract ? 'Available' : 'In pool'}</>;
-};
+/** Banned: the map is struck from the board — colour gone, one hairline through it. */
+const BannedMarks: React.FC<{ status: MapPoolTileStatus }> = ({ status }) => (
+    <>
+        <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
+            <line x1="0" y1="100" x2="100" y2="0" stroke="rgba(255,255,255,0.14)" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <span className="absolute left-2.5 top-2.5 z-10 flex items-center gap-2">
+            {status.actorName ? <VetoCrest name={status.actorName} logo={status.actorLogo} className="h-6 w-6" /> : null}
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-400">Ban</span>
+        </span>
+    </>
+);
+
+/** Picked: the map keeps its colour and takes its place in the series. */
+const PickedMarks: React.FC<{ status: MapPoolTileStatus }> = ({ status }) => (
+    <span className="absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2">
+        <span className="bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-matte-black">
+            {status.mapNumber ? `Map ${status.mapNumber}` : 'Pick'}
+        </span>
+        {status.actorName ? <VetoCrest name={status.actorName} logo={status.actorLogo} className="h-6 w-6" /> : null}
+    </span>
+);
 
 /**
- * One map in the pool. Available maps are the brightest thing on the board;
- * banned maps lose colour and step back; picked maps keep colour and a confirmed dot.
- * On the deciding team's turn, hovering reveals the action bar (white speaks, rose confirms).
+ * One map in the pool. Open maps are the brightest thing on the board and carry
+ * only their name; settled maps say who settled them with a crest, not a sentence.
+ * On the deciding team's turn, hover or focus reveals the action bar
+ * (white speaks, rose confirms on press).
  */
 export const MapPoolTile: React.FC<MapPoolTileProps> = ({
     map,
     status,
-    bannedByName,
     currentAction,
     canInteract,
     isLoading,
@@ -65,8 +77,8 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
     onSelect,
 }) => {
     const reduceMotion = useReducedMotion();
-    const isSettled = status.isBanned || status.isPicked;
-    const actionVerb = verb(currentAction);
+    const verb = currentAction === 'pick' ? 'Pick' : 'Ban';
+    const pickedNote = status.isPicked && status.actorName ? `${status.actorName} pick` : null;
 
     return (
         <motion.button
@@ -77,13 +89,13 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
             transition={reduceMotion ? { duration: 0 } : TILE_TRANSITION}
             disabled={!canInteract || isLoading}
             onClick={() => onSelect(map.id)}
-            aria-label={canInteract ? `${actionVerb} ${map.map_name}` : `${map.map_name}${status.isBanned ? ', banned' : status.isPicked ? ', picked' : ''}`}
+            aria-label={ariaLabel(map, status, canInteract, verb)}
             className={cn(
                 'group relative isolate block aspect-[16/10] min-h-[7rem] w-full overflow-hidden bg-zinc-900 text-left',
                 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition-shadow duration-150',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-default',
                 canInteract && !isLoading && cn('cursor-pointer', getVetoActionHoverClasses(currentAction)),
-                status.isPicked && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]',
+                status.isPicked && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]',
                 isLoading && 'opacity-70',
             )}
         >
@@ -93,16 +105,16 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
                 muted={status.isBanned}
                 className={cn(
                     'transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
-                    canInteract && 'group-hover:scale-[1.03]',
+                    canInteract && 'group-hover:scale-[1.04]',
                 )}
             />
             <div className={cn(
-                'absolute inset-0 transition-colors duration-200',
-                status.isBanned
-                    ? 'bg-black/70'
-                    : 'bg-gradient-to-t from-black/90 via-black/35 to-black/0',
-                !isSettled && !canInteract && 'bg-black/30',
+                'absolute inset-0',
+                status.isBanned ? 'bg-black/75' : 'bg-gradient-to-t from-black/85 via-black/20 to-black/0',
             )} />
+
+            {status.isBanned ? <BannedMarks status={status} /> : null}
+            {status.isPicked ? <PickedMarks status={status} /> : null}
 
             <div className={cn(
                 'absolute inset-x-0 bottom-0 z-10 p-3 transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:p-3.5',
@@ -111,22 +123,17 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
                 <p className={cn(
                     'truncate font-heading font-black tracking-tight',
                     nameSizeClass,
-                    status.isBanned ? 'text-zinc-500 line-through decoration-white/25' : 'text-white',
+                    status.isBanned ? 'text-zinc-500' : 'text-white',
                 )}>
                     {map.map_name}
                 </p>
-                <p className={cn(
-                    'mt-0.5 truncate font-mono text-[9px] font-semibold uppercase tracking-[0.2em] sm:text-[10px]',
-                    status.isPicked ? 'text-zinc-200' : 'text-zinc-500',
-                )}>
-                    <TileCaption status={status} bannedByName={bannedByName} canInteract={canInteract} />
-                </p>
+                {pickedNote ? <p className="mt-0.5 truncate text-[11px] text-zinc-300">{pickedNote}</p> : null}
             </div>
 
             {canInteract ? (
                 <span className="absolute inset-x-0 bottom-0 z-20 flex h-9 translate-y-full items-center justify-between overflow-hidden bg-white px-3 text-matte-black transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0">
                     <span aria-hidden className="absolute inset-0 -translate-x-full bg-rose-500 transition-transform duration-200 ease-[cubic-bezier(0.3,0,0,1)] group-active:translate-x-0" />
-                    <span className="relative font-mono text-[11px] font-bold uppercase tracking-[0.2em] group-active:text-white">{actionVerb}</span>
+                    <span className="relative font-mono text-[11px] font-bold uppercase tracking-[0.2em] group-active:text-white">{verb}</span>
                     <span className="relative truncate pl-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] group-active:text-white">{map.map_name}</span>
                 </span>
             ) : null}

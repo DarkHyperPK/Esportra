@@ -98,7 +98,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
 
     const mapsSection = (
         <section aria-label="Maps">
-            <SectionHeading title="Maps" caption={games.length ? `${games.length} reported` : undefined} />
+            <SectionHeading title="Maps" />
             {selectedGame ? (
                 <>
                     <MatchSeriesStrip
@@ -172,7 +172,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                         {games.length > 0 ? vetoSection : mapsSection}
                         {evidence.length > 0 ? (
                             <section aria-label="Submitted screenshots">
-                                <SectionHeading title="Screenshots" caption={`${evidence.length} submitted`} />
+                                <SectionHeading title="Screenshots" />
                                 <MatchEvidenceGrid imageUrls={evidence} />
                             </section>
                         ) : null}

@@ -246,6 +246,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           bestOf={currentBestOf}
           game={game}
           layoutMode={layout}
+          showInstruction={false}
         />
         <aside className="min-w-0 space-y-5">
           {lineup(true)}
