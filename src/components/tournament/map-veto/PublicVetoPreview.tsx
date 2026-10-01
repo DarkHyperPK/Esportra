@@ -1,14 +1,12 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
-import { mapApiVetoToLocal } from '@/hooks/useMapVetoMachine';
-import { normalizeHistoryEntry, type VetoHistoryEntry } from '@/hooks/useVetoHistory';
-import { VetoSequence } from './VetoSequence';
-import { Badge } from '@/components/ui/badge';
+import { usePublicVeto, usePublicVetoHistory } from '@/hooks/usePublicVeto';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
-import { buildVetoSelectedMapEntries } from './buildVetoSelectedMapEntries';
+import { StatusPill } from '@/components/ui/kit';
+import { VetoSequence } from './VetoSequence';
+import { VetoLineup } from './VetoLineup';
+import { buildVetoSelectedMapEntries, type VetoMapLookupEntry } from './buildVetoSelectedMapEntries';
+import { getVetoSpectatorLine } from './vetoActionPresentation';
+import type { VetoHistoryEntry } from '@/hooks/useVetoHistory';
 
 interface PublicVetoPreviewProps {
     matchId: string;
@@ -17,43 +15,17 @@ interface PublicVetoPreviewProps {
     enabled?: boolean;
 }
 
-function usePublicVeto(matchId: string, enabled: boolean) {
-    const cleanedId = matchId.replace(/^(db-|wb-|lb-|source-)/, '');
-    return useQuery({
-        queryKey: ['public-veto', cleanedId],
-        queryFn: async () => {
-            try {
-                const data = await apiClient.get<Record<string, unknown>>(`/api/public/veto/${cleanedId}`);
-                return mapApiVetoToLocal(data);
-            } catch {
-                return null;
-            }
-        },
-        enabled: enabled && Boolean(cleanedId),
-        staleTime: 30_000,
+function lookupFromHistory(history: VetoHistoryEntry[]): VetoMapLookupEntry[] {
+    const lookup = new Map<string, VetoMapLookupEntry>();
+    history.forEach((entry) => {
+        if (entry.mapId && !lookup.has(entry.mapId)) {
+            lookup.set(entry.mapId, { id: entry.mapId, map_name: entry.mapName, map_image_url: entry.mapImageUrl });
+        }
     });
+    return Array.from(lookup.values());
 }
 
-function usePublicVetoHistory(matchId: string, enabled: boolean) {
-    const cleanedId = matchId.replace(/^(db-|wb-|lb-|source-)/, '');
-    return useQuery({
-        queryKey: ['public-veto-history', cleanedId],
-        queryFn: async (): Promise<VetoHistoryEntry[]> => {
-            try {
-                const data = await apiClient.get<unknown>(`/api/public/veto/${cleanedId}/history`);
-                const rows = Array.isArray(data) ? data : [];
-                return rows
-                    .map((row) => normalizeHistoryEntry(row as Record<string, unknown>))
-                    .sort((a, b) => a.actionNumber - b.actionNumber);
-            } catch {
-                return [];
-            }
-        },
-        enabled: enabled && Boolean(cleanedId),
-        staleTime: 30_000,
-    });
-}
-
+/** Spectator view of a match's veto: the maps that will be played, then how they were chosen. */
 export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
     matchId,
     team1Name = 'Team 1',
@@ -65,111 +37,65 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
 
     if (vetoLoading) {
         return (
-            <div className="space-y-3" data-testid="public-veto-preview-loading">
-                <Skeleton className="h-6 w-32 bg-white/10" />
-                <Skeleton className="h-20 w-full bg-white/10" />
+            <div className="space-y-px" data-testid="public-veto-preview-loading">
+                <Skeleton className="h-24 w-full rounded-none bg-white/[0.05]" />
+                <Skeleton className="h-10 w-full rounded-none bg-white/[0.04]" />
             </div>
         );
     }
 
     if (!veto) {
         return (
-            <p className="text-sm text-zinc-500 py-2" data-testid="public-veto-empty">
-                No map veto recorded yet.
+            <p className="border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500" data-testid="public-veto-empty">
+                No map veto for this match yet.
             </p>
         );
     }
 
-    const boText = `BO${veto.best_of || 1}`;
-    const statusLabel = veto.status === 'in_progress'
-        ? 'In Progress'
-        : veto.status === 'completed'
-            ? 'Completed'
-            : veto.status === 'pending'
-                ? 'Pending'
-                : veto.status;
-
+    const bestOf = veto.best_of || 1;
+    const isLive = veto.status === 'in_progress';
+    const isComplete = veto.status === 'completed';
     const currentTeam = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
-
-    const mapLookup = Array.from(
-        history.reduce((lookup, entry) => {
-            if (entry.mapId && !lookup.has(entry.mapId)) {
-                lookup.set(entry.mapId, {
-                    id: entry.mapId,
-                    map_name: entry.mapName,
-                    map_image_url: entry.mapImageUrl,
-                });
-            }
-            return lookup;
-        }, new Map<string, { id: string; map_name: string; map_image_url?: string | null }>()).values(),
-    );
-
-    const selectedEntries = buildVetoSelectedMapEntries({
+    const entries = buildVetoSelectedMapEntries({
         veto,
-        bestOf: veto.best_of || 1,
+        bestOf,
         game: veto.game || 'valorant',
-        mapLookup,
+        mapLookup: lookupFromHistory(history),
         team1Name,
         team2Name,
     });
 
     return (
-        <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-4" data-testid="public-veto-preview">
-            <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-white uppercase tracking-widest">Map Veto</span>
-                <Badge className="bg-white/10 text-white text-[10px] border border-white/20">{boText}</Badge>
-                <Badge className={cn(
-                    'text-[10px] border',
-                    veto.status === 'in_progress'
-                        ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                        : 'bg-white/5 text-zinc-400 border-white/10',
-                )}>{statusLabel}</Badge>
+        <div className="space-y-4" data-testid="public-veto-preview">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-zinc-300">
+                    {isLive && veto.current_action
+                        ? `${getVetoSpectatorLine(currentTeam, veto.current_action)}.`
+                        : isComplete
+                            ? `Veto done. ${entries.length === 1 ? 'One map' : `${entries.length} maps`} to play.`
+                            : 'The veto hasn’t started.'}
+                </p>
+                <StatusPill
+                    label={isLive ? 'In progress' : isComplete ? 'Complete' : 'Not started'}
+                    tone={isComplete ? 'success' : 'neutral'}
+                />
             </div>
 
-            {veto.status === 'in_progress' && veto.current_action && (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-                    <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest', getVetoActionClasses(veto.current_action))}>
-                        {getVetoActionNoun(veto.current_action)}
-                    </span>
-                    <span className="text-xs font-semibold text-zinc-300">
-                        {currentTeam}'s turn
-                    </span>
-                </div>
-            )}
-
-            {selectedEntries.length > 0 && (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-                    {selectedEntries.map((entry) => (
-                        <div key={`${entry.mapNumber}-${entry.map_id}`} className="overflow-hidden rounded-lg border border-emerald-500/30 bg-black">
-                            <div
-                                className="h-24 bg-cover bg-center"
-                                style={{
-                                    backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2)), url(${entry.map_image_url || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80'})`,
-                                }}
-                            >
-                                <div className="flex h-full flex-col justify-end p-3">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Map {entry.mapNumber}</span>
-                                    <span className="text-sm font-black text-white">{entry.map_name}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {(isLive || isComplete) ? <VetoLineup entries={entries} bestOf={bestOf} variant="rail" /> : null}
 
             <VetoSequence
                 veto={veto}
                 entries={history}
                 loading={historyLoading}
-                bestOf={veto.best_of || 1}
+                bestOf={bestOf}
                 team1Name={team1Name}
                 team2Name={team2Name}
                 team1Id={veto.team1_id}
                 team2Id={veto.team2_id}
                 game={veto.game || 'valorant'}
-                compact={false}
-                doneOnly={veto.status === 'completed'}
-                emptyMessage="No veto actions recorded yet."
+                compact
+                doneOnly={isComplete}
+                emptyMessage="No veto steps recorded yet."
             />
         </div>
     );

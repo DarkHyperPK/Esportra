@@ -19,6 +19,8 @@ export interface VetoSelectedMapEntry {
     map_image_url?: string | null;
     side?: 'attack' | 'defend';
     mapPickerTeamName: string;
+    /** Team that chose the starting side on this map; `side` is their side. */
+    sidePickerTeamName?: string;
     mapNumber: number;
 }
 
@@ -107,12 +109,20 @@ export function buildVetoSelectedMapEntries(options: {
 
             usedMapIds.add(mapId);
             const map = mapLookup.find((entry) => entry.id === mapId);
+            const sidePickerTeamId = getSidePickerTeam(
+                step.actionNumber,
+                vetoFormat,
+                effectiveTeam1Id,
+                effectiveTeam2Id,
+                service,
+            );
             mapsWithSides.push({
                 map_id: mapId,
                 map_name: map?.map_name || 'Selected map',
                 map_image_url: map?.map_image_url,
                 side: (pickedMapData as { side?: 'attack' | 'defend' })?.side,
                 mapPickerTeamName: mapPickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
+                sidePickerTeamName: sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
                 mapNumber: mapNumber++,
             });
             break;
@@ -147,9 +157,10 @@ export function buildVetoSelectedMapEntries(options: {
     }
 
     const finalSidePickerPicks = finalSidePickerTeamId === effectiveTeam1Id ? team1Picks : team2Picks;
-    const deciderPickData = finalSidePickerPicks.find(
-        (pick) => (pick as { map_id?: string }).map_id === deciderMap.id,
-    ) as { side?: 'attack' | 'defend' } | undefined;
+    const otherTeamPicks = finalSidePickerTeamId === effectiveTeam1Id ? team2Picks : team1Picks;
+    const isDeciderPick = (pick: PickedMap) => (pick as { map_id?: string }).map_id === deciderMap.id;
+    const deciderPickData = (finalSidePickerPicks.find(isDeciderPick) ?? otherTeamPicks.find(isDeciderPick)) as
+        { side?: 'attack' | 'defend' } | undefined;
 
     mapsWithSides.push({
         map_id: deciderMap.id,
@@ -157,6 +168,7 @@ export function buildVetoSelectedMapEntries(options: {
         map_image_url: deciderMap.map_image_url,
         side: deciderPickData?.side,
         mapPickerTeamName: 'Decider',
+        sidePickerTeamName: finalSidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
         mapNumber: mapNumber++,
     });
 

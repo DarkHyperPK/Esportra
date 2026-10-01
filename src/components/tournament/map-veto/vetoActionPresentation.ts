@@ -58,44 +58,86 @@ export function getSideFullLabel(side?: VetoSide | null) {
     return 'SIDE';
 }
 
+/**
+ * Veto actions are told apart by their noun (BAN / PICK / SIDE), never by colour alone.
+ * Picks shape the series, so they read in bone white; bans recede to grey.
+ * Rose is reserved for the live turn cue and is never used for an action.
+ */
 export function getVetoActionClasses(action: VetoActionKind | string, variant: 'chip' | 'text' | 'border' | 'surface' = 'chip') {
     const isPick = action === 'pick' || action === 'auto_decider';
     const isSide = action === 'pick_side';
     const isIgnore = action === 'ignore';
 
     if (variant === 'text') {
-        if (isIgnore) return 'text-zinc-500';
-        return isPick ? 'text-zinc-300' : isSide ? 'text-white/70' : 'text-rose-300';
+        if (isIgnore) return 'text-zinc-600';
+        return isPick ? 'text-white' : isSide ? 'text-zinc-200' : 'text-zinc-400';
     }
 
     if (variant === 'border') {
-        if (isIgnore) return 'border-zinc-700/50';
-        return isPick ? 'border-zinc-500/40' : isSide ? 'border-white/20' : 'border-rose-500/35';
+        if (isIgnore) return 'border-white/[0.06]';
+        return isPick ? 'border-white/30' : isSide ? 'border-white/15' : 'border-white/10';
     }
 
     if (variant === 'surface') {
-        if (isIgnore) return 'bg-zinc-800/40';
-        return isPick ? 'bg-zinc-700/20' : isSide ? 'bg-white/[0.06]' : 'bg-rose-500/10';
+        if (isIgnore) return 'bg-transparent';
+        return isPick ? 'bg-white/[0.08]' : isSide ? 'bg-white/[0.05]' : 'bg-white/[0.03]';
     }
 
-    if (isIgnore) return 'border border-zinc-700/40 bg-zinc-800/30 text-zinc-500';
+    if (isIgnore) return 'border border-white/[0.06] bg-transparent text-zinc-600';
 
     return cn(
         'border',
-        isPick && 'border-zinc-500/40 bg-zinc-700/20 text-zinc-200',
-        isSide && 'border-white/20 bg-white/[0.06] text-white/80',
-        !isPick && !isSide && 'border-rose-500/35 bg-rose-500/10 text-rose-300',
+        isPick && 'border-white/30 bg-white/[0.08] text-white',
+        isSide && 'border-white/15 bg-white/[0.05] text-zinc-200',
+        !isPick && !isSide && 'border-white/10 bg-white/[0.03] text-zinc-400',
     );
 }
 
 export function getVetoActionHoverClasses(action: VetoActionKind | string) {
     if (action === 'pick' || action === 'auto_decider') {
-        return 'border-zinc-500/40 hover:border-zinc-400 hover:shadow-zinc-500/15';
+        return 'hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]';
     }
+    return 'hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]';
+}
 
-    if (action === 'pick_side') {
-        return 'border-white/25 hover:border-white/50 hover:shadow-white/10';
+/** Instruction for the team on the clock, in the referee's voice. */
+export function getVetoInstruction(action: VetoActionKind | string | null | undefined) {
+    switch (action) {
+        case 'ban':
+            return 'Ban a map';
+        case 'pick':
+            return 'Pick a map';
+        case 'pick_side':
+            return 'Choose your starting side';
+        default:
+            return 'Make your choice';
     }
+}
 
-    return 'border-rose-500/40 hover:border-rose-400 hover:shadow-rose-500/20';
+/** What the other side sees while a team is on the clock. */
+export function getVetoSpectatorLine(teamName: string, action: VetoActionKind | string | null | undefined) {
+    switch (action) {
+        case 'ban':
+            return `${teamName} is banning a map`;
+        case 'pick':
+            return `${teamName} is picking a map`;
+        case 'pick_side':
+            return `${teamName} is choosing a side`;
+        default:
+            return `Waiting for ${teamName}`;
+    }
+}
+
+/** Mono caption for the team on the clock (scorebug voice). */
+export function getVetoActiveCaption(action: VetoActionKind | string | null | undefined) {
+    switch (action) {
+        case 'ban':
+            return 'Banning';
+        case 'pick':
+            return 'Picking';
+        case 'pick_side':
+            return 'Choosing side';
+        default:
+            return 'On the clock';
+    }
 }

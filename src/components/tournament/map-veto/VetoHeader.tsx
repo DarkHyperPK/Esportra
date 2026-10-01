@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { Check, Link2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { StatusPill } from '@/components/ui/kit';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { MatchMapVeto } from '@/hooks/useMapVetoMachine';
 import { useToast } from '@/hooks/use-toast';
 
 interface VetoHeaderProps {
-    boText: string;
+    /** The scorebug carries the format now; kept for API compatibility. */
+    boText?: string;
     vetoStatus: MatchMapVeto['status'];
     effectiveIsOrganizer: boolean;
     handleResetVeto: () => void;
@@ -22,8 +23,15 @@ interface VetoHeaderProps {
     getTeamVetoUrl?: (token: string) => string;
 }
 
+const STATUS_PILL: Record<MatchMapVeto['status'], { label: string; tone: 'success' | 'neutral' }> = {
+    // The scorebug's active-team marker is the one rose cue; the pill stays quiet.
+    in_progress: { label: 'In progress', tone: 'neutral' },
+    completed: { label: 'Complete', tone: 'success' },
+    pending: { label: 'Not started', tone: 'neutral' },
+    cancelled: { label: 'Cancelled', tone: 'neutral' },
+};
+
 export const VetoHeader: React.FC<VetoHeaderProps> = ({
-    boText,
     vetoStatus,
     effectiveIsOrganizer,
     handleResetVeto,
@@ -39,6 +47,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
 }) => {
     const { toast } = useToast();
     const [copiedTeam, setCopiedTeam] = useState<'team1' | 'team2' | null>(null);
+    const status = STATUS_PILL[vetoStatus] ?? STATUS_PILL.pending;
 
     const copyLink = async (token: string, team: 'team1' | 'team2', teamName: string) => {
         const link = getTeamVetoUrl
@@ -46,60 +55,64 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
             : `${window.location.origin}/map-veto/${token}`;
         await navigator.clipboard.writeText(link);
         setCopiedTeam(team);
-        toast({ title: 'Copied!', description: `${teamName} veto link copied to clipboard.` });
+        toast({ title: 'Link copied', description: `Send it to ${teamName}'s captain.` });
         setTimeout(() => setCopiedTeam(null), 2000);
     };
 
+    const showControls = effectiveIsOrganizer && (Boolean(vetoId) || (showShareLinks && Boolean(team1LinkToken || team2LinkToken)));
+
     return (
         <div className={cn(
-            'flex flex-col gap-3',
-            compact ? 'mb-2' : 'mb-4 sm:mb-6',
+            'flex flex-wrap items-center justify-between gap-x-4 gap-y-3',
+            compact ? 'mb-1' : 'mb-2',
         )}>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <h1 className={cn(
-                    'font-black text-white tracking-tighter',
-                    compact ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl',
-                )}>MAP VETO</h1>
-                <Badge className="bg-white/10 text-white px-2.5 py-0.5 text-[10px] font-bold border border-white/20 rounded-full">{boText}</Badge>
-                {vetoStatus === 'in_progress' && (
-                    <Badge className="bg-rose-500/20 text-rose-200 px-2.5 py-0.5 text-[10px] font-black border border-rose-500/40 rounded-full animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.25)]">
-                        LIVE
-                    </Badge>
-                )}
+            <div className="flex min-w-0 items-center gap-3">
+                <h2 className={cn(
+                    'font-heading font-black tracking-tight text-white',
+                    compact ? 'text-lg' : 'text-xl sm:text-2xl',
+                )}>
+                    Map veto
+                </h2>
+                <StatusPill label={status.label} tone={status.tone} />
             </div>
 
-            {effectiveIsOrganizer && (
+            {showControls ? (
                 <div className="flex flex-wrap items-center gap-2">
-                    {showShareLinks && team1LinkToken && (
-                        <button type="button"
+                    {showShareLinks && team1LinkToken ? (
+                        <CommandButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => copyLink(team1LinkToken, 'team1', team1Name)}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/10 text-white/70 hover:bg-white/[0.04] hover:border-white/20')}
+                            aria-label={`Copy veto link for ${team1Name}`}
                         >
-                            {copiedTeam === 'team1' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-                            {team1Name} Link
-                        </button>
-                    )}
-                    {showShareLinks && team2LinkToken && (
-                        <button type="button"
+                            {copiedTeam === 'team1' ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            <span className="max-w-[9rem] truncate normal-case tracking-normal">{team1Name}</span>
+                        </CommandButton>
+                    ) : null}
+                    {showShareLinks && team2LinkToken ? (
+                        <CommandButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => copyLink(team2LinkToken, 'team2', team2Name)}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-rose-500/20 text-rose-300 hover:bg-rose-500/10 hover:border-rose-500/30')}
+                            aria-label={`Copy veto link for ${team2Name}`}
                         >
-                            {copiedTeam === 'team2' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-                            {team2Name} Link
-                        </button>
-                    )}
-                    {vetoId && (
-                        <button type="button"
+                            {copiedTeam === 'team2' ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            <span className="max-w-[9rem] truncate normal-case tracking-normal">{team2Name}</span>
+                        </CommandButton>
+                    ) : null}
+                    {vetoId ? (
+                        <CommandButton
+                            variant="ghost"
+                            size="sm"
                             onClick={handleResetVeto}
                             disabled={resetting}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 px-3 py-1.5 text-xs font-semibold border-white/10 text-white/70 hover:bg-white/[0.04] hover:text-white hover:border-white/20')}
                         >
                             <RotateCcw className={cn('h-3.5 w-3.5', resetting && 'animate-spin')} />
-                            {resetting ? 'Resetting...' : 'Reset'}
-                        </button>
-                    )}
+                            {resetting ? 'Resetting' : 'Reset veto'}
+                        </CommandButton>
+                    ) : null}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 };

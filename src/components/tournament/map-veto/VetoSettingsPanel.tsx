@@ -47,7 +47,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
   );
 
   return (
-    <div className="rounded-sm border border-white/[0.06] bg-transparent overflow-hidden">
+    <div className="border border-white/[0.07] bg-transparent overflow-hidden">
       <button
         type="button"
         onClick={() => setIsExpanded((e) => !e)}
@@ -86,7 +86,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
               )}
 
               {fetchError && !isLoading && (
-                <p className="py-2 text-xs text-rose-400">Failed to load settings.</p>
+                <p className="py-2 text-xs text-red-300">Failed to load settings.</p>
               )}
 
               {!isLoading && !fetchError && (
@@ -124,7 +124,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                         >
                           <div
                             className={cn(
-                              'h-7 w-7 shrink-0 flex items-center justify-center rounded-lg font-black text-xs',
+                              'h-7 w-7 shrink-0 flex items-center justify-center rounded-none font-black text-xs',
                               getVetoActionClasses(step.action),
                             )}
                           >
@@ -132,7 +132,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                           </div>
                           <span
                             className={cn(
-                              'rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest',
+                              'px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em]',
                               getVetoActionClasses(step.action),
                             )}
                           >
@@ -144,7 +144,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                             </span>
                           )}
                           {step.isDecider && (
-                            <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black px-1.5 py-0.5 uppercase tracking-widest">
+                            <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black px-1.5 py-0.5 uppercase tracking-widest">
                               Decider
                             </span>
                           )}
@@ -174,8 +174,8 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                         </CtaButton>
                         {saveStatus === 'error' && saveErrorMessage && (
                           <div className="mt-1.5 flex items-center gap-1.5">
-                            <AlertCircle className="h-3 w-3 text-rose-400 shrink-0" />
-                            <p className="text-[11px] text-rose-400">{saveErrorMessage}</p>
+                            <AlertCircle className="h-3 w-3 text-red-300 shrink-0" />
+                            <p className="text-[11px] text-red-300">{saveErrorMessage}</p>
                           </div>
                         )}
                       </div>
@@ -243,8 +243,8 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                       </CtaButton>
                       {saveStatus === 'error' && saveErrorMessage && (
                         <div className="mt-1.5 flex items-center gap-1.5">
-                          <AlertCircle className="h-3 w-3 text-rose-400 shrink-0" />
-                          <p className="text-[11px] text-rose-400">{saveErrorMessage}</p>
+                          <AlertCircle className="h-3 w-3 text-red-300 shrink-0" />
+                          <p className="text-[11px] text-red-300">{saveErrorMessage}</p>
                         </div>
                       )}
                     </div>

@@ -155,3 +155,25 @@ describe('buildVetoSelectedMapEntries', () => {
         expect(entries).toHaveLength(2);
     });
 });
+
+describe('buildVetoSelectedMapEntries side pickers', () => {
+    it('names the team that chose the starting side on every map', () => {
+        const entries = buildVetoSelectedMapEntries({
+            veto: baseVeto({ best_of: 3 }),
+            bestOf: 3,
+            game: 'valorant',
+            mapLookup: MAPS,
+            team1Name: 'Alpha',
+            team2Name: 'Beta',
+        });
+
+        expect(entries).toHaveLength(3);
+        entries.forEach((entry) => {
+            expect(['Alpha', 'Beta']).toContain(entry.sidePickerTeamName);
+        });
+        // The team that picks a map never also chooses its starting side.
+        entries
+            .filter((entry) => entry.mapPickerTeamName !== 'Decider')
+            .forEach((entry) => expect(entry.sidePickerTeamName).not.toBe(entry.mapPickerTeamName));
+    });
+});

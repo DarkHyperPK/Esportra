@@ -38,43 +38,52 @@ function sortByAcs(players: ScoreboardPlayer[]): ScoreboardPlayer[] {
   });
 }
 
-function PlayerStatRow({ player, isEven }: { player: ScoreboardPlayer; isEven: boolean }) {
+const CELL = 'px-3 py-2.5 text-center tabular-nums text-[13px]';
+const HEAD = 'px-3 py-2.5 text-center font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-500';
+
+function PlayerStatRow({ player, isMvp }: { player: ScoreboardPlayer; isMvp: boolean }) {
   const acs = resolvePlayerAcs(player);
   const kd = resolvePlayerKdRatio(player);
 
   return (
-    <tr className={cn(
-      'border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]',
-      isEven ? 'bg-[#0d1117]' : 'bg-[#111820]',
-    )}>
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md overflow-hidden border border-white/[0.08] bg-zinc-900 shrink-0">
+    <tr className="border-t border-white/[0.06] bg-card transition-colors hover:bg-white/[0.03]">
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 shrink-0 overflow-hidden bg-white/[0.04]">
             {player.characterId ? (
               <img
                 src={getAgentIcon(player.characterId)}
                 loading="lazy"
                 alt=""
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
               />
             ) : null}
           </div>
-          <p className="truncate text-sm font-semibold text-zinc-100">
-            {player.gameName || 'Unknown'}
+          <p className="min-w-0 truncate text-sm font-semibold text-white">
+            {player.gameName || 'Unknown player'}
             {player.tagLine ? (
-              <span className="text-zinc-500 font-medium ml-1">#{player.tagLine}</span>
+              <span className="ml-1 font-normal text-zinc-500">#{player.tagLine}</span>
             ) : null}
           </p>
+          {isMvp ? (
+            <span className="shrink-0 border border-white/25 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white">
+              MVP
+            </span>
+          ) : null}
         </div>
       </td>
-      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-bold text-white">{formatStat(acs)}</td>
-      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-emerald-400">{formatStat(player.kills)}</td>
-      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-rose-400">{formatStat(player.deaths)}</td>
-      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-400">{formatStat(player.assists)}</td>
-      <td className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(kd, 2)}</td>
-      <td className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(player.adr)}</td>
-      <td className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatPercent(player.hsPct)}</td>
-      <td className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(player.firstBloods)}</td>
+      <td className={cn(CELL, 'font-heading text-sm font-black text-white')}>{formatStat(acs)}</td>
+      <td className={cn(CELL, 'text-zinc-200')}>
+        {formatStat(player.kills)}
+        <span className="px-1 text-zinc-600">/</span>
+        {formatStat(player.deaths)}
+        <span className="px-1 text-zinc-600">/</span>
+        {formatStat(player.assists)}
+      </td>
+      <td className={cn(CELL, 'hidden text-zinc-300 sm:table-cell')}>{formatStat(kd, 2)}</td>
+      <td className={cn(CELL, 'hidden text-zinc-300 sm:table-cell')}>{formatStat(player.adr)}</td>
+      <td className={cn(CELL, 'hidden text-zinc-300 md:table-cell')}>{formatPercent(player.hsPct)}</td>
+      <td className={cn(CELL, 'hidden text-zinc-300 md:table-cell')}>{formatStat(player.firstBloods)}</td>
     </tr>
   );
 }
@@ -82,51 +91,66 @@ function PlayerStatRow({ player, isEven }: { player: ScoreboardPlayer; isEven: b
 function TeamScoreboard({
   teamName,
   teamScore,
+  won,
   players,
+  mvpKey,
 }: {
   teamName: string;
   teamScore: number;
+  won: boolean;
   players: ScoreboardPlayer[];
+  mvpKey: string | null;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 truncate pr-3">
-          {teamName}
+    <section aria-label={`${teamName} scoreboard`}>
+      <div className="flex items-end justify-between gap-3 pb-2">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">{won ? 'Won the map' : 'Team'}</p>
+          <p className={cn('truncate font-heading text-lg font-bold tracking-tight', won ? 'text-white' : 'text-zinc-400')}>{teamName}</p>
+        </div>
+        <span className={cn('shrink-0 font-heading text-3xl font-black leading-none tabular-nums', won ? 'text-white' : 'text-zinc-500')}>
+          {teamScore}
         </span>
-        <span className="text-lg font-black tabular-nums text-white shrink-0">{teamScore}</span>
       </div>
 
-      <div className="rounded-lg border border-white/[0.06] bg-[#0d1117] overflow-x-auto">
-        <table className="w-full border-collapse text-left min-w-[720px]">
+      <div className="overflow-x-auto border border-white/[0.07]">
+        <table className="w-full min-w-[420px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-white/[0.08] bg-[#161b22]">
-              <th className="px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-zinc-500">Player</th>
-              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">ACS</th>
-              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">K</th>
-              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">D</th>
-              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">A</th>
-              <th className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">KD</th>
-              <th className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">ADR</th>
-              <th className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">HS%</th>
-              <th className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">FB</th>
+            <tr className="bg-background">
+              <th scope="col" className={cn(HEAD, 'text-left')}>Player</th>
+              <th scope="col" className={HEAD}>ACS</th>
+              <th scope="col" className={HEAD}>K / D / A</th>
+              <th scope="col" className={cn(HEAD, 'hidden sm:table-cell')}>K/D</th>
+              <th scope="col" className={cn(HEAD, 'hidden sm:table-cell')}>ADR</th>
+              <th scope="col" className={cn(HEAD, 'hidden md:table-cell')}>HS%</th>
+              <th scope="col" className={cn(HEAD, 'hidden md:table-cell')}>FB</th>
             </tr>
           </thead>
           <tbody>
             {players.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-3 py-4 text-xs text-zinc-500">No player statistics available.</td>
+              <tr className="border-t border-white/[0.06] bg-card">
+                <td colSpan={7} className="px-3 py-4 text-sm text-zinc-500">No player stats for this team.</td>
               </tr>
             ) : (
               players.map((player, index) => (
-                <PlayerStatRow key={player.puuid ?? `${player.gameName}-${index}`} player={player} isEven={index % 2 === 0} />
+                <PlayerStatRow
+                  key={player.puuid ?? `${player.gameName}-${index}`}
+                  player={player}
+                  isMvp={Boolean(mvpKey) && (player.puuid ?? player.gameName) === mvpKey}
+                />
               ))
             )}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
+}
+
+function findMvpKey(players: ScoreboardPlayer[]): string | null {
+  const [top] = sortByAcs(players);
+  if (!top || resolvePlayerAcs(top) === null) return null;
+  return top.puuid ?? top.gameName ?? null;
 }
 
 export const FullScoreboard: React.FC<FullScoreboardProps> = ({
@@ -159,10 +183,12 @@ export const FullScoreboard: React.FC<FullScoreboardProps> = ({
     return { team1Players: team1, team2Players: team2 };
   }, [players, reporterSide, reportedByTeamId, team1Id, t1Side]);
 
+  const mvpKey = useMemo(() => findMvpKey(players), [players]);
+
   return (
-    <div className="space-y-5 py-1 overflow-x-auto">
-      <TeamScoreboard teamName={team1Name} teamScore={team1Score} players={team1Players} />
-      <TeamScoreboard teamName={team2Name} teamScore={team2Score} players={team2Players} />
+    <div className="space-y-6">
+      <TeamScoreboard teamName={team1Name} teamScore={team1Score} won={team1Score > team2Score} players={team1Players} mvpKey={mvpKey} />
+      <TeamScoreboard teamName={team2Name} teamScore={team2Score} won={team2Score > team1Score} players={team2Players} mvpKey={mvpKey} />
     </div>
   );
 };

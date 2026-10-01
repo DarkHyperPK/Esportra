@@ -40,6 +40,23 @@ interface VetoDialogsProps {
     bestOf: number;
 }
 
+function sidePickerName(
+    veto: MatchMapVeto | null,
+    bestOf: number,
+    game: string,
+    poolSize: number,
+    team1Name: string,
+    team2Name: string,
+) {
+    if (!veto?.team1_id || !veto.team2_id) return 'Your team';
+    const currentActionNum = veto.current_action_number || 1;
+    const vetoFormat = getVetoFormat(bestOf || 1);
+    const service = new VetoService(game, poolSize || undefined);
+    const actionNumber = service.isDeciderAction(vetoFormat, currentActionNum) ? currentActionNum : currentActionNum - 1;
+    const teamId = getSidePickerTeam(actionNumber, vetoFormat, veto.team1_id, veto.team2_id);
+    return teamId === veto.team1_id ? team1Name : team2Name;
+}
+
 export const VetoDialogs: React.FC<VetoDialogsProps> = ({
     showRoleSwitchPrompt,
     setShowRoleSwitchPrompt,
@@ -101,126 +118,93 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                 }
                 setShowBODialog(open);
             }}>
-                <DialogContent className="bg-black border-2 border-white/20 max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-                    <DialogHeader className="px-8 pt-8 pb-6 border-b border-white/10">
-                        <DialogTitle className="text-white text-2xl font-black tracking-tight mb-2">Select Best Of Format</DialogTitle>
-                        <DialogDescription className="text-white/60 text-base leading-relaxed">
-                            Choose the format for this match. This will determine the map veto sequence.
+                <DialogContent className="flex max-h-[95vh] max-w-2xl flex-col gap-0 overflow-hidden rounded-none border border-white/10 bg-background p-0">
+                    <DialogHeader className="border-b border-white/[0.07] px-6 pb-5 pt-6 text-left sm:px-8">
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">Map veto</p>
+                        <DialogTitle className="font-heading text-2xl font-black tracking-tight text-white">How many maps?</DialogTitle>
+                        <DialogDescription className="text-sm text-zinc-400">
+                            The format sets the veto order. You can't change it once the first map is banned.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-8 py-6 sm:py-8" data-lenis-prevent>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-2xl mx-auto">
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6 sm:px-8" data-lenis-prevent>
+                        <div className="grid grid-cols-1 gap-px bg-white/[0.06] sm:grid-cols-3" role="radiogroup" aria-label="Series format">
                             {[1, 3, 5].map((bo) => {
                                 const isSelected = selectedBO === bo;
                                 const isDisabled = selectedBO !== null && selectedBO !== bo;
                                 return (
                                     <button
+                                        type="button"
                                         key={bo}
+                                        role="radio"
+                                        aria-checked={isSelected}
                                         onClick={() => handleSetBO(bo)}
                                         disabled={isDisabled}
-                                        aria-label={`Select Best of ${bo} format`}
                                         className={cn(
-                                            "relative p-6 sm:p-8 rounded-xl border-2 transition-all duration-200",
-                                            "hover:scale-[1.02] hover:shadow-xl",
+                                            'flex flex-col items-start gap-3 bg-card px-5 py-6 text-left transition-[box-shadow,background-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                                             isSelected
-                                                ? "bg-emerald-500/15 border-emerald-400 text-white shadow-xl shadow-emerald-500/20"
-                                                : isDisabled
-                                                    ? "bg-black/30 border-white/10 text-white/30 cursor-not-allowed opacity-50"
-                                                    : "bg-black/50 border-white/20 text-white hover:border-emerald-500/50 hover:bg-white/5"
+                                                ? 'bg-rose-500/[0.06] shadow-[inset_0_0_0_1px_rgba(244,63,94,0.7)]'
+                                                : 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]',
+                                            isDisabled && 'cursor-not-allowed opacity-40',
                                         )}
                                     >
-                                        <div className="text-center">
-                                            <div className="text-3xl sm:text-4xl font-black mb-2 sm:mb-3">BO{bo}</div>
-                                            <div className="text-xs text-white/60 font-medium uppercase tracking-wider">
-                                                {bo === 1 ? 'Pick 1 map' : bo === 3 ? '7 actions' : '11 actions'}
-                                            </div>
-                                        </div>
-                                        {isSelected && <div className="absolute inset-2 rounded-lg border border-emerald-300/60" aria-hidden />}
+                                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">Best of</span>
+                                        <span className="font-heading text-5xl font-black leading-none tabular-nums text-white">{bo}</span>
+                                        <span className="text-sm text-zinc-400">
+                                            {bo === 1 ? 'One map decides the match.' : bo === 3 ? 'Three maps. First to two.' : 'Five maps. First to three.'}
+                                        </span>
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
-                    <DialogFooter className="px-8 py-6 border-t border-white/10 bg-black/50 gap-3">
-                        <button type="button"
-                            onClick={() => setShowBODialog(false)}
-                            className="bg-transparent border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-transparent px-6"
-                        >
+                    <DialogFooter className="border-t border-white/[0.07] px-6 py-4 sm:px-8">
+                        <CancelButton type="button" onClick={() => setShowBODialog(false)}>
                             Cancel
-                        </button>
+                        </CancelButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Side Selection Dialog */}
             <Dialog open={showSideDialog} onOpenChange={setShowSideDialog}>
-                <DialogContent className="sm:max-w-md bg-black border-2 border-white/20">
-                    <DialogHeader>
-                        <DialogTitle className="text-white text-xl font-black uppercase tracking-wider">Select Starting Side</DialogTitle>
-                        <DialogDescription className="text-white/60">
-                            Choose which side you want to start on for <span className="text-white font-bold">{pendingMapId && availableMaps.find(m => m.id === pendingMapId)?.map_name}</span>
+                <DialogContent className="gap-0 rounded-none border border-white/10 bg-background p-0 sm:max-w-md">
+                    <DialogHeader className="border-b border-white/[0.07] px-6 pb-5 pt-6 text-left">
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+                            {sidePickerName(veto, bestOf, game, availableMaps.length, team1Name, team2Name)} · Starting side
+                        </p>
+                        <DialogTitle className="font-heading text-2xl font-black tracking-tight text-white">
+                            {pendingMapId ? availableMaps.find((m) => m.id === pendingMapId)?.map_name ?? 'Selected map' : 'Selected map'}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-zinc-400">
+                            Pick the side your team starts on. Sides swap at half-time.
                         </DialogDescription>
                     </DialogHeader>
 
-                    {(() => {
-                        if (!veto) return null;
-                        const currentActionNum = veto.current_action_number || 1;
-                        const vetoFormat = getVetoFormat(bestOf || 1);
-                        const service = new VetoService(game, availableMaps.length || undefined);
-                        const isFinalDecider = service.isDeciderAction(vetoFormat, currentActionNum);
-
-                        const actionNumberForSidePicker = isFinalDecider
-                            ? currentActionNum
-                            : currentActionNum - 1;
-
-                        const sidePickerTeamId = getSidePickerTeam(
-                            actionNumberForSidePicker,
-                            vetoFormat,
-                            veto.team1_id!,
-                            veto.team2_id!
-                        );
-
-                        const sidePickerTeamName = sidePickerTeamId === veto.team1_id ? team1Name : team2Name;
-
-                        return (
-                            <div className="flex items-center justify-center gap-2 py-4 border-y border-white/10">
-                                <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/70">
-                                    Side choice
+                    <div className="grid grid-cols-2 gap-px bg-white/[0.06]">
+                        {(['attack', 'defend'] as const).map((side) => (
+                            <button
+                                key={side}
+                                type="button"
+                                onClick={async () => {
+                                    if (pendingMapId) {
+                                        await performMapAction(pendingMapId, 'pick_side', side);
+                                        setShowSideDialog(false);
+                                        setPendingMapId(null);
+                                    }
+                                }}
+                                className="group relative flex h-32 flex-col items-start justify-end gap-1 overflow-hidden bg-card px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
+                            >
+                                <span aria-hidden className="absolute inset-0 translate-y-full bg-white transition-transform duration-200 ease-[cubic-bezier(0.3,0,0,1)] group-hover:translate-y-0 group-focus-visible:translate-y-0" />
+                                <span className="relative font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500 group-hover:text-zinc-600">
+                                    {side === 'attack' ? 'ATK' : 'DEF'}
                                 </span>
-                                <span className="text-white font-bold text-lg">{sidePickerTeamName}</span>
-                            </div>
-                        );
-                    })()}
-
-                    <div className="space-y-3 py-4">
-                        <CtaButton
-                            onClick={async () => {
-                                if (pendingMapId) {
-                                    await performMapAction(pendingMapId, 'pick_side', 'attack');
-                                    setShowSideDialog(false);
-                                    setPendingMapId(null);
-                                }
-                            }}
-                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
-                        >
-                            <span className="rounded border border-white/30 bg-white/10 px-2 py-1 text-xs tracking-widest">ATK</span>
-                            <span className="text-xl">ATTACK</span>
-                        </CtaButton>
-                        <CtaButton
-                            onClick={async () => {
-                                if (pendingMapId) {
-                                    await performMapAction(pendingMapId, 'pick_side', 'defend');
-                                    setShowSideDialog(false);
-                                    setPendingMapId(null);
-                                }
-                            }}
-                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
-                        >
-                            <span className="rounded border border-black/20 bg-black/10 px-2 py-1 text-xs tracking-widest">DEF</span>
-                            <span className="text-xl">DEFEND</span>
-                        </CtaButton>
+                                <span className="relative font-heading text-2xl font-black tracking-tight text-white group-hover:text-matte-black group-focus-visible:text-matte-black">
+                                    {side === 'attack' ? 'Attack' : 'Defense'}
+                                </span>
+                            </button>
+                        ))}
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="border-t border-white/[0.07] px-6 py-4">
                         <CancelButton type="button"
                             onClick={() => {
                                 setShowSideDialog(false);

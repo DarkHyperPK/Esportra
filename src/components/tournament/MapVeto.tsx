@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { isVetoLive, useMapVetoMachine } from '@/hooks/useMapVetoMachine';
+import { getVetoFormat, isVetoLive, useMapVetoMachine, VetoService } from '@/hooks/useMapVetoMachine';
 import { VetoHeader } from './map-veto/VetoHeader';
 import { VetoTeamDisplay } from './map-veto/VetoTeamDisplay';
 import { VetoSelectedMaps } from './map-veto/VetoSelectedMaps';
@@ -8,12 +8,11 @@ import { MapPool } from './map-veto/MapPool';
 import { VetoDialogs } from './map-veto/VetoDialogs';
 import { VetoSequence } from './map-veto/VetoSequence';
 import { VetoSettingsPanel } from './map-veto/VetoSettingsPanel';
+import { VetoTurnBanner } from './map-veto/VetoTurnBanner';
 import { useVetoSettings } from '@/hooks/useVetoSettings';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { getVetoActionClasses, getVetoActionNoun } from './map-veto/vetoActionPresentation';
-import { getVetoLayoutConfig } from './map-veto/vetoLayoutConfig';
 
 interface MapVetoProps {
   matchId: string;
@@ -119,20 +118,27 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const { settings: vetoSettings } = useVetoSettings({
     matchId,
-    vetoStatus: veto?.status,
+    vetoStatus: veto?.status ?? 'pending',
     enabled: Boolean(veto),
   });
 
-  const layoutConfig = getVetoLayoutConfig(layout, false);
+  const isModal = layout === 'modal';
+  const shellClass = cn(
+    'w-full bg-background text-white',
+    isModal && 'p-3 sm:p-4',
+    layout === 'fullscreen' && 'min-h-screen px-4 py-5 lg:px-8 lg:py-8',
+    layout === 'embedded' && 'mx-auto max-w-[1400px] p-3 sm:p-5 lg:p-6',
+  );
 
   if (loading) {
     return (
-      <div className={layoutConfig.shell}>
+      <div className={shellClass} data-testid="map-veto-loading">
         <div className="space-y-4">
-          <Skeleton className="h-8 w-40 bg-white/10" />
-          <div className={cn('grid gap-2.5', layoutConfig.mapPool.gridCols)}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className={cn('w-full rounded-lg bg-white/10', layoutConfig.mapPool.tileHeight)} />
+          <Skeleton className="h-7 w-48 rounded-none bg-white/[0.06]" />
+          <Skeleton className="h-20 w-full rounded-none bg-white/[0.06]" />
+          <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <Skeleton key={i} className="aspect-[16/10] w-full rounded-none bg-white/[0.04]" />
             ))}
           </div>
         </div>
@@ -142,10 +148,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   if (!veto) {
     return (
-      <div className="flex items-center justify-center min-h-[280px]">
-        <div className="text-center space-y-3">
-          <h2 className="text-xl font-bold text-white">No Veto Found</h2>
-          <p className="text-zinc-500 text-sm">Waiting for organizer to initialize the veto...</p>
+      <div className={shellClass}>
+        <div className="border border-dashed border-white/10 px-6 py-14 text-center">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">Map veto</p>
+          <p className="mt-2 font-heading text-xl font-bold text-white">No veto for this match yet</p>
+          <p className="mt-1 text-sm text-zinc-500">It appears here once the organizer opens it.</p>
         </div>
       </div>
     );
@@ -154,18 +161,32 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const effectiveIsOrganizer = isOrganizer && !readOnly;
   const isComplete = veto.status === 'completed';
   const vetoLive = isVetoLive(veto);
-  const ui = getVetoLayoutConfig(layout, isComplete);
   const currentBestOf = veto.best_of || bestOf || 1;
-  const boText = `BO${currentBestOf}`;
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
-  const noopMapAction = readOnly ? noOp : handleMapAction;
   const activeSide = veto.current_team_id === veto.team1_id
     ? 'team1'
     : veto.current_team_id === veto.team2_id
       ? 'team2'
       : null;
-  const showSelectedMapsInRail = layout === 'fullscreen' && !isComplete;
-  const renderSelectedMapsPanel = (compact = ui.selectedMapsCompact, className = 'mb-0', rail = false) => (
+  const totalSteps = vetoSettings?.effectiveSequence?.length
+    || new VetoService(game, allAvailableMaps.length || undefined).getSequence(getVetoFormat(currentBestOf)).length;
+
+  const sequenceProps = {
+    veto,
+    entries: vetoHistory,
+    loading: vetoHistoryLoading,
+    bestOf: currentBestOf,
+    team1Name,
+    team2Name,
+    team1Id,
+    team2Id,
+    availableMaps,
+    allAvailableMaps,
+    game,
+    externalSequence: vetoSettings?.effectiveSequence,
+  };
+
+  const lineup = (rail: boolean) => (
     <VetoSelectedMaps
       veto={veto}
       availableMaps={availableMaps}
@@ -174,221 +195,76 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       team2Name={team2Name}
       team1Id={team1Id}
       team2Id={team2Id}
-      imagesLoaded={imagesLoaded}
-      setImagesLoaded={setImagesLoaded}
       bestOf={currentBestOf}
       game={game}
-      compact={compact}
       rail={rail}
-      className={className}
     />
   );
 
-  const sequencePanel = (
-    <div className="min-h-0 py-1">
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
-          {isComplete ? 'Recap' : 'Veto order'}
-        </span>
-        {!isComplete && veto.current_action && (
-          <span className={cn(
-            'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest',
-            getVetoActionClasses(veto.current_action),
-          )}>
-            {getVetoActionNoun(veto.current_action)}
-          </span>
-        )}
-      </div>
-      <div className={ui.sequenceScroll} data-lenis-prevent>
-        <VetoSequence
+  const settingsPanel = effectiveIsOrganizer ? (
+    <VetoSettingsPanel
+      matchId={matchId}
+      vetoStatus={veto.status}
+      team1Name={team1Name}
+      team2Name={team2Name}
+    />
+  ) : null;
+
+  const completeStage = (
+    <>
+      {lineup(false)}
+      <section aria-label="Veto recap">
+        <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">How the veto went</p>
+        <VetoSequence {...sequenceProps} doneOnly variant="track" />
+      </section>
+    </>
+  );
+
+  const liveStage = (
+    <>
+      <VetoTurnBanner
+        veto={veto}
+        isUserTurn={isUserTurn}
+        currentTeamName={currentTeamName}
+        totalSteps={totalSteps}
+        compact={isModal}
+      />
+      <VetoSequence {...sequenceProps} variant="track" />
+      <div className={cn('grid gap-6', !isModal && 'lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]')}>
+        <MapPool
           veto={veto}
-          entries={vetoHistory}
-          loading={vetoHistoryLoading}
-          bestOf={currentBestOf}
+          availableMaps={availableMaps}
+          allAvailableMaps={allAvailableMaps}
+          isUserTurn={isUserTurn}
+          actionLoading={readOnly ? null : actionLoading}
+          handleMapAction={readOnly ? noOp : handleMapAction}
+          currentTeamName={currentTeamName}
           team1Name={team1Name}
           team2Name={team2Name}
           team1Id={team1Id}
           team2Id={team2Id}
-          availableMaps={availableMaps}
-          allAvailableMaps={allAvailableMaps}
+          bestOf={currentBestOf}
           game={game}
-          compact={ui.sequenceCompact}
-          columns={ui.sequenceColumns}
-          externalSequence={vetoSettings?.effectiveSequence}
-          emptyMessage={
-            !vetoLive && !vetoSettings?.effectiveSequence?.length
-              ? 'Veto has not started yet.'
-              : 'No veto actions recorded yet.'
-          }
+          layoutMode={layout}
         />
+        <aside className="min-w-0 space-y-5">
+          {lineup(true)}
+          {settingsPanel}
+        </aside>
       </div>
-    </div>
-  );
-
-  const leftRail = (
-    <div className="flex min-h-0 flex-col">
-      <VetoHeader
-        boText={boText}
-        vetoStatus={veto.status}
-        effectiveIsOrganizer={effectiveIsOrganizer}
-        handleResetVeto={handleResetVeto}
-        resetting={resetting}
-        vetoId={readOnly ? undefined : veto.id}
-        team1LinkToken={veto.team1_link_token}
-        team2LinkToken={veto.team2_link_token}
-        team1Name={team1Name}
-        team2Name={team2Name}
-        showShareLinks={showShareLinks && !readOnly}
-        compact={ui.headerCompact}
-      />
-
-      {effectiveIsOrganizer && (
-        <>
-          <div className="my-2 h-px bg-white/[0.06]" />
-          <VetoSettingsPanel
-            matchId={matchId}
-            vetoStatus={veto.status}
-            team1Name={team1Name}
-            team2Name={team2Name}
-          />
-        </>
-      )}
-
-      {layout === 'modal' && !isComplete && (
-        <>
-          <div className="my-3 h-px bg-white/[0.06]" />
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {sequencePanel}
-          </div>
-        </>
-      )}
-
-      {showSelectedMapsInRail && (
-        <>
-          <div className="my-3 h-px bg-white/[0.06]" />
-          <div className="hidden lg:block">
-            {renderSelectedMapsPanel(true, 'mb-0', true)}
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  const teamRow = (
-    <div className="mb-3 flex justify-center sm:mb-4">
-      <VetoTeamDisplay
-        team1Name={team1Name}
-        team1Logo={team1Logo}
-        team2Name={team2Name}
-        team2Logo={team2Logo}
-        activeSide={isComplete ? null : activeSide}
-        currentAction={veto.current_action}
-        completed={isComplete}
-        bestOf={currentBestOf}
-        compact={layout === 'modal'}
-      />
-    </div>
-  );
-
-  const mapPoolPanel = (
-    <MapPool
-      veto={veto}
-      availableMaps={availableMaps}
-      allAvailableMaps={allAvailableMaps}
-      isUserTurn={isUserTurn}
-      actionLoading={readOnly ? null : actionLoading}
-      handleMapAction={noopMapAction}
-      imagesLoaded={imagesLoaded}
-      setImagesLoaded={setImagesLoaded}
-      currentTeamName={currentTeamName}
-      team1Name={team1Name}
-      team2Name={team2Name}
-      team1Id={team1Id}
-      team2Id={team2Id}
-      team1Logo={team1Logo}
-      team2Logo={team2Logo}
-      bestOf={currentBestOf}
-      game={game}
-      layoutMode={layout}
-    />
-  );
-
-  const selectedMapsPanel = renderSelectedMapsPanel();
-
-  const turnBar = !isComplete && vetoLive && veto.current_action ? (
-    <motion.div
-      key={`${veto.current_action_number}-${veto.current_team_id}-${veto.current_action}`}
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-      className={cn(
-        'bg-transparent',
-        layout === 'modal'
-          ? 'rounded-md border border-white/[0.06] px-3 py-2.5 sm:px-4 sm:py-3'
-          : 'border-t border-white/[0.06] px-3 py-3 sm:px-4 sm:py-3.5',
-      )}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
-          <div className={cn('mt-0.5 text-sm font-black tracking-tight', isUserTurn ? 'text-rose-300' : 'text-white')}>
-            {isUserTurn ? 'Your turn' : `${currentTeamName}'s turn`}
-          </div>
-        </div>
-        {veto.current_action && (
-          <span className={cn(
-            'rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
-            getVetoActionClasses(veto.current_action),
-          )}>
-            {getVetoActionNoun(veto.current_action)}
-          </span>
-        )}
-      </div>
-    </motion.div>
-  ) : null;
-
-  const modalStatusBar = layout === 'modal' ? (
-    <div className="mb-3 border-b border-white/[0.06] pb-3">
-      <VetoTeamDisplay
-        team1Name={team1Name}
-        team1Logo={team1Logo}
-        team2Name={team2Name}
-        team2Logo={team2Logo}
-        activeSide={isComplete ? null : activeSide}
-        currentAction={veto.current_action}
-        completed={isComplete}
-        bestOf={currentBestOf}
-        compact={true}
-      />
-    </div>
-  ) : null;
-
-  const stageContent = isComplete ? (
-    <>
-      <div className="min-w-0">{selectedMapsPanel}</div>
-      {layout !== 'modal' && <div className="min-w-0">{sequencePanel}</div>}
     </>
-  ) : (
+  );
+
+  const waitingStage = (
     <>
-      {layout === 'modal' ? (
-        <>
-          <div className="min-w-0">{mapPoolPanel}</div>
-          <div className="min-w-0">{selectedMapsPanel}</div>
-        </>
-      ) : (
-        <>
-          {turnBar}
-          <div className={ui.stageGrid}>
-            <div className="min-w-0">{mapPoolPanel}</div>
-            <div className="min-w-0">{sequencePanel}</div>
-          </div>
-          {showSelectedMapsInRail ? (
-            <div className="min-w-0 lg:hidden">{selectedMapsPanel}</div>
-          ) : (
-            <div className="min-w-0">{selectedMapsPanel}</div>
-          )}
-        </>
-      )}
+      <div className="border-b border-white/[0.07] pb-4">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">Not started</p>
+        <p className="mt-1.5 font-heading text-2xl font-black tracking-tight text-zinc-300">
+          {effectiveIsOrganizer ? 'Set the format to open the veto.' : 'The veto opens when the organizer sets the format.'}
+        </p>
+      </div>
+      <VetoSequence {...sequenceProps} variant="track" emptyMessage="The veto order appears here once the format is set." />
+      {settingsPanel}
     </>
   );
 
@@ -396,17 +272,36 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className={ui.shell}
+      transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+      className={shellClass}
     >
-      {layout === 'modal' ? modalStatusBar : teamRow}
-      <div className={ui.grid}>
-        <aside className={ui.rail}>
-          {leftRail}
-        </aside>
-        <main className={ui.stage}>
-          {stageContent}
-        </main>
+      <div className={cn('space-y-5', !isModal && 'sm:space-y-6')}>
+        <VetoHeader
+          boText={`BO${currentBestOf}`}
+          vetoStatus={veto.status}
+          effectiveIsOrganizer={effectiveIsOrganizer}
+          handleResetVeto={handleResetVeto}
+          resetting={resetting}
+          vetoId={readOnly ? undefined : veto.id}
+          team1LinkToken={veto.team1_link_token}
+          team2LinkToken={veto.team2_link_token}
+          team1Name={team1Name}
+          team2Name={team2Name}
+          showShareLinks={showShareLinks && !readOnly}
+          compact={isModal}
+        />
+        <VetoTeamDisplay
+          team1Name={team1Name}
+          team1Logo={team1Logo}
+          team2Name={team2Name}
+          team2Logo={team2Logo}
+          activeSide={isComplete || !vetoLive ? null : activeSide}
+          currentAction={veto.current_action}
+          completed={isComplete}
+          bestOf={currentBestOf}
+          compact={isModal}
+        />
+        {isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
       </div>
 
       {!readOnly && (

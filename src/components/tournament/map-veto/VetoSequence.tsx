@@ -1,26 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { VetoHistoryEntry } from '@/hooks/useVetoHistory';
 import type { VetoStepDto } from '@/types/veto';
-import {
-    getBestOf,
-    getSidePickerTeam,
-    getTeamForAction,
-    getVetoFormat,
-    MatchMapVeto,
-    VetoService,
-    isVetoLive,
-    type GameMap,
-} from '@/hooks/useMapVetoMachine';
-import {
-    getSideShortLabel,
-    getVetoActionClasses,
-    getVetoActionLabel,
-    getVetoActionNoun,
-    type VetoActionKind,
-} from './vetoActionPresentation';
+import type { GameMap, MatchMapVeto } from '@/hooks/useMapVetoMachine';
+import { getSideFullLabel, getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
+import { buildVetoSequenceItems, type VetoSequenceItem } from './buildVetoSequenceItems';
+import { VetoMapArt } from './VetoMapArt';
 
 interface VetoSequenceProps {
     veto?: MatchMapVeto | null;
@@ -36,42 +23,117 @@ interface VetoSequenceProps {
     game?: string;
     compact?: boolean;
     doneOnly?: boolean;
+    /** Kept for API compatibility with older two-column layouts. */
     columns?: boolean;
     className?: string;
     emptyMessage?: string;
     externalSequence?: VetoStepDto[];
+    /** `track` is the horizontal broadcast strip; `list` is a scoreboard of rows. */
+    variant?: 'list' | 'track';
 }
 
-interface SequenceItem {
-    actionNumber: number;
-    action: VetoActionKind;
-    teamName: string;
-    mapName?: string;
-    mapImageUrl?: string | null;
-    side?: 'attack' | 'defend' | null;
-    status: 'done' | 'current' | 'upcoming';
+const ARRIVE_EASE = [0.2, 0, 0, 1] as const;
+
+function pad(value: number) {
+    return String(value).padStart(2, '0');
 }
 
-const fallbackMapImage = 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80';
-
-function normalizeBannedMaps(bannedMaps: unknown): string[] {
-    if (!bannedMaps) return [];
-    if (Array.isArray(bannedMaps)) return bannedMaps.filter((id): id is string => typeof id === 'string');
-    if (typeof bannedMaps === 'string') {
-        try {
-            const parsed = JSON.parse(bannedMaps);
-            return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [bannedMaps];
-        } catch {
-            return [bannedMaps];
-        }
-    }
-    return [];
+function isBan(action: string) {
+    return action === 'ban' || action === 'ignore';
 }
 
-function getEntryForStep(entries: VetoHistoryEntry[], actionNumber: number) {
-    return entries.find((entry) => entry.actionNumber === actionNumber);
+function mapLabel(item: VetoSequenceItem) {
+    if (item.mapName) return item.mapName;
+    return item.status === 'done' ? 'Map not recorded' : '—';
 }
 
+const TrackStep: React.FC<{ item: VetoSequenceItem; index: number }> = ({ item, index }) => {
+    const reduceMotion = useReducedMotion();
+    const isCurrent = item.status === 'current';
+    const isDone = item.status === 'done';
+    const showArt = Boolean(item.mapName) && (isDone || isCurrent);
+
+    return (
+        <motion.li
+            data-current={isCurrent || undefined}
+            aria-current={isCurrent ? 'step' : undefined}
+            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: ARRIVE_EASE, delay: reduceMotion ? 0 : Math.min(index, 6) * 0.035 }}
+            className={cn(
+                'relative flex w-[8.5rem] shrink-0 flex-col bg-card sm:w-[9.5rem]',
+                isCurrent && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]',
+                item.status === 'upcoming' && 'bg-background',
+            )}
+        >
+            <div className="relative h-14 overflow-hidden">
+                {showArt ? (
+                    <>
+                        <VetoMapArt src={item.mapImageUrl} name={item.mapName ?? ''} muted={isBan(item.action)} />
+                        <div className={cn('absolute inset-0', isBan(item.action) ? 'bg-black/60' : 'bg-gradient-to-t from-black/70 to-transparent')} />
+                    </>
+                ) : (
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:14px_14px]" />
+                )}
+                <span className={cn(
+                    'absolute left-2 top-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em]',
+                    getVetoActionClasses(item.action),
+                    'bg-black/70',
+                )}>
+                    {getVetoActionNoun(item.action)}
+                </span>
+                <span className="absolute right-2 top-1.5 font-heading text-sm font-black tabular-nums text-white/50">{pad(item.actionNumber)}</span>
+            </div>
+            <div className="flex flex-1 flex-col gap-0.5 px-2.5 py-2">
+                <p className={cn(
+                    'truncate text-[13px] font-semibold',
+                    isDone ? (isBan(item.action) ? 'text-zinc-400 line-through decoration-white/25' : 'text-white') : isCurrent ? 'text-white' : 'text-zinc-600',
+                )}>
+                    {mapLabel(item)}
+                </p>
+                <p className={cn(
+                    'truncate font-mono text-[9px] font-semibold uppercase tracking-[0.18em]',
+                    isCurrent ? 'text-zinc-200' : 'text-zinc-500',
+                )}>
+                    {isCurrent ? 'Now · ' : ''}{item.teamName}{item.side ? ` · ${getSideFullLabel(item.side)}` : ''}
+                </p>
+            </div>
+        </motion.li>
+    );
+};
+
+const ListRow: React.FC<{ item: VetoSequenceItem; compact: boolean }> = ({ item, compact }) => {
+    const isCurrent = item.status === 'current';
+    return (
+        <li
+            aria-current={isCurrent ? 'step' : undefined}
+            className={cn(
+                'grid grid-cols-[2rem_4.25rem_minmax(0,1fr)_auto] items-center gap-3 bg-card px-3',
+                compact ? 'py-2' : 'py-2.5',
+                isCurrent && 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]',
+                item.status === 'upcoming' && 'bg-background',
+            )}
+        >
+            <span className="font-heading text-sm font-black tabular-nums text-zinc-500">{pad(item.actionNumber)}</span>
+            <span className={cn('px-1.5 py-0.5 text-center font-mono text-[9px] font-bold uppercase tracking-[0.18em]', getVetoActionClasses(item.action))}>
+                {getVetoActionNoun(item.action)}
+            </span>
+            <span className={cn('truncate text-[13px]', item.status === 'upcoming' ? 'text-zinc-600' : 'text-zinc-300')}>
+                {item.teamName}
+                {isCurrent ? <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-400">Now</span> : null}
+            </span>
+            <span className={cn(
+                'truncate text-right text-[13px] font-semibold',
+                item.status === 'done'
+                    ? (isBan(item.action) ? 'text-zinc-500 line-through decoration-white/20' : 'text-white')
+                    : 'text-zinc-600',
+            )}>
+                {mapLabel(item)}
+                {item.side ? <span className="ml-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{getSideFullLabel(item.side)}</span> : null}
+            </span>
+        </li>
+    );
+};
 
 export const VetoSequence: React.FC<VetoSequenceProps> = ({
     veto,
@@ -82,219 +144,92 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
     team2Name,
     team1Id,
     team2Id,
-    availableMaps = [],
-    allAvailableMaps = [],
-    game = 'valorant',
+    availableMaps,
+    allAvailableMaps,
+    game,
     compact = false,
     doneOnly = false,
-    columns = false,
     className,
     emptyMessage = 'No veto actions recorded yet.',
     externalSequence,
+    variant = 'list',
 }) => {
-    const reduceMotion = useReducedMotion();
-    const sequenceItems = useMemo<SequenceItem[]>(() => {
-        const entryItems = entries.map((entry) => ({
-            actionNumber: entry.actionNumber,
-            action: entry.action,
-            teamName: entry.teamName,
-            mapName: entry.mapName,
-            mapImageUrl: entry.mapImageUrl,
-            side: entry.side,
-            status: 'done' as const,
-        }));
+    const trackRef = useRef<HTMLOListElement>(null);
+    const items = useMemo(
+        () => buildVetoSequenceItems({
+            veto,
+            entries,
+            bestOf,
+            team1Name,
+            team2Name,
+            team1Id,
+            team2Id,
+            availableMaps,
+            allAvailableMaps,
+            game,
+            doneOnly,
+            externalSequence,
+        }),
+        [allAvailableMaps, availableMaps, bestOf, doneOnly, entries, externalSequence, game, team1Id, team1Name, team2Id, team2Name, veto],
+    );
+    const currentStep = items.find((item) => item.status === 'current')?.actionNumber;
 
-        if (!veto || doneOnly || veto.status === 'completed') {
-            return entryItems;
-        }
-
-        const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
-        const service = new VetoService(game, mapLookup.length || undefined);
-        const currentBestOf = getBestOf(bestOf || veto.best_of);
-        const effectiveTeam1Id = veto.team1_id || team1Id || 'team1';
-        const effectiveTeam2Id = veto.team2_id || team2Id || 'team2';
-
-        type NormalizedStep = { actionNumber: number; action: string; isDecider: boolean; teamId: string };
-        let normalizedSteps: NormalizedStep[];
-        if (externalSequence && externalSequence.length > 0) {
-            normalizedSteps = externalSequence.map((step) => ({
-                actionNumber: step.actionNumber,
-                action: step.action,
-                isDecider: step.isDecider,
-                teamId: step.team === 'T1' ? effectiveTeam1Id : effectiveTeam2Id,
-            }));
-        } else if (isVetoLive(veto)) {
-            normalizedSteps = service.getSequence(getVetoFormat(currentBestOf)).map((step) => ({
-                actionNumber: step.actionNumber,
-                action: step.action,
-                isDecider: step.isDecider,
-                teamId: step.action === 'pick_side'
-                    ? getSidePickerTeam(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service)
-                    : getTeamForAction(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service),
-            }));
-        } else {
-            return [];
-        }
-
-        const resolvedThrough = Math.max(0, (veto.current_action_number ?? 1) - 1);
-        const trustedEntries = entries.filter((entry) => entry.actionNumber <= resolvedThrough);
-        const usedMapIds = new Set([
-            ...normalizeBannedMaps(veto.team1_banned_maps),
-            ...normalizeBannedMaps(veto.team2_banned_maps),
-            ...(veto.team1_picked_maps || []).map((picked) => picked.map_id),
-            ...(veto.team2_picked_maps || []).map((picked) => picked.map_id),
-        ]);
-
-        return normalizedSteps.map((step) => {
-            const historyEntry = getEntryForStep(trustedEntries, step.actionNumber);
-            if (historyEntry) {
-                return {
-                    actionNumber: historyEntry.actionNumber,
-                    action: historyEntry.action,
-                    teamName: historyEntry.teamName,
-                    mapName: historyEntry.mapName,
-                    mapImageUrl: historyEntry.mapImageUrl,
-                    side: historyEntry.side,
-                    status: 'done' as const,
-                };
-            }
-
-            const teamId = step.teamId;
-            const previousEntry = getEntryForStep(trustedEntries, step.actionNumber - 1);
-            const status = veto.current_action_number === step.actionNumber ? 'current' : 'upcoming';
-            const remainingMaps = step.isDecider
-                ? mapLookup.filter((map) => !usedMapIds.has(map.id))
-                : [];
-            const canResolveDeciderMap = step.isDecider && (
-                status === 'current'
-                || resolvedThrough >= step.actionNumber - 1
-                || remainingMaps.length === 1
-            );
-            const deciderMap = canResolveDeciderMap ? remainingMaps[0] : undefined;
-
-            return {
-                actionNumber: step.actionNumber,
-                action: step.action as VetoActionKind,
-                teamName: teamId === effectiveTeam1Id ? team1Name : team2Name,
-                mapName: step.action === 'pick_side'
-                    ? previousEntry?.mapName || deciderMap?.map_name
-                    : deciderMap?.map_name,
-                mapImageUrl: step.action === 'pick_side'
-                    ? previousEntry?.mapImageUrl || deciderMap?.map_image_url
-                    : deciderMap?.map_image_url,
-                status,
-            };
-        });
-    }, [allAvailableMaps, availableMaps, bestOf, doneOnly, entries, externalSequence, game, team1Id, team1Name, team2Id, team2Name, veto]);
+    useEffect(() => {
+        if (variant !== 'track' || !trackRef.current) return;
+        const track = trackRef.current;
+        const current = track.querySelector<HTMLElement>('[data-current]');
+        if (!current) return;
+        const target = current.offsetLeft - track.clientWidth / 2 + current.clientWidth / 2;
+        track.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }, [currentStep, variant]);
 
     if (loading) {
         return (
-            <div className="space-y-3" data-testid="veto-sequence-loading">
-                {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className={cn('w-full rounded-xl bg-white/10', compact ? 'h-14' : 'h-20')} />
+            <div className={cn(variant === 'track' ? 'flex gap-px' : 'space-y-px')} data-testid="veto-sequence-loading">
+                {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className={cn('rounded-none bg-white/[0.06]', variant === 'track' ? 'h-[6.5rem] w-[9.5rem]' : 'h-10 w-full')} />
                 ))}
             </div>
         );
     }
 
-    if (sequenceItems.length === 0) {
+    if (items.length === 0) {
         return (
-            <p className="py-6 text-center text-sm text-zinc-500" data-testid="veto-sequence-empty">
+            <p className="border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500" data-testid="veto-sequence-empty">
                 {emptyMessage}
             </p>
         );
     }
 
+    if (variant === 'track') {
+        const isRecap = currentStep === undefined && items.every((item) => item.status === 'done');
+        return (
+            <ol
+                ref={trackRef}
+                className={cn(
+                    'gap-px bg-white/[0.06]',
+                    isRecap
+                        ? 'grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] [&>li]:w-auto'
+                        : 'flex overflow-x-auto overscroll-x-contain [scrollbar-width:thin]',
+                    className,
+                )}
+                data-testid="veto-sequence"
+                aria-label="Veto order"
+                data-lenis-prevent
+            >
+                {items.map((item, index) => (
+                    <TrackStep key={`${item.actionNumber}-${item.action}`} item={item} index={index} />
+                ))}
+            </ol>
+        );
+    }
+
     return (
-        <div
-            className={cn(
-                'grid gap-3',
-                columns && '2xl:grid-cols-2',
-                className,
-            )}
-            data-testid="veto-sequence"
-        >
-            {sequenceItems.map((item, index) => {
-                const isResolved = item.status === 'done';
-                const isCurrent = item.status === 'current';
-                const actionText = getVetoActionLabel(
-                    item.action,
-                    item.side,
-                    isResolved || item.side ? 'past' : 'present',
-                );
-                const mapName = item.mapName || (item.status === 'upcoming' ? 'map pending' : 'map TBD');
-                const imageUrl = item.mapImageUrl || (isResolved ? fallbackMapImage : null);
-
-                return (
-                    <motion.div
-                        key={`${item.actionNumber}-${item.action}-${item.mapName || item.status}`}
-                        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                        animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 32, delay: reduceMotion ? 0 : index * 0.015 }}
-                        aria-current={isCurrent ? 'step' : undefined}
-                        className={cn(
-                            'group relative overflow-hidden rounded-xl border bg-[#09090b]/80',
-                            compact ? 'p-2.5' : 'p-3 sm:p-4',
-                            isCurrent
-                                ? 'border-rose-500/70 shadow-[0_0_0_1px_rgba(244,63,94,0.2),0_18px_50px_rgba(0,0,0,0.35)]'
-                                : 'border-white/10',
-                            item.status === 'upcoming' && 'opacity-60',
-                        )}
-                    >
-                        <div className="flex min-w-0 items-center gap-3">
-                            <div className={cn(
-                                'flex shrink-0 items-center justify-center rounded-lg font-black tabular-nums',
-                                compact ? 'h-9 w-9 text-xs' : 'h-11 w-11 text-sm',
-                                getVetoActionClasses(item.action),
-                            )}>
-                                {item.actionNumber}.
-                            </div>
-
-                            {imageUrl && (
-                                <div
-                                    className={cn(
-                                        'shrink-0 rounded-lg border border-white/10 bg-cover bg-center shadow-inner',
-                                        compact ? 'h-12 w-20' : 'h-16 w-28',
-                                    )}
-                                    style={{ backgroundImage: `url(${imageUrl})` }}
-                                    role="img"
-                                    aria-label={mapName}
-                                />
-                            )}
-
-                            <div className="min-w-0 flex-1">
-                                <div className="mb-1 flex items-center gap-2">
-                                    <span className={cn(
-                                        'rounded-full px-2 py-0.5 font-black tracking-widest',
-                                        compact ? 'text-[9px]' : 'text-[10px]',
-                                        getVetoActionClasses(item.action),
-                                    )}>
-                                        {getVetoActionNoun(item.action)}
-                                    </span>
-                                    {isCurrent && (
-                                        <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-rose-200">
-                                            Current
-                                        </span>
-                                    )}
-                                    {item.side && (
-                                        <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-black tracking-widest text-white">
-                                            {getSideShortLabel(item.side)}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className={cn('min-w-0 font-semibold leading-snug text-white', compact ? 'text-xs' : 'text-sm sm:text-base')}>
-                                    <span>{item.teamName}</span>{' '}
-                                    <span className="text-white/55">{actionText}</span>{' '}
-                                    <span className={cn(getVetoActionClasses(item.action, 'text'))}>
-                                        {mapName}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                );
-            })}
-        </div>
+        <ol className={cn('grid gap-px bg-white/[0.06]', className)} data-testid="veto-sequence" aria-label="Veto order">
+            {items.map((item) => (
+                <ListRow key={`${item.actionNumber}-${item.action}`} item={item} compact={compact} />
+            ))}
+        </ol>
     );
 };
 

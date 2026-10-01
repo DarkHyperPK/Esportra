@@ -5,18 +5,17 @@ export interface MapTransitionState {
     startedAt: number;
 }
 
-/** How long the flash overlay stays before the map leaves the pool grid. */
-export const MAP_FLASH_MS = 480;
+/** How long the confirm overlay stays before the tile settles into its banned/picked state. */
+export const MAP_FLASH_MS = 520;
 
+const CONFIRM = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    transition: { duration: 0.18, ease: [0.3, 0, 0, 1] },
+} as const;
+
+/** Confirm verb: a calm fade, no scale or bounce. */
 export const mapOverlayMotion = {
-    ban: {
-        initial: { opacity: 0, scale: 1.05 },
-        animate: { opacity: 1, scale: 1 },
-        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
-    },
-    pick: {
-        initial: { opacity: 0, scale: 1.05 },
-        animate: { opacity: 1, scale: 1 },
-        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
-    },
+    ban: CONFIRM,
+    pick: CONFIRM,
 } as const;

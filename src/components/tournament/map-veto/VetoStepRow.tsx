@@ -43,7 +43,7 @@ export const VetoStepRow: React.FC<VetoStepRowProps> = ({
     <div className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
       <div
         className={cn(
-          'h-7 w-7 shrink-0 flex items-center justify-center rounded-lg font-black text-xs',
+          'h-7 w-7 shrink-0 flex items-center justify-center rounded-none font-black text-xs',
           getVetoActionClasses(step.action),
         )}
       >
@@ -91,7 +91,7 @@ export const VetoStepRow: React.FC<VetoStepRowProps> = ({
       )}
 
       {showDeciderBadge && (
-        <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black px-1.5 py-0.5 uppercase tracking-widest w-[90px] shrink-0 flex items-center justify-center">
+        <span className="bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black px-1.5 py-0.5 uppercase tracking-widest w-[90px] shrink-0 flex items-center justify-center">
           Decider
         </span>
       )}
