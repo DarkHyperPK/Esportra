@@ -95,7 +95,7 @@ const TrackStep: React.FC<{ item: VetoSequenceItem; index: number }> = ({ item, 
                     'truncate font-mono text-[9px] font-semibold uppercase tracking-[0.18em]',
                     isCurrent ? 'text-zinc-200' : 'text-zinc-500',
                 )}>
-                    {isCurrent ? 'Now · ' : ''}{item.teamName}{item.side ? ` · ${getSideFullLabel(item.side)}` : ''}
+                    {item.teamName}{item.side ? ` · ${getSideFullLabel(item.side)}` : ''}
                 </p>
             </div>
         </motion.li>
@@ -120,7 +120,6 @@ const ListRow: React.FC<{ item: VetoSequenceItem; compact: boolean }> = ({ item,
             </span>
             <span className={cn('truncate text-[13px]', item.status === 'upcoming' ? 'text-zinc-600' : 'text-zinc-300')}>
                 {item.teamName}
-                {isCurrent ? <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-400">Now</span> : null}
             </span>
             <span className={cn(
                 'truncate text-right text-[13px] font-semibold',

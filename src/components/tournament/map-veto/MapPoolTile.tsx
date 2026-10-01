@@ -43,10 +43,9 @@ const BannedMarks: React.FC<{ status: MapPoolTileStatus }> = ({ status }) => (
         <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
             <line x1="0" y1="100" x2="100" y2="0" stroke="rgba(255,255,255,0.14)" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
         </svg>
-        <span className="absolute left-2.5 top-2.5 z-10 flex items-center gap-2">
-            {status.actorName ? <VetoCrest name={status.actorName} logo={status.actorLogo} className="h-6 w-6" /> : null}
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-400">Ban</span>
-        </span>
+        {status.actorName ? (
+            <VetoCrest name={status.actorName} logo={status.actorLogo} className="absolute left-2.5 top-2.5 z-10 h-6 w-6" />
+        ) : null}
     </>
 );
 
@@ -78,7 +77,6 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
 }) => {
     const reduceMotion = useReducedMotion();
     const verb = currentAction === 'pick' ? 'Pick' : 'Ban';
-    const pickedNote = status.isPicked && status.actorName ? `${status.actorName} pick` : null;
 
     return (
         <motion.button
@@ -127,7 +125,6 @@ export const MapPoolTile: React.FC<MapPoolTileProps> = ({
                 )}>
                     {map.map_name}
                 </p>
-                {pickedNote ? <p className="mt-0.5 truncate text-[11px] text-zinc-300">{pickedNote}</p> : null}
             </div>
 
             {canInteract ? (

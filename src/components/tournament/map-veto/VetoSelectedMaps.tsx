@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
 import type { MatchMapVeto, GameMap } from '@/hooks/useMapVetoMachine';
 import { buildVetoSelectedMapEntries } from './buildVetoSelectedMapEntries';
 import { VetoLineup } from './VetoLineup';
@@ -58,8 +57,6 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     }
 
     const isComplete = veto.status === 'completed';
-    const decided = entries.length;
-    const total = Math.max(bestOf || 1, decided);
 
     return (
         <section className={cn('min-w-0', className)} aria-label="Series lineup">
@@ -70,9 +67,6 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                 )}>
                     {isComplete ? 'The series' : 'Series so far'}
                 </h3>
-                <span className={EYEBROW_CLASS}>
-                    {decided} of {total} set
-                </span>
             </div>
             <VetoLineup entries={entries} bestOf={bestOf || 1} variant={rail ? 'rail' : 'cards'} />
         </section>

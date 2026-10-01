@@ -272,10 +272,6 @@ export const MapPool: React.FC<MapPoolProps> = ({
     const isModalLayout = layoutMode === 'modal';
     const nameSizeClass = isModalLayout ? 'text-sm sm:text-base' : 'text-base sm:text-lg lg:text-xl';
     const currentAction = veto.current_action || 'ban';
-    const remainingCount = availableMapsToShow.filter((map) => {
-        const status = getMapStatus(map.id);
-        return !status.isBanned && !status.isPicked;
-    }).length;
 
     const resolveSidePickMap = (): { map: GameMap | null; isDecider: boolean; error?: string } => {
         const currentActionNum = veto.current_action_number || 1;
@@ -345,7 +341,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
         <section aria-label="Map pool">
             <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h3 className="font-heading text-lg font-bold tracking-tight text-white">
-                    Map pool <span className="ml-1.5 font-mono text-[11px] font-semibold tracking-[0.2em] text-zinc-500">{remainingCount} LEFT</span>
+                    Map pool
                 </h3>
                 {showInstruction ? (
                     <span className={cn('truncate text-xs', isUserTurn ? 'text-white' : 'text-zinc-400')}>{instruction}</span>

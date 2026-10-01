@@ -2,7 +2,6 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { MatchMapVeto } from '@/hooks/useMapVetoMachine';
-import { getVetoActiveCaption } from './vetoActionPresentation';
 
 interface VetoTeamDisplayProps {
     team1Name: string;
@@ -10,6 +9,7 @@ interface VetoTeamDisplayProps {
     team2Name: string;
     team2Logo?: string | null;
     activeSide?: 'team1' | 'team2' | null;
+    /** Kept for API compatibility; the turn banner names the action. */
     currentAction?: MatchMapVeto['current_action'];
     completed?: boolean;
     bestOf?: number;
@@ -23,14 +23,13 @@ interface TeamSideProps {
     name: string;
     logo?: string | null;
     active: boolean;
-    caption: string;
     align: 'left' | 'right';
     compact: boolean;
 }
 
 const MARKER_TRANSITION = { duration: 0.22, ease: [0.2, 0, 0, 1] } as const;
 
-const TeamSide: React.FC<TeamSideProps> = ({ name, logo, active, caption, align, compact }) => {
+const TeamSide: React.FC<TeamSideProps> = ({ name, logo, active, align, compact }) => {
     const reduceMotion = useReducedMotion();
     const isRight = align === 'right';
 
@@ -61,12 +60,6 @@ const TeamSide: React.FC<TeamSideProps> = ({ name, logo, active, caption, align,
                 >
                     {name}
                 </p>
-                <p className={cn(
-                    'mt-0.5 truncate font-mono text-[10px] font-semibold uppercase tracking-[0.22em]',
-                    active ? 'text-zinc-200' : 'text-zinc-600',
-                )}>
-                    {caption}
-                </p>
             </div>
             {active ? (
                 <motion.span
@@ -90,16 +83,12 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
     team2Name,
     team2Logo,
     activeSide = null,
-    currentAction = null,
     completed = false,
     bestOf,
     stepLabel,
     compact = false,
     className,
 }) => {
-    const activeCaption = getVetoActiveCaption(currentAction);
-    // Only the team on the clock gets a caption; the other side stays quiet.
-    const idleCaption = '\u00a0';
 
     return (
         <div
@@ -114,7 +103,6 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
                 name={team1Name}
                 logo={team1Logo}
                 active={activeSide === 'team1'}
-                caption={activeSide === 'team1' ? activeCaption : idleCaption}
                 align="left"
                 compact={compact}
             />
@@ -138,7 +126,6 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
                 name={team2Name}
                 logo={team2Logo}
                 active={activeSide === 'team2'}
-                caption={activeSide === 'team2' ? activeCaption : idleCaption}
                 align="right"
                 compact={compact}
             />

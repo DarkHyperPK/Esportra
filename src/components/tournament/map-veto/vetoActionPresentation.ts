@@ -128,16 +128,3 @@ export function getVetoSpectatorLine(teamName: string, action: VetoActionKind | 
     }
 }
 
-/** Mono caption for the team on the clock (scorebug voice). */
-export function getVetoActiveCaption(action: VetoActionKind | string | null | undefined) {
-    switch (action) {
-        case 'ban':
-            return 'Banning';
-        case 'pick':
-            return 'Picking';
-        case 'pick_side':
-            return 'Choosing side';
-        default:
-            return 'On the clock';
-    }
-}

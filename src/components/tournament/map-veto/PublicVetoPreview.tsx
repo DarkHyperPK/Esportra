@@ -1,7 +1,6 @@
 import React from 'react';
 import { usePublicVeto, usePublicVetoHistory } from '@/hooks/usePublicVeto';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusPill } from '@/components/ui/kit';
 import { VetoSequence } from './VetoSequence';
 import { VetoLineup } from './VetoLineup';
 import { buildVetoSelectedMapEntries, type VetoMapLookupEntry } from './buildVetoSelectedMapEntries';
@@ -67,7 +66,7 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
 
     return (
         <div className="space-y-4" data-testid="public-veto-preview">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
                 <p className="text-sm text-zinc-300">
                     {isLive && veto.current_action
                         ? `${getVetoSpectatorLine(currentTeam, veto.current_action)}.`
@@ -75,10 +74,6 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
                             ? `Veto done. ${entries.length === 1 ? 'One map' : `${entries.length} maps`} to play.`
                             : 'The veto hasn’t started.'}
                 </p>
-                <StatusPill
-                    label={isLive ? 'In progress' : isComplete ? 'Complete' : 'Not started'}
-                    tone={isComplete ? 'success' : 'neutral'}
-                />
             </div>
 
             {(isLive || isComplete) ? <VetoLineup entries={entries} bestOf={bestOf} variant="rail" /> : null}

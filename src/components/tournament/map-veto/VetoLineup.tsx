@@ -7,7 +7,7 @@ import type { VetoSelectedMapEntry } from './buildVetoSelectedMapEntries';
 
 interface VetoLineupProps {
     entries: VetoSelectedMapEntry[];
-    /** Number of maps in the series; empty slots render as "To be decided". */
+    /** Number of maps in the series; undecided slots render as an empty outline. */
     bestOf: number;
     /** `cards` is the hero lineup; `rail` is the compact list beside the pool. */
     variant?: 'cards' | 'rail';
@@ -23,7 +23,7 @@ function pickerCaption(entry: VetoSelectedMapEntry) {
 }
 
 function sideLine(entry: VetoSelectedMapEntry) {
-    if (!entry.side || !entry.sidePickerTeamName) return 'Starting side pending';
+    if (!entry.side || !entry.sidePickerTeamName) return null;
     return `${entry.sidePickerTeamName} start on ${getSideFullLabel(entry.side).toLowerCase()}`;
 }
 
@@ -33,14 +33,12 @@ const RailRow: React.FC<{ entry?: VetoSelectedMapEntry; slot: number }> = ({ ent
         <div className="relative h-11 w-[4.5rem] overflow-hidden">
             {entry ? <VetoMapArt src={entry.map_image_url} name={entry.map_name} /> : <div className="absolute inset-0 border border-dashed border-white/10" />}
         </div>
-        <div className="min-w-0">
-            <p className={cn('truncate text-sm font-semibold', entry ? 'text-white' : 'text-zinc-600')}>
-                {entry ? entry.map_name : 'To be decided'}
-            </p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                {entry ? pickerCaption(entry) : `Map ${slot}`}
-            </p>
-        </div>
+        {entry ? (
+            <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{entry.map_name}</p>
+                <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">{pickerCaption(entry)}</p>
+            </div>
+        ) : <span aria-hidden />}
     </li>
 );
 
@@ -56,18 +54,17 @@ const LineupCard: React.FC<{ entry?: VetoSelectedMapEntry; slot: number }> = ({ 
         )}
         <div className="relative z-10 p-4">
             <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                    <p className={cn(EYEBROW_CLASS, entry && 'text-zinc-300')}>{entry ? pickerCaption(entry) : `Map ${slot}`}</p>
-                    <p className={cn(
-                        'mt-1 truncate font-heading text-2xl font-black tracking-tight sm:text-[28px]',
-                        entry ? 'text-white' : 'text-zinc-600',
-                    )}>
-                        {entry ? entry.map_name : 'To be decided'}
-                    </p>
-                </div>
+                {entry ? (
+                    <div className="min-w-0">
+                        <p className={cn(EYEBROW_CLASS, 'text-zinc-300')}>{pickerCaption(entry)}</p>
+                        <p className="mt-1 truncate font-heading text-2xl font-black tracking-tight text-white sm:text-[28px]">
+                            {entry.map_name}
+                        </p>
+                    </div>
+                ) : <span aria-hidden />}
                 <span className="font-heading text-4xl font-black leading-none tabular-nums text-white/15">{pad(slot)}</span>
             </div>
-            {entry ? (
+            {entry && sideLine(entry) ? (
                 <p className="mt-3 border-t border-white/10 pt-2.5 text-xs text-zinc-300">{sideLine(entry)}</p>
             ) : null}
         </div>

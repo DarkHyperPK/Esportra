@@ -23,11 +23,9 @@ interface VetoHeaderProps {
     getTeamVetoUrl?: (token: string) => string;
 }
 
-const STATUS_PILL: Record<MatchMapVeto['status'], { label: string; tone: 'success' | 'neutral' }> = {
-    // The scorebug's active-team marker is the one rose cue; the pill stays quiet.
-    in_progress: { label: 'In progress', tone: 'neutral' },
+// Only end states get a pill; a live veto speaks through the scorebug and turn banner.
+const STATUS_PILL: Partial<Record<MatchMapVeto['status'], { label: string; tone: 'success' | 'neutral' }>> = {
     completed: { label: 'Complete', tone: 'success' },
-    pending: { label: 'Not started', tone: 'neutral' },
     cancelled: { label: 'Cancelled', tone: 'neutral' },
 };
 
@@ -47,7 +45,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
 }) => {
     const { toast } = useToast();
     const [copiedTeam, setCopiedTeam] = useState<'team1' | 'team2' | null>(null);
-    const status = STATUS_PILL[vetoStatus] ?? STATUS_PILL.pending;
+    const status = STATUS_PILL[vetoStatus];
 
     const copyLink = async (token: string, team: 'team1' | 'team2', teamName: string) => {
         const link = getTeamVetoUrl
@@ -73,7 +71,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                 )}>
                     Map veto
                 </h2>
-                <StatusPill label={status.label} tone={status.tone} />
+                {status ? <StatusPill label={status.label} tone={status.tone} /> : null}
             </div>
 
             {showControls ? (
