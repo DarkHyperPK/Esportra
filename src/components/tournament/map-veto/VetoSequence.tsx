@@ -6,7 +6,7 @@ import type { VetoStepDto } from '@/types/veto';
 import type { GameMap, MatchMapVeto } from '@/hooks/useMapVetoMachine';
 import { getSideFullLabel, getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
 import { buildVetoSequenceItems, type VetoSequenceItem } from './buildVetoSequenceItems';
-import { VetoLaneTrack } from './VetoLaneTrack';
+import { VetoBroadcastStrip } from './VetoBroadcastStrip';
 
 interface VetoSequenceProps {
     veto?: MatchMapVeto | null;
@@ -27,7 +27,7 @@ interface VetoSequenceProps {
     className?: string;
     emptyMessage?: string;
     externalSequence?: VetoStepDto[];
-    /** `track` is the two-lane broadcast duel; `list` is a scoreboard of rows. */
+    /** `track` is the broadcast strip of map cards; `list` is a scoreboard of rows. */
     variant?: 'list' | 'track';
     team1Logo?: string | null;
     team2Logo?: string | null;
@@ -122,7 +122,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
         return (
             <div className={cn(variant === 'track' ? 'flex gap-2' : 'space-y-px')} data-testid="veto-sequence-loading">
                 {[1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className={cn('rounded-none bg-white/[0.06]', variant === 'track' ? 'h-[17rem] flex-1' : 'h-10 w-full')} />
+                    <Skeleton key={i} className={cn('rounded-none bg-white/[0.06]', variant === 'track' ? 'h-[236px] flex-1 sm:h-[272px]' : 'h-10 w-full')} />
                 ))}
             </div>
         );
@@ -138,7 +138,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
 
     if (variant === 'track') {
         return (
-            <VetoLaneTrack
+            <VetoBroadcastStrip
                 items={items}
                 team1Name={team1Name}
                 team2Name={team2Name}
