@@ -8,11 +8,13 @@ import { mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
 import { normalizeHistoryEntry, type VetoHistoryEntry } from "@/hooks/useVetoHistory";
 import { buildVetoSelectedMapEntries } from "@/components/tournament/map-veto/buildVetoSelectedMapEntries";
 import { getSideFullLabel } from "@/components/tournament/map-veto/vetoActionPresentation";
+import { PublicMapVetoBroadcastOverlay } from "./PublicMapVetoBroadcastOverlay";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
   normalizePublicVetoHistoryRow,
   normalizePublicVetoState,
+  PUBLIC_VETO_GAMES,
   type PublicVetoGameMap,
   type PublicVetoHistoryRow,
 } from "./publicMapVetoUtils";
@@ -54,7 +56,7 @@ const teamCode = (name: string) => {
 
 type OverlaySlotKind = "ban" | "pick" | "decider" | "pending";
 type OverlayTransition = "none" | "up" | "left" | "right";
-type OverlayTheme = "tactical" | "premium" | "glitch";
+type OverlayTheme = "broadcast" | "tactical" | "premium" | "glitch";
 
 type OverlaySlot = {
   key: string;
@@ -73,9 +75,11 @@ const overlayTransition = (value: string | null): OverlayTransition =>
   value === "none" || value === "left" || value === "right" ? value : "up";
 
 const overlayTheme = (value: string | null): OverlayTheme =>
-  value === "premium" || value === "glitch" ? value : "tactical";
+  value === "premium" || value === "glitch" || value === "tactical" ? value : "broadcast";
 
-const MAP_THEME: Record<OverlayTheme, {
+type LegacyTheme = Exclude<OverlayTheme, "broadcast">;
+
+const MAP_THEME: Record<LegacyTheme, {
   shell: string;
   slot: string;
   topBar: string;
@@ -137,7 +141,7 @@ const actionAnimationKey = (slot: OverlaySlot) =>
     slot.side || "",
   ].join(":");
 
-const VetoMark = ({ theme }: { theme: OverlayTheme }) => (
+const VetoMark = ({ theme }: { theme: LegacyTheme }) => (
   <div className="map-veto-stamp pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
     <div className={cn("relative h-[54%] aspect-square rounded-full border-[10px] opacity-95", MAP_THEME[theme].stamp)}>
       <div className={cn("absolute left-1/2 top-1/2 h-[10px] w-[132%] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full", theme === "premium" ? "bg-white/82" : theme === "glitch" ? "bg-[#ff2bd6]" : "bg-[#6d1bd1]")} />
@@ -375,7 +379,7 @@ const OVERLAY_ANIMATION_CSS = `
 }
 `;
 
-const StripSlot = ({ slot, theme }: { slot: OverlaySlot; theme: OverlayTheme }) => {
+const StripSlot = ({ slot, theme }: { slot: OverlaySlot; theme: LegacyTheme }) => {
   const isBan = slot.kind === "ban";
   const isPick = slot.kind === "pick" || slot.kind === "decider";
   const hasSideChoice = isPick && Boolean(slot.bottomTeam && slot.side);
@@ -673,6 +677,28 @@ const PublicMapVetoOverlay = () => {
           </p>
         </div>
       </main>
+    );
+  }
+
+  if (theme === "broadcast") {
+    const onClock = veto.status === "in_progress" && veto.current_action && veto.current_team_id
+      ? {
+        teamName: veto.current_team_id === veto.team1_id ? state.team1Name : state.team2Name,
+        action: veto.current_action,
+      }
+      : null;
+    return (
+      <PublicMapVetoBroadcastOverlay
+        slots={slots}
+        gameLabel={PUBLIC_VETO_GAMES.find((game) => game.value === state.game)?.label ?? state.game}
+        bestOf={state.bestOf}
+        team1Name={state.team1Name}
+        team2Name={state.team2Name}
+        status={veto.status}
+        onClock={onClock}
+        transparent={transparent}
+        enterClassName={transition === "none" ? "" : transitionClassName(transition)}
+      />
     );
   }
 

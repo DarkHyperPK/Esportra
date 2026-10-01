@@ -30,6 +30,7 @@ import {
 const OBS_PREVIEW_WIDTH = 1600;
 const OBS_PREVIEW_HEIGHT = 900;
 const OVERLAY_THEMES = [
+  { value: "broadcast", label: "Esportra broadcast" },
   { value: "tactical", label: "Tactical Neon" },
   { value: "premium", label: "Premium Minimal" },
   { value: "glitch", label: "Glitch Arena" },
@@ -131,7 +132,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [copiedHost, setCopiedHost] = useState(false);
   const [copiedOverlay, setCopiedOverlay] = useState(false);
   const [overlayTransition, setOverlayTransition] = useState("up");
-  const [overlayTheme, setOverlayTheme] = useState("tactical");
+  const [overlayTheme, setOverlayTheme] = useState("broadcast");
   const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
@@ -305,7 +306,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                 refreshKey={overlayPreviewKey}
                 title="Map veto OBS overlay preview"
               />
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {OVERLAY_THEMES.map((theme) => (
                   <button
                     key={theme.value}
