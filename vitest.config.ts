@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
-    exclude: ['partner-portal/**', 'node_modules/**', 'dist/**'],
+    exclude: ['partner-portal/**', 'node_modules/**', 'dist/**', 'e2e/**'],
   },
   resolve: {
     alias: {
