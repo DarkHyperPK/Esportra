@@ -17,6 +17,7 @@
     "lint": "eslint src --max-warnings 0",
     "check:buttons": "node tools/check-button-antipatterns.cjs",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -109,6 +110,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/typography": "^0.5.15",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

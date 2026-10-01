@@ -117,3 +117,8 @@ docs/
 
 # Design dataset build tooling
 design/source/node_modules/
+
+# Playwright
+e2e/.auth/
+playwright-report/
+test-results/
