@@ -159,8 +159,13 @@ export function buildVetoSelectedMapEntries(options: {
     const finalSidePickerPicks = finalSidePickerTeamId === effectiveTeam1Id ? team1Picks : team2Picks;
     const otherTeamPicks = finalSidePickerTeamId === effectiveTeam1Id ? team2Picks : team1Picks;
     const isDeciderPick = (pick: PickedMap) => (pick as { map_id?: string }).map_id === deciderMap.id;
-    const deciderPickData = (finalSidePickerPicks.find(isDeciderPick) ?? otherTeamPicks.find(isDeciderPick)) as
-        { side?: 'attack' | 'defend' } | undefined;
+    const ownDeciderPick = finalSidePickerPicks.find(isDeciderPick);
+    const otherDeciderPick = ownDeciderPick ? undefined : otherTeamPicks.find(isDeciderPick);
+    const deciderPickData = (ownDeciderPick ?? otherDeciderPick) as { side?: 'attack' | 'defend' } | undefined;
+    // Credit the team whose record actually holds the side, not the one the default order expects.
+    const deciderSideTeamId = otherDeciderPick
+        ? (finalSidePickerTeamId === effectiveTeam1Id ? effectiveTeam2Id : effectiveTeam1Id)
+        : finalSidePickerTeamId;
 
     mapsWithSides.push({
         map_id: deciderMap.id,
@@ -168,7 +173,7 @@ export function buildVetoSelectedMapEntries(options: {
         map_image_url: deciderMap.map_image_url,
         side: deciderPickData?.side,
         mapPickerTeamName: 'Decider',
-        sidePickerTeamName: finalSidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
+        sidePickerTeamName: deciderSideTeamId === effectiveTeam1Id ? team1Name : team2Name,
         mapNumber: mapNumber++,
     });
 

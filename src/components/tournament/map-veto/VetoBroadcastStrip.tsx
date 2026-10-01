@@ -41,13 +41,15 @@ interface StripCardProps {
     logoFor: (name?: string) => string | null | undefined;
 }
 
+/** Who starts on which side: the side-picking team by name, then ATK / DEF. */
 const SideTag: React.FC<Omit<StripCardProps, 'index'>> = ({ card, logoFor }) => {
     if (!card.sideTeamName) return null;
     return (
-        <span className="flex items-center justify-center gap-1.5">
-            <VetoCrest name={card.sideTeamName} logo={logoFor(card.sideTeamName)} className="h-5 w-5 p-0.5" />
+        <span className="flex min-w-0 items-center justify-center gap-1.5 px-1">
+            <VetoCrest name={card.sideTeamName} logo={logoFor(card.sideTeamName)} className="h-5 w-5 shrink-0 p-0.5" />
+            <span className="min-w-0 truncate text-[11px] font-semibold text-zinc-200">{card.sideTeamName}</span>
             <span className={cn(
-                'font-mono text-[11px] font-bold tracking-[0.18em]',
+                'shrink-0 font-mono text-[11px] font-bold tracking-[0.18em]',
                 card.side ? 'text-white' : 'text-zinc-500',
             )}>
                 {card.side ? getSideShortLabel(card.side) : '— —'}

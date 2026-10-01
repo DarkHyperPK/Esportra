@@ -24,7 +24,7 @@ function pickerCaption(entry: VetoSelectedMapEntry) {
 
 function sideLine(entry: VetoSelectedMapEntry) {
     if (!entry.side || !entry.sidePickerTeamName) return null;
-    return `${entry.sidePickerTeamName} start on ${getSideFullLabel(entry.side).toLowerCase()}`;
+    return `${entry.sidePickerTeamName} starts on ${getSideFullLabel(entry.side).toLowerCase()}`;
 }
 
 const RailRow: React.FC<{ entry?: VetoSelectedMapEntry; slot: number }> = ({ entry, slot }) => (
@@ -43,7 +43,7 @@ const RailRow: React.FC<{ entry?: VetoSelectedMapEntry; slot: number }> = ({ ent
 );
 
 const LineupCard: React.FC<{ entry?: VetoSelectedMapEntry; slot: number }> = ({ entry, slot }) => (
-    <li className="relative isolate flex aspect-[2/1] min-h-[150px] sm:aspect-[16/10] flex-col justify-end overflow-hidden bg-card">
+    <li className="relative isolate flex h-40 flex-col justify-end overflow-hidden bg-card sm:h-44">
         {entry ? (
             <>
                 <VetoMapArt src={entry.map_image_url} name={entry.map_name} />
@@ -88,7 +88,11 @@ export const VetoLineup: React.FC<VetoLineupProps> = ({ entries, bestOf, variant
         <ol
             className={cn(
                 'grid gap-px bg-white/[0.06]',
-                slotCount === 1 ? 'grid-cols-1' : slotCount === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-5',
+                // Cards keep a fixed height and the row a capped width, so one map never fills the page.
+                slotCount === 1 && 'max-w-md grid-cols-1',
+                slotCount === 2 && 'max-w-3xl grid-cols-2',
+                slotCount === 3 && 'max-w-5xl grid-cols-1 sm:grid-cols-3',
+                slotCount > 3 && 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
                 className,
             )}
             aria-label="Series maps"

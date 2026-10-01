@@ -177,3 +177,20 @@ describe('buildVetoSelectedMapEntries side pickers', () => {
             .forEach((entry) => expect(entry.sidePickerTeamName).not.toBe(entry.mapPickerTeamName));
     });
 });
+
+describe('buildVetoSelectedMapEntries decider side owner', () => {
+    it('credits the team whose picks hold the decider side', () => {
+        const veto = baseVeto({ best_of: 3 });
+        const [first] = buildVetoSelectedMapEntries({ veto, bestOf: 3, game: 'valorant', mapLookup: MAPS, team1Name: 'Alpha', team2Name: 'Beta' }).slice(-1);
+        const flipped = baseVeto({
+            best_of: 3,
+            team1_picked_maps: [{ map_id: 'm5', side: 'attack' }, ...(first.sidePickerTeamName === 'Alpha' ? [] : [{ map_id: 'm7', side: 'attack' as const }])],
+            team2_picked_maps: [{ map_id: 'm6', side: 'defend' }, ...(first.sidePickerTeamName === 'Alpha' ? [{ map_id: 'm7', side: 'attack' as const }] : [])],
+        });
+        const decider = buildVetoSelectedMapEntries({ veto: flipped, bestOf: 3, game: 'valorant', mapLookup: MAPS, team1Name: 'Alpha', team2Name: 'Beta' }).at(-1);
+
+        expect(decider?.mapPickerTeamName).toBe('Decider');
+        expect(decider?.side).toBe('attack');
+        expect(decider?.sidePickerTeamName).toBe(first.sidePickerTeamName === 'Alpha' ? 'Beta' : 'Alpha');
+    });
+});

@@ -26,7 +26,7 @@ export const MapPoolSidePick: React.FC<MapPoolSidePickProps> = ({
 }) => (
     <div className={cn(
         'relative isolate overflow-hidden bg-zinc-900 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]',
-        compact ? 'aspect-[16/9] max-h-64' : 'aspect-[21/9] min-h-[220px]',
+        'h-44 w-full max-w-xl sm:h-48',
         isLoading && 'opacity-60',
     )}>
         <VetoMapArt src={map.map_image_url} name={map.map_name} />
@@ -36,7 +36,7 @@ export const MapPoolSidePick: React.FC<MapPoolSidePickProps> = ({
                 <p className={EYEBROW_CLASS}>{isDecider ? 'Decider map' : 'Picked map'}</p>
                 <p className={cn(
                     'mt-1 font-heading font-black leading-none tracking-tight text-white',
-                    compact ? 'text-3xl' : 'text-4xl sm:text-5xl',
+                    compact ? 'text-2xl' : 'text-3xl',
                 )}>
                     {map.map_name}
                 </p>
