@@ -86,6 +86,20 @@ export function formatDashboardDate(value?: string | null): string {
 const titleCase = (value?: string | null) =>
   value ? value.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : 'Not set';
 
+export function deriveFormatLabel(stages: DashboardStage[], tournament: DashboardTournament): string {
+  const sorted = [...stages].sort((a, b) => a.stage_order - b.stage_order);
+  if (sorted.length === 0) {
+    return titleCase(getPersistedTournamentFormat(tournament) || tournament.format);
+  }
+  if (sorted.length === 1) {
+    return titleCase(sorted[0].format);
+  }
+  const unique = [...new Set(sorted.map((s) => s.format))];
+  if (unique.length === 1) return titleCase(unique[0]);
+  if (sorted.length === 2) return sorted.map((s) => titleCase(s.format)).join(' + ');
+  return `Multi-stage (${sorted.length} stages)`;
+}
+
 function toSetupGaps(summary: CompletionSummary): SetupGap[] {
   return Object.entries(summary.panels).flatMap(([panel, state]) => {
     const label = SETUP_PANEL_LABELS[panel as DashboardSectionId];
@@ -175,7 +189,7 @@ export function useTournamentOverviewModel(input: OverviewModelInput): Tournamen
         { label: 'Starts', value: formatDashboardDate(tournament.start_date) },
         { label: 'Ends', value: formatDashboardDate(tournament.end_date) },
         { label: 'Registration closes', value: formatDashboardDate(tournament.registration_deadline) },
-        { label: 'Format', value: isBattleRoyale ? 'Battle royale' : titleCase(getPersistedTournamentFormat(tournament) || tournament.format) },
+        { label: 'Format', value: isBattleRoyale ? 'Battle royale' : deriveFormatLabel(stages, tournament) },
         { label: 'Team size', value: (tournament.team_size ?? 1) > 1 ? `${tournament.team_size} per team` : 'Solo' },
         { label: 'Venue', value: tournament.is_online === false ? 'LAN' : 'Online' },
       ],
