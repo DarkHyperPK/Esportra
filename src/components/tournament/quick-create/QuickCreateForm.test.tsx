@@ -223,11 +223,10 @@ describe('QuickCreateForm submission', () => {
     expect(payload.description).toBeUndefined();
   });
 
-  it('QuickCreateForm_SetsStatusDraft_WhenPublishUnchecked', async () => {
+  it('QuickCreateForm_AlwaysSetsStatusDraft', async () => {
     renderForm();
     fillRequiredFields();
 
-    // Save as draft is the default — do not change the choice
     fireEvent.click(screen.getByRole('button', { name: /create draft/i }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());

@@ -200,14 +200,15 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
               />
             </ChoiceGroup>
             {!form.isOnline && (
-              <div className="mt-3">
+              <Field label="Venue address" htmlFor="bi-venue" optional hint="You can add it later if the venue isn't booked yet.">
                 <Input
+                  id="bi-venue"
                   placeholder="Street, city"
                   value={form.venueAddress}
                   onChange={(e) => setForm((s) => ({ ...s, venueAddress: e.target.value }))}
                   className={CONTROL_CLASS}
                 />
-              </div>
+              </Field>
             )}
           </Field>
 
