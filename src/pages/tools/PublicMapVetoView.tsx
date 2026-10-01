@@ -7,14 +7,12 @@ import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
 import { VetoSelectedMaps } from "@/components/tournament/map-veto/VetoSelectedMaps";
 import { VetoSequence } from "@/components/tournament/map-veto/VetoSequence";
 import { VetoTeamDisplay } from "@/components/tournament/map-veto/VetoTeamDisplay";
-import { getVetoActionClasses, getVetoActionNoun } from "@/components/tournament/map-veto/vetoActionPresentation";
-import { getVetoLayoutConfig } from "@/components/tournament/map-veto/vetoLayoutConfig";
+import { VetoTurnBanner } from "@/components/tournament/map-veto/VetoTurnBanner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { CommandButton } from "@/components/management/CommandSurface";
 import { useToast } from "@/hooks/use-toast";
 import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
 import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory";
-import { cn } from "@/lib/utils";
 import { copyText } from "./publicToolUtils";
 import {
   adaptPublicMapsToGameMaps,
@@ -148,10 +146,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const isComplete = veto.status === "completed";
   const vetoLive = isVetoLive(veto);
-  const layout = "fullscreen" as const;
-  const ui = getVetoLayoutConfig(layout, isComplete);
   const currentBestOf = veto.best_of || state.bestOf || 1;
-  const boText = `BO${currentBestOf}`;
   const currentTeamName = veto.current_team_id === veto.team1_id ? state.team1Name : state.team2Name;
   const activeSide = veto.current_team_id === veto.team1_id
     ? "team1"
@@ -201,7 +196,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     }
   }, [acting, onMapAction]);
 
-  const renderSelectedMapsPanel = (compact = ui.selectedMapsCompact, className = "mb-0", rail = false) => (
+  const lineup = (rail: boolean) => (
     <VetoSelectedMaps
       veto={veto}
       availableMaps={gameMaps}
@@ -210,13 +205,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       team2Name={state.team2Name}
       team1Id={state.team1Id}
       team2Id={state.team2Id}
-      imagesLoaded={imagesLoaded}
-      setImagesLoaded={setImagesLoaded}
       bestOf={currentBestOf}
       game={state.game}
-      compact={compact}
       rail={rail}
-      className={className}
     />
   );
 
@@ -236,22 +227,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     window.setTimeout(() => setCopiedOverlay(false), 2000);
   };
 
-  const leftRail = (
-    <>
-      <div className="mb-1">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">Public tools</p>
-        <h2 className="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">
-          {state.team1Name} <span className="text-zinc-500">vs</span> {state.team2Name}
-        </h2>
-        {state.expiresAt && (
-          <p className="mt-1 text-[11px] text-zinc-500">
-            Expires {new Date(state.expiresAt).toLocaleString()}
-          </p>
-        )}
-      </div>
-
+  const pageHeader = (
+    <div className="space-y-1">
       <VetoHeader
-        boText={boText}
         vetoStatus={veto.status}
         effectiveIsOrganizer={isHost}
         handleResetVeto={() => { void onReset(); }}
@@ -262,31 +240,34 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         team1Name={state.team1Name}
         team2Name={state.team2Name}
         showShareLinks={isHost}
-        compact={ui.headerCompact}
         getTeamVetoUrl={buildPublicTeamVetoUrl}
       />
+      {state.expiresAt && (
+        <p className="text-xs text-zinc-500">
+          Link expires {new Date(state.expiresAt).toLocaleString()}
+        </p>
+      )}
+    </div>
+  );
 
+  const hostTools = (
+    <>
       {isHost && (state.hostToken || state.overlayToken) && (
-        <div className="space-y-3">
+        <section className="space-y-3 border-t border-white/[0.07] pt-6" aria-label="Host tools">
+          <h3 className="font-heading text-lg font-bold tracking-tight text-white">Host tools</h3>
           <div className="flex flex-wrap gap-2">
             {state.hostToken && (
-              <Button
-                type="button"
-                onClick={() => { void copyHostLink(); }}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 border-white/20 text-white/80 hover:bg-white/10"
-              >
-                {copiedHost ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-                Host observer link
-              </Button>
+              <CommandButton variant="ghost" size="sm" onClick={() => { void copyHostLink(); }}>
+                {copiedHost ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                Observer link
+              </CommandButton>
             )}
             {(state.overlayToken || state.hostToken) && (
-              <div className="flex overflow-hidden border border-emerald-400/30">
+              <div className="flex overflow-hidden border border-white/10">
                 <select
                   value={overlayTransition}
                   onChange={(event) => setOverlayTransition(event.target.value)}
-                  className="h-8 border-r border-emerald-400/20 bg-black/40 px-2 text-[10px] font-bold uppercase tracking-wide text-emerald-100 outline-none"
+                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
                   aria-label="OBS overlay transition"
                 >
                   <option value="up">Slide up</option>
@@ -297,44 +278,28 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                 <select
                   value={overlayTheme}
                   onChange={(event) => setOverlayTheme(event.target.value)}
-                  className="h-8 border-r border-emerald-400/20 bg-black/40 px-2 text-[10px] font-bold uppercase tracking-wide text-emerald-100 outline-none"
+                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
                   aria-label="OBS overlay theme"
                 >
                   {OVERLAY_THEMES.map((theme) => (
                     <option key={theme.value} value={theme.value}>{theme.label}</option>
                   ))}
                 </select>
-                <Button
-                  type="button"
-                  onClick={() => { void copyOverlayLink(); }}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 border-0 text-emerald-100 hover:bg-emerald-500/10"
-                >
-                  {copiedOverlay ? <Check className="h-3 w-3" /> : <MonitorUp className="h-3 w-3" />}
-                  OBS overlay
-                </Button>
+                <CommandButton variant="ghost" size="sm" className="border-0" onClick={() => { void copyOverlayLink(); }}>
+                  {copiedOverlay ? <Check className="h-3.5 w-3.5" /> : <MonitorUp className="h-3.5 w-3.5" />}
+                  Copy OBS link
+                </CommandButton>
               </div>
             )}
             {overlayPreviewUrl && (
-              <Button
-                type="button"
-                onClick={() => setOverlayPreviewKey((key) => key + 1)}
-                variant="outline"
-                size="sm"
-                className="gap-1.5 border-white/20 text-white/80 hover:bg-white/10"
-              >
-                <RefreshCw className="h-3 w-3" />
+              <CommandButton variant="ghost" size="sm" onClick={() => setOverlayPreviewKey((key) => key + 1)}>
+                <RefreshCw className="h-3.5 w-3.5" />
                 Refresh preview
-              </Button>
+              </CommandButton>
             )}
           </div>
           {overlayPreviewUrl && (
-            <div className="space-y-2 border border-white/10 bg-black/35 p-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Live OBS Preview</div>
-                <div className="min-w-0 truncate font-mono text-[9px] text-zinc-600">{overlayPreviewUrl}</div>
-              </div>
+            <div className="space-y-2 border border-white/[0.07] bg-card p-2">
               <OverlayPreviewFrame
                 src={overlayPreviewUrl}
                 refreshKey={overlayPreviewKey}
@@ -346,9 +311,10 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                     key={theme.value}
                     type="button"
                     onClick={() => setOverlayTheme(theme.value)}
-                    className={`space-y-1 border p-1 text-left transition ${overlayTheme === theme.value ? "border-emerald-400/70 bg-emerald-400/10" : "border-white/10 bg-black/30 hover:border-white/25"}`}
+                    aria-pressed={overlayTheme === theme.value}
+                    className={`space-y-1 p-1 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${overlayTheme === theme.value ? "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]" : "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"}`}
                   >
-                    <div className="px-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">{theme.label}</div>
+                    <div className="px-1 text-xs text-zinc-300">{theme.label}</div>
                     <OverlayPreviewFrame
                       src={overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, theme.value) : ""}
                       refreshKey={overlayPreviewKey}
@@ -359,33 +325,27 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {!isComplete && (
-        <div className="hidden lg:block">
-          {renderSelectedMapsPanel(true, "mb-0", true)}
-        </div>
+        </section>
       )}
     </>
   );
 
-  const teamRow = (
-    <div className="mb-3 flex justify-center sm:mb-4">
-      <VetoTeamDisplay
-        team1Name={state.team1Name}
-        team2Name={state.team2Name}
-        activeSide={isComplete ? null : activeSide}
-        currentAction={veto.current_action}
-        completed={isComplete}
-        bestOf={currentBestOf}
-        compact={false}
-      />
-    </div>
-  );
+  const sequenceProps = {
+    veto,
+    entries: vetoHistory,
+    loading: historyLoading && vetoHistory.length === 0,
+    bestOf: currentBestOf,
+    team1Name: state.team1Name,
+    team2Name: state.team2Name,
+    team1Id: state.team1Id,
+    team2Id: state.team2Id,
+    availableMaps: gameMaps,
+    allAvailableMaps: gameMaps,
+    game: state.game,
+  };
 
   const mapPoolPanel = (
-    <div className="relative">
+    <div className="relative min-w-0">
       <MapPool
         veto={veto}
         availableMaps={gameMaps}
@@ -393,8 +353,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         isUserTurn={isUserTurn && !acting}
         actionLoading={isHost ? null : (actionLoading ?? (acting ? "busy" : null))}
         handleMapAction={isHost ? noOp : handleMapAction}
-        imagesLoaded={imagesLoaded}
-        setImagesLoaded={setImagesLoaded}
         currentTeamName={currentTeamName}
         team1Name={state.team1Name}
         team2Name={state.team2Name}
@@ -402,102 +360,47 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         team2Id={state.team2Id}
         bestOf={currentBestOf}
         game={state.game}
-        layoutMode={layout}
+        layoutMode="fullscreen"
         transitionOnClick={false}
+        showInstruction={false}
       />
       {acting && !isHost && (
-        <div className="pointer-events-none absolute inset-0 z-20 rounded-xl bg-black/35 backdrop-blur-[1px]" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 z-20 bg-black/35" aria-hidden="true" />
       )}
     </div>
   );
 
-  const sequencePanel = (
-    <div className={cn(
-      "min-h-0 rounded-xl border border-white/10 bg-black/30 p-2.5 sm:p-3",
-      isComplete && "bg-gradient-to-b from-white/[0.04] to-black/30",
-    )}>
-      <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-3">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Veto Sequence</div>
-          <div className="mt-0.5 text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
-            {isComplete ? "Final ban/pick recap" : "Actions confirmed so far"}
-          </div>
-        </div>
-        {!isComplete && veto.current_action && (
-          <span className={cn(
-            "rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest sm:px-2.5 sm:py-1 sm:text-[10px]",
-            getVetoActionClasses(veto.current_action),
-          )}>
-            {getVetoActionNoun(veto.current_action)}
-          </span>
-        )}
+  const liveStage = (
+    <>
+      <VetoTurnBanner
+        veto={veto}
+        isUserTurn={isUserTurn && !acting}
+        currentTeamName={currentTeamName}
+      />
+      <VetoSequence {...sequenceProps} variant="track" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+        {mapPoolPanel}
+        <aside className="min-w-0">{lineup(true)}</aside>
       </div>
-      <div className={ui.sequenceScroll} data-lenis-prevent>
-        <VetoSequence
-          veto={veto}
-          entries={vetoHistory}
-          loading={historyLoading && vetoHistory.length === 0}
-          bestOf={currentBestOf}
-          team1Name={state.team1Name}
-          team2Name={state.team2Name}
-          team1Id={state.team1Id}
-          team2Id={state.team2Id}
-          availableMaps={gameMaps}
-          allAvailableMaps={gameMaps}
-          game={state.game}
-          compact={ui.sequenceCompact}
-          columns={ui.sequenceColumns}
-          doneOnly={!isComplete}
-          emptyMessage={!vetoLive ? "Veto has not started yet." : "No veto actions recorded yet."}
-        />
-      </div>
-    </div>
+      {isHost ? hostTools : null}
+    </>
   );
 
-  const turnBar = !isComplete && vetoLive && veto.current_action ? (
-    <motion.div
-      key={`${veto.current_action_number}-${veto.current_team_id}-${veto.current_action}`}
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-      className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
-          <div className={cn("mt-0.5 text-sm font-black", acting ? "text-zinc-400" : isUserTurn ? "text-rose-200" : "text-white")}>
-            {acting
-              ? "Confirming action..."
-              : isHost
-                ? `${currentTeamName}'s turn`
-                : isUserTurn
-                  ? "Your turn"
-                  : `${currentTeamName}'s turn`}
-          </div>
-        </div>
-        <span className={cn(
-          "rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
-          getVetoActionClasses(veto.current_action),
-        )}>
-          {getVetoActionNoun(veto.current_action)}
-        </span>
-      </div>
-    </motion.div>
-  ) : null;
-
-  const stageContent = isComplete ? (
+  const completeStage = (
     <>
-      <div className="min-w-0">{renderSelectedMapsPanel()}</div>
-      <div className="min-w-0">{sequencePanel}</div>
+      {lineup(false)}
+      <VetoSequence {...sequenceProps} doneOnly variant="track" />
+      {isHost ? hostTools : null}
     </>
-  ) : (
+  );
+
+  const waitingStage = (
     <>
-      {turnBar}
-      <div className={ui.stageGrid}>
-        <div className="min-w-0">{mapPoolPanel}</div>
-        <div className="min-w-0">{sequencePanel}</div>
-      </div>
-      <div className="min-w-0 lg:hidden">{renderSelectedMapsPanel()}</div>
+      <p className="border-b border-white/[0.07] pb-4 font-heading text-2xl font-black tracking-tight text-zinc-300">
+        The veto opens when both captains join.
+      </p>
+      <VetoSequence {...sequenceProps} variant="track" emptyMessage="The veto order appears here once it starts." />
+      {isHost ? hostTools : null}
     </>
   );
 
@@ -505,13 +408,19 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className={ui.shell}
+      transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
+      className="min-h-screen w-full bg-background px-4 py-5 text-white lg:px-8 lg:py-8"
     >
-      {teamRow}
-      <div className={ui.grid}>
-        <aside className={ui.rail}>{leftRail}</aside>
-        <main className={ui.stage}>{stageContent}</main>
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        {pageHeader}
+        <VetoTeamDisplay
+          team1Name={state.team1Name}
+          team2Name={state.team2Name}
+          activeSide={isComplete || !vetoLive ? null : activeSide}
+          completed={isComplete}
+          bestOf={currentBestOf}
+        />
+        {isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
       </div>
 
       {!isHost && (
@@ -545,20 +454,18 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   );
 };
 
-export const PublicMapVetoLoading = () => {
-  const ui = getVetoLayoutConfig("fullscreen", false);
-  return (
-    <div className={ui.shell}>
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48 bg-white/10" />
-        <div className={cn("grid gap-2.5", ui.mapPool.gridCols)}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
-            <Skeleton key={item} className={cn("w-full rounded-lg bg-white/10", ui.mapPool.tileHeight)} />
-          ))}
-        </div>
+export const PublicMapVetoLoading = () => (
+  <div className="min-h-screen w-full bg-background px-4 py-5 lg:px-8 lg:py-8">
+    <div className="mx-auto max-w-[1400px] space-y-4">
+      <Skeleton className="h-7 w-48 rounded-none bg-white/[0.06]" />
+      <Skeleton className="h-20 w-full rounded-none bg-white/[0.06]" />
+      <div className="flex gap-2">
+        {[1, 2, 3, 4, 5, 6, 7].map((item) => (
+          <Skeleton key={item} className="h-[236px] flex-1 rounded-none bg-white/[0.04] sm:h-[272px]" />
+        ))}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default PublicMapVetoView;
