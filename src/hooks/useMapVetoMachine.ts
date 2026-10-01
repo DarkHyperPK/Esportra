@@ -73,6 +73,16 @@ function normalizePickedArray(arr: any): PickedMap[] {
     }));
 }
 
+/** Accepts 'ban' | 'Ban' | 'BAN' | 'pick_side' | 'PickSide' | 'pick-side' and returns the canonical action. */
+export function normalizeVetoAction(raw: unknown): MatchMapVeto['current_action'] {
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    const key = raw.trim().toLowerCase().replace(/[\s-]/g, '_');
+    if (key === 'ban') return 'ban';
+    if (key === 'pick') return 'pick';
+    if (key === 'pick_side' || key === 'pickside' || key === 'side') return 'pick_side';
+    return null;
+}
+
 // Maps camelCase API response to snake_case MatchMapVeto (backend returns C# PascalCase → JSON camelCase)
 export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
     return {
@@ -86,7 +96,7 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         best_of:               getBestOf(apiVeto.bestOf ?? apiVeto.best_of),
         status:                apiVeto.status ?? 'pending',
         current_team_id:       apiVeto.currentTeamId ?? apiVeto.current_team_id ?? null,
-        current_action:        apiVeto.currentAction ?? apiVeto.current_action ?? null,
+        current_action:        normalizeVetoAction(apiVeto.currentAction ?? apiVeto.current_action),
         current_action_number: apiVeto.currentActionNumber ?? apiVeto.current_action_number ?? 0,
         turn_started_at:       apiVeto.turnStartedAt ?? apiVeto.turn_started_at ?? null,
         turn_duration_seconds: apiVeto.turnDurationSeconds ?? apiVeto.turn_duration_seconds ?? 0,

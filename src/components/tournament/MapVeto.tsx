@@ -184,6 +184,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     allAvailableMaps,
     game,
     externalSequence: vetoSettings?.effectiveSequence,
+    team1Logo,
+    team2Logo,
   };
 
   const lineup = (rail: boolean) => (

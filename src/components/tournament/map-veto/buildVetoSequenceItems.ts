@@ -16,6 +16,8 @@ export interface VetoSequenceItem {
     actionNumber: number;
     action: VetoActionKind;
     teamName: string;
+    /** Which team acted; null for automatic steps. */
+    lane: 'team1' | 'team2' | null;
     mapName?: string;
     mapImageUrl?: string | null;
     side?: 'attack' | 'defend' | null;
@@ -58,6 +60,7 @@ function toDoneItem(entry: VetoHistoryEntry): VetoSequenceItem {
         actionNumber: entry.actionNumber,
         action: entry.action,
         teamName: entry.teamName,
+        lane: entry.teamSide,
         mapName: entry.mapName,
         mapImageUrl: entry.mapImageUrl,
         side: entry.side,
@@ -137,6 +140,7 @@ export function buildVetoSequenceItems(options: BuildOptions): VetoSequenceItem[
             actionNumber: step.actionNumber,
             action: step.action as VetoActionKind,
             teamName: step.teamId === effectiveTeam1Id ? team1Name : team2Name,
+            lane: step.action === 'ignore' ? null : step.teamId === effectiveTeam1Id ? 'team1' : 'team2',
             mapName: isSideStep ? previousEntry?.mapName || deciderMap?.map_name : deciderMap?.map_name,
             mapImageUrl: isSideStep ? previousEntry?.mapImageUrl || deciderMap?.map_image_url : deciderMap?.map_image_url,
             status,

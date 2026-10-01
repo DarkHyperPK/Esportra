@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { StatusPill, type Tone } from '@/components/ui/kit';
-import EntityAvatar from '@/components/ui/EntityAvatar';
+import { VetoCrest } from '@/components/tournament/map-veto/VetoCrest';
 import type { BracketTeam } from '@/types/bracketTypes';
 import type { SeriesSide } from '@/services/matchStats/publicGameStats';
 
@@ -33,21 +33,11 @@ const Side: React.FC<SideProps> = ({ team, won, lost, align }) => (
         'relative flex min-w-0 flex-col gap-2 self-stretch py-4 sm:flex-row sm:items-center sm:gap-4',
         align === 'right' ? 'items-end text-right sm:flex-row-reverse' : 'items-start',
     )}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-white/[0.04] p-1.5 sm:h-16 sm:w-16 sm:p-2">
-            {team ? (
-                <EntityAvatar
-                    src={team.logo_url}
-                    name={team.name}
-                    entityId={team.id}
-                    type="team"
-                    shape="natural"
-                    size="h-full w-full"
-                    imgClassName="object-contain"
-                />
-            ) : (
-                <span className="font-heading text-lg font-black text-zinc-600">?</span>
-            )}
-        </div>
+        <VetoCrest
+            name={team?.name ?? 'To be decided'}
+            logo={team?.logo_url}
+            className="h-10 w-10 bg-white/[0.04] p-1.5 shadow-none sm:h-16 sm:w-16 sm:p-2"
+        />
         <div className="w-full min-w-0">
             <p className={cn(
                 'line-clamp-2 break-words font-heading text-sm font-bold leading-tight tracking-tight sm:line-clamp-1 sm:text-2xl',

@@ -88,3 +88,24 @@ describe('buildVetoSequenceItems', () => {
         expect(items).toEqual([]);
     });
 });
+
+describe('veto action normalisation', () => {
+    it('reads action names in any case', async () => {
+        const { normalizeVetoAction } = await import('@/hooks/useMapVetoMachine');
+        expect(normalizeVetoAction('Pick')).toBe('pick');
+        expect(normalizeVetoAction('BAN')).toBe('ban');
+        expect(normalizeVetoAction('PickSide')).toBe('pick_side');
+        expect(normalizeVetoAction('pick-side')).toBe('pick_side');
+        expect(normalizeVetoAction(undefined)).toBeNull();
+    });
+
+    it('keeps picks as picks in history and puts each step in its team lane', async () => {
+        const { normalizeHistoryEntry } = await import('@/hooks/useVetoHistory');
+        const entry = normalizeHistoryEntry({ actionNumber: 3, teamSide: 'team2', action: 'Pick', mapId: 'm3', mapName: 'Ascent', side: 'Defense' });
+        expect(entry.action).toBe('pick');
+        expect(entry.side).toBe('defend');
+
+        const items = buildVetoSequenceItems({ ...base, veto: veto({ status: 'completed' }), entries: [entry] });
+        expect(items[0]).toMatchObject({ action: 'pick', lane: 'team2' });
+    });
+});

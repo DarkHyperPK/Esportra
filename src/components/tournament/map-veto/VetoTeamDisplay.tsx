@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { VetoCrest } from './VetoCrest';
 import type { MatchMapVeto } from '@/hooks/useMapVetoMachine';
 
 interface VetoTeamDisplayProps {
@@ -39,16 +40,11 @@ const TeamSide: React.FC<TeamSideProps> = ({ name, logo, active, align, compact 
             compact ? 'px-3 py-3' : 'px-3 py-3 sm:px-6 sm:py-5',
             isRight ? 'items-end text-right sm:flex-row-reverse' : 'items-start',
         )}>
-            <div className={cn(
-                'flex shrink-0 items-center justify-center bg-white/[0.04]',
-                compact ? 'h-9 w-9 p-1.5' : 'h-10 w-10 p-1.5 sm:h-14 sm:w-14 sm:p-2',
-            )}>
-                {logo ? (
-                    <img src={logo} alt="" className="h-full w-full object-contain" />
-                ) : (
-                    <span className="font-heading text-lg font-black text-zinc-400">{name.charAt(0)}</span>
-                )}
-            </div>
+            <VetoCrest
+                name={name}
+                logo={logo}
+                className={cn('bg-white/[0.04] shadow-none', compact ? 'h-9 w-9 p-1.5' : 'h-10 w-10 p-1.5 sm:h-14 sm:w-14 sm:p-2')}
+            />
             <div className="w-full min-w-0">
                 <p
                     className={cn(
