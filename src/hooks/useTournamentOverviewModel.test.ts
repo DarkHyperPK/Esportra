@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { DashboardStage, DashboardTournament } from '@/hooks/useTournamentDashboard';
-import { deriveFormatLabel } from '@/hooks/useTournamentOverviewModel';
+import { deriveFormatLabel, useTournamentOverviewModel } from '@/hooks/useTournamentOverviewModel';
+import type { CompletionSummary } from '@/hooks/useCompletionState';
+
+vi.mock('@/hooks/useNow', () => ({ useNow: () => new Date('2026-06-01T09:00:00Z').getTime() }));
+vi.mock('@/hooks/useTournamentInvitations', () => ({
+  useTournamentInvitations: () => ({ invitations: { data: null } }),
+}));
 
 function makeStage(format: string, stage_order: number): DashboardStage {
   return {
@@ -100,15 +109,40 @@ describe('deriveFormatLabel', () => {
     expect(deriveFormatLabel([], t)).toBe('Not set');
   });
 
-  // AC9: BR non-regression — the isBattleRoyale guard lives at useTournamentOverviewModel.ts:192
-  //   `isBattleRoyale ? 'Battle royale' : deriveFormatLabel(stages, tournament)`
-  // deriveFormatLabel is never called for BR tournaments; 'Battle royale' is returned by the
-  // ternary before this function is reached. Verified by code inspection of line 192.
-  // Decision recorded in PROJ-042/decisions.md: unit-testing the hook ternary is out of scope
-  // for this pure-function test file; the guard is a single, unambiguous ternary with no branches
-  // that could silently regress without breaking AC1-AC8b tests.
-  it('AC9: deriveFormatLabel is format-agnostic — BR path guarded at hook level (code-inspection verified)', () => {
-    // Confirms function is not called with a BR-specific value — BR short-circuit is in the hook.
-    expect(deriveFormatLabel([makeStage('battle_royale', 1)], makeTournament())).toBe('Battle royale');
+});
+
+const EMPTY_COMPLETION: CompletionSummary = {
+  panels: {},
+  totalRequiredMissing: 0,
+  totalRecommendedMissing: 0,
+  canPublish: false,
+  blockingPanels: [],
+};
+
+function makeWrapper() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc }, children);
+}
+
+describe('useTournamentOverviewModel — BR guard (AC9 integration)', () => {
+  it('AC9: isBattleRoyale=true shows "Battle royale" even when stages have a different format', () => {
+    const { result } = renderHook(
+      () =>
+        useTournamentOverviewModel({
+          tournament: makeTournament('single_elimination'),
+          participants: [],
+          // Stages have single_elimination — without the guard this would show "Single elimination"
+          stages: [makeStage('single_elimination', 1)],
+          mockCount: 0,
+          completionSummary: EMPTY_COMPLETION,
+          disputeCount: 0,
+          reachable: new Set(),
+          isBattleRoyale: true,
+        }),
+      { wrapper: makeWrapper() },
+    );
+    const formatRow = result.current?.details.find((d) => d.label === 'Format');
+    expect(formatRow?.value).toBe('Battle royale');
   });
 });
