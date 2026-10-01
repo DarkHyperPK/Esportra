@@ -6,8 +6,9 @@ const TEST_SLUG = 'qa-test-1790846603';
 test.describe('BasicInfoPanel — Online/LAN toggle', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`/organizer/tournament/${TEST_SLUG}?tab=basic-info`);
-    // Wait for the panel to load
-    await expect(page.getByText('Where it\'s played')).toBeVisible({ timeout: 10_000 });
+    await page.waitForLoadState('networkidle');
+    // Wait for the panel to load — generous timeout for cold first navigation
+    await expect(page.getByText('Where it\'s played')).toBeVisible({ timeout: 20_000 });
   });
 
   test('shows Online and LAN choice cards', async ({ page }) => {
@@ -16,11 +17,12 @@ test.describe('BasicInfoPanel — Online/LAN toggle', () => {
   });
 
   test('selecting LAN reveals venue address input', async ({ page }) => {
-    // Ensure we start on Online (the default for a tournament with no venue_address)
+    // Normalize to Online first (tournament may have a stale venue_address from a previous run)
+    await page.getByRole('radio', { name: /Online/i }).first().click();
     const venueInput = page.getByPlaceholder(/street, city/i);
-    await expect(venueInput).not.toBeVisible();
+    await expect(venueInput).not.toBeVisible({ timeout: 3_000 });
 
-    // Switch to LAN
+    // Switch to LAN — input must appear
     await page.getByRole('radio', { name: /LAN/i }).first().click();
     await expect(venueInput).toBeVisible();
   });
@@ -59,6 +61,8 @@ test.describe('BasicInfoPanel — Online/LAN toggle', () => {
     await page.getByPlaceholder(/street, city/i).fill('Temp Arena, Karachi');
     await page.getByRole('button', { name: /save changes/i }).click();
     await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible({ timeout: 5_000 });
+    // Wait for the first toast to clear so the second save assertion is unambiguous
+    await expect(page.getByText('Saved', { exact: true }).first()).not.toBeVisible({ timeout: 8_000 });
 
     // Now switch to Online and save
     await page.getByRole('radio', { name: /Online/i }).first().click();

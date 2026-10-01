@@ -3,6 +3,12 @@ import { test, expect } from '@playwright/test';
 test.describe('Quick Create wizard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/tournaments/create');
+    // Re-assert dismissal flags after navigation — auth token refresh can re-trigger
+    // the announcement useEffect before localStorage is re-hydrated from storageState.
+    await page.evaluate(() => {
+      localStorage.setItem('esportra_seen_feature_avatars_v1', '1');
+      localStorage.setItem('beta-notice-permanent-dismiss', 'true');
+    });
   });
 
   test('shows only 4 sections — no bracket style or publish option', async ({ page }) => {
