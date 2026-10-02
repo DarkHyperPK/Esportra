@@ -58,10 +58,5 @@ export function useOverlayEventQueue(slots: OverlayEventSlot[], ready: boolean) 
     };
   }, [current]);
 
-  /** Slots whose moment is still waiting its turn render as not-yet-settled. */
-  const awaitingSettle = new Set(queue.filter((event) => event.kind !== "side").map((event) => event.slotKey));
-  const awaitingSide = new Set(queue.filter((event) => event.kind === "side").map((event) => event.slotKey));
-  if (current?.kind === "side") awaitingSide.delete(current.slotKey);
-
-  return { current, phase, awaitingSettle, awaitingSide };
+  return { current, phase };
 }

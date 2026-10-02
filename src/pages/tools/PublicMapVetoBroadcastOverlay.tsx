@@ -1,25 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { VetoStripCard } from "@/components/tournament/map-veto/buildVetoStripCards";
+import { toOverlayEventSlots } from "./buildOverlayStepCards";
 import { cn } from "@/lib/utils";
 import { BROADCAST_OVERLAY_CSS, overlayEnterClass, teamCode } from "./broadcastOverlayStyles";
 import { BroadcastOverlayCard } from "./BroadcastOverlayCard";
 import { BroadcastOverlayAnnouncement } from "./BroadcastOverlayAnnouncement";
 import { useOverlayEventQueue } from "./useOverlayEventQueue";
 
-export type BroadcastOverlaySlot = {
-  key: string;
-  mapId: string;
-  mapName: string;
-  mapImageUrl?: string | null;
-  kind: "ban" | "pick" | "decider" | "pending";
-  /** Team that banned or picked. */
-  topTeam?: string;
-  /** Team that chose the starting side. */
-  bottomTeam?: string;
-  side?: "attack" | "defend" | null;
-};
-
 type Props = {
-  slots: BroadcastOverlaySlot[];
+  /** One fixed slot per map decision, in veto order. */
+  cards: VetoStripCard[];
   gameLabel: string;
   bestOf: number;
   team1Name: string;
@@ -30,6 +20,24 @@ type Props = {
   transparent: boolean;
   transition: "none" | "up" | "left" | "right";
 };
+
+/**
+ * Steps already settled when the overlay first rendered (OBS load or refresh) stay
+ * still; everything that settles afterwards animates. A reset re-arms every step.
+ * `null` until the first effect runs, which callers treat as "all quiet".
+ */
+function useQuietSteps(cards: VetoStripCard[]) {
+  const [quietSteps, setQuietSteps] = useState<Set<number> | null>(null);
+  useEffect(() => {
+    if (cards.length === 0) return;
+    if (quietSteps === null) {
+      setQuietSteps(new Set(cards.filter((card) => card.mapSettled).map((card) => card.stepNumber)));
+    } else if (quietSteps.size > 0 && cards.every((card) => !card.mapSettled)) {
+      setQuietSteps(new Set());
+    }
+  }, [cards, quietSteps]);
+  return quietSteps;
+}
 
 const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
   <span
@@ -58,7 +66,7 @@ const LiveClock = ({ label }: { label: string }) => {
   );
 };
 
-const FooterLine = ({ onClock, decider }: { onClock: Props["onClock"]; decider?: BroadcastOverlaySlot }) => {
+const FooterLine = ({ onClock, decider }: { onClock: Props["onClock"]; decider?: VetoStripCard }) => {
   if (decider) {
     return <p className="font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">Decider: {decider.mapName}</p>;
   }
@@ -78,13 +86,16 @@ const FooterLine = ({ onClock, decider }: { onClock: Props["onClock"]; decider?:
  * with a stamp and the lower band announces it.
  */
 export const PublicMapVetoBroadcastOverlay = (props: Props) => {
-  const { slots, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
-  const { current, phase, awaitingSettle, awaitingSide } = useOverlayEventQueue(slots, true);
-  const decider = slots.find((slot) => slot.kind === "decider" && !awaitingSettle.has(slot.key));
-  const mapNumbers = new Map<string, number>();
-  slots
-    .filter((slot) => slot.kind === "pick" || slot.kind === "decider")
-    .forEach((slot, index) => mapNumbers.set(slot.key, index + 1));
+  const { cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
+  const eventSlots = useMemo(() => toOverlayEventSlots(cards), [cards]);
+  const { current, phase } = useOverlayEventQueue(eventSlots, cards.length > 0);
+  const quietSteps = useQuietSteps(cards);
+  const decider = cards.find((card) => card.kind === "decider" && card.mapSettled);
+  const mapNumbers = new Map<number, number>();
+  cards
+    .filter((card) => card.kind !== "ban")
+    .forEach((card, index) => mapNumbers.set(card.stepNumber, index + 1));
+  const currentStep = current ? Number(current.slotKey.replace("step-", "")) : null;
 
   return (
     <main
@@ -119,15 +130,13 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
         </div>
 
         <div className="mt-[5vh] flex min-h-0 flex-1 justify-center gap-[0.9vw]">
-          {slots.map((slot, index) => (
+          {cards.map((card, index) => (
             <BroadcastOverlayCard
-              key={slot.mapId}
-              slot={slot}
+              key={card.stepNumber}
+              card={card}
               index={index}
-              mapNumber={mapNumbers.get(slot.key)}
-              reveal={current?.slotKey === slot.key ? current : null}
-              awaitingSettle={awaitingSettle.has(slot.key)}
-              awaitingSide={awaitingSide.has(slot.key)}
+              mapNumber={mapNumbers.get(card.stepNumber)}
+              quiet={quietSteps === null || quietSteps.has(card.stepNumber)}
             />
           ))}
         </div>
@@ -135,7 +144,11 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
         <div className="relative mt-[3.5vh] flex h-[9vh] shrink-0 items-center">
           <FooterLine onClock={onClock} decider={decider} />
           {current ? (
-            <BroadcastOverlayAnnouncement event={current} phase={phase} mapNumber={mapNumbers.get(current.slotKey)} />
+            <BroadcastOverlayAnnouncement
+              event={current}
+              phase={phase}
+              mapNumber={currentStep === null ? undefined : mapNumbers.get(currentStep)}
+            />
           ) : null}
         </div>
       </div>

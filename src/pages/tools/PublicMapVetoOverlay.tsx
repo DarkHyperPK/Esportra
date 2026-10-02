@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
@@ -9,6 +9,7 @@ import { normalizeHistoryEntry, type VetoHistoryEntry } from "@/hooks/useVetoHis
 import { buildVetoSelectedMapEntries } from "@/components/tournament/map-veto/buildVetoSelectedMapEntries";
 import { getSideFullLabel } from "@/components/tournament/map-veto/vetoActionPresentation";
 import { PublicMapVetoBroadcastOverlay } from "./PublicMapVetoBroadcastOverlay";
+import { buildOverlayStepCards } from "./buildOverlayStepCards";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
@@ -539,6 +540,19 @@ const buildOverlaySlots = (options: {
   return actionSlots;
 };
 
+/** Warm the cache for every map image so a slot never fills before its art has loaded. */
+const usePreloadImages = (urls: Array<string | null | undefined>) => {
+  const key = urls.filter(Boolean).join("|");
+  useEffect(() => {
+    if (!key) return;
+    key.split("|").forEach((url) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = url;
+    });
+  }, [key]);
+};
+
 const PublicMapVetoOverlay = () => {
   const { token } = useParams();
   const [searchParams] = useSearchParams();
@@ -657,6 +671,23 @@ const PublicMapVetoOverlay = () => {
     () => buildOverlaySlots({ maps: gameMaps, history, selectedMaps }),
     [gameMaps, history, selectedMaps],
   );
+  const stepCards = useMemo(
+    () => state && veto
+      ? buildOverlayStepCards({
+        veto,
+        history,
+        maps: gameMaps,
+        game: state.game,
+        bestOf: state.bestOf,
+        team1Name: state.team1Name,
+        team2Name: state.team2Name,
+        team1Id: state.team1Id,
+        team2Id: state.team2Id,
+      })
+      : [],
+    [gameMaps, history, state, veto],
+  );
+  usePreloadImages(gameMaps.map((map) => map.map_image_url));
 
   if (stateQuery.isLoading) {
     return (
@@ -690,7 +721,7 @@ const PublicMapVetoOverlay = () => {
       : null;
     return (
       <PublicMapVetoBroadcastOverlay
-        slots={slots}
+        cards={stepCards}
         gameLabel={PUBLIC_VETO_GAMES.find((game) => game.value === state.game)?.label ?? state.game}
         bestOf={state.bestOf}
         team1Name={state.team1Name}

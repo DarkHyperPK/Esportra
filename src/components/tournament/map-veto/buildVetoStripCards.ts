@@ -8,6 +8,8 @@ export interface VetoStripCard {
     kind: VetoStripKind;
     stepNumber: number;
     status: VetoStripStatus;
+    /** The map decision itself is recorded (a pick can be settled while its side is still open). */
+    mapSettled: boolean;
     /** Team that banned or picked; undefined for the decider. */
     teamName?: string;
     mapName?: string;
@@ -44,6 +46,7 @@ export function buildVetoStripCards(items: VetoSequenceItem[]): VetoStripCard[] 
                 kind,
                 stepNumber: item.actionNumber,
                 status: item.status,
+                mapSettled: item.status === 'done',
                 teamName: kind === 'decider' ? undefined : item.teamName,
                 mapName: item.mapName,
                 mapImageUrl: item.mapImageUrl,
@@ -74,6 +77,7 @@ export function buildVetoStripCards(items: VetoSequenceItem[]): VetoStripCard[] 
             kind: 'decider',
             stepNumber: item.actionNumber,
             status: item.status,
+            mapSettled: item.status === 'done',
             mapName: item.mapName,
             mapImageUrl: item.mapImageUrl,
             ...sideFields,
