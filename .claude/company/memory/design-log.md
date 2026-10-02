@@ -28,3 +28,11 @@ One line per shipped surface. The Creative Lead appends after every APPROVED rev
 - New: pure layout service (named rounds: Round of 16 / Quarterfinals / Upper final / Lower round N / Grand final; lower bracket centred on its feeders; grand final between both brackets), scorebug match card (caption strip + two rows, winner white, live rose), connectors that brighten once decided, "Find a team", summary strip (played / live / teams / champion), matches list as the phone default, stage tabs replacing the 256 px sidebar.
 - Tool: builder with segmented format / best of / size and a slots meter; runner with a report panel (score steppers, winner pre-picked from the score, "Up next" list of ready matches), confirm on reset and delete; embed with a title strip and "Powered by Esportra".
 - Removed: emoji section headings, orange winner bars, rainbow initial avatars, blue "?" placeholders.
+
+## 2026-10-02 — Public match details: premium result page with proof
+
+- Direction: Broadcast, L0. Archetype: SPOTLIGHT hero (scoreline) → strip of map cards → per-map breakdown, then tabs for Map veto and Proof.
+- Hero: the series score at 88px on the deciding map's art, each team's colour glowing behind its crest (stronger for the winner), loser dimmed, winner white + rose underline (the one rose cue). Bottom strip says how the result was reported ("All 3 maps pulled from Riot", "1 from Riot · 1 by screenshot").
+- Two reporting methods are now first-class: a result pulled from Riot (shield, emerald, Riot match id shown) vs reported with a screenshot (camera) vs a typed score (pen). Each map carries its source and its verification state (Verified / Awaiting confirmation / Disputed / Rejected).
+- Proof tab: "Pulled from Riot" list, then screenshots grouped per map, opening a full-size lightbox (prev/next, arrows, "Open original").
+- Removed: old scorebug, series strip and evidence grid.

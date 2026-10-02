@@ -22,4 +22,4 @@ export const crestTint = (key: string): CSSProperties => {
 };
 
 /** A soft glow in the champion's colour, behind their crest on the champion seat. */
-export const championGlow = (key: string) => `hsl(${teamHue(key)} 70% 50% / 0.32)`;
+export const championGlow = (key: string, alpha = 0.32) => `hsl(${teamHue(key)} 70% 50% / ${alpha})`;

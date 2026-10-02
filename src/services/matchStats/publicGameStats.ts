@@ -14,7 +14,15 @@ export interface RawMatchGame {
     team1_score?: number | null;
     team2_score?: number | null;
     match_details?: MatchDetailsPayload | null;
+    /** Set when the result was fetched from Riot rather than typed in. */
+    riot_match_id?: string | null;
+    verification_status?: string | null;
+    reported_by_team_id?: string | null;
+    completed_at?: string | null;
 }
+
+/** How a map's result reached us. */
+export type GameVerification = 'verified' | 'proposed' | 'pending' | 'disputed' | 'rejected';
 
 export type SeriesSide = 'team1' | 'team2';
 
@@ -33,6 +41,10 @@ export interface PublicGame {
     players: ScoreboardPlayer[];
     t1Side?: RiotTeamSide;
     rounds: PublicRound[];
+    riotMatchId: string | null;
+    verification: GameVerification | null;
+    reportedByTeamId: string | null;
+    completedAt: string | null;
 }
 
 function readMapName(game: RawMatchGame) {
@@ -96,6 +108,13 @@ function gameWinner(team1Score: number | null, team2Score: number | null): Serie
     return team1Score > team2Score ? 'team1' : 'team2';
 }
 
+const VERIFICATIONS: GameVerification[] = ['verified', 'proposed', 'pending', 'disputed', 'rejected'];
+
+function readVerification(value?: string | null): GameVerification | null {
+    const normalized = value?.toLowerCase() as GameVerification | undefined;
+    return normalized && VERIFICATIONS.includes(normalized) ? normalized : null;
+}
+
 function toPublicGame(game: RawMatchGame, index: number, team1Id?: string | null): PublicGame {
     const details = game.match_details ?? null;
     const enriched = storedEnriched(details);
@@ -117,6 +136,10 @@ function toPublicGame(game: RawMatchGame, index: number, team1Id?: string | null
             round: entry.round,
             winner: t1Side ? (entry.winningTeam === t1Side ? 'team1' : 'team2') : null,
         })),
+        riotMatchId: game.riot_match_id?.trim() || null,
+        verification: readVerification(game.verification_status),
+        reportedByTeamId: game.reported_by_team_id ?? details?.reportedByTeamId ?? null,
+        completedAt: game.completed_at ?? null,
     };
 }
 

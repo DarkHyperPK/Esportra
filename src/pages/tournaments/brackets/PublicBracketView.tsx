@@ -47,7 +47,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     versionId, tournamentId, stages = [], selectedStageId, onStageSelect, versionsMap = {},
     onFullscreen, mode = 'page', disableMotion, height, className,
 }) => {
-    const { matches, loading, proofs, games } = useBracketViewData(versionId, tournamentId);
+    const { matches, loading, proofs, evidence, games } = useBracketViewData(versionId, tournamentId);
     const [round, setRound] = useState<RoundTab>(ALL_ROUNDS);
     const [viewMode, setViewMode] = useState<BracketViewMode>(() => (startsOnPhone() ? 'matches' : 'bracket'));
     const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
@@ -170,9 +170,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 open={detailsOpen}
                 onOpenChange={setDetailsOpen}
                 match={openMatch}
-                results={openMatch ? (proofs[rawMatchId(String(openMatch.id))] ?? []).map((url) => ({
-                    image_url: url, comment: null, created_at: new Date().toISOString(), reporter_user_id: '',
-                })) : []}
+                evidence={openMatch ? evidence[rawMatchId(String(openMatch.id))] ?? [] : []}
                 automatedResults={openMatch ? games[rawMatchId(String(openMatch.id))] ?? [] : []}
             />
         </div>
