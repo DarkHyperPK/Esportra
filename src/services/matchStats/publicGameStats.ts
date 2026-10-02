@@ -34,7 +34,9 @@ export interface PublicRound {
 export interface PublicGame {
     key: string;
     gameNumber: number;
+    /** The map's name, or "Map N" when none was recorded (see mapKnown). */
     mapName: string;
+    mapKnown: boolean;
     team1Score: number | null;
     team2Score: number | null;
     winner: SeriesSide | null;
@@ -49,6 +51,14 @@ export interface PublicGame {
 
 function readMapName(game: RawMatchGame) {
     return (game.map_name || game.mapName || '').trim();
+}
+
+const PLACEHOLDER_MAP_NAMES = new Set(['unknown map', 'manual result']);
+
+/** The recorded map name, or '' when the row only carries a score. */
+function knownMapName(game: RawMatchGame) {
+    const name = readMapName(game);
+    return PLACEHOLDER_MAP_NAMES.has(name.toLowerCase()) ? '' : name;
 }
 
 function hasScore(game: RawMatchGame) {
@@ -122,11 +132,14 @@ function toPublicGame(game: RawMatchGame, index: number, team1Id?: string | null
     const team1Score = typeof game.team1_score === 'number' ? game.team1_score : null;
     const team2Score = typeof game.team2_score === 'number' ? game.team2_score : null;
     const timeline = details?.roundTimeline?.length ? details.roundTimeline : enriched?.roundTimeline ?? [];
+    const gameNumber = game.game_number ?? game.gameNumber ?? index + 1;
+    const mapName = knownMapName(game);
 
     return {
         key: String(game.id ?? `game-${index}`),
-        gameNumber: game.game_number ?? game.gameNumber ?? index + 1,
-        mapName: readMapName(game) || `Map ${index + 1}`,
+        gameNumber,
+        mapName: mapName || `Map ${gameNumber}`,
+        mapKnown: Boolean(mapName),
         team1Score,
         team2Score,
         winner: gameWinner(team1Score, team2Score),

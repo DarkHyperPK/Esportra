@@ -51,7 +51,7 @@ export type ShotGroup = { key: string; title: string; shots: CaptionedShot[] };
  * map and which team.
  */
 export function arrangeEvidence(
-    games: Array<{ key: string; gameNumber: number; mapName: string }>,
+    games: Array<{ key: string; gameNumber: number; mapName: string; mapKnown?: boolean }>,
     evidence: MatchEvidence[],
     teamName: (teamId: string | null) => string | null,
 ) {
@@ -66,7 +66,7 @@ export function arrangeEvidence(
     });
 
     games.forEach((game) => {
-        const title = `Map ${game.gameNumber} · ${game.mapName}`;
+        const title = game.mapKnown === false ? `Map ${game.gameNumber}` : `Map ${game.gameNumber} · ${game.mapName}`;
         const list = take(title, evidenceForGame(evidence, game.gameNumber));
         if (list.length === 0) return;
         byGame[game.key] = list;

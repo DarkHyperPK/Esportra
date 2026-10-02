@@ -61,7 +61,7 @@ export const MatchMapCards = ({ games, sources, selectedKey, onSelect, team1, te
                         <VetoMapArt src={valorantMapSplash(game.mapName)} name={game.mapName} className="-z-10 transition-transform duration-500 group-hover:scale-105" />
                         <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/55 to-black/20" />
                         <div className="flex items-center justify-between">
-                            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-200">Map {game.gameNumber}</span>
+                            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-200">{game.mapKnown ? `Map ${game.gameNumber}` : 'Map not recorded'}</span>
                             <ResultSourceBadge source={sources[game.key] ?? 'reported'} iconOnly />
                         </div>
                         <div>

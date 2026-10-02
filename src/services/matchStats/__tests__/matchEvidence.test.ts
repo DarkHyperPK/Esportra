@@ -53,4 +53,12 @@ describe('arrangeEvidence', () => {
         expect(result.byGame.g1.map((s) => s.caption)).toEqual(['Map 1 · Haven · Night Owls', 'Map 1 · Haven · Red Comet']);
         expect(result.groups[2].shots[0].caption).toBe('Match screenshot · Night Owls');
     });
+
+    it('does not repeat the number for a map with no recorded name', async () => {
+        const { arrangeEvidence } = await import('../matchEvidence');
+        const games = [{ key: 'g1', gameNumber: 1, mapName: 'Map 1', mapKnown: false }];
+        const result = arrangeEvidence(games, [shot(1)], () => null);
+
+        expect(result.groups[0].title).toBe('Map 1');
+    });
 });

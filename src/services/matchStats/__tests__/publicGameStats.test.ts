@@ -41,6 +41,16 @@ describe('buildPublicGames', () => {
         expect(games.map((game) => game.winner)).toEqual(['team1', 'team2']);
     });
 
+    it('flags maps with no recorded name and numbers them instead', () => {
+        const games = buildPublicGames([
+            { id: 'a', map_name: 'Haven', game_number: 1, team1_score: 13, team2_score: 11 },
+            { id: 'b', map_name: 'Manual Result', game_number: 2, team1_score: 2, team2_score: 0 },
+            { id: 'c', game_number: 3, team1_score: 13, team2_score: 5 },
+        ]);
+
+        expect(games.map((game) => [game.mapName, game.mapKnown])).toEqual([['Haven', true], ['Map 2', false], ['Map 3', false]]);
+    });
+
     it('maps round winners onto series sides using team 1 side', () => {
         const [game] = buildPublicGames([{
             map_name: 'Ascent',

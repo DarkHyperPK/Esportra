@@ -47,7 +47,7 @@ export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot
                 <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-black/95 via-black/70 to-black/10" />
                 <div className="flex w-full items-end justify-between gap-4 p-5 sm:p-6">
                     <div className="min-w-0">
-                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-300">Map {game.gameNumber}</p>
+                        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-300">{game.mapKnown ? `Map ${game.gameNumber}` : 'Map not recorded'}</p>
                         <p className="mt-1.5 truncate font-heading text-[34px] font-black leading-none tracking-tight text-white sm:text-[44px]">{game.mapName}</p>
                     </div>
                     {hasScore ? (

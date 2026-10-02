@@ -40,7 +40,7 @@ export const MatchProofPanel = ({ games, sources, groups, onOpenShot }: Props) =
                         {riotGames.map((game) => (
                             <li key={game.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-[linear-gradient(180deg,#18181d,#131317)] px-4 py-3">
                                 <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">Map {game.gameNumber}</span>
-                                <span className="font-heading text-[15px] font-bold text-white">{game.mapName}</span>
+                                {game.mapKnown ? <span className="font-heading text-[15px] font-bold text-white">{game.mapName}</span> : null}
                                 <span className="font-heading text-[14px] font-black tabular-nums text-zinc-200">{game.team1Score ?? '–'}–{game.team2Score ?? '–'}</span>
                                 {game.riotMatchId ? <code className="ml-auto max-w-full truncate font-mono text-[11px] text-zinc-500" title={game.riotMatchId}>{game.riotMatchId}</code> : null}
                             </li>
