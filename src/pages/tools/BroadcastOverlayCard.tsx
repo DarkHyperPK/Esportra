@@ -48,6 +48,7 @@ const Slash = () => {
   const x1 = box.width * 0.06;
   const x2 = box.width * 0.94;
   const length = Math.hypot(x2 - x1, box.height);
+  const tip = Math.max(8, length * 0.06);
 
   return (
     <svg
@@ -57,17 +58,36 @@ const Slash = () => {
       viewBox={`0 0 ${box.width || 1} ${box.height || 1}`}
     >
       {box.width > 0 ? (
-        <line
-          className="bcv-slash"
-          x1={x1}
-          y1={0}
-          x2={x2}
-          y2={box.height}
-          stroke="#f43f5e"
-          strokeLinecap="square"
-          strokeDasharray={length}
-          style={{ strokeWidth: "0.27vw", ["--len" as string]: `${length}` }}
-        />
+        <>
+          <line
+            className="bcv-slash"
+            x1={x1}
+            y1={0}
+            x2={x2}
+            y2={box.height}
+            stroke="#f43f5e"
+            strokeLinecap="square"
+            strokeDasharray={length}
+            style={{ strokeWidth: "0.27vw", ["--len" as string]: `${length}` }}
+          />
+          {/* Pen tip: one short dash that rides the head of the stroke. */}
+          <line
+            className="bcv-slash-tip"
+            x1={x1}
+            y1={0}
+            x2={x2}
+            y2={box.height}
+            stroke="#ffe4e6"
+            strokeLinecap="round"
+            strokeDasharray={`${tip} ${length + tip}`}
+            style={{
+              strokeWidth: "0.42vw",
+              filter: "drop-shadow(0 0 0.5vw rgba(244,63,94,0.95))",
+              ["--tip" as string]: `${tip}`,
+              ["--tip-end" as string]: `${-(length - tip)}`,
+            }}
+          />
+        </>
       ) : null}
     </svg>
   );
