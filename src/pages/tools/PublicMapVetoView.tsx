@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandButton } from "@/components/management/CommandSurface";
 import { useToast } from "@/hooks/use-toast";
 import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
+import { useCrispMapImages } from "@/hooks/useCrispMapImages";
+import { withMapImages } from "@/services/maps/valorantMapAssets";
 import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory";
 import { copyText } from "./publicToolUtils";
 import {
@@ -30,10 +32,8 @@ import {
 const OBS_PREVIEW_WIDTH = 1600;
 const OBS_PREVIEW_HEIGHT = 900;
 const OVERLAY_THEMES = [
-  { value: "broadcast", label: "Esportra broadcast" },
-  { value: "tactical", label: "Tactical Neon" },
-  { value: "premium", label: "Premium Minimal" },
-  { value: "glitch", label: "Glitch Arena" },
+  { value: "broadcast", label: "Esportra" },
+  { value: "vct", label: "VCT style" },
 ] as const;
 
 const OverlayPreviewFrame = ({
@@ -137,13 +137,14 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
-  const gameMaps = useMemo(
+  const storedMaps = useMemo(
     () => adaptPublicMapsToGameMaps(state.maps, state.game) as GameMap[],
     [state.game, state.maps],
   );
+  const gameMaps = useCrispMapImages(storedMaps, state.game);
   const vetoHistory = useMemo(
-    () => adaptHistory(history, state.maps, state.game),
-    [history, state.game, state.maps],
+    () => withMapImages(adaptHistory(history, state.maps, state.game), gameMaps),
+    [gameMaps, history, state.game, state.maps],
   );
 
   const isComplete = veto.status === "completed";
@@ -287,17 +288,15 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                     <option key={theme.value} value={theme.value}>{theme.label}</option>
                   ))}
                 </select>
-                {overlayTheme === "broadcast" && (
-                  <select
-                    value={overlayPlayback}
-                    onChange={(event) => setOverlayPlayback(event.target.value)}
-                    className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
-                    aria-label="OBS overlay playback"
-                  >
-                    <option value="live">Follow live</option>
-                    <option value="replay">Full replay</option>
-                  </select>
-                )}
+                <select
+                  value={overlayPlayback}
+                  onChange={(event) => setOverlayPlayback(event.target.value)}
+                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
+                  aria-label="OBS overlay playback"
+                >
+                  <option value="live">Follow live</option>
+                  <option value="replay">Full replay</option>
+                </select>
                 <CommandButton variant="ghost" size="sm" className="border-0" onClick={() => { void copyOverlayLink(); }}>
                   {copiedOverlay ? <Check className="h-3.5 w-3.5" /> : <MonitorUp className="h-3.5 w-3.5" />}
                   Copy OBS link
@@ -318,7 +317,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                 refreshKey={overlayPreviewKey}
                 title="Map veto OBS overlay preview"
               />
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {OVERLAY_THEMES.map((theme) => (
                   <button
                     key={theme.value}

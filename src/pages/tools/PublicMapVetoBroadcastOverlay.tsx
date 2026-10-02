@@ -1,80 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import type { VetoStripCard } from "@/components/tournament/map-veto/buildVetoStripCards";
 import { cn } from "@/lib/utils";
-import { buildOverlayBeats, statesFromBeats, type OverlayBeat, type OverlayMapState } from "./overlayBeats";
-import { BROADCAST_OVERLAY_CSS, overlayEnterClass, sideCode, teamCode } from "./broadcastOverlayStyles";
-import { BroadcastOverlayCard, type OverlayPoolMap } from "./BroadcastOverlayCard";
-import { useOverlayPlayback } from "./useOverlayPlayback";
-
-type Props = {
-  /** The map pool, in a fixed order. One card per map; cards never move. */
-  maps: OverlayPoolMap[];
-  /** The veto's map decisions, in veto order. Played back beat by beat onto the cards. */
-  cards: VetoStripCard[];
-  gameLabel: string;
-  bestOf: number;
-  team1Name: string;
-  team2Name: string;
-  status: string;
-  /** Team on the clock and what it must do, while the veto is live. */
-  onClock?: { teamName: string; action: "ban" | "pick" | "pick_side" } | null;
-  transparent: boolean;
-  transition: "none" | "up" | "left" | "right";
-  /** Play the whole veto from its first action, for a producer rolling it on air. */
-  replay: boolean;
-  /** History has loaded, so what's on the board is the real starting point. */
-  ready: boolean;
-};
+import { getWebsiteAssetUrl } from "@/lib/storage";
+import type { OverlayMapState } from "./overlayBeats";
+import { BROADCAST_OVERLAY_CSS, overlayEnterClass, teamCode } from "./broadcastOverlayStyles";
+import { BroadcastOverlayCard } from "./BroadcastOverlayCard";
+import { LiveClock, TypewriterLine } from "./OverlayParts";
+import { useOverlayVetoModel, type OverlayThemeProps } from "./useOverlayVetoModel";
 
 const OPEN: OverlayMapState = { status: "open" };
-const TYPE_MS_PER_CHAR = 45;
-
-/** Types its text out character by character whenever the text changes. */
-const TypewriterLine = ({ text }: { text: string }) => {
-  const [shown, setShown] = useState(text);
-
-  useEffect(() => {
-    if (!text) {
-      setShown("");
-      return undefined;
-    }
-    let count = 0;
-    setShown("");
-    const timer = window.setInterval(() => {
-      count += 1;
-      setShown(text.slice(0, count));
-      if (count >= text.length) window.clearInterval(timer);
-    }, TYPE_MS_PER_CHAR);
-    return () => window.clearInterval(timer);
-  }, [text]);
-
-  return (
-    <p className="flex items-center gap-[0.5vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400" aria-live="polite">
-      <span>{shown}</span>
-      {text ? <span aria-hidden className="bcv-cursor inline-block h-[1.3vw] w-[0.7vw] bg-rose-500" /> : null}
-    </p>
-  );
-};
-
-function beatLine(beat: OverlayBeat) {
-  switch (beat.kind) {
-    case "ban":
-      return `${teamCode(beat.teamName ?? "")} bans ${beat.mapName}`;
-    case "pick":
-      return `${teamCode(beat.teamName ?? "")} picks ${beat.mapName}`;
-    case "decider":
-      return `Decider: ${beat.mapName}`;
-    default:
-      return `${teamCode(beat.sideTeamName ?? "")} ${sideCode(beat.side)} on ${beat.mapName}`;
-  }
-}
-
-function restingLine(onClock: Props["onClock"], decider?: string) {
-  if (decider) return `Decider: ${decider}`;
-  if (!onClock) return "";
-  const verb = onClock.action === "ban" ? "to ban" : onClock.action === "pick" ? "to pick" : "to choose side";
-  return `${teamCode(onClock.teamName)} ${verb}`;
-}
+/** The official mark, the same file the navbar uses. */
+const ESPORTRA_LOGO = getWebsiteAssetUrl("eSportra-Logo/eSPORTRA-white-transparent.png");
 
 const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
   <span
@@ -89,39 +23,15 @@ const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
   />
 );
 
-const LiveClock = ({ label }: { label: string }) => {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  return (
-    <span className="font-mono text-[0.95vw] uppercase tracking-[0.14em] text-zinc-400">
-      {time} {label}
-    </span>
-  );
-};
-
 /**
  * Full-frame 16:9 broadcast graphic for OBS: the map pool as a row of tall cards.
  * It doesn't mirror the veto live; it plays it back one beat at a time (see
  * useOverlayPlayback). Each beat lifts its card, plays the layers on it (see
  * broadcastOverlayStyles) and types the moment out in the caption.
  */
-export const PublicMapVetoBroadcastOverlay = (props: Props) => {
+export const PublicMapVetoBroadcastOverlay = (props: OverlayThemeProps) => {
   const { maps, cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock, replay, ready } = props;
-  const beats = useMemo(() => buildOverlayBeats(cards), [cards]);
-  const { current, shown, initial, lastPlayed, busy } = useOverlayPlayback(beats, { ready: ready && maps.length > 0, replay });
-  const states = useMemo(() => statesFromBeats(shown), [shown]);
-  const quiet = useMemo(
-    () => new Set(beats.filter((beat) => beat.kind !== "side" && initial.has(beat.id)).map((beat) => beat.mapName)),
-    [beats, initial],
-  );
-  const decider = [...states.entries()].find(([, state]) => state.status === "decider" && state.side)?.[0];
-  // Between beats the last moment stays up; the resting line only returns once playback has caught up.
-  const onStage = current ?? (busy ? lastPlayed : null);
-  const caption = onStage ? beatLine(onStage) : busy ? "" : restingLine(onClock, decider);
+  const { states, quiet, current, caption } = useOverlayVetoModel({ cards, onClock, ready: ready && maps.length > 0, replay });
 
   return (
     <main
@@ -139,9 +49,10 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
 
       <div className={cn("absolute inset-0 flex flex-col px-[5.6vw] pb-[8vh] pt-[5.2vh]", overlayEnterClass(transition))}>
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-[0.6vw] font-mono text-[0.85vw] uppercase tracking-[0.24em] text-zinc-400">
-            <img src="/logo.svg" alt="" className="h-[1.3vw] w-[1.3vw]" />
-            Esportra / Best of {bestOf}
+          <div className="flex items-center gap-[0.9vw] font-mono text-[0.85vw] uppercase tracking-[0.24em] text-zinc-400">
+            <img src={ESPORTRA_LOGO} alt="Esportra" className="h-[1.5vw] w-auto" />
+            <span aria-hidden className="h-[1.1vw] w-px bg-white/25" />
+            Best of {bestOf}
           </div>
           <span className="font-mono text-[0.85vw] uppercase tracking-[0.24em] text-zinc-400">Map veto</span>
         </div>
@@ -170,12 +81,19 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
         </div>
 
         <div className="mt-[3.5vh] flex h-[6vh] shrink-0 items-center">
-          <TypewriterLine text={caption} />
+          <TypewriterLine
+            text={caption}
+            className="gap-[0.5vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400"
+            cursorClassName="h-[1.3vw] w-[0.7vw] bg-rose-500"
+          />
         </div>
       </div>
 
       <div className="absolute bottom-[3.6vh] left-[5.2vw]">
-        <LiveClock label={status === "completed" ? "Final" : "Live"} />
+        <LiveClock
+          label={status === "completed" ? "Final" : "Live"}
+          className="font-mono text-[0.95vw] uppercase tracking-[0.14em] text-zinc-400"
+        />
       </div>
     </main>
   );

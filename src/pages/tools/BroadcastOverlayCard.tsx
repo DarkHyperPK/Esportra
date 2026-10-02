@@ -1,14 +1,8 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { OverlayMapState } from "./overlayBeats";
 import { sideCode, teamCode } from "./broadcastOverlayStyles";
-
-export type OverlayPoolMap = {
-  id: string;
-  name: string;
-  imageUrl?: string | null;
-};
+import { Frame, Slash, type OverlayPoolMap } from "./overlayCardLayers";
 
 type CardProps = {
   map: OverlayPoolMap;
@@ -28,117 +22,6 @@ const STATE_CLASS: Record<OverlayMapState["status"], string> = {
   ban: "banned",
   pick: "picked",
   decider: "decider",
-};
-
-/**
- * Layer 6: the slash. Measured in real pixels so the dash trick is exact: one dash
- * the full length of the line, slid into place by the `banned` class. It starts
- * just above the card and ends just below it, so it cuts through rather than sits in.
- */
-const Slash = () => {
-  const ref = useRef<SVGSVGElement>(null);
-  const [box, setBox] = useState({ width: 0, height: 0 });
-
-  useLayoutEffect(() => {
-    const svg = ref.current;
-    if (!svg) return undefined;
-    const measure = () => setBox({ width: svg.clientWidth, height: svg.clientHeight });
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(svg);
-    return () => observer.disconnect();
-  }, []);
-
-  const x1 = box.width * 0.06;
-  const x2 = box.width * 0.94;
-  const length = Math.hypot(x2 - x1, box.height);
-  const tip = Math.max(8, length * 0.06);
-
-  return (
-    <svg
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute inset-x-0 -bottom-[3%] -top-[3%] z-20 h-[106%] w-full overflow-visible"
-      viewBox={`0 0 ${box.width || 1} ${box.height || 1}`}
-    >
-      {box.width > 0 ? (
-        <>
-          <line
-            className="bcv-slash"
-            x1={x1}
-            y1={0}
-            x2={x2}
-            y2={box.height}
-            stroke="#f43f5e"
-            strokeLinecap="square"
-            strokeDasharray={length}
-            style={{ strokeWidth: "0.27vw", ["--len" as string]: `${length}` }}
-          />
-          {/* Pen tip: one short dash that rides the head of the stroke. */}
-          <line
-            className="bcv-slash-tip"
-            x1={x1}
-            y1={0}
-            x2={x2}
-            y2={box.height}
-            stroke="#ffe4e6"
-            strokeLinecap="round"
-            strokeDasharray={`${tip} ${length + tip}`}
-            style={{
-              strokeWidth: "0.42vw",
-              filter: "drop-shadow(0 0 0.5vw rgba(244,63,94,0.95))",
-              ["--tip" as string]: `${tip}`,
-              ["--tip-end" as string]: `${-(length - tip)}`,
-            }}
-          />
-        </>
-      ) : null}
-    </svg>
-  );
-};
-
-/**
- * Layer 5: a frame that draws itself around the card's edge (white on a pick,
- * red on the decider). Measured in pixels so one dash is exactly the perimeter.
- */
-const Frame = () => {
-  const ref = useRef<SVGSVGElement>(null);
-  const [box, setBox] = useState({ width: 0, height: 0 });
-
-  useLayoutEffect(() => {
-    const svg = ref.current;
-    if (!svg) return undefined;
-    const measure = () => setBox({ width: svg.clientWidth, height: svg.clientHeight });
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(svg);
-    return () => observer.disconnect();
-  }, []);
-
-  const inset = 1.5;
-  const perimeter = 2 * (box.width + box.height - inset * 4);
-
-  return (
-    <svg
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute inset-0 z-10 h-full w-full"
-      viewBox={`0 0 ${box.width || 1} ${box.height || 1}`}
-    >
-      {box.width > 0 ? (
-        <rect
-          className="bcv-frame"
-          x={inset}
-          y={inset}
-          width={Math.max(0, box.width - inset * 2)}
-          height={Math.max(0, box.height - inset * 2)}
-          fill="none"
-          strokeDasharray={perimeter}
-          style={{ strokeWidth: 3, ["--perimeter" as string]: `${perimeter}` }}
-        />
-      ) : null}
-    </svg>
-  );
 };
 
 /** Layer 7: the verdict stamp, centered. Hidden until a state class slams it in. */
