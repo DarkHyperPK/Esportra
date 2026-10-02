@@ -8,7 +8,7 @@ path:   eSportra-Logo/eSPORTRA-white-transparent.png
 code:   getWebsiteAssetUrl("eSportra-Logo/eSPORTRA-white-transparent.png")  (src/lib/storage.ts)
 ```
 
-`public/logo.svg` is the old Vite/React placeholder icon, not the Esportra mark. Never use it as the brand.
+The old Vite/React placeholder (`public/logo.svg`) has been deleted. In-repo copies of the real mark: `public/proposals/esportra-mark.png` (white on transparent) and the rendered app icons and share card in `public/brand/` (`esportra-icon-192.png`, `esportra-icon-512.png`, `esportra-og.png`).
 
 ## Add the real mark to the dataset
 

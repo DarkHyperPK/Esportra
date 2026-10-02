@@ -55,7 +55,7 @@ This dataset **illustrates** the rules; it does not make them. When something he
 ## Rules for this dataset
 
 - **Sample data is fictional.** The teams, players, crests, amounts, dates and venues are layout samples: Night Owls, Crimson Five, "Karachi Valorant Open", PKR figures and so on. Never publish them as real results, and never present them as testimonials or statistics.
-- **The logo is a slot until the real mark is added.** See [`identity/logo/README.md`](identity/logo/README.md). `public/logo.svg` is a React placeholder, not the Esportra mark.
+- **The logo is a slot until the real mark is added.** See [`identity/logo/README.md`](identity/logo/README.md). The old React placeholder `public/logo.svg` has been deleted; never reintroduce it.
 - **No stock or generated photos of people.** Image slots expect real event photography; see [`photography/art-direction.md`](photography/art-direction.md).
 - **Crests are placeholders.** Real teams upload their own; show them in dark wells, never recoloured.
 - **Partner marks** are shown as a monochrome "PARTNER" well. Use a partner's real mark only under their guidelines.

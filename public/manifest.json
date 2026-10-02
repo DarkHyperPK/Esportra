@@ -4,31 +4,29 @@
   "description": "Esports Tournaments & Gaming Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#8b5cf6",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo.svg",
+      "src": "/brand/esportra-icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo.svg",
+      "src": "/brand/esportra-icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["games", "entertainment", "social"],
+  "categories": [
+    "games",
+    "entertainment",
+    "social"
+  ],
   "screenshots": [],
   "shortcuts": [
     {
@@ -36,15 +34,24 @@
       "short_name": "Tournaments",
       "description": "View all tournaments",
       "url": "/tournaments",
-      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/brand/esportra-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "My Teams",
       "short_name": "Teams",
       "description": "Manage your teams",
       "url": "/player/teams",
-      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "/brand/esportra-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
-
