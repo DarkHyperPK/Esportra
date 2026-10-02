@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { PublicProfileDto, UserStatsDto, LinkedAccountsDto } from '@/types/profile';
 import { TournamentTimelineItem } from '@/components/profile/history/TournamentTimelineItem';
 import { SocialLinks } from '@/components/profile/sidebar/SocialLinks';

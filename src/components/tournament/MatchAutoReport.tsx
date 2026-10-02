@@ -261,7 +261,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             <div className="mx-auto w-full max-w-xs space-y-3">
                                 <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
                                     <div
-                                        className="h-full w-1/3 rounded-full bg-rose-500 motion-safe:animate-[scan-progress_1.2s_ease-in-out_infinite]"
+                                        className="h-full w-1/3 rounded-full bg-rose-500 animate-[scan-progress_1.2s_ease-in-out_infinite]"
                                         aria-hidden
                                     />
                                 </div>

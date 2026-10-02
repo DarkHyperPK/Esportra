@@ -7,6 +7,11 @@ import React from 'react'
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
+import { initReduceMotion } from './lib/motionPreference';
+import { MotionPreferenceProvider } from './contexts/MotionPreferenceProvider';
+
+// Reduce motion is opt-in (Account Settings → Accessibility); apply a saved choice before first paint.
+initReduceMotion();
 
 // ── Sentry Error Tracking ────────────────────────────────────────────────────
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
@@ -64,7 +69,9 @@ root.render(
     </div>}>
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
-          <App />
+          <MotionPreferenceProvider>
+            <App />
+          </MotionPreferenceProvider>
         </QueryClientProvider>
       </HelmetProvider>
     </Sentry.ErrorBoundary>

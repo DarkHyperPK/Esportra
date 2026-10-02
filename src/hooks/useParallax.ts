@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * hero-parallax: attaches a scroll listener and updates transform on the
  * returned ref element directly (no re-render).
  * Cleans up listener and removes will-change on unmount.
- * No-op when prefers-reduced-motion is active.
+ * No-op when the opt-in Reduce motion setting is on.
  */
 export function useParallax(
   coefficient: number,

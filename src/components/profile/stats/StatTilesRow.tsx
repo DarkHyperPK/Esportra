@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 type StatFormat = 'integer' | 'currency' | 'ordinal' | 'preformatted';
 
@@ -144,7 +145,7 @@ function useStatCountUpWithRef(
   );
   // Local ref initialised from Set so re-mounts don't replay
   const hasFiredRef = React.useRef(alreadyFired);
-  const prefersReduced = usePrefersReducedMotion();
+  const prefersReduced = useReducedMotion();
 
   React.useEffect(() => {
     if (options.format === 'preformatted') {
@@ -223,16 +224,3 @@ function formatStatValue(value: number | string, format: StatFormat): string {
   return num.toLocaleString('en-US');
 }
 
-function usePrefersReducedMotion(): boolean {
-  const [prefers, setPrefers] = React.useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  });
-  React.useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handler = () => setPrefers(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return prefers;
-}

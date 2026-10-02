@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 type StatFormat = 'integer' | 'currency' | 'ordinal';
 
@@ -29,7 +29,7 @@ export function formatStatValue(value: number, format: StatFormat): string {
 /**
  * stat-count-up: fires once on first IntersectionObserver entry (threshold: 0.3).
  * Does not replay on tab re-visit (hasFired ref, internal to StatTilesRow).
- * Respects prefers-reduced-motion — snaps immediately when active.
+ * Respects the opt-in Reduce motion setting — snaps immediately when on.
  * Note: The rAF animation loop is handled inside StatTilesRow.tsx via the
  * useStatCountUpWithRef pattern that accepts an external element ref.
  * This export provides the format utility and the reduced-motion guard.

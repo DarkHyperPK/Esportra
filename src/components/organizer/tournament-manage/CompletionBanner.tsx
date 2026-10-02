@@ -7,7 +7,8 @@
  */
 
 import { useState } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { AlertCircle, AlertTriangle, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { CompletionSummary } from '@/hooks/useCompletionState';

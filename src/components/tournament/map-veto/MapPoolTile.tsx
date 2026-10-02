@@ -1,5 +1,6 @@
 import React from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
 import type { GameMap } from '@/hooks/useMapVetoMachine';
 import { VetoMapArt } from './VetoMapArt';

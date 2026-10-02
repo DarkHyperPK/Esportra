@@ -1,10 +1,10 @@
 import React from 'react';
-import { useReducedMotion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * ProfilePeekSkeleton: mirrors the exact dimensions of ProfilePeekContent.
  * Uses skeleton-shimmer animation (left-to-right directed loading).
- * No-op animation when prefers-reduced-motion is active.
+ * No-op animation when the opt-in Reduce motion setting is on.
  */
 export function ProfilePeekSkeleton(): React.JSX.Element {
   const reduced = useReducedMotion();

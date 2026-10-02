@@ -1,3 +1,4 @@
+import { readReduceMotion } from '@/lib/motionPreference';
 /** Which document page each editor section edits, so opening a section scrolls the preview there. */
 const ANCHORS: Record<string, string> = {
   prospect: 'cover',
@@ -22,5 +23,5 @@ export function anchorFor(sectionId: string): string {
 }
 
 export function scrollBehavior(): ScrollBehavior {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  return readReduceMotion() ? 'auto' : 'smooth';
 }

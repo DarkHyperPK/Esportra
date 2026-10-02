@@ -1140,9 +1140,7 @@ const RiotPostMatchOverlay = () => {
               from { opacity: 0; transform: translate3d(120px, 0, 0); }
               to { opacity: 1; transform: translate3d(0, 0, 0); }
             }
-            @media (prefers-reduced-motion: reduce) {
-              .riot-overlay-enter { animation: none !important; }
-            }
+            html[data-reduce-motion="true"] .riot-overlay-enter { animation: none !important; }
             .riot-stage::before {
               content: "";
               position: absolute;

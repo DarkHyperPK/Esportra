@@ -12,18 +12,20 @@
   50%       { opacity: 0.5; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* Kill CSS keyframe animations globally */
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-  /* Specifically kill the tile background flicker */
-  .tile-flicker, [style*="tile-flicker"] {
-    animation: none !important;
-    opacity: 0 !important;
-  }
+/* Reduce motion is opt-in (Account Settings → Accessibility), not the OS setting.
+   src/lib/motionPreference.ts sets html[data-reduce-motion="true"]. */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+/* Specifically kill the tile background flicker */
+html[data-reduce-motion="true"] .tile-flicker,
+html[data-reduce-motion="true"] [style*="tile-flicker"] {
+  animation: none !important;
+  opacity: 0 !important;
 }
 
 /* Scroll performance */
@@ -221,22 +223,17 @@ img {
   transition: none !important;
 }
 
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
+/* Reduce motion, when the person opted in (see the note at the top of this file) */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  transition-duration: 0.01ms !important;
+}
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  /* Keep short hover feedback on signature CTAs (rose slide-up) */
-  .jack-button-motion,
-  .jack-button-motion * {
-    transition-duration: 300ms !important;
-  }
+/* Keep short hover feedback on signature CTAs (rose slide-up) */
+html[data-reduce-motion="true"] .jack-button-motion,
+html[data-reduce-motion="true"] .jack-button-motion * {
+  transition-duration: 300ms !important;
 }
 
 @keyframes fadeIn {

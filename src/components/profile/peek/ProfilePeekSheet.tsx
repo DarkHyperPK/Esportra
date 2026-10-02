@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
-import { AnimatePresence, motion, useMotionValue, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useMotionValue } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useQuery } from '@tanstack/react-query';
 import { usePeekStore } from '@/stores/peekStore';
 import { ProfilePeekSkeleton } from './ProfilePeekSkeleton';

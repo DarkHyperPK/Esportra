@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { motion, useReducedMotion, useInView } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { Trophy } from 'lucide-react';
 import type { TournamentHistoryEntryDto } from '@/types/profile';
 import { format, parseISO } from 'date-fns';

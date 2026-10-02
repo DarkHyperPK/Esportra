@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { PublicProfileDto } from '@/types/profile';
 import { useParallax } from '@/hooks/useParallax';
 import { getCountryFlagUrl } from '@/utils/countries';

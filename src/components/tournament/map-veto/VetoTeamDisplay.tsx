@@ -1,5 +1,6 @@
 import React from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
 import { VetoCrest } from './VetoCrest';
 import type { MatchMapVeto } from '@/hooks/useMapVetoMachine';

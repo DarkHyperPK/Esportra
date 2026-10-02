@@ -12,8 +12,10 @@ import { usePasswordChange } from '@/hooks/usePasswordChange';
 import { passwordSchema } from '@/schemas/password';
 import {
   Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell, Info,
-  Clock, FileText, Trophy, AlertTriangle,
+  Clock, FileText, Trophy, AlertTriangle, Accessibility,
 } from 'lucide-react';
+import { MotionSettingsCard } from '@/components/account/MotionSettingsCard';
+import { useReduceMotionSetting } from '@/hooks/useReducedMotion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,7 +63,7 @@ const LICENSE_STATUS_CLASS: Record<string, string> = {
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
-type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairing' | 'security';
+type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairing' | 'security' | 'accessibility';
 
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
@@ -71,6 +73,7 @@ const NAV: NavItem[] = [
   { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
   { key: 'security', label: 'Security', description: 'Password & account safety', icon: <Shield className="w-4 h-4" /> },
+  { key: 'accessibility', label: 'Accessibility', description: 'Motion on this device', icon: <Accessibility className="w-4 h-4" /> },
 ];
 
 // ─── AccountSettings ──────────────────────────────────────────────────────────
@@ -80,6 +83,7 @@ export default function AccountSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('connected_accounts');
+  const [reduceMotion, setReduceMotion] = useReduceMotionSetting();
   // Show Desktop Pairing to anyone who actually owns at least one venue
   const venuesQuery = useQuery({
     queryKey: ['venues', 'ownership', user?.id],
@@ -168,6 +172,7 @@ export default function AccountSettings() {
             {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
             {activeTab === 'security' && <SecurityTab />}
+            {activeTab === 'accessibility' && <MotionSettingsCard reduceMotion={reduceMotion} onChange={setReduceMotion} />}
           </div>
         </div>
       </main>

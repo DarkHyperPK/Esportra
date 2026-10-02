@@ -17,11 +17,10 @@
  * in overlayBeats (BEAT_MS) and leave room after the last layer lands.
  *
  * Every transition and animation here is !important on purpose. index.css cuts
- * all motion to 0.01ms under prefers-reduced-motion (an OS setting: Windows'
- * "Animation effects" off, which OBS's browser source inherits). That is right
- * for the app, but this overlay is footage for viewers on stream; the setting of
- * the PC that renders it must not turn every ban into an instant cut. More
- * specific selectors + !important outrank the global `*` rule.
+ * all motion to 0.01ms when someone turns on Reduce motion (an opt-in Esportra
+ * setting). That is right for the app, but this overlay is footage for viewers
+ * on stream: a producer previewing it with the setting on must still see the
+ * real motion. More specific selectors + !important outrank the global `*` rule.
  */
 export const BROADCAST_OVERLAY_CSS = `
 @keyframes bcv-enter-up { from { opacity: 0; transform: translate3d(0, 4vh, 0); } to { opacity: 1; transform: none; } }
