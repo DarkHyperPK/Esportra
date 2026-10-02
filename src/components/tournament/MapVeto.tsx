@@ -198,6 +198,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       team1Id={team1Id}
       team2Id={team2Id}
       bestOf={currentBestOf}
+      history={vetoHistory}
       game={game}
       rail={rail}
     />

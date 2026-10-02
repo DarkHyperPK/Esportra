@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { MatchMapVeto, GameMap } from '@/hooks/useMapVetoMachine';
-import { buildVetoSelectedMapEntries } from './buildVetoSelectedMapEntries';
+import { buildVetoSelectedMapEntries, type VetoSideRecord } from './buildVetoSelectedMapEntries';
 import { VetoLineup } from './VetoLineup';
 
 interface VetoSelectedMapsProps {
@@ -18,11 +18,15 @@ interface VetoSelectedMapsProps {
     imagesLoaded?: Set<string>;
     setImagesLoaded?: React.Dispatch<React.SetStateAction<Set<string>>>;
     bestOf: number;
+    /** Recorded veto actions, for sides the picks don't hold. */
+    history?: VetoSideRecord[];
     game?: string;
     compact?: boolean;
     rail?: boolean;
     className?: string;
 }
+
+const EMPTY_HISTORY: VetoSideRecord[] = [];
 
 export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     veto,
@@ -33,6 +37,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     team1Id,
     team2Id,
     bestOf,
+    history = EMPTY_HISTORY,
     game = 'valorant',
     rail = false,
     className,
@@ -48,8 +53,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
             team2Name,
             team1Id,
             team2Id,
+            history,
         }),
-        [bestOf, game, mapLookup, team1Id, team1Name, team2Id, team2Name, veto],
+        [bestOf, game, history, mapLookup, team1Id, team1Name, team2Id, team2Name, veto],
     );
 
     if (veto.status !== 'completed' && veto.status !== 'in_progress') {

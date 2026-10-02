@@ -24,6 +24,20 @@ export interface VetoSelectedMapEntry {
     mapNumber: number;
 }
 
+/** A recorded veto action; only side choices are read. */
+export interface VetoSideRecord {
+    action: string;
+    mapId: string;
+    side?: 'attack' | 'defend' | null;
+    teamName: string;
+}
+
+/** The last recorded side choice for a map, when the veto history has one. */
+function recordedSide(history: VetoSideRecord[], mapId: string) {
+    const entry = [...history].reverse().find((item) => item.action === 'pick_side' && item.mapId === mapId && item.side);
+    return entry?.side ? { side: entry.side, teamName: entry.teamName } : null;
+}
+
 function normalizePickedMaps(pickedMaps: unknown): PickedMap[] {
     if (!pickedMaps) return [];
     if (Array.isArray(pickedMaps)) return pickedMaps;
@@ -62,6 +76,8 @@ export function buildVetoSelectedMapEntries(options: {
     team2Name: string;
     team1Id?: string | null;
     team2Id?: string | null;
+    /** Recorded actions; fills a side the picks don't hold (the free tool's decider). */
+    history?: VetoSideRecord[];
 }): VetoSelectedMapEntry[] {
     const {
         veto,
@@ -72,6 +88,7 @@ export function buildVetoSelectedMapEntries(options: {
         team2Name,
         team1Id,
         team2Id,
+        history = [],
     } = options;
 
     const poolSize = veto.selected_map_pool?.length || mapLookup.length || undefined;
@@ -166,14 +183,17 @@ export function buildVetoSelectedMapEntries(options: {
     const deciderSideTeamId = otherDeciderPick
         ? (finalSidePickerTeamId === effectiveTeam1Id ? effectiveTeam2Id : effectiveTeam1Id)
         : finalSidePickerTeamId;
+    const deciderSideTeamName = deciderSideTeamId === effectiveTeam1Id ? team1Name : team2Name;
+    // Picks may not hold the decider's side (the free tool keeps it only in history).
+    const deciderHistorySide = deciderPickData?.side ? null : recordedSide(history, deciderMap.id);
 
     mapsWithSides.push({
         map_id: deciderMap.id,
         map_name: deciderMap.map_name,
         map_image_url: deciderMap.map_image_url,
-        side: deciderPickData?.side,
+        side: deciderPickData?.side ?? deciderHistorySide?.side,
         mapPickerTeamName: 'Decider',
-        sidePickerTeamName: deciderSideTeamId === effectiveTeam1Id ? team1Name : team2Name,
+        sidePickerTeamName: deciderHistorySide?.teamName ?? deciderSideTeamName,
         mapNumber: mapNumber++,
     });
 

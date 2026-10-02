@@ -194,3 +194,61 @@ describe('buildVetoSelectedMapEntries decider side owner', () => {
         expect(decider?.sidePickerTeamName).toBe(first.sidePickerTeamName === 'Alpha' ? 'Beta' : 'Alpha');
     });
 });
+
+describe('buildVetoSelectedMapEntries sides from history', () => {
+    // The free veto tool records the decider's side only in its action history:
+    // the leftover map is in neither team's picks.
+    const vetoWithoutDeciderSide = () => baseVeto({
+        best_of: 3,
+        team1_picked_maps: [{ map_id: 'm5', side: 'attack' }],
+        team2_picked_maps: [{ map_id: 'm6', side: 'defend' }],
+        selected_map_id: 'm7',
+    });
+
+    it('takes the decider side from the recorded side choice', () => {
+        const decider = buildVetoSelectedMapEntries({
+            veto: vetoWithoutDeciderSide(),
+            bestOf: 3,
+            game: 'valorant',
+            mapLookup: MAPS,
+            team1Name: 'Alpha',
+            team2Name: 'Beta',
+            history: [
+                { action: 'pick_side', mapId: 'm5', side: 'defend', teamName: 'Beta' },
+                { action: 'pick_side', mapId: 'm7', side: 'attack', teamName: 'Alpha' },
+            ],
+        }).at(-1);
+
+        expect(decider?.mapPickerTeamName).toBe('Decider');
+        expect(decider?.side).toBe('attack');
+        expect(decider?.sidePickerTeamName).toBe('Alpha');
+    });
+
+    it('leaves the decider side empty when nothing recorded it', () => {
+        const decider = buildVetoSelectedMapEntries({
+            veto: vetoWithoutDeciderSide(),
+            bestOf: 3,
+            game: 'valorant',
+            mapLookup: MAPS,
+            team1Name: 'Alpha',
+            team2Name: 'Beta',
+            history: [{ action: 'ban', mapId: 'm7', side: null, teamName: 'Alpha' }],
+        }).at(-1);
+
+        expect(decider?.side).toBeUndefined();
+    });
+
+    it('prefers the side stored on the pick over history', () => {
+        const [first] = buildVetoSelectedMapEntries({
+            veto: baseVeto({ best_of: 3 }),
+            bestOf: 3,
+            game: 'valorant',
+            mapLookup: MAPS,
+            team1Name: 'Alpha',
+            team2Name: 'Beta',
+            history: [{ action: 'pick_side', mapId: 'm5', side: 'defend', teamName: 'Beta' }],
+        });
+
+        expect(first.side).toBe('attack');
+    });
+});

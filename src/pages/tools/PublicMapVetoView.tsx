@@ -209,6 +209,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       team1Id={state.team1Id}
       team2Id={state.team2Id}
       bestOf={currentBestOf}
+      history={vetoHistory}
       game={state.game}
       rail={rail}
     />

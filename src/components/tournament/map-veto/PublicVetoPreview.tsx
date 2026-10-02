@@ -62,6 +62,7 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
         mapLookup: lookupFromHistory(history),
         team1Name,
         team2Name,
+        history,
     });
 
     return (
