@@ -1,182 +1,123 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Share2, Trash2, Trophy } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/apiClient";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/apiClient";
+import { formatLocalTime } from "@/lib/timeUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { CtaButton, OutlineButton } from "@/components/ui/app-buttons";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { JackButton } from "@/components/ui/JackButton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useToolBracketActions, useToolBracketList, type ToolBracketRow } from "@/hooks/useToolBrackets";
+import { CommandButton, CommandIconButton } from "@/components/management/CommandSurface";
+import { EYEBROW_CLASS, StatusPill } from "@/components/ui/kit";
+import { ConfirmBracketActionDialog } from "@/components/bracket/tool/ConfirmBracketActionDialog";
 import { formatBracketFormat } from "./publicToolUtils";
 
-const value = (row: any, ...keys: string[]) => {
-  for (const key of keys) if (row?.[key] !== undefined && row?.[key] !== null) return row[key];
-  return undefined;
-};
+const Panel = ({ title, body, action }: { title: string; body: string; action?: ReactNode }) => (
+  <section className="border border-white/[0.07] bg-card px-6 py-10 sm:px-8">
+    <h2 className="font-heading text-lg font-bold text-white">{title}</h2>
+    <p className="mt-1.5 max-w-xl text-sm text-zinc-400">{body}</p>
+    {action ? <div className="mt-6">{action}</div> : null}
+  </section>
+);
 
+const BracketRow = ({ row, onDelete }: { row: ToolBracketRow; onDelete: () => void }) => (
+  <li className="group flex items-center gap-4 bg-card px-4 py-3.5 transition-colors hover:bg-white/[0.03] sm:px-5">
+    <Link to={`/tools/brackets/${row.id}`} className="min-w-0 flex-1 focus-visible:outline-none">
+      <p className="truncate font-heading text-[15px] font-bold text-white group-hover:underline group-hover:decoration-white/30 group-hover:underline-offset-4">{row.title}</p>
+      <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {[formatBracketFormat(row.format), `BO${row.bestOf}`, row.updatedAt ? formatLocalTime(row.updatedAt, "MMM d") : null].filter(Boolean).join(" · ")}
+      </p>
+    </Link>
+    <StatusPill label={row.shared ? "Shared" : "Private"} tone={row.shared ? "accent" : "neutral"} className="hidden sm:inline-flex" />
+    <CommandIconButton variant="ghost" label={`Delete ${row.title}`} onClick={onDelete} className="h-8 w-8 text-zinc-500 hover:text-red-300">
+      <Trash2 />
+    </CommandIconButton>
+    <Link to={`/tools/brackets/${row.id}`} aria-hidden tabIndex={-1} className="text-zinc-600 transition-colors group-hover:text-white">
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+  </li>
+);
+
+/** The signed-in organizer's saved brackets, with the way into a new one. */
 const PublicBracketList = () => {
   const { user, loading: authLoading } = useAuth();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const signedIn = Boolean(user) && !authLoading;
+  const list = useToolBracketList(signedIn);
+  const { remove } = useToolBracketActions(undefined, ["tool-brackets", "mine"]);
+  const [target, setTarget] = useState<ToolBracketRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const canLoadBrackets = Boolean(user) && !authLoading;
-  const {
-    data,
-    error,
-    refetch,
-    isFetching,
-    isPending,
-    isSuccess,
-  } = useQuery({
-    queryKey: ["tool-brackets", "mine"],
-    queryFn: () => apiClient.get<any[]>("/api/tools/brackets/mine"),
-    enabled: canLoadBrackets,
-    staleTime: 0,
-    refetchOnMount: "always",
-    retry: 1,
-  });
-  const brackets = data ?? [];
-
-  const showSignIn = !authLoading && !user;
-  const showListLoading = authLoading || (canLoadBrackets && (isPending || (isFetching && !isSuccess)));
-  const showEmpty = isSuccess && brackets.length === 0;
+  const rows = list.data ?? [];
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!target) return;
     setDeleting(true);
     try {
-      await apiClient.delete(`/api/tools/brackets/${deleteTarget.id}`);
-      await queryClient.invalidateQueries({ queryKey: ["tool-brackets", "mine"] });
+      await remove(target.id);
       toast({ title: "Bracket deleted" });
-      setDeleteTarget(null);
+      setTarget(null);
     } catch (err) {
-      toast({ title: "Could not delete bracket", description: getApiErrorMessage(err), variant: "destructive" });
+      toast({ title: "Couldn't delete the bracket", description: getApiErrorMessage(err), variant: "destructive" });
     } finally {
       setDeleting(false);
     }
   };
 
+  const newBracket = (
+    <CommandButton asChild>
+      <Link to="/tools/brackets/new"><Plus className="h-4 w-4" /> New bracket</Link>
+    </CommandButton>
+  );
+
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 text-white">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-8 text-white sm:px-6">
+      <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">Public tools</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">Bracket Builder</h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-            Generate a bracket from pasted teams or a file, then save it to your account when you are ready to run it.
+          <p className={EYEBROW_CLASS}>Public tools · Brackets</p>
+          <h1 className="mt-2 font-heading text-[34px] font-black leading-none tracking-tight sm:text-[42px]">Your brackets</h1>
+          <p className="mt-3 max-w-xl text-sm text-zinc-400">
+            Build a single or double elimination bracket, run it match by match, and share a link or embed it on stream.
           </p>
         </div>
         <div className="flex gap-2">
-          <OutlineButton asChild>
-            <Link to="/tools/map-veto">Map veto</Link>
-          </OutlineButton>
-          <CtaButton asChild>
-            <Link to="/tools/brackets/new"><Plus className="mr-2 h-4 w-4" /> New bracket</Link>
-          </CtaButton>
+          <CommandButton asChild variant="secondary"><Link to="/tools/map-veto">Map veto</Link></CommandButton>
+          {newBracket}
         </div>
-      </div>
+      </header>
 
-      {showSignIn ? (
-        <section className="border border-white/10 bg-black/35 p-8">
-          <Trophy className="mb-4 h-8 w-8 text-rose-400" />
-          <h2 className="text-xl font-bold">Sign in to view saved brackets</h2>
-          <p className="mt-2 text-sm text-zinc-400">Preview generation is public. Saving and running brackets keeps them attached to your account.</p>
-          <JackButton as={Link} to="/auth/signin?redirect=/tools/brackets" className="mt-5">
-            Sign in
-          </JackButton>
-        </section>
-      ) : error ? (
-        <section className="border border-red-500/30 bg-red-500/10 p-5">
-          <p className="text-sm text-red-200">{getApiErrorMessage(error, "Could not load your saved brackets.")}</p>
-          <button
-            type="button"
-            className={cn(buttonVariants({ variant: 'outline' }), 'mt-4 border-red-400/30 bg-transparent text-red-100 hover:bg-red-500/10')}
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? "Retrying..." : "Try again"}
-          </button>
-        </section>
-      ) : showListLoading ? (
-        <section className="border border-white/10 bg-black/35 p-8 text-sm text-zinc-400">Loading saved brackets...</section>
-      ) : showEmpty ? (
-        <section className="border border-white/10 bg-black/35 p-8">
-          <h2 className="text-xl font-bold">No saved brackets yet</h2>
-          <p className="mt-2 text-sm text-zinc-400">Create a single or double elimination bracket and it will appear here.</p>
-        </section>
+      {!authLoading && !user ? (
+        <Panel
+          title="Sign in to see your saved brackets"
+          body="Anyone can build and preview a bracket. Saving one keeps it on your account so you can run it, share it and come back to it."
+          action={<div className="flex flex-wrap gap-2"><CommandButton asChild><Link to="/auth/signin?redirect=/tools/brackets">Sign in</Link></CommandButton><CommandButton asChild variant="secondary"><Link to="/tools/brackets/new">Build without saving</Link></CommandButton></div>}
+        />
+      ) : list.error ? (
+        <Panel
+          title="Couldn't load your brackets"
+          body={getApiErrorMessage(list.error, "Check your connection and try again.")}
+          action={<CommandButton variant="secondary" disabled={list.isFetching} onClick={() => void list.refetch()}>{list.isFetching ? "Trying again…" : "Try again"}</CommandButton>}
+        />
+      ) : authLoading || list.isPending ? (
+        <ul aria-label="Loading brackets" className="grid gap-px bg-white/[0.06]">
+          {[0, 1, 2].map((i) => <li key={i} className="h-[68px] animate-pulse bg-card" />)}
+        </ul>
+      ) : rows.length === 0 ? (
+        <Panel title="No brackets yet" body="Paste your teams, pick a format and you'll have a bracket in under a minute." action={newBracket} />
       ) : (
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {brackets.map((row: any) => {
-            const id = value(row, "id");
-            const shareToken = value(row, "shareToken", "share_token");
-            return (
-              <article key={id} className="border border-white/10 bg-black/35 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-base font-bold">{value(row, "title") || "Untitled bracket"}</h2>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {formatBracketFormat(String(value(row, "format") || ""))} · BO{value(row, "bestOf", "best_of") || 1}
-                    </p>
-                  </div>
-                  {shareToken && <Share2 className="h-4 w-4 shrink-0 text-rose-300" />}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <CtaButton asChild size="sm" className="flex-1">
-                    <Link to={`/tools/brackets/${id}`}>Open runner</Link>
-                  </CtaButton>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget({ id: String(id), title: value(row, "title") || "Untitled bracket" })}
-                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-red-500/30 text-red-300 hover:bg-red-500/10')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+        <ul className="grid gap-px border border-white/[0.07] bg-white/[0.06]">
+          {rows.map((row) => <BracketRow key={row.id} row={row} onDelete={() => setTarget(row)} />)}
+        </ul>
       )}
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-white/10 bg-[#0a0a0c] text-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete bracket?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              {deleteTarget ? `"${deleteTarget.title}" will be permanently removed. Shared links will stop working.` : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              className="bg-red-600 text-white hover:bg-red-500"
-              onClick={(event) => {
-                event.preventDefault();
-                void confirmDelete();
-              }}
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmBracketActionDialog
+        open={target !== null}
+        title={`Delete “${target?.title ?? ""}”?`}
+        description="It's removed for good. Share links and embeds stop working."
+        confirmLabel="Delete bracket"
+        busyLabel="Deleting…"
+        busy={deleting}
+        onCancel={() => setTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </main>
   );
 };

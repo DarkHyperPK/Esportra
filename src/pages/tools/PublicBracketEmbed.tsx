@@ -1,66 +1,43 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
+import { getApiErrorMessage } from "@/lib/apiClient";
+import { getWebsiteAssetUrl } from "@/lib/storage";
+import { useToolBracket } from "@/hooks/useToolBrackets";
 import { BracketRenderer } from "@/components/bracket/BracketRenderer";
-import { adaptPublicBracketPayload, normalizeToolBracketResponse } from "./publicToolUtils";
+import { BracketCanvasSkeleton } from "@/components/bracket/BracketCanvasSkeleton";
+import { adaptPublicBracketPayload, formatBracketFormat } from "./publicToolUtils";
 
+const ESPORTRA_LOGO = getWebsiteAssetUrl("eSportra-Logo/eSPORTRA-white-transparent.png");
+
+const Message = ({ text }: { text: string }) => (
+  <main className="flex h-dvh items-center justify-center bg-background px-4 text-center text-sm text-zinc-400">{text}</main>
+);
+
+/** A shared bracket inside someone else's page or stream: a title strip and the tree. */
 const PublicBracketEmbed = () => {
   const { token } = useParams();
   const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["tool-bracket-embed", token],
-    queryFn: async () => {
-      const raw = await apiClient.get<any>(`/api/tools/brackets/share/${token}`);
-      return normalizeToolBracketResponse(raw);
-    },
-    enabled: Boolean(token),
-  });
-
+  const { data, isLoading, error } = useToolBracket("share", token);
   const matches = useMemo(() => (data ? adaptPublicBracketPayload(data.payload) : []), [data]);
 
-  if (isLoading) {
-    return (
-      <main className="flex h-dvh items-center justify-center bg-[#09090b] text-sm text-zinc-500">
-        Loading bracket...
-      </main>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <main className="flex h-dvh items-center justify-center bg-[#09090b] px-4 text-center text-sm text-zinc-400">
-        {getApiErrorMessage(error, "This bracket embed is unavailable.")}
-      </main>
-    );
-  }
-
-  if (matches.length === 0) {
-    return (
-      <main className="flex h-dvh items-center justify-center bg-[#09090b] px-4 text-center text-sm text-zinc-400">
-        This bracket has no matches to embed yet.
-      </main>
-    );
-  }
+  if (isLoading) return <main className="h-dvh overflow-hidden bg-background"><BracketCanvasSkeleton /></main>;
+  if (error || !data) return <Message text={getApiErrorMessage(error, "This bracket isn't available. The owner may have stopped sharing it.")} />;
+  if (matches.length === 0) return <Message text="This bracket has no matches yet." />;
 
   return (
-    <main className="h-dvh w-full overflow-auto bg-[#09090b] p-2 sm:p-3">
-      <div className="mb-2 px-1">
-        <p className="truncate text-sm font-semibold text-white">{data.title}</p>
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Powered by Esportra</p>
+    <main className="flex h-dvh w-full flex-col bg-background text-white">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/[0.07] px-4 py-2.5">
+        <div className="min-w-0">
+          <p className="truncate font-heading text-[15px] font-bold leading-tight">{data.title}</p>
+          <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.2em] text-zinc-500">{formatBracketFormat(data.format)} · BO{data.bestOf}</p>
+        </div>
+        <a href="/" target="_blank" rel="noreferrer" className="flex shrink-0 items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-500 hover:text-white">
+          Powered by <img src={ESPORTRA_LOGO} alt="Esportra" className="h-4 w-auto" />
+        </a>
+      </header>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations hoveredTeamId={hoveredTeamId} onTeamHover={setHoveredTeamId} />
       </div>
-      <BracketRenderer
-        matches={matches}
-        activeFilter={{ type: "all" }}
-        disableAnimations
-        hoveredTeamId={hoveredTeamId}
-        onTeamHover={setHoveredTeamId}
-        cardWidth={260}
-        cardHeight={86}
-        roundGap={64}
-        matchGap={18}
-        isSingleElimination={data.format !== "double_elimination"}
-      />
     </main>
   );
 };

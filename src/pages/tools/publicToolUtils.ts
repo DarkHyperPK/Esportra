@@ -215,7 +215,7 @@ export const buildPublicBracketEmbedUrl = (shareToken: string) =>
 
 export const buildPublicBracketEmbedCode = (shareToken: string, height = 720) => {
   const src = buildPublicBracketEmbedUrl(shareToken);
-  return `<iframe src="${src}" width="100%" height="${height}" style="border:0;border-radius:12px;background:#09090b" allowfullscreen loading="lazy" title="Esportra bracket"></iframe>`;
+  return `<iframe src="${src}" width="100%" height="${height}" style="border:0;background:#09090b" allowfullscreen loading="lazy" title="Esportra bracket"></iframe>`;
 };
 
 export const slugifyBracketFileName = (title: string) =>
