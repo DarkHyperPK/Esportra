@@ -157,9 +157,26 @@ function toPublicGame(game: RawMatchGame, index: number, team1Id?: string | null
 }
 
 /** Shape reported games into an ordered, render-ready series for spectators. */
-export function buildPublicGames(rawGames: RawMatchGame[], team1Id?: string | null): PublicGame[] {
+export type SeriesScore = { team1: number | null; team2: number | null };
+
+/**
+ * Saving a series score (the plain score report) also writes a game-1 row with
+ * that series score. It is a record of the result, not a map: 'Manual Result',
+ * or no map name, no stats and no Riot match, scored exactly like the series.
+ */
+export function isSeriesSummaryRow(game: RawMatchGame, series?: SeriesScore | null): boolean {
+    const name = readMapName(game).toLowerCase();
+    if (name === 'manual result') return true;
+    if (knownMapName(game) || game.map_id || game.mapId || game.riot_match_id?.trim()) return false;
+    if ((game.match_details?.players?.length ?? 0) > 0 || game.match_details?.enrichedSnapshot) return false;
+    return Boolean(series)
+        && typeof game.team1_score === 'number' && typeof game.team2_score === 'number'
+        && game.team1_score === series?.team1 && game.team2_score === series?.team2;
+}
+
+export function buildPublicGames(rawGames: RawMatchGame[], team1Id?: string | null, series?: SeriesScore | null): PublicGame[] {
     return rawGames
-        .filter(isMeaningfulGame)
+        .filter((game) => isMeaningfulGame(game) && !isSeriesSummaryRow(game, series))
         .map((game, index) => toPublicGame(game, index, team1Id))
         .sort((left, right) => left.gameNumber - right.gameNumber);
 }

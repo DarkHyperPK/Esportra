@@ -33,6 +33,9 @@ const BRACKET_LABEL: Record<NonNullable<BracketMatch['bracketType']>, string> = 
     swiss_round: 'Swiss',
 };
 
+/** A completed match with only its series score saved, no maps. */
+const SERIES_ONLY = { lead: 'reported' as const, text: 'Series score reported by the teams' };
+
 const rawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
 
 function statusDisplay(status: string): MatchStatusDisplay {
@@ -77,7 +80,12 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
     const [tab, setTab] = useState<Tab>('series');
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
     const [shotIndex, setShotIndex] = useState<number | null>(null);
-    const games = useMemo(() => buildPublicGames(automatedResults, match?.team1?.id), [automatedResults, match?.team1?.id]);
+    const team1Score = match?.team1_score ?? null;
+    const team2Score = match?.team2_score ?? null;
+    const games = useMemo(
+        () => buildPublicGames(automatedResults, match?.team1?.id, { team1: team1Score, team2: team2Score }),
+        [automatedResults, match?.team1?.id, team1Score, team2Score],
+    );
     const team1 = match?.team1 ?? null;
     const team2 = match?.team2 ?? null;
     const teamName = useCallback(
@@ -120,7 +128,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                     caption={caption}
                     timeLabel={match.scheduledTime ? formatLocalTimeWithTZ(match.scheduledTime, 'EEE, MMM d · h:mm a') : null}
                     backdropUrl={lastMap ? valorantMapSplash(lastMap.mapName) : null}
-                    source={seriesSourceSummary(games.map((game) => sources[game.key]))}
+                    source={seriesSourceSummary(games.map((game) => sources[game.key])) ?? (match.status === 'completed' ? SERIES_ONLY : null)}
                 />
 
                 <div role="tablist" aria-label="Match details" className="flex shrink-0 gap-7 overflow-x-auto border-b border-white/[0.07] px-5 sm:px-8">

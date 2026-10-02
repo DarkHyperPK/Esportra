@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPublicGames, isMeaningfulGame, resolveTeam1Side } from '../publicGameStats';
+import { buildPublicGames, isMeaningfulGame, isSeriesSummaryRow, resolveTeam1Side } from '../publicGameStats';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 
 describe('isMeaningfulGame', () => {
@@ -44,7 +44,7 @@ describe('buildPublicGames', () => {
     it('flags maps with no recorded name and numbers them instead', () => {
         const games = buildPublicGames([
             { id: 'a', map_name: 'Haven', game_number: 1, team1_score: 13, team2_score: 11 },
-            { id: 'b', map_name: 'Manual Result', game_number: 2, team1_score: 2, team2_score: 0 },
+            { id: 'b', map_name: 'Unknown map', game_number: 2, team1_score: 9, team2_score: 13 },
             { id: 'c', game_number: 3, team1_score: 13, team2_score: 5 },
         ]);
 
@@ -101,5 +101,27 @@ describe('buildPublicGames', () => {
         ]);
 
         expect(games.map((game) => game.winner)).toEqual([null, null]);
+    });
+});
+
+describe('isSeriesSummaryRow', () => {
+    const series = { team1: 2, team2: 0 };
+
+    it('treats the saved series score as a summary, not a map', () => {
+        expect(isSeriesSummaryRow({ game_number: 1, map_name: 'Manual Result', team1_score: 2, team2_score: 0 }, series)).toBe(true);
+        expect(isSeriesSummaryRow({ game_number: 1, team1_score: 2, team2_score: 0 }, series)).toBe(true);
+        expect(isSeriesSummaryRow({ game_number: 1, map_name: 'Manual Result', team1_score: 1, team2_score: 0 })).toBe(true);
+    });
+
+    it('keeps real maps', () => {
+        expect(isSeriesSummaryRow({ game_number: 1, map_name: 'Haven', team1_score: 2, team2_score: 0 }, series)).toBe(false);
+        expect(isSeriesSummaryRow({ game_number: 1, team1_score: 13, team2_score: 9 }, series)).toBe(false);
+        expect(isSeriesSummaryRow({ game_number: 1, team1_score: 2, team2_score: 0, riot_match_id: 'abc' }, series)).toBe(false);
+        expect(isSeriesSummaryRow({ game_number: 1, team1_score: 2, team2_score: 0 })).toBe(false);
+    });
+
+    it('drops the summary row from the series', () => {
+        const games = buildPublicGames([{ id: 'x', game_number: 1, team1_score: 2, team2_score: 0 }], null, series);
+        expect(games).toEqual([]);
     });
 });
