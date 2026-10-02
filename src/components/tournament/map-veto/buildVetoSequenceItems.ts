@@ -141,8 +141,10 @@ export function buildVetoSequenceItems(options: BuildOptions): VetoSequenceItem[
             action: step.action as VetoActionKind,
             teamName: step.teamId === effectiveTeam1Id ? team1Name : team2Name,
             lane: step.action === 'ignore' ? null : step.teamId === effectiveTeam1Id ? 'team1' : 'team2',
-            mapName: isSideStep ? previousEntry?.mapName || deciderMap?.map_name : deciderMap?.map_name,
-            mapImageUrl: isSideStep ? previousEntry?.mapImageUrl || deciderMap?.map_image_url : deciderMap?.map_image_url,
+            // A side choice belongs to the map just picked, except on the decider, where the
+            // previous step is a ban and the map is the one left over.
+            mapName: isSideStep && !step.isDecider ? previousEntry?.mapName || deciderMap?.map_name : deciderMap?.map_name,
+            mapImageUrl: isSideStep && !step.isDecider ? previousEntry?.mapImageUrl || deciderMap?.map_image_url : deciderMap?.map_image_url,
             status,
         };
     });

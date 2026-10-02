@@ -109,3 +109,26 @@ describe('veto action normalisation', () => {
         expect(items[0]).toMatchObject({ action: 'pick', lane: 'team2' });
     });
 });
+
+describe('buildVetoSequenceItems decider', () => {
+    it('names the map left over, not the last banned map, while the decider side is chosen', () => {
+        const maps = ['m0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6'].map((id, i) => ({ id, game: 'valorant', map_name: `Map ${i}`, map_image_url: null, is_active: true }));
+        const e = (n: number, side: 'team1' | 'team2', action: VetoHistoryEntry['action'], i: number): VetoHistoryEntry => ({
+            actionNumber: n, teamSide: side, teamId: side === 'team1' ? 'team1' : 'team2', teamName: side === 'team1' ? 'Alpha' : 'Beta',
+            action, mapId: maps[i].id, mapName: maps[i].map_name, mapImageUrl: null, createdAt: '',
+        });
+        const items = buildVetoSequenceItems({
+            ...base,
+            availableMaps: maps,
+            allAvailableMaps: maps,
+            veto: veto({
+                current_action: 'pick_side', current_action_number: 9, current_team_id: 'team1',
+                team1_banned_maps: ['m0', 'm4'], team2_banned_maps: ['m1', 'm5'],
+                team1_picked_maps: [{ map_id: 'm2', side: 'defend' }], team2_picked_maps: [{ map_id: 'm3', side: 'attack' }],
+            }),
+            entries: [e(1, 'team1', 'ban', 0), e(2, 'team2', 'ban', 1), e(3, 'team1', 'pick', 2), e(4, 'team2', 'pick_side', 2), e(5, 'team2', 'pick', 3), e(6, 'team1', 'pick_side', 3), e(7, 'team1', 'ban', 4), e(8, 'team2', 'ban', 5)],
+        });
+
+        expect(items[8]).toMatchObject({ actionNumber: 9, status: 'current', mapName: 'Map 6' });
+    });
+});

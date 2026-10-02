@@ -721,6 +721,7 @@ const PublicMapVetoOverlay = () => {
       : null;
     return (
       <PublicMapVetoBroadcastOverlay
+        maps={gameMaps.map((map) => ({ id: String(map.id), name: map.map_name, imageUrl: map.map_image_url }))}
         cards={stepCards}
         gameLabel={PUBLIC_VETO_GAMES.find((game) => game.value === state.game)?.label ?? state.game}
         bestOf={state.bestOf}

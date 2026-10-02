@@ -57,3 +57,40 @@ export function toOverlayEventSlots(cards: VetoStripCard[]): OverlayEventSlot[] 
     side: card.sideStatus === "done" ? card.side ?? null : null,
   }));
 }
+
+export type OverlayMapState = {
+  status: "open" | "ban" | "pick" | "decider";
+  /** Team that banned or picked. */
+  teamName?: string;
+  /** Position in the series for picks and the decider. */
+  mapNumber?: number;
+  side?: "attack" | "defend" | null;
+  sideTeamName?: string;
+};
+
+/**
+ * What happened to each map in the pool, keyed by map name. Cards stay in pool
+ * order; this only says which layers each card switches on. The decider is
+ * marked as soon as it's the map left, even while its side is still open.
+ */
+export function buildMapStates(cards: VetoStripCard[]): Map<string, OverlayMapState> {
+  const states = new Map<string, OverlayMapState>();
+  let mapNumber = 0;
+
+  cards.forEach((card) => {
+    if (!card.mapName) return;
+    const isDecider = card.kind === "decider" && (card.mapSettled || card.status === "current");
+    if (!card.mapSettled && !isDecider) return;
+    if (card.kind !== "ban") mapNumber += 1;
+
+    states.set(card.mapName, {
+      status: isDecider ? "decider" : card.kind,
+      teamName: card.kind === "decider" ? undefined : card.teamName,
+      mapNumber: card.kind === "ban" ? undefined : mapNumber,
+      side: card.sideStatus === "done" ? card.side ?? null : null,
+      sideTeamName: card.sideStatus === "done" ? card.sideTeamName : undefined,
+    });
+  });
+
+  return states;
+}

@@ -1,87 +1,65 @@
 /**
- * Motion for the broadcast OBS overlay. Slots never move; a decision fills its
- * slot in place (art wipes up, ban drains and is struck, stamp slams), the slot
- * on the clock breathes, and each moment is announced in the lower band
- * (wipe in, hold, wipe out — exit faster than entry).
+ * Motion for the broadcast OBS overlay. Every card is a fixed stack of layers
+ * that already exist; a state class (banned / picked / decider) switches layers
+ * on and animates them:
+ *
+ *   ban      image greys to 40% over 0.23s, name dims, slash draws in 0.19s,
+ *            stamp slams 0.06s later (0.2s, overshooting curve), tilt -16deg
+ *   pick     card stays alive, white stamp, same slam, tilt -8deg
+ *   decider  red tint fades to 55% and red border in over 0.29s, card lifts,
+ *            solid red stamp, tilt -6deg
  */
 export const BROADCAST_OVERLAY_CSS = `
 @keyframes bcv-enter-up { from { opacity: 0; transform: translate3d(0, 4vh, 0); } to { opacity: 1; transform: none; } }
 @keyframes bcv-enter-left { from { opacity: 0; transform: translate3d(-5vw, 0, 0); } to { opacity: 1; transform: none; } }
 @keyframes bcv-enter-right { from { opacity: 0; transform: translate3d(5vw, 0, 0); } to { opacity: 1; transform: none; } }
-
-@keyframes bcv-fill { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes bcv-settle { from { transform: scale(1.16); } to { transform: scale(1); } }
-@keyframes bcv-drain { from { filter: grayscale(0) brightness(1.15); } to { filter: grayscale(1) brightness(1); } }
-@keyframes bcv-fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes bcv-wipe-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes bcv-flash { 0% { opacity: 0; } 30% { opacity: 0.85; } 100% { opacity: 0; } }
-@keyframes bcv-slam {
-  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-22deg) scale(2.3); }
-  60% { opacity: 1; transform: translate(-50%, -50%) rotate(-6deg) scale(0.93); }
-  100% { opacity: 1; transform: translate(-50%, -50%) rotate(-8deg) scale(1); }
-}
-@keyframes bcv-ring {
-  from { opacity: 0.85; transform: translate(-50%, -50%) rotate(-8deg) scale(1); }
-  to { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(1.9); }
-}
-@keyframes bcv-rise { from { opacity: 0; transform: translateY(1.4vh); } to { opacity: 1; transform: none; } }
-@keyframes bcv-lit {
-  0% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 rgba(255,255,255,0); }
-  35% { box-shadow: inset 0 0 0 3px rgba(255,255,255,0.95), 0 0 3.2vw rgba(255,255,255,0.35); }
-  100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22), 0 0 0 rgba(255,255,255,0); }
-}
-@keyframes bcv-decider-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(244,63,94,0.85); }
-  100% { box-shadow: 0 0 0 1.8vw rgba(244,63,94,0); }
-}
-@keyframes bcv-breathe {
-  from { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35), 0 0 0 rgba(255,255,255,0); }
-  to { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.9), 0 0 2vw rgba(255,255,255,0.12); }
-}
-@keyframes bcv-blink { 50% { opacity: 0; } }
-
-@keyframes bcv-banner-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes bcv-banner-out { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
-@keyframes bcv-banner-text { from { opacity: 0; transform: translateX(-2.5vw); } to { opacity: 1; transform: none; } }
-@keyframes bcv-push-in { from { transform: scale(1.18); } to { transform: scale(1); } }
-
 .bcv-enter-up { animation: bcv-enter-up 600ms cubic-bezier(0.2, 0, 0, 1) both; }
 .bcv-enter-left { animation: bcv-enter-left 600ms cubic-bezier(0.2, 0, 0, 1) both; }
 .bcv-enter-right { animation: bcv-enter-right 600ms cubic-bezier(0.2, 0, 0, 1) both; }
 
-/* A decision landing, in order: art wipes up (0-700ms), light flash, colour drains
-   on a ban, slash wipes down, stamp slams, ring fades out. ~1.6s end to end. */
-.bcv-fill { animation: bcv-fill 700ms cubic-bezier(0.7, 0, 0.2, 1) both; }
-.bcv-settle { animation: bcv-settle 1600ms cubic-bezier(0.2, 0, 0, 1) both; }
-.bcv-flash { animation: bcv-flash 700ms cubic-bezier(0.2, 0, 0, 1) 450ms both; }
-.bcv-drain { animation: bcv-settle 1600ms cubic-bezier(0.2, 0, 0, 1) both, bcv-drain 900ms cubic-bezier(0.4, 0, 0.2, 1) 550ms both; }
-.bcv-dim { animation: bcv-fade-in 800ms cubic-bezier(0.4, 0, 0.2, 1) 550ms both; }
-.bcv-slash { animation: bcv-wipe-down 420ms cubic-bezier(0.7, 0, 0.2, 1) 850ms both; }
-.bcv-slam { animation: bcv-slam 520ms cubic-bezier(0.2, 0, 0, 1) 950ms both; }
-.bcv-ring { animation: bcv-ring 650ms cubic-bezier(0.2, 0, 0, 1) 1250ms both; }
-.bcv-rise { animation: bcv-rise 450ms cubic-bezier(0.2, 0, 0, 1) 450ms both; }
-.bcv-lit { animation: bcv-lit 1600ms cubic-bezier(0.2, 0, 0, 1) 500ms both; }
-.bcv-decider { animation: bcv-decider-pulse 900ms cubic-bezier(0.2, 0, 0, 1) 900ms 2 both; }
-.bcv-side-in { animation: bcv-rise 450ms cubic-bezier(0.2, 0, 0, 1) both; }
-.bcv-on-clock { animation: bcv-breathe 1.4s ease-in-out infinite alternate; }
+/* Card: layers exist from the start, in their resting (open) state. */
+.bcv-card { --tilt: -16deg; transition: transform .29s cubic-bezier(.2,.8,.2,1); }
+.bcv-card .bcv-image { transition: filter .23s cubic-bezier(.2,.8,.2,1); filter: grayscale(0) brightness(1); }
+.bcv-card .bcv-red { opacity: 0; mix-blend-mode: color; transition: opacity .29s cubic-bezier(.2,.8,.2,1); }
+.bcv-card .bcv-border { opacity: 0; transition: opacity .29s cubic-bezier(.2,.8,.2,1); }
+.bcv-card .bcv-name { color: #fafafa; transition: color .23s cubic-bezier(.2,.8,.2,1); }
+.bcv-card .bcv-caption { opacity: 0; transition: opacity .2s cubic-bezier(.2,.8,.2,1) .12s; }
+.bcv-card .bcv-slash { stroke-dashoffset: var(--len); }
+.bcv-card .bcv-stamp { opacity: 0; transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1.9); }
+
+/* Ban: the card dies, the slash cuts through, the stamp lands. */
+.bcv-card.banned .bcv-image { filter: grayscale(1) brightness(.4); }
+.bcv-card.banned .bcv-name { color: #71717a; }
+.bcv-card.banned .bcv-slash { stroke-dashoffset: 0; transition: stroke-dashoffset .19s cubic-bezier(.2,.8,.2,1); }
+
+/* Pick: alive, white, calmer angle. */
+.bcv-card.picked { --tilt: -8deg; }
+
+/* Decider: tinted red, framed, lifted. */
+.bcv-card.decider { --tilt: -6deg; transform: translateY(-1.1vw); }
+.bcv-card.decider .bcv-red { opacity: .55; }
+.bcv-card.decider .bcv-border { opacity: 1; }
+
+.bcv-card.banned .bcv-caption, .bcv-card.picked .bcv-caption, .bcv-card.decider .bcv-caption { opacity: 1; }
+.bcv-card.banned .bcv-stamp, .bcv-card.picked .bcv-stamp, .bcv-card.decider .bcv-stamp {
+  animation: bcv-slam .2s .06s cubic-bezier(.3,1.6,.5,1) both;
+}
+@keyframes bcv-slam {
+  from { transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1.9); opacity: 0; }
+  to { transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1); opacity: 1; }
+}
+
+/* Settled before the overlay loaded: final state, nothing replays. */
+.bcv-card.bcv-quiet, .bcv-card.bcv-quiet * { transition: none !important; }
+.bcv-card.bcv-quiet .bcv-stamp { animation: none !important; opacity: 1; transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1); }
+
+/* Caption typewriter cursor. */
+@keyframes bcv-blink { 50% { opacity: 0; } }
 .bcv-cursor { animation: bcv-blink 1s steps(1) infinite; }
 
-/* Settled before the overlay loaded: show the final state, play nothing. */
-.bcv-static, .bcv-static .bcv-fill, .bcv-static .bcv-settle, .bcv-static .bcv-flash, .bcv-static .bcv-drain,
-.bcv-static .bcv-dim, .bcv-static .bcv-slash, .bcv-static .bcv-slam, .bcv-static .bcv-ring, .bcv-static .bcv-rise {
-  animation-duration: 1ms !important;
-  animation-delay: 0ms !important;
-  animation-iteration-count: 1 !important;
-}
-.bcv-static .bcv-flash, .bcv-static .bcv-ring { display: none; }
-
-.bcv-banner-in { animation: bcv-banner-in 460ms cubic-bezier(0.7, 0, 0.2, 1) both; }
-.bcv-banner-out { animation: bcv-banner-out 340ms cubic-bezier(0.4, 0, 1, 1) both; }
-.bcv-banner-text { animation: bcv-banner-text 420ms cubic-bezier(0.2, 0, 0, 1) 220ms both; }
-.bcv-banner-art { animation: bcv-push-in 3000ms linear both; }
-
 @media (prefers-reduced-motion: reduce) {
-  [class*="bcv-"] { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
+  .bcv-card, .bcv-card * { transition-duration: 1ms !important; }
+  .bcv-card .bcv-stamp { animation-duration: 1ms !important; animation-delay: 0ms !important; }
 }
 `;
 

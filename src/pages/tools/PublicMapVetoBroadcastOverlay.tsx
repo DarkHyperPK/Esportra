@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { VetoStripCard } from "@/components/tournament/map-veto/buildVetoStripCards";
-import { toOverlayEventSlots } from "./buildOverlayStepCards";
 import { cn } from "@/lib/utils";
-import { BROADCAST_OVERLAY_CSS, overlayEnterClass, teamCode } from "./broadcastOverlayStyles";
-import { BroadcastOverlayCard } from "./BroadcastOverlayCard";
-import { BroadcastOverlayAnnouncement } from "./BroadcastOverlayAnnouncement";
+import { buildMapStates, toOverlayEventSlots, type OverlayMapState } from "./buildOverlayStepCards";
+import { BROADCAST_OVERLAY_CSS, overlayEnterClass, sideCode, teamCode } from "./broadcastOverlayStyles";
+import { BroadcastOverlayCard, type OverlayPoolMap } from "./BroadcastOverlayCard";
 import { useOverlayEventQueue } from "./useOverlayEventQueue";
+import type { OverlayVetoEvent } from "./overlayVetoEvents";
 
 type Props = {
-  /** One fixed slot per map decision, in veto order. */
+  /** The map pool, in a fixed order. One card per map; cards never move. */
+  maps: OverlayPoolMap[];
+  /** The veto's map decisions, in veto order. Drives each card's state and the caption. */
   cards: VetoStripCard[];
   gameLabel: string;
   bestOf: number;
@@ -21,22 +23,73 @@ type Props = {
   transition: "none" | "up" | "left" | "right";
 };
 
+const OPEN: OverlayMapState = { status: "open" };
+const TYPE_MS_PER_CHAR = 28;
+
 /**
- * Steps already settled when the overlay first rendered (OBS load or refresh) stay
- * still; everything that settles afterwards animates. A reset re-arms every step.
- * `null` until the first effect runs, which callers treat as "all quiet".
+ * Maps already settled when the overlay first rendered (OBS load or refresh) show
+ * their final state without replaying; anything that settles later animates.
+ * A reset re-arms every card. `null` until the first effect runs = all quiet.
  */
-function useQuietSteps(cards: VetoStripCard[]) {
-  const [quietSteps, setQuietSteps] = useState<Set<number> | null>(null);
+function useQuietMaps(states: Map<string, OverlayMapState>, ready: boolean) {
+  const [quiet, setQuiet] = useState<Set<string> | null>(null);
   useEffect(() => {
-    if (cards.length === 0) return;
-    if (quietSteps === null) {
-      setQuietSteps(new Set(cards.filter((card) => card.mapSettled).map((card) => card.stepNumber)));
-    } else if (quietSteps.size > 0 && cards.every((card) => !card.mapSettled)) {
-      setQuietSteps(new Set());
+    if (!ready) return;
+    if (quiet === null) {
+      setQuiet(new Set(states.keys()));
+    } else if (quiet.size > 0 && states.size === 0) {
+      setQuiet(new Set());
     }
-  }, [cards, quietSteps]);
-  return quietSteps;
+  }, [quiet, ready, states]);
+  return quiet;
+}
+
+/** Types its text out character by character whenever the text changes. */
+const TypewriterLine = ({ text }: { text: string }) => {
+  const [shown, setShown] = useState(text);
+
+  useEffect(() => {
+    if (!text) {
+      setShown("");
+      return undefined;
+    }
+    let count = 0;
+    setShown("");
+    const timer = window.setInterval(() => {
+      count += 1;
+      setShown(text.slice(0, count));
+      if (count >= text.length) window.clearInterval(timer);
+    }, TYPE_MS_PER_CHAR);
+    return () => window.clearInterval(timer);
+  }, [text]);
+
+  return (
+    <p className="flex items-center gap-[0.5vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400" aria-live="polite">
+      <span>{shown}</span>
+      {text ? <span aria-hidden className="bcv-cursor inline-block h-[1.3vw] w-[0.7vw] bg-rose-500" /> : null}
+    </p>
+  );
+};
+
+function eventLine(event: OverlayVetoEvent) {
+  const team = event.teamName ? teamCode(event.teamName) : "";
+  switch (event.kind) {
+    case "ban":
+      return `${team} bans ${event.mapName}`;
+    case "pick":
+      return `${team} picks ${event.mapName}`;
+    case "decider":
+      return `Decider: ${event.mapName}`;
+    default:
+      return `${team} ${sideCode(event.side)} on ${event.mapName}`;
+  }
+}
+
+function restingLine(onClock: Props["onClock"], decider?: string) {
+  if (decider) return `Decider: ${decider}`;
+  if (!onClock) return "";
+  const verb = onClock.action === "ban" ? "to ban" : onClock.action === "pick" ? "to pick" : "to choose side";
+  return `${teamCode(onClock.teamName)} ${verb}`;
 }
 
 const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
@@ -66,36 +119,19 @@ const LiveClock = ({ label }: { label: string }) => {
   );
 };
 
-const FooterLine = ({ onClock, decider }: { onClock: Props["onClock"]; decider?: VetoStripCard }) => {
-  if (decider) {
-    return <p className="font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">Decider: {decider.mapName}</p>;
-  }
-  if (!onClock) return null;
-  const verb = onClock.action === "ban" ? "to ban" : onClock.action === "pick" ? "to pick" : "to choose side";
-  return (
-    <p className="flex items-center gap-[0.6vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">
-      {teamCode(onClock.teamName)} {verb}
-      <span aria-hidden className="bcv-cursor inline-block h-[1.3vw] w-[0.7vw] bg-rose-500" />
-    </p>
-  );
-};
-
 /**
- * Full-frame 16:9 broadcast graphic for OBS: the veto as a row of tall map cards.
- * Each new ban, pick, decider or side choice airs as a moment: the card settles
- * with a stamp and the lower band announces it.
+ * Full-frame 16:9 broadcast graphic for OBS: the map pool as a row of tall cards.
+ * A ban, pick or decider switches layers on the map's own card (see
+ * broadcastOverlayStyles) and the caption types the moment out.
  */
 export const PublicMapVetoBroadcastOverlay = (props: Props) => {
-  const { cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
+  const { maps, cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
+  const states = useMemo(() => buildMapStates(cards), [cards]);
   const eventSlots = useMemo(() => toOverlayEventSlots(cards), [cards]);
-  const { current, phase } = useOverlayEventQueue(eventSlots, cards.length > 0);
-  const quietSteps = useQuietSteps(cards);
-  const decider = cards.find((card) => card.kind === "decider" && card.mapSettled);
-  const mapNumbers = new Map<number, number>();
-  cards
-    .filter((card) => card.kind !== "ban")
-    .forEach((card, index) => mapNumbers.set(card.stepNumber, index + 1));
-  const currentStep = current ? Number(current.slotKey.replace("step-", "")) : null;
+  const { current } = useOverlayEventQueue(eventSlots, cards.length > 0);
+  const quiet = useQuietMaps(states, maps.length > 0);
+  const decider = [...states.entries()].find(([, state]) => state.status === "decider" && state.side)?.[0];
+  const caption = current ? eventLine(current) : restingLine(onClock, decider);
 
   return (
     <main
@@ -130,26 +166,19 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
         </div>
 
         <div className="mt-[5vh] flex min-h-0 flex-1 justify-center gap-[0.9vw]">
-          {cards.map((card, index) => (
+          {maps.map((map, index) => (
             <BroadcastOverlayCard
-              key={card.stepNumber}
-              card={card}
+              key={map.id}
+              map={map}
+              state={states.get(map.name) ?? OPEN}
               index={index}
-              mapNumber={mapNumbers.get(card.stepNumber)}
-              quiet={quietSteps === null || quietSteps.has(card.stepNumber)}
+              quiet={quiet === null || quiet.has(map.name)}
             />
           ))}
         </div>
 
-        <div className="relative mt-[3.5vh] flex h-[9vh] shrink-0 items-center">
-          <FooterLine onClock={onClock} decider={decider} />
-          {current ? (
-            <BroadcastOverlayAnnouncement
-              event={current}
-              phase={phase}
-              mapNumber={currentStep === null ? undefined : mapNumbers.get(currentStep)}
-            />
-          ) : null}
+        <div className="mt-[3.5vh] flex h-[6vh] shrink-0 items-center">
+          <TypewriterLine text={caption} />
         </div>
       </div>
 
