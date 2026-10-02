@@ -126,7 +126,7 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
   return (
     <main
       className={cn(
-        "relative h-dvh w-dvw overflow-hidden text-white",
+        "bcv-root relative h-dvh w-dvw overflow-hidden text-white",
         transparent ? "bg-transparent" : "bg-[radial-gradient(ellipse_at_20%_0%,rgba(244,63,94,0.10),transparent_55%),linear-gradient(180deg,#0b0b0f,#09090b)]",
       )}
       aria-label="Map veto OBS overlay"
