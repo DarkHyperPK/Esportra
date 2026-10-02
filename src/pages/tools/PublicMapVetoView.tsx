@@ -133,6 +133,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [copiedOverlay, setCopiedOverlay] = useState(false);
   const [overlayTransition, setOverlayTransition] = useState("up");
   const [overlayTheme, setOverlayTheme] = useState("broadcast");
+  const [overlayPlayback, setOverlayPlayback] = useState("live");
   const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
@@ -160,7 +161,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     && ((state.role === "team1" && veto.current_team_id === veto.team1_id)
       || (state.role === "team2" && veto.current_team_id === veto.team2_id));
   const overlayToken = state.overlayToken ?? state.hostToken;
-  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme) : "";
+  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme, overlayPlayback) : "";
 
   const handleMapAction = useCallback(async (mapId: string) => {
     if (!veto.current_action || acting) return;
@@ -222,7 +223,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const copyOverlayLink = async () => {
     if (!overlayToken) return;
-    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme));
+    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme, overlayPlayback));
     setCopiedOverlay(true);
     toast({ title: "OBS overlay link copied" });
     window.setTimeout(() => setCopiedOverlay(false), 2000);
@@ -286,6 +287,17 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                     <option key={theme.value} value={theme.value}>{theme.label}</option>
                   ))}
                 </select>
+                {overlayTheme === "broadcast" && (
+                  <select
+                    value={overlayPlayback}
+                    onChange={(event) => setOverlayPlayback(event.target.value)}
+                    className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
+                    aria-label="OBS overlay playback"
+                  >
+                    <option value="live">Follow live</option>
+                    <option value="replay">Full replay</option>
+                  </select>
+                )}
                 <CommandButton variant="ghost" size="sm" className="border-0" onClick={() => { void copyOverlayLink(); }}>
                   {copiedOverlay ? <Check className="h-3.5 w-3.5" /> : <MonitorUp className="h-3.5 w-3.5" />}
                   Copy OBS link

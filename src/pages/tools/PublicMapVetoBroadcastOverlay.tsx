@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { VetoStripCard } from "@/components/tournament/map-veto/buildVetoStripCards";
 import { cn } from "@/lib/utils";
-import { buildMapStates, toOverlayEventSlots, type OverlayMapState } from "./buildOverlayStepCards";
+import { buildOverlayBeats, statesFromBeats, type OverlayBeat, type OverlayMapState } from "./overlayBeats";
 import { BROADCAST_OVERLAY_CSS, overlayEnterClass, sideCode, teamCode } from "./broadcastOverlayStyles";
 import { BroadcastOverlayCard, type OverlayPoolMap } from "./BroadcastOverlayCard";
-import { useOverlayEventQueue } from "./useOverlayEventQueue";
-import type { OverlayVetoEvent } from "./overlayVetoEvents";
+import { useOverlayPlayback } from "./useOverlayPlayback";
 
 type Props = {
   /** The map pool, in a fixed order. One card per map; cards never move. */
   maps: OverlayPoolMap[];
-  /** The veto's map decisions, in veto order. Drives each card's state and the caption. */
+  /** The veto's map decisions, in veto order. Played back beat by beat onto the cards. */
   cards: VetoStripCard[];
   gameLabel: string;
   bestOf: number;
@@ -21,28 +20,14 @@ type Props = {
   onClock?: { teamName: string; action: "ban" | "pick" | "pick_side" } | null;
   transparent: boolean;
   transition: "none" | "up" | "left" | "right";
+  /** Play the whole veto from its first action, for a producer rolling it on air. */
+  replay: boolean;
+  /** History has loaded, so what's on the board is the real starting point. */
+  ready: boolean;
 };
 
 const OPEN: OverlayMapState = { status: "open" };
-const TYPE_MS_PER_CHAR = 28;
-
-/**
- * Maps already settled when the overlay first rendered (OBS load or refresh) show
- * their final state without replaying; anything that settles later animates.
- * A reset re-arms every card. `null` until the first effect runs = all quiet.
- */
-function useQuietMaps(states: Map<string, OverlayMapState>, ready: boolean) {
-  const [quiet, setQuiet] = useState<Set<string> | null>(null);
-  useEffect(() => {
-    if (!ready) return;
-    if (quiet === null) {
-      setQuiet(new Set(states.keys()));
-    } else if (quiet.size > 0 && states.size === 0) {
-      setQuiet(new Set());
-    }
-  }, [quiet, ready, states]);
-  return quiet;
-}
+const TYPE_MS_PER_CHAR = 45;
 
 /** Types its text out character by character whenever the text changes. */
 const TypewriterLine = ({ text }: { text: string }) => {
@@ -71,17 +56,16 @@ const TypewriterLine = ({ text }: { text: string }) => {
   );
 };
 
-function eventLine(event: OverlayVetoEvent) {
-  const team = event.teamName ? teamCode(event.teamName) : "";
-  switch (event.kind) {
+function beatLine(beat: OverlayBeat) {
+  switch (beat.kind) {
     case "ban":
-      return `${team} bans ${event.mapName}`;
+      return `${teamCode(beat.teamName ?? "")} bans ${beat.mapName}`;
     case "pick":
-      return `${team} picks ${event.mapName}`;
+      return `${teamCode(beat.teamName ?? "")} picks ${beat.mapName}`;
     case "decider":
-      return `Decider: ${event.mapName}`;
+      return `Decider: ${beat.mapName}`;
     default:
-      return `${team} ${sideCode(event.side)} on ${event.mapName}`;
+      return `${teamCode(beat.sideTeamName ?? "")} ${sideCode(beat.side)} on ${beat.mapName}`;
   }
 }
 
@@ -121,17 +105,23 @@ const LiveClock = ({ label }: { label: string }) => {
 
 /**
  * Full-frame 16:9 broadcast graphic for OBS: the map pool as a row of tall cards.
- * A ban, pick or decider switches layers on the map's own card (see
- * broadcastOverlayStyles) and the caption types the moment out.
+ * It doesn't mirror the veto live; it plays it back one beat at a time (see
+ * useOverlayPlayback). Each beat lifts its card, plays the layers on it (see
+ * broadcastOverlayStyles) and types the moment out in the caption.
  */
 export const PublicMapVetoBroadcastOverlay = (props: Props) => {
-  const { maps, cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
-  const states = useMemo(() => buildMapStates(cards), [cards]);
-  const eventSlots = useMemo(() => toOverlayEventSlots(cards), [cards]);
-  const { current } = useOverlayEventQueue(eventSlots, cards.length > 0);
-  const quiet = useQuietMaps(states, maps.length > 0);
+  const { maps, cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock, replay, ready } = props;
+  const beats = useMemo(() => buildOverlayBeats(cards), [cards]);
+  const { current, shown, initial, lastPlayed, busy } = useOverlayPlayback(beats, { ready: ready && maps.length > 0, replay });
+  const states = useMemo(() => statesFromBeats(shown), [shown]);
+  const quiet = useMemo(
+    () => new Set(beats.filter((beat) => beat.kind !== "side" && initial.has(beat.id)).map((beat) => beat.mapName)),
+    [beats, initial],
+  );
   const decider = [...states.entries()].find(([, state]) => state.status === "decider" && state.side)?.[0];
-  const caption = current ? eventLine(current) : restingLine(onClock, decider);
+  // Between beats the last moment stays up; the resting line only returns once playback has caught up.
+  const onStage = current ?? (busy ? lastPlayed : null);
+  const caption = onStage ? beatLine(onStage) : busy ? "" : restingLine(onClock, decider);
 
   return (
     <main
@@ -172,7 +162,9 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
               map={map}
               state={states.get(map.name) ?? OPEN}
               index={index}
-              quiet={quiet === null || quiet.has(map.name)}
+              quiet={quiet.has(map.name)}
+              focused={current?.mapName === map.name}
+              dimmed={current !== null && current.mapName !== map.name}
             />
           ))}
         </div>

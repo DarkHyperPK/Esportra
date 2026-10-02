@@ -559,6 +559,7 @@ const PublicMapVetoOverlay = () => {
   const transparent = searchParams.get("transparent") === "1";
   const transition = overlayTransition(searchParams.get("transition"));
   const theme = overlayTheme(searchParams.get("theme"));
+  const replay = searchParams.get("playback") === "replay";
   const queryClient = useQueryClient();
   const actingRef = useRef(false);
   const realtimeConnectedRef = useRef(false);
@@ -731,6 +732,8 @@ const PublicMapVetoOverlay = () => {
         onClock={onClock}
         transparent={transparent}
         transition={transition}
+        replay={replay}
+        ready={!historyQuery.isLoading}
       />
     );
   }

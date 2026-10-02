@@ -207,5 +207,6 @@ export const buildPublicTeamVetoUrl = (token: string) =>
 export const buildPublicHostVetoUrl = (token: string) =>
   `${window.location.origin}/tools/map-veto/host/${token}`;
 
-export const buildPublicVetoOverlayUrl = (token: string, transition = "up", theme = "broadcast") =>
-  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}&theme=${encodeURIComponent(theme)}`;
+/** `playback=replay` plays the whole veto from its first action each time the source loads. */
+export const buildPublicVetoOverlayUrl = (token: string, transition = "up", theme = "broadcast", playback = "live") =>
+  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}&theme=${encodeURIComponent(theme)}${playback === "replay" ? "&playback=replay" : ""}`;
