@@ -87,6 +87,17 @@ const PublicMapVetoRoom = () => {
     actingRef,
     onUpdated: syncFromServer,
     onReset: syncFromServer,
+    onTossResult: (payload) => {
+      queryClient.setQueryData(stateQueryKey, (prev: PublicVetoState | undefined) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: "toss_choice_pending",
+          tossWinnerTeamId: payload.winnerTeamId,
+          tossWinnerName: payload.winnerTeamName,
+        };
+      });
+    },
   });
 
   realtimeConnectedRef.current = realtimeConnected;
@@ -122,6 +133,42 @@ const PublicMapVetoRoom = () => {
       await refreshHistory(nextState.maps, nextState.game);
     } catch (err) {
       toast({ title: "Action failed", description: getApiErrorMessage(err), variant: "destructive" });
+      await syncFromServer();
+      throw err;
+    } finally {
+      endAction();
+    }
+  };
+
+  const performToss = async () => {
+    if (!token || actingRef.current) return;
+    beginAction();
+    try {
+      const updated = await apiClient.post<Record<string, unknown>>(
+        `/api/tools/map-veto/host/${token}/toss`,
+        {},
+      );
+      applyServerState(updated);
+    } catch (err) {
+      toast({ title: "Toss failed", description: getApiErrorMessage(err), variant: "destructive" });
+      await syncFromServer();
+      throw err;
+    } finally {
+      endAction();
+    }
+  };
+
+  const performTossChoice = async (goFirst: boolean) => {
+    if (!token || actingRef.current) return;
+    beginAction();
+    try {
+      const updated = await apiClient.post<Record<string, unknown>>(
+        `/api/tools/map-veto/team/${token}/toss-choice`,
+        { goFirst },
+      );
+      applyServerState(updated);
+    } catch (err) {
+      toast({ title: "Choice failed", description: getApiErrorMessage(err), variant: "destructive" });
       await syncFromServer();
       throw err;
     } finally {
@@ -171,6 +218,8 @@ const PublicMapVetoRoom = () => {
         acting={acting}
         onMapAction={performAction}
         onReset={reset}
+        onPerformToss={isHost ? performToss : undefined}
+        onPerformTossChoice={!isHost ? performTossChoice : undefined}
       />
     </div>
   );

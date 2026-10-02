@@ -295,6 +295,9 @@ const PublicMapVetoCreate = () => {
                   className="h-10 border-white/10 bg-black/40 text-sm text-white"
                 />
               </div>
+              <p className="text-sm text-zinc-400">
+                You'll run the toss in the veto room to decide which team goes first.
+              </p>
             </motion.div>
           )}
 

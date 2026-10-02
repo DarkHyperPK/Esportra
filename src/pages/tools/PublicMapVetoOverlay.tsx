@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
@@ -152,6 +152,7 @@ const PublicMapVetoOverlay = () => {
     actingRef,
     onUpdated: syncFromServer,
     onReset: syncFromServer,
+    onTossResult: () => void syncFromServer(),
   });
   realtimeConnectedRef.current = realtimeConnected;
 
@@ -187,6 +188,22 @@ const PublicMapVetoOverlay = () => {
   );
   usePreloadImages(gameMaps.map((map) => map.map_image_url));
 
+  const prevStatusRef = useRef<string | null>(null);
+  const [showActsFirst, setShowActsFirst] = useState(false);
+
+  useEffect(() => {
+    if (
+      prevStatusRef.current === "toss_choice_pending" &&
+      state?.status === "in_progress" &&
+      state.tossFirstActorTeamId
+    ) {
+      setShowActsFirst(true);
+      const timer = window.setTimeout(() => setShowActsFirst(false), 3000);
+      return () => window.clearTimeout(timer);
+    }
+    prevStatusRef.current = state?.status ?? null;
+  }, [state?.status, state?.tossFirstActorTeamId]);
+
   if (stateQuery.isLoading) {
     return (
       <main className={cn("flex h-dvh w-dvw items-center justify-center overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
@@ -217,22 +234,96 @@ const PublicMapVetoOverlay = () => {
     }
     : null;
   const ThemeOverlay = theme === "vct" ? PublicMapVetoVctOverlay : PublicMapVetoBroadcastOverlay;
+  const sectionStyle = { maxHeight: "min(24vh, 250px)" };
+  const innerStyle = { height: "clamp(168px, 22vh, 238px)" };
+
+  if (state.status === "pending_toss") {
+    return (
+      <main className={cn("h-dvh w-dvw overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
+        <div className="flex h-full w-full items-center justify-center overflow-hidden">
+          <section
+            className="w-full overflow-hidden bg-[#050505] shadow-[0_18px_70px_rgba(0,0,0,0.45)]"
+            style={sectionStyle}
+            aria-label="Map veto OBS overlay"
+          >
+            <div
+              className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center"
+              style={innerStyle}
+            >
+              <div className="text-[clamp(18px,1.6vw,36px)] font-black uppercase tracking-tight text-white">
+                {state.team1Name} <span className="text-white/40">vs</span> {state.team2Name}
+              </div>
+              <div className="text-[clamp(10px,0.9vw,18px)] font-bold uppercase tracking-[0.18em] text-white/50">
+                Waiting for the toss.
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (state.status === "toss_choice_pending") {
+    return (
+      <main className={cn("h-dvh w-dvw overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
+        <div className="flex h-full w-full items-center justify-center overflow-hidden">
+          <section
+            className="w-full overflow-hidden bg-[#050505] shadow-[0_18px_70px_rgba(0,0,0,0.45)]"
+            style={sectionStyle}
+            aria-label="Map veto OBS overlay"
+          >
+            <div
+              className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center"
+              style={innerStyle}
+            >
+              <div className="text-[clamp(18px,1.6vw,36px)] font-black uppercase tracking-tight text-white">
+                {state.tossWinnerName ?? "—"}
+              </div>
+              <div className="text-[clamp(10px,0.9vw,18px)] font-bold uppercase tracking-[0.18em] text-white/50">
+                {state.tossWinnerName
+                  ? `${state.tossWinnerName} is choosing.`
+                  : "Waiting for the toss result."}
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <ThemeOverlay
-      maps={gameMaps.map((map) => ({ id: String(map.id), name: map.map_name, imageUrl: map.map_image_url }))}
-      cards={stepCards}
-      gameLabel={PUBLIC_VETO_GAMES.find((game) => game.value === state.game)?.label ?? state.game}
-      bestOf={state.bestOf}
-      team1Name={state.team1Name}
-      team2Name={state.team2Name}
-      status={veto.status}
-      onClock={onClock}
-      transparent={transparent}
-      transition={transition}
-      replay={replay}
-      ready={!historyQuery.isLoading}
-    />
+    <div className="relative">
+      {showActsFirst && state.tossFirstActorTeamId && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-center justify-center pb-2"
+          style={{ bottom: "clamp(168px, 22vh, 238px)" }}
+          aria-live="assertive"
+          aria-atomic="true"
+        >
+          <div className="bg-black/80 px-4 py-2 text-center text-[clamp(12px,1vw,20px)] font-black uppercase tracking-[0.15em] text-white">
+            {state.tossFirstActorName
+            ?? (state.team1Id && state.tossFirstActorTeamId === state.team1Id
+              ? state.team1Name
+              : state.team2Name)}
+            {" "}acts first.
+          </div>
+        </div>
+      )}
+      <ThemeOverlay
+        maps={gameMaps.map((map) => ({ id: String(map.id), name: map.map_name, imageUrl: map.map_image_url }))}
+        cards={stepCards}
+        gameLabel={PUBLIC_VETO_GAMES.find((game) => game.value === state.game)?.label ?? state.game}
+        bestOf={state.bestOf}
+        team1Name={state.team1Name}
+        team2Name={state.team2Name}
+        status={veto.status}
+        onClock={onClock}
+        transparent={transparent}
+        transition={transition}
+        replay={replay}
+        ready={!historyQuery.isLoading}
+      />
+    </div>
   );
 };
 

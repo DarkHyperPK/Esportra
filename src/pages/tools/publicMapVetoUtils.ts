@@ -47,7 +47,7 @@ export type PublicVetoState = {
   team2Name: string;
   team1Id: string;
   team2Id: string;
-  status: string;
+  status: "pending_toss" | "toss_choice_pending" | "in_progress" | "completed" | string;
   currentTeamId?: string | null;
   currentAction?: "ban" | "pick" | "pick_side" | null;
   currentActionNumber?: number;
@@ -63,6 +63,16 @@ export type PublicVetoState = {
   overlayToken?: string | null;
   role: "host" | "team1" | "team2" | "viewer";
   expiresAt?: string;
+  tossWinnerTeamId: string | null;
+  tossWinnerName: string | null;
+  tossCompletedAt: string | null;
+  tossFirstActorTeamId: string | null;
+  /** Server-computed: true/false for team roles, null for host/viewer. */
+  isTossWinner?: boolean | null;
+  /** Server-computed name of the first-acting team after toss choice. */
+  tossFirstActorName?: string | null;
+  /** Server-computed: "team1" | "team2" | null — which side currently holds the turn. */
+  currentTeamSide?: "team1" | "team2" | null;
 };
 
 const pickVetoField = (row: Record<string, unknown>, ...keys: string[]) => {
@@ -112,6 +122,13 @@ export const normalizePublicVetoState = (raw: Record<string, unknown>): PublicVe
     overlayToken: (pickVetoField(raw, "overlayToken", "overlay_token", "overlaytoken") ?? null) as string | null,
     role: roleRaw === "host" || roleRaw === "team1" || roleRaw === "team2" ? roleRaw : "viewer",
     expiresAt: pickVetoField(raw, "expiresAt", "expires_at", "expiresat") as string | undefined,
+    tossWinnerTeamId: (pickVetoField(raw, "tossWinnerTeamId", "toss_winner_team_id") ?? null) as string | null,
+    tossWinnerName: (pickVetoField(raw, "tossWinnerName", "toss_winner_name") ?? null) as string | null,
+    tossCompletedAt: (pickVetoField(raw, "tossCompletedAt", "toss_completed_at") ?? null) as string | null,
+    tossFirstActorTeamId: (pickVetoField(raw, "tossFirstActorTeamId", "toss_first_actor_team_id") ?? null) as string | null,
+    isTossWinner: (pickVetoField(raw, "isTossWinner") ?? null) as boolean | null,
+    tossFirstActorName: (pickVetoField(raw, "tossFirstActorName") ?? null) as string | null,
+    currentTeamSide: (pickVetoField(raw, "currentTeamSide") ?? null) as "team1" | "team2" | null,
   };
 };
 

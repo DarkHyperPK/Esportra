@@ -6,12 +6,19 @@ type PublicVetoRealtimePayload = {
   sessionId?: string;
 };
 
+type TossResultPayload = {
+  sessionId?: string;
+  winnerTeamId: string;
+  winnerTeamName: string;
+};
+
 type UsePublicVetoRealtimeOptions = {
   sessionId?: string;
   enabled?: boolean;
   actingRef: React.RefObject<boolean>;
   onUpdated: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
+  onTossResult?: (payload: { sessionId: string; winnerTeamId: string; winnerTeamName: string }) => void;
 };
 
 export const usePublicVetoRealtime = ({
@@ -20,11 +27,13 @@ export const usePublicVetoRealtime = ({
   actingRef,
   onUpdated,
   onReset,
+  onTossResult,
 }: UsePublicVetoRealtimeOptions) => {
   const connectionRef = useRef<HubConnection | null>(null);
   const [connected, setConnected] = useState(false);
   const onUpdatedRef = useRef(onUpdated);
   const onResetRef = useRef(onReset);
+  const onTossResultRef = useRef(onTossResult);
 
   useEffect(() => {
     onUpdatedRef.current = onUpdated;
@@ -33,6 +42,10 @@ export const usePublicVetoRealtime = ({
   useEffect(() => {
     onResetRef.current = onReset;
   }, [onReset]);
+
+  useEffect(() => {
+    onTossResultRef.current = onTossResult;
+  }, [onTossResult]);
 
   useEffect(() => {
     if (!enabled || !sessionId) {
@@ -57,8 +70,18 @@ export const usePublicVetoRealtime = ({
       void onResetRef.current();
     };
 
+    const handleTossResult = (payload: TossResultPayload) => {
+      if (!mounted || !matchesSession(payload) || actingRef.current) return;
+      onTossResultRef.current?.({
+        sessionId: payload.sessionId ?? "",
+        winnerTeamId: payload.winnerTeamId,
+        winnerTeamName: payload.winnerTeamName,
+      });
+    };
+
     connection.on("PublicVetoUpdated", handleUpdated);
     connection.on("PublicVetoReset", handleReset);
+    connection.on("PublicVetoTossResult", handleTossResult);
 
     startWithRetry(connection)
       .then(async () => {
@@ -90,6 +113,7 @@ export const usePublicVetoRealtime = ({
       setConnected(false);
       connection.off("PublicVetoUpdated", handleUpdated);
       connection.off("PublicVetoReset", handleReset);
+      connection.off("PublicVetoTossResult", handleTossResult);
       void connection.invoke("LeavePublicToolVeto", sessionId).catch(() => undefined);
       void connection.stop();
       connectionRef.current = null;

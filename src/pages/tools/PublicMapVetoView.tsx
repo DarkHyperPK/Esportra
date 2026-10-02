@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Check, Link2, MonitorUp, RefreshCw } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Check, Link2, Loader2, MonitorUp, RefreshCw } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -9,6 +9,7 @@ import { VetoSequence } from "@/components/tournament/map-veto/VetoSequence";
 import { VetoTeamDisplay } from "@/components/tournament/map-veto/VetoTeamDisplay";
 import { VetoTurnBanner } from "@/components/tournament/map-veto/VetoTurnBanner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { CommandButton } from "@/components/management/CommandSurface";
 import { useToast } from "@/hooks/use-toast";
 import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
@@ -91,6 +92,8 @@ type PublicMapVetoViewProps = {
   acting: boolean;
   onMapAction: (mapId: string, side?: string | null) => Promise<void>;
   onReset: () => Promise<void>;
+  onPerformToss?: () => Promise<void>;
+  onPerformTossChoice?: (goFirst: boolean) => Promise<void>;
 };
 
 const noOp = () => undefined;
@@ -123,6 +126,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   acting,
   onMapAction,
   onReset,
+  onPerformToss,
+  onPerformTossChoice,
 }) => {
   const { toast } = useToast();
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
@@ -135,6 +140,40 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [overlayTheme, setOverlayTheme] = useState("broadcast");
   const [overlayPlayback, setOverlayPlayback] = useState("live");
   const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
+  const [clickedChoice, setClickedChoice] = useState<"goFirst" | "givesFirst" | null>(null);
+  const [firstActorAnnouncement, setFirstActorAnnouncement] = useState("");
+  const hasAnnouncedFirstActor = useRef(false);
+  const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!acting) {
+      setClickedChoice(null);
+    }
+  }, [acting]);
+
+  useEffect(() => {
+    if (state.status !== "in_progress") {
+      hasAnnouncedFirstActor.current = false;
+      return;
+    }
+    if (state.tossFirstActorTeamId && !hasAnnouncedFirstActor.current) {
+      // Prefer server-supplied name; fall back to ID comparison when team1Id is present (host view).
+      const name =
+        state.tossFirstActorName
+          ?? (state.team1Id && state.tossFirstActorTeamId === state.team1Id
+            ? state.team1Name
+            : state.team2Name);
+      setFirstActorAnnouncement(`${name} acts first.`);
+      hasAnnouncedFirstActor.current = true;
+    }
+  }, [
+    state.status,
+    state.tossFirstActorTeamId,
+    state.tossFirstActorName,
+    state.team1Id,
+    state.team1Name,
+    state.team2Name,
+  ]);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
   const storedMaps = useMemo(
@@ -149,18 +188,36 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const isComplete = veto.status === "completed";
   const vetoLive = isVetoLive(veto);
+  const tossPending =
+    state.status === "pending_toss" || state.status === "toss_choice_pending";
+  // isTossWinner: use server-supplied field (team roles); fall back to ID comparison for host view.
+  const isTossWinner =
+    !isHost &&
+    state.tossWinnerTeamId !== null &&
+    (state.isTossWinner != null
+      ? state.isTossWinner
+      : ((state.role === "team1" && state.tossWinnerTeamId === state.team1Id) ||
+         (state.role === "team2" && state.tossWinnerTeamId === state.team2Id)));
+  const opponentName =
+    state.role === "team1" ? state.team2Name : state.team1Name;
   const currentBestOf = veto.best_of || state.bestOf || 1;
-  const currentTeamName = veto.current_team_id === veto.team1_id ? state.team1Name : state.team2Name;
-  const activeSide = veto.current_team_id === veto.team1_id
-    ? "team1"
-    : veto.current_team_id === veto.team2_id
-      ? "team2"
-      : null;
+  // currentTeamSide is server-supplied for all roles and is authoritative.
+  // Fall back to ID comparison when team1Id is available (host view retains both IDs).
+  const resolvedCurrentTeamSide: "team1" | "team2" | null =
+    state.currentTeamSide
+    ?? (veto.current_team_id && veto.team1_id
+      ? (veto.current_team_id === veto.team1_id ? "team1"
+        : veto.current_team_id === veto.team2_id ? "team2"
+        : null)
+      : null);
+
+  const currentTeamName = resolvedCurrentTeamSide === "team1" ? state.team1Name : state.team2Name;
+  const activeSide = resolvedCurrentTeamSide;
 
   const isUserTurn = !isHost
     && veto.status === "in_progress"
-    && ((state.role === "team1" && veto.current_team_id === veto.team1_id)
-      || (state.role === "team2" && veto.current_team_id === veto.team2_id));
+    && ((state.role === "team1" && resolvedCurrentTeamSide === "team1")
+      || (state.role === "team2" && resolvedCurrentTeamSide === "team2"));
   const overlayToken = state.overlayToken ?? state.hostToken;
   const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme, overlayPlayback) : "";
 
@@ -340,6 +397,15 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
           )}
         </section>
       )}
+
+      {!isComplete
+        && state.status !== "pending_toss"
+        && state.status !== "toss_choice_pending"
+        && (
+          <div className="hidden lg:block">
+            {lineup(true)}
+          </div>
+        )}
     </>
   );
 
@@ -417,6 +483,120 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     </>
   );
 
+  const tossGateMotionProps = {
+    initial: { opacity: 0, y: reducedMotion ? 0 : -6 },
+    animate: { opacity: 1, y: 0 },
+    transition: { type: "spring" as const, stiffness: 420, damping: 34 },
+    className: "rounded-xl border border-white/10 bg-black/30 p-5 sm:p-6",
+  };
+
+  const tossStage = (() => {
+    if (state.status === "pending_toss") {
+      return (
+        <motion.div key="toss-gate-pending" {...tossGateMotionProps}>
+          {isHost ? (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">
+                MATCH START · PRE-VETO TOSS
+              </p>
+              <p className="mt-4 text-sm text-zinc-400">
+                Run the toss to decide who goes first.
+              </p>
+              <div className="mt-3">
+                <Button
+                  variant="default"
+                  className="w-full sm:w-auto"
+                  disabled={acting}
+                  onClick={() => { void onPerformToss?.(); }}
+                >
+                  {acting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  )}
+                  Run toss
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">
+                MAP VETO · WAITING
+              </p>
+              <p className="mt-4 text-sm text-zinc-400">
+                Waiting for the toss.
+              </p>
+            </>
+          )}
+        </motion.div>
+      );
+    }
+    // toss_choice_pending
+    return isTossWinner ? (
+      <motion.div key="toss-choice-winner" {...tossGateMotionProps}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">
+          TOSS RESULT
+        </p>
+        <p className="mt-3 truncate font-black tracking-tight text-white text-xl sm:text-2xl">
+          {state.tossWinnerName} wins the toss.
+        </p>
+        <div className="mt-2 h-0.5 w-12 bg-rose-500" />
+        <p className="mt-4 text-sm text-zinc-400">
+          Choose your opening:
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 border-white/20 text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            disabled={acting}
+            aria-label="Go first — your team acts first in the veto"
+            onClick={() => {
+              setClickedChoice("goFirst");
+              void onPerformTossChoice?.(true);
+            }}
+          >
+            {acting && clickedChoice === "goFirst" && (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            )}
+            Go first
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2 border-white/20 text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-50"
+            disabled={acting}
+            onClick={() => {
+              setClickedChoice("givesFirst");
+              void onPerformTossChoice?.(false);
+            }}
+          >
+            {acting && clickedChoice === "givesFirst" && (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            )}
+            Give first action to {opponentName}
+          </Button>
+        </div>
+      </motion.div>
+    ) : (
+      <motion.div key="toss-choice-waiting" {...tossGateMotionProps}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">
+          TOSS RESULT
+        </p>
+        {state.tossWinnerName ? (
+          <>
+            <p className="mt-3 text-sm font-semibold text-white">
+              {state.tossWinnerName} wins the toss.
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Waiting for {state.tossWinnerName} to choose.
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-zinc-400">
+            Waiting for the toss result.
+          </p>
+        )}
+      </motion.div>
+    );
+  })();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -424,6 +604,16 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
       className="min-h-screen w-full bg-background px-4 py-5 text-white lg:px-8 lg:py-8"
     >
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {state.status === "toss_choice_pending" && state.tossWinnerName
+          ? `${state.tossWinnerName} wins the toss.`
+          : firstActorAnnouncement}
+      </div>
       <div className="mx-auto max-w-[1400px] space-y-6">
         {pageHeader}
         <VetoTeamDisplay
@@ -433,7 +623,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
           completed={isComplete}
           bestOf={currentBestOf}
         />
-        {isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
+        {tossPending ? tossStage : isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
       </div>
 
       {!isHost && (
