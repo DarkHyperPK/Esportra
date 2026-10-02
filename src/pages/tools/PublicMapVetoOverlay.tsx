@@ -19,7 +19,8 @@ import {
   type PublicVetoHistoryRow,
 } from "./publicMapVetoUtils";
 
-const PUBLIC_VETO_OVERLAY_POLL_MS = 30_000;
+/** Fallback refresh while the live connection is down; OBS needs moments within seconds. */
+const PUBLIC_VETO_OVERLAY_POLL_MS = 3_000;
 
 const adaptHistory = (
   rows: Array<PublicVetoHistoryRow | Record<string, unknown>>,
@@ -697,7 +698,7 @@ const PublicMapVetoOverlay = () => {
         status={veto.status}
         onClock={onClock}
         transparent={transparent}
-        enterClassName={transition === "none" ? "" : transitionClassName(transition)}
+        transition={transition}
       />
     );
   }

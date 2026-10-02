@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { BROADCAST_OVERLAY_CSS, overlayEnterClass, teamCode } from "./broadcastOverlayStyles";
+import { BroadcastOverlayCard } from "./BroadcastOverlayCard";
+import { BroadcastOverlayAnnouncement } from "./BroadcastOverlayAnnouncement";
+import { useOverlayEventQueue } from "./useOverlayEventQueue";
 
 export type BroadcastOverlaySlot = {
   key: string;
@@ -24,40 +28,8 @@ type Props = {
   /** Team on the clock and what it must do, while the veto is live. */
   onClock?: { teamName: string; action: "ban" | "pick" | "pick_side" } | null;
   transparent: boolean;
-  enterClassName: string;
+  transition: "none" | "up" | "left" | "right";
 };
-
-const teamCode = (name: string) => {
-  const clean = name.trim();
-  const initials = clean
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .replace(/[^a-z0-9]/gi, "")
-    .toUpperCase();
-  if (initials.length >= 2) return initials.slice(0, 4);
-  return (clean.replace(/[^a-z0-9]/gi, "").slice(0, 3).toUpperCase() || "TEAM");
-};
-
-const sideCode = (side?: "attack" | "defend" | null) => (side === "attack" ? "ATK" : side === "defend" ? "DEF" : "");
-
-const BROADCAST_CSS = `
-@keyframes bcv-card-in { from { opacity: 0; transform: translate3d(0, 2.4vh, 0); } to { opacity: 1; transform: none; } }
-@keyframes bcv-stamp-in {
-  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(1.35); }
-  70% { opacity: 1; transform: translate(-50%, -50%) rotate(-8deg) scale(0.96); }
-  100% { opacity: 1; transform: translate(-50%, -50%) rotate(-8deg) scale(1); }
-}
-@keyframes bcv-slash-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes bcv-fade-up { from { opacity: 0; transform: translateY(1vh); } to { opacity: 1; transform: none; } }
-.bcv-card { animation: bcv-card-in 420ms cubic-bezier(0.2, 0, 0, 1) both; }
-.bcv-stamp { animation: bcv-stamp-in 420ms cubic-bezier(0.2, 0, 0, 1) 120ms both; }
-.bcv-slash { animation: bcv-slash-in 360ms cubic-bezier(0.2, 0, 0, 1) both; }
-.bcv-enter { animation: bcv-fade-up 520ms cubic-bezier(0.2, 0, 0, 1) both; }
-@media (prefers-reduced-motion: reduce) {
-  .bcv-card, .bcv-stamp, .bcv-slash, .bcv-enter { animation: none !important; }
-}
-`;
 
 const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
   <span
@@ -86,113 +58,33 @@ const LiveClock = ({ label }: { label: string }) => {
   );
 };
 
-const Stamp = ({ slot, mapNumber }: { slot: BroadcastOverlaySlot; mapNumber?: number }) => {
-  if (slot.kind === "pending") return null;
-  const isBan = slot.kind === "ban";
-  const isDecider = slot.kind === "decider";
-  return (
-    <div
-      className={cn(
-        "bcv-stamp absolute left-1/2 top-[44%] z-20 flex min-w-[78%] flex-col items-center px-[0.9vw] py-[0.7vh] font-mono font-bold uppercase",
-        isBan && "border-2 border-rose-500 bg-black/85 text-rose-400",
-        slot.kind === "pick" && "border-2 border-white bg-black/80 text-white",
-        isDecider && "bg-rose-500 text-white",
-      )}
-      style={{ transform: "translate(-50%, -50%) rotate(-8deg)" }}
-    >
-      <span className="text-[1.15vw] leading-tight tracking-[0.32em]">
-        {isBan ? "Banned" : isDecider ? "Decider" : "Picked"}
-      </span>
-      {!isBan && (
-        <span className="text-[0.62vw] leading-tight tracking-[0.3em] opacity-80">
-          {isDecider ? `Map ${mapNumber ?? ""}` : teamCode(slot.topTeam ?? "")}
-        </span>
-      )}
-    </div>
-  );
-};
-
-const caption = (slot: BroadcastOverlaySlot) => {
-  const side = slot.side && slot.bottomTeam ? `${teamCode(slot.bottomTeam)} ${sideCode(slot.side)}` : "";
-  if (slot.kind === "ban") return `${teamCode(slot.topTeam ?? "")} ban`;
-  if (slot.kind === "pick") return [`${teamCode(slot.topTeam ?? "")} pick`, side].filter(Boolean).join(" / ");
-  if (slot.kind === "decider") return ["Decider", side].filter(Boolean).join(" / ");
-  return "";
-};
-
-const Card = ({ slot, index, mapNumber }: { slot: BroadcastOverlaySlot; index: number; mapNumber?: number }) => {
-  const isBan = slot.kind === "ban";
-  const isPending = slot.kind === "pending";
-  const isDecider = slot.kind === "decider";
-
-  return (
-    <div
-      className={cn(
-        "bcv-card relative isolate h-full min-w-0 max-w-[11.5vw] flex-1 overflow-hidden bg-zinc-900",
-        isDecider && "outline outline-2 -outline-offset-2 outline-rose-500",
-        isPending && "outline outline-1 -outline-offset-1 outline-dashed outline-white/15",
-      )}
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      {slot.mapImageUrl ? (
-        <div
-          className={cn(
-            "absolute inset-0 bg-cover bg-center",
-            isBan && "grayscale",
-            isPending && "opacity-25 grayscale",
-          )}
-          style={{ backgroundImage: `url(${slot.mapImageUrl})` }}
-        />
-      ) : null}
-      <div className={cn(
-        "absolute inset-0",
-        isBan ? "bg-black/55" : "bg-gradient-to-t from-black/90 via-black/10 to-black/30",
-      )} />
-
-      {isBan ? (
-        <svg className="absolute inset-0 z-10 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-          <line className="bcv-slash" x1="8" y1="0" x2="92" y2="100" stroke="#f43f5e" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-        </svg>
-      ) : null}
-
-      <span className="absolute left-[0.7vw] top-[1.2vh] z-20 font-mono text-[0.75vw] text-zinc-300/80">
-        {String(index + 1).padStart(2, "0")}
-      </span>
-
-      <Stamp slot={slot} mapNumber={mapNumber} />
-
-      <div className="absolute inset-x-[0.8vw] bottom-[1.8vh] z-20">
-        <p className={cn(
-          "truncate font-heading text-[1.75vw] font-black uppercase leading-none tracking-tight",
-          isBan ? "text-zinc-500" : isPending ? "text-zinc-600" : "text-white",
-        )}>
-          {slot.mapName}
-        </p>
-        <p className="mt-[1vh] h-[1.2vw] truncate font-mono text-[0.68vw] uppercase tracking-[0.18em] text-zinc-300">
-          {caption(slot)}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-const footerLine = (props: Props, decider?: BroadcastOverlaySlot) => {
-  if (decider) return `Decider: ${decider.mapName}`;
-  if (props.onClock) {
-    const verb = props.onClock.action === "ban" ? "to ban" : props.onClock.action === "pick" ? "to pick" : "to choose side";
-    return `${teamCode(props.onClock.teamName)} ${verb}`;
+const FooterLine = ({ onClock, decider }: { onClock: Props["onClock"]; decider?: BroadcastOverlaySlot }) => {
+  if (decider) {
+    return <p className="font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">Decider: {decider.mapName}</p>;
   }
-  return "";
+  if (!onClock) return null;
+  const verb = onClock.action === "ban" ? "to ban" : onClock.action === "pick" ? "to pick" : "to choose side";
+  return (
+    <p className="flex items-center gap-[0.6vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">
+      {teamCode(onClock.teamName)} {verb}
+      <span aria-hidden className="bcv-cursor inline-block h-[1.3vw] w-[0.7vw] bg-rose-500" />
+    </p>
+  );
 };
 
-/** Full-frame 16:9 broadcast graphic for OBS: the veto as a row of tall map cards. */
+/**
+ * Full-frame 16:9 broadcast graphic for OBS: the veto as a row of tall map cards.
+ * Each new ban, pick, decider or side choice airs as a moment: the card settles
+ * with a stamp and the lower band announces it.
+ */
 export const PublicMapVetoBroadcastOverlay = (props: Props) => {
-  const { slots, gameLabel, bestOf, team1Name, team2Name, status, transparent, enterClassName } = props;
-  const decider = slots.find((slot) => slot.kind === "decider");
-  const pickNumbers = new Map<string, number>();
+  const { slots, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock } = props;
+  const { current, phase, awaitingSettle, awaitingSide } = useOverlayEventQueue(slots, true);
+  const decider = slots.find((slot) => slot.kind === "decider" && !awaitingSettle.has(slot.key));
+  const mapNumbers = new Map<string, number>();
   slots
     .filter((slot) => slot.kind === "pick" || slot.kind === "decider")
-    .forEach((slot, index) => pickNumbers.set(slot.key, index + 1));
+    .forEach((slot, index) => mapNumbers.set(slot.key, index + 1));
 
   return (
     <main
@@ -202,13 +94,13 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
       )}
       aria-label="Map veto OBS overlay"
     >
-      <style>{BROADCAST_CSS}</style>
+      <style>{BROADCAST_OVERLAY_CSS}</style>
       <Bracket corner="tl" />
       <Bracket corner="tr" />
       <Bracket corner="bl" />
       <Bracket corner="br" />
 
-      <div className={cn("absolute inset-0 flex flex-col px-[5.6vw] pb-[9vh] pt-[5.2vh]", enterClassName || "bcv-enter")}>
+      <div className={cn("absolute inset-0 flex flex-col px-[5.6vw] pb-[8vh] pt-[5.2vh]", overlayEnterClass(transition))}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-[0.6vw] font-mono text-[0.85vw] uppercase tracking-[0.24em] text-zinc-400">
             <img src="/logo.svg" alt="" className="h-[1.3vw] w-[1.3vw]" />
@@ -226,15 +118,26 @@ export const PublicMapVetoBroadcastOverlay = (props: Props) => {
           </p>
         </div>
 
-        <div className="mt-[6vh] flex min-h-0 flex-1 justify-center gap-[0.9vw]">
+        <div className="mt-[5vh] flex min-h-0 flex-1 justify-center gap-[0.9vw]">
           {slots.map((slot, index) => (
-            <Card key={`${slot.key}:${slot.kind}:${slot.side ?? ""}`} slot={slot} index={index} mapNumber={pickNumbers.get(slot.key)} />
+            <BroadcastOverlayCard
+              key={slot.mapId}
+              slot={slot}
+              index={index}
+              mapNumber={mapNumbers.get(slot.key)}
+              reveal={current?.slotKey === slot.key ? current : null}
+              awaitingSettle={awaitingSettle.has(slot.key)}
+              awaitingSide={awaitingSide.has(slot.key)}
+            />
           ))}
         </div>
 
-        <p className="mt-[5vh] h-[2vw] font-mono text-[1.35vw] uppercase tracking-[0.3em] text-rose-400">
-          {footerLine(props, decider)}
-        </p>
+        <div className="relative mt-[3.5vh] flex h-[9vh] shrink-0 items-center">
+          <FooterLine onClock={onClock} decider={decider} />
+          {current ? (
+            <BroadcastOverlayAnnouncement event={current} phase={phase} mapNumber={mapNumbers.get(current.slotKey)} />
+          ) : null}
+        </div>
       </div>
 
       <div className="absolute bottom-[3.6vh] left-[5.2vw]">
