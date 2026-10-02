@@ -161,7 +161,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 ref={canvas.scrollRef}
                 tabIndex={0}
                 aria-label="Tournament bracket"
-                className={cn("min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20", mode === 'page' && viewMode === 'bracket' && 'min-h-[70vh] md:min-h-0')}
+                className={cn("bracket-canvas min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20", mode === 'page' && viewMode === 'bracket' && 'min-h-[70vh] md:min-h-0')}
                 data-lenis-prevent
             >
                 {content()}

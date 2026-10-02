@@ -115,7 +115,7 @@ const PublicBracketWorkspace = ({ mode }: { mode: "owner" | "share" }) => {
       <div className="border border-white/[0.07] bg-background">
         <BracketSummaryStrip played={summary.played} total={summary.total} live={summary.live} teams={summary.teams} champion={champion} />
         <div className="grid xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section aria-label="Bracket" className="min-h-[520px] overflow-auto border-t border-white/[0.07] xl:h-[calc(100dvh-20rem)]" data-lenis-prevent>
+          <section aria-label="Bracket" className="bracket-canvas min-h-[520px] overflow-auto border-t border-white/[0.07] xl:h-[calc(100dvh-20rem)]" data-lenis-prevent>
             <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations hoveredTeamId={hoveredTeamId} onTeamHover={setHoveredTeamId} selectedMatchId={selected?.id ?? null}
               onMatchClick={owner ? (match) => (match.team1 && match.team2 ? setSelected(match) : undefined) : undefined} />
           </section>

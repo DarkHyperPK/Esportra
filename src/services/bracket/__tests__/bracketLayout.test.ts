@@ -23,6 +23,12 @@ describe("roundLabel", () => {
     expect(roundLabel("winners", 3, 4, 1, false)).toBe("Final");
   });
 
+  it("never calls a column the Final unless it is the last single match", () => {
+    expect(roundLabel("winners", 0, 1, 4, false)).toBe("Round 1");
+    expect(roundLabel("winners", 0, 2, 3, false)).toBe("Semifinals");
+    expect(roundLabel("winners", 1, 2, 1, false)).toBe("Final");
+  });
+
   it("names double-elimination rounds by bracket", () => {
     expect(roundLabel("winners", 2, 3, 1, true)).toBe("Upper final");
     expect(roundLabel("winners", 1, 3, 2, true)).toBe("Upper semifinals");

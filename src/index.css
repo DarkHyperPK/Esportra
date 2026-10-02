@@ -841,3 +841,14 @@ img {
   height: 2rem;
 }
 
+
+/* Bracket canvas: a lit stage instead of flat black. Soft rose and white key
+   lights from the top, a fine dot grid for depth. Shared by every bracket view. */
+.bracket-canvas {
+  background-color: #0c0c10;
+  background-image:
+    radial-gradient(ellipse 55% 45% at 12% 0%, rgba(244, 63, 94, 0.08), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 95% 0%, rgba(255, 255, 255, 0.05), transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 22px 22px;
+}

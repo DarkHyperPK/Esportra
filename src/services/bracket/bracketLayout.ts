@@ -77,20 +77,24 @@ function groupRounds(matches: BracketMatch[], side: Side) {
         .map(([round, list]) => ({ round, list: [...list].sort((a, b) => a.matchNumber - b.matchNumber) }));
 }
 
-/** Round names as the scene says them. */
+/**
+ * Round names as the scene says them, counted back from the last round so a
+ * bracket with byes or uneven rounds can't mislabel one: the last column is the
+ * Final (only when it is one match), then Semifinals, Quarterfinals, Round of 16.
+ */
 export function roundLabel(side: Side, index: number, count: number, matchCount: number, doubleElimination: boolean): string {
-    const isLast = index === count - 1;
+    const fromEnd = count - 1 - index;
     if (side === 'final') return index === 0 ? 'Grand final' : 'Grand final reset';
-    if (side === 'losers') return isLast ? 'Lower final' : `Lower round ${index + 1}`;
+    if (side === 'losers') return fromEnd === 0 ? 'Lower final' : `Lower round ${index + 1}`;
     if (doubleElimination) {
-        if (isLast) return 'Upper final';
-        if (matchCount === 2) return 'Upper semifinals';
+        if (fromEnd === 0) return 'Upper final';
+        if (fromEnd === 1) return 'Upper semifinals';
         return `Upper round ${index + 1}`;
     }
-    if (isLast && matchCount === 1) return 'Final';
-    if (matchCount === 2) return 'Semifinals';
-    if (matchCount === 4) return 'Quarterfinals';
-    return `Round of ${matchCount * 2}`;
+    if (fromEnd === 0) return matchCount === 1 ? 'Final' : `Round ${index + 1}`;
+    if (fromEnd === 1) return 'Semifinals';
+    if (fromEnd === 2) return 'Quarterfinals';
+    return `Round of ${2 ** (fromEnd + 1)}`;
 }
 
 function centerOf(ids: string[], positions: Map<string, { x: number; y: number }>): number | null {

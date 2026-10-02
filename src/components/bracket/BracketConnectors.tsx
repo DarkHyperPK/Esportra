@@ -15,9 +15,9 @@ type Props = {
 type Edge = { key: string; d: string; tone: 'idle' | 'decided' | 'lit' | 'ahead' };
 
 const STROKE: Record<Edge['tone'], { stroke: string; width: number; dash?: string }> = {
-    idle: { stroke: 'rgba(255,255,255,0.10)', width: 1 },
-    decided: { stroke: 'rgba(255,255,255,0.28)', width: 1 },
-    lit: { stroke: '#f43f5e', width: 2 },
+    idle: { stroke: 'rgba(255,255,255,0.16)', width: 1.5 },
+    decided: { stroke: 'rgba(255,255,255,0.42)', width: 1.5 },
+    lit: { stroke: '#f43f5e', width: 2.5 },
     ahead: { stroke: 'rgba(244,63,94,0.55)', width: 1.5, dash: '4 4' },
 };
 
@@ -79,7 +79,6 @@ export const BracketConnectors = ({ matches, layout, dims, teamId, route, champi
                     strokeWidth={STROKE[edge.tone].width}
                     strokeDasharray={STROKE[edge.tone].dash}
                     strokeLinejoin="miter"
-                    shapeRendering="crispEdges"
                 />
             ))}
         </svg>

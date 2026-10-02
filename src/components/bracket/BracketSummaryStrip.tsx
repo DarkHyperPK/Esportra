@@ -10,7 +10,7 @@ type Props = {
 };
 
 const Tile = ({ label, children }: { label: string; children: ReactNode }) => (
-    <div className="min-w-0 bg-card px-4 py-3">
+    <div className="min-w-0 bg-[linear-gradient(180deg,#18181d_0%,#121216_100%)] px-4 py-3">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">{label}</p>
         <div className="mt-1.5 flex min-w-0 items-baseline gap-1.5">{children}</div>
     </div>

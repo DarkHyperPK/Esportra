@@ -36,7 +36,7 @@ function statusDisplay(status: string): MatchStatusDisplay {
         case 'in_progress':
             return { label: 'Live', tone: 'accent' };
         case 'completed':
-            return { label: 'Final', tone: 'success' };
+            return { label: 'Completed', tone: 'success' };
         case 'disputed':
             return { label: 'Under review', tone: 'warning' };
         case 'cancelled':

@@ -10,10 +10,10 @@ export const BracketColumnHeader = ({ column, width }: { column: BracketColumn; 
 
     return (
         <div style={{ position: 'absolute', left: column.x, top: column.y, width }}>
-            <p className="truncate font-heading text-[14px] font-bold leading-tight text-white">{column.label}</p>
-            <p className="mt-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.2em] text-zinc-500">{caption}</p>
-            <div aria-hidden className="mt-2.5 h-px w-full bg-white/[0.08]">
-                <div className="h-px bg-white/45 transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
+            <p className="truncate font-heading text-[15px] font-bold leading-tight text-white">{column.label}</p>
+            <p className="mt-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{caption}</p>
+            <div aria-hidden className="mt-2.5 h-0.5 w-full bg-white/[0.08]">
+                <div className={column.live > 0 ? 'h-0.5 bg-rose-500 transition-[width] duration-300' : 'h-0.5 bg-white/60 transition-[width] duration-300'} style={{ width: `${Math.max(progress, column.live > 0 ? 0.06 : 0) * 100}%` }} />
             </div>
         </div>
     );

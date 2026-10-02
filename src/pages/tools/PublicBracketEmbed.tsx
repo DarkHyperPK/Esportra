@@ -35,7 +35,7 @@ const PublicBracketEmbed = () => {
           Powered by <img src={ESPORTRA_LOGO} alt="Esportra" className="h-4 w-auto" />
         </a>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="bracket-canvas min-h-0 flex-1 overflow-auto">
         <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations hoveredTeamId={hoveredTeamId} onTeamHover={setHoveredTeamId} />
       </div>
     </main>

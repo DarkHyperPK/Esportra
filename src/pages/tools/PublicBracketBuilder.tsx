@@ -153,7 +153,7 @@ const PublicBracketBuilder = () => {
                 triggerButton={<CommandIconButton variant="secondary" label="Download preview as PNG" className="h-8 w-8"><Download /></CommandIconButton>} />
             ) : null}
           </div>
-          <div className="min-h-0 flex-1 overflow-auto" data-lenis-prevent>
+          <div className="bracket-canvas min-h-0 flex-1 overflow-auto" data-lenis-prevent>
             {preview ? (
               <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations hoveredTeamId={hoveredTeamId} onTeamHover={setHoveredTeamId} />
             ) : (
