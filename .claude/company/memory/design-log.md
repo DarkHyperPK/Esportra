@@ -20,3 +20,11 @@ One line per shipped surface. The Creative Lead appends after every APPROVED rev
 - The OBS broadcast overlay no longer mirrors the veto live. It plays it back one beat at a time (ban 3.6s, pick 3.6s, decider 3.9s, side 2.4s, 0.7s breath between), so a fast veto never blurs into a jump. Players keep the realtime view; broadcast gets the edited sequence.
 - Each beat lifts its card (translateY + 4.5% scale) while the rest of the row dims, then plays a timeline: ban = 1.3s pen stroke, 1.4s colour drain, stamp drops in blurred at 1.8s, impact shake; pick = light sweep, white frame draws itself, stamp; decider = red bleeds in with a red frame, stamp, stays raised.
 - `playback=replay` on the overlay URL plays the whole veto from the first action whenever the source loads (host tools: "Full replay"). Live mode starts from what's settled once history has loaded.
+
+## 2026-10-02 — Public brackets (tournament bracket page + free bracket tool)
+
+- Direction: Broadcast, L0, same world as map veto and match details. Archetype: header → scoreboard strip → PATH (tree) ending in a SPOTLIGHT (champion seat).
+- Hero: a found team's route lit in rose through the tree (dashed rose for the road still ahead) to a champion seat at the end, which carries the largest type on the canvas once decided.
+- New: pure layout service (named rounds: Round of 16 / Quarterfinals / Upper final / Lower round N / Grand final; lower bracket centred on its feeders; grand final between both brackets), scorebug match card (caption strip + two rows, winner white, live rose), connectors that brighten once decided, "Find a team", summary strip (played / live / teams / champion), matches list as the phone default, stage tabs replacing the 256 px sidebar.
+- Tool: builder with segmented format / best of / size and a slots meter; runner with a report panel (score steppers, winner pre-picked from the score, "Up next" list of ready matches), confirm on reset and delete; embed with a title strip and "Powered by Esportra".
+- Removed: emoji section headings, orange winner bars, rainbow initial avatars, blue "?" placeholders.

@@ -1,28 +1,30 @@
-import React, { useMemo } from 'react';
-import { useGraphBracket } from '@/hooks/useGraphBracket';
-import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
-import { useState } from 'react';
-import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
-import { BracketRenderer } from '@/components/bracket/BracketRenderer';
-import { BracketExporter } from '@/components/bracket/BracketExporter';
-import { Download, AlertCircle, Maximize2, Network, List } from 'lucide-react';
-import { SwissView } from '@/components/bracket/SwissView';
-import { GroupStageView } from '@/components/bracket/GroupStageView';
-import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
-import { PublicMatchDetailsDialog } from './dialogs/PublicMatchDetailsDialog';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Download, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
-import { CommandButton, CommandSegmentedButton } from '@/components/management/CommandSurface';
+import { useBracketViewData } from '@/hooks/useBracketViewData';
 import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
+import { useDragToPan } from '@/hooks/useDragToPan';
+import { bracketChampion, bracketTeams, computeBracketLayout, rawMatchId, summarizeBracket } from '@/services/bracket/bracketLayout';
+import type { BracketStageSummary } from '@/hooks/useTournamentBracketSource';
+import type { FilterState } from '@/components/bracket/BracketSidebarFilter';
+import { BracketRenderer } from '@/components/bracket/BracketRenderer';
+import { BracketExporter } from '@/components/bracket/BracketExporter';
+import { BracketStageTabs } from '@/components/bracket/BracketStageTabs';
+import { BracketSummaryStrip } from '@/components/bracket/BracketSummaryStrip';
+import { BracketToolbar, type BracketViewMode, type RoundTab } from '@/components/bracket/BracketToolbar';
+import { BracketMatchList } from '@/components/bracket/BracketMatchList';
+import { BracketCanvasSkeleton } from '@/components/bracket/BracketCanvasSkeleton';
+import { BracketEmptyState } from '@/components/bracket/BracketEmptyState';
+import { SwissView } from '@/components/bracket/SwissView';
+import { GroupStageView } from '@/components/bracket/GroupStageView';
+import { CommandIconButton } from '@/components/management/CommandSurface';
+import { PublicMatchDetailsDialog } from './dialogs/PublicMatchDetailsDialog';
 
 interface PublicBracketViewProps {
-    versionId: string | null; // Allow null to show sidebar even if no bracket
+    versionId: string | null;
     tournamentId: string;
-
-    // Stage Props
-    stages?: any[];
+    stages?: BracketStageSummary[];
     selectedStageId?: string | null;
     onStageSelect?: (stageId: string) => void;
     versionsMap?: Record<string, string>;
@@ -33,450 +35,145 @@ interface PublicBracketViewProps {
     className?: string;
 }
 
+const ALL_ROUNDS: RoundTab = { key: 'all', label: 'All rounds', filter: { type: 'all' } };
+const startsOnPhone = () => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches;
+
+/**
+ * A published bracket for spectators: stage tabs, the bracket at a glance, a
+ * toolbar to switch view, jump to a round or find a team, then the tree (or the
+ * list on phones). Clicking a match opens its details.
+ */
 export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
-    versionId,
-    tournamentId,
-    stages,
-    selectedStageId,
-    onStageSelect,
-    versionsMap,
-    onFullscreen,
-    mode = 'page',
-    disableMotion,
-    height,
-    className,
+    versionId, tournamentId, stages = [], selectedStageId, onStageSelect, versionsMap = {},
+    onFullscreen, mode = 'page', disableMotion, height, className,
 }) => {
-    const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
-    const [viewMode, setViewMode] = useState<'bracket' | 'matches'>('bracket');
+    const { matches, loading, proofs, games } = useBracketViewData(versionId, tournamentId);
+    const [round, setRound] = useState<RoundTab>(ALL_ROUNDS);
+    const [viewMode, setViewMode] = useState<BracketViewMode>(() => (startsOnPhone() ? 'matches' : 'bracket'));
     const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
-    const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
-    const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
-    const bracketScroll = useBracketWheelScroll<HTMLDivElement>();
+    const [foundTeamId, setFoundTeamId] = useState<string | null>(null);
+    const [openMatch, setOpenMatch] = useState<BracketMatch | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const canvas = useBracketWheelScroll<HTMLDivElement>();
+    useDragToPan(canvas.scrollRef);
 
-    const { data: graphData } = useGraphBracket(versionId || '');
+    // A different stage is a different bracket: start from the whole tree again.
+    useEffect(() => {
+        setRound(ALL_ROUNDS);
+        setFoundTeamId(null);
+    }, [versionId]);
 
-    // Fetch match proofs (manual submissions + screenshot reports)
-    const { data: proofs } = useQuery({
-        queryKey: ['match-proofs', tournamentId],
-        queryFn: async () => {
-            if (!tournamentId) return {};
-            const map: Record<string, string[]> = {};
+    const format = matches.some((m) => m.bracketType === 'group') ? 'group' : matches.some((m) => m.bracketType === 'swiss_round') ? 'swiss' : 'elimination';
+    const layout = useMemo(() => computeBracketLayout(matches), [matches]);
+    const champion = useMemo(() => bracketChampion(matches, layout.champion?.sourceId), [matches, layout.champion?.sourceId]);
+    const summary = useMemo(() => summarizeBracket(matches), [matches]);
+    const teams = useMemo(() => bracketTeams(matches), [matches]);
+    const rounds = useMemo<RoundTab[]>(() => [
+        ALL_ROUNDS,
+        ...layout.columns.map((column) => ({
+            key: column.key,
+            label: column.label,
+            filter: (column.side === 'final' ? { type: 'final' } : { type: column.side, round: column.round }) as FilterState,
+        })),
+    ], [layout.columns]);
+    const currentStage = stages.find((stage) => stage.id === selectedStageId);
+    const highlight = hoveredTeamId ?? foundTeamId;
+    const elimination = format === 'elimination';
+    const openDetails = (match: BracketMatch) => {
+        setOpenMatch(match);
+        setDetailsOpen(true);
+    };
 
-            // Old system
-            try {
-                const data = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-proofs`);
-                data?.forEach((r: any) => {
-                    const id = r.match_id;
-                    if (!map[id]) map[id] = [];
-                    if (r.image_url) map[id].push(r.image_url);
-                });
-            } catch { /* may not exist */ }
+    const actions = (
+        <>
+            {onFullscreen ? (
+                <CommandIconButton variant="secondary" label="Open fullscreen" onClick={onFullscreen} className="h-8 w-8">
+                    <Maximize2 />
+                </CommandIconButton>
+            ) : null}
+            {elimination && matches.length > 0 ? (
+                <BracketExporter
+                    matches={matches}
+                    triggerButton={<CommandIconButton variant="secondary" label="Download bracket as PNG" className="h-8 w-8"><Download /></CommandIconButton>}
+                />
+            ) : null}
+        </>
+    );
 
-            // New system: match_result_reports with screenshot_urls
-            try {
-                const reports = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/result-reports`);
-                reports?.forEach((r: any) => {
-                    const id = r.match_id;
-                    if (!map[id]) map[id] = [];
-                    const urls = r.screenshot_urls ?? r.screenshotUrls;
-                    if (Array.isArray(urls)) {
-                        urls.forEach((url: string) => { if (url) map[id].push(url); });
-                    }
-                });
-            } catch { /* endpoint may not exist yet */ }
-
-            return map;
-        },
-        enabled: !!tournamentId,
-        staleTime: 1000 * 60,
-    });
-
-    // Fetch detailed game results (automated reports)
-    const { data: automatedGames } = useQuery({
-        queryKey: ['bracket-match-games', tournamentId],
-        queryFn: async () => {
-            if (!tournamentId) return {};
-            const data = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-games`);
-
-            const map: Record<string, any[]> = {};
-            data?.forEach((game: any) => {
-                const prefixedId = game.match_id;
-                if (!map[prefixedId]) map[prefixedId] = [];
-                map[prefixedId].push(game);
-            });
-            return map;
-        },
-        enabled: !!tournamentId,
-        staleTime: 1000 * 60,
-    });
-
-    // Fetch teams
-    const teamIds = useMemo(() => extractTeamIds(graphData?.nodes || []), [graphData?.nodes]);
-    const { data: teamsData } = useQuery({
-        queryKey: ['teams', teamIds],
-        queryFn: async () => {
-            if (teamIds.length === 0) return [];
-            return apiClient.post<any[]>('/api/teams/batch', { ids: teamIds });
-        },
-        enabled: teamIds.length > 0
-    });
-
-    // Adapt to bracket matches
-    const matches = useMemo(() => {
-        if (graphData?.version?.cached_ui_state) {
-            return graphData.version.cached_ui_state;
-        }
-
-        if (!graphData?.nodes || !graphData?.edges) return [];
-        const teamsMap = new Map();
-        teamsData?.forEach((t: any) => teamsMap.set(t.id, t));
-        return adaptGraphToBracketMatches(graphData.nodes, graphData.edges, teamsMap);
-    }, [graphData, teamsData]);
-
-    // Categorize matches by round (needed for rendering headers and loops)
-    const { winnersRounds, losersRounds, finalsMatches } = useMemo(() => {
-        const winners: Record<number, any[]> = {};
-        const losers: Record<number, any[]> = {};
-        const finals: any[] = [];
-
-        matches.forEach(m => {
-            if (m.bracketSide === 'final') finals.push(m);
-            else if (m.bracketSide === 'losers') {
-                if (!losers[m.round]) losers[m.round] = [];
-                losers[m.round].push(m);
-            } else {
-                if (!winners[m.round]) winners[m.round] = [];
-                winners[m.round].push(m);
-            }
-        });
-
-        Object.values(winners).forEach(arr => arr.sort((a, b) => a.matchNumber - b.matchNumber));
-        Object.values(losers).forEach(arr => arr.sort((a, b) => a.matchNumber - b.matchNumber));
-
-        return {
-            winnersRounds: winners,
-            losersRounds: losers,
-            finalsMatches: finals.sort((a, b) => a.matchNumber - b.matchNumber),
-            maxWinnersRound: Math.max(...Object.keys(winners).map(Number), 0)
-        };
-    }, [matches]);
-
-    // Detect Format
-    const format = useMemo(() => {
-        if (matches.some(m => m.bracketType === 'group')) return 'round_robin';
-        if (matches.some(m => m.bracketType === 'swiss_round')) return 'swiss';
-        return 'elimination';
-    }, [matches]);
-    const shouldDisableMotion = disableMotion ?? (mode !== 'fullscreen' || matches.length > 12);
-    const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
-
-    // Derived stage object needed for config (e.g. max swiss rounds)
-    const currentStage = useMemo(() => {
-        return stages?.find(s => s.id === selectedStageId);
-    }, [stages, selectedStageId]);
-
-    const matchListGroups = useMemo(() => {
-        const isMatchVisible = (match: BracketMatch) => {
-            if (activeFilter.type === 'all') return true;
-            if (activeFilter.type === 'winners') return (!match.bracketSide || match.bracketSide === 'winners') && match.round === activeFilter.round;
-            if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
-            if (activeFilter.type === 'final') return match.bracketSide === 'final';
-            return true;
-        };
-
-        const grouped = new Map<string, BracketMatch[]>();
-        const sorted = [...matches]
-            .filter(isMatchVisible)
-            .sort((a, b) => {
-                const sideOrder = (side?: string) => side === 'winners' ? 0 : side === 'losers' ? 1 : side === 'final' ? 2 : 0;
-                return sideOrder(a.bracketSide) - sideOrder(b.bracketSide)
-                    || (a.round ?? 0) - (b.round ?? 0)
-                    || (a.matchNumber ?? 0) - (b.matchNumber ?? 0);
-            });
-
-        sorted.forEach((match) => {
-            const key = match.bracketSide === 'final'
-                ? 'Grand Finals'
-                : `${match.bracketSide === 'losers' ? 'Losers' : 'Winners'} Round ${match.round}`;
-            grouped.set(key, [...(grouped.get(key) ?? []), match]);
-        });
-
-        return Array.from(grouped.entries());
-    }, [matches, activeFilter]);
-
-    // Render loading or empty state ONLY for the content area, preserving the sidebar
-    const renderContent = () => {
-        if (!versionId) {
-            return (
-                <div className="flex flex-col items-center justify-center py-20 text-zinc-500 h-full">
-                    <AlertCircle className="w-10 h-10 mb-3 opacity-20" />
-                    <p>No bracket generated for this stage</p>
-                </div>
-            );
-        }
-
-        if (!graphData || matches.length === 0) {
-            return (
-                <div className="flex items-center justify-center py-20 text-gray-400 h-full">
-                    Loading bracket...
-                </div>
-            );
-        }
-
+    const content = () => {
+        if (!versionId) return <BracketEmptyState message="It appears here when the organizer publishes this stage." />;
+        if (loading) return <BracketCanvasSkeleton />;
+        if (matches.length === 0) return <BracketEmptyState message="This stage has no matches yet." />;
         if (format === 'swiss') {
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
-                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                        {onFullscreen && (
-                            <CommandButton
-                                variant="secondary"
-                                size="sm"
-                                onClick={onFullscreen}
-                            >
-                                <Maximize2 className="w-4 h-4 mr-2" />
-                                Fullscreen
-                            </CommandButton>
-                        )}
-                    </div>
-                    <SwissView
-                        stageId={selectedStageId || ''}
-                        versionId={versionId || ''}
-                        matches={matches}
-                        isOrganizer={false}
-                        tournamentId={tournamentId}
-                        stage={currentStage}
-                        activeFilter={activeFilter}
-                        onMatchClick={(m) => {
-                            setResultsDialogMatch(m);
-                            setResultsDialogOpen(true);
-                        }}
-                        hasResultsMap={automatedGames}
-                        hasProofsMap={proofs}
-                        hoveredTeamId={hoveredTeamId}
-                        onTeamHover={setHoveredTeamId}
-                    />
-                </div>
+                <SwissView
+                    stageId={selectedStageId ?? ''} versionId={versionId} matches={matches} isOrganizer={false} tournamentId={tournamentId}
+                    stage={currentStage} activeFilter={{ type: 'all' }} onMatchClick={openDetails} hasResultsMap={games} hasProofsMap={proofs}
+                    hoveredTeamId={highlight} onTeamHover={setHoveredTeamId}
+                />
             );
         }
-
-        // --- GROUP STAGE VIEW ---
-        if (format === 'round_robin') {
-            const perGroupAdvancement = currentStage?.advancement_count
-                ? Number(currentStage.advancement_count)
-                : undefined;
-
+        if (format === 'group') {
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
-                    <GroupStageView
-                        stageId={selectedStageId || ''}
-                        versionId={versionId || ''}
-                        matches={matches}
-                        isOrganizer={false}
-                        advancementCount={perGroupAdvancement}
-                        onMatchClick={(m) => {
-                            setResultsDialogMatch(m);
-                            setResultsDialogOpen(true);
-                        }}
-                        hasResultsMap={automatedGames}
-                        hasProofsMap={proofs}
-                        hoveredTeamId={hoveredTeamId}
-                        onTeamHover={setHoveredTeamId}
-                        topRightAction={onFullscreen ? (
-                            <CommandButton
-                                variant="secondary"
-                                size="sm"
-                                onClick={onFullscreen}
-                            >
-                                <Maximize2 className="w-4 h-4 mr-2" />
-                                Fullscreen
-                            </CommandButton>
-                        ) : undefined}
-                    />
-                </div>
+                <GroupStageView
+                    stageId={selectedStageId ?? ''} versionId={versionId} matches={matches} isOrganizer={false}
+                    advancementCount={currentStage?.advancement_count ? Number(currentStage.advancement_count) : undefined}
+                    onMatchClick={openDetails} hasResultsMap={games} hasProofsMap={proofs} hoveredTeamId={highlight} onTeamHover={setHoveredTeamId}
+                />
             );
         }
-
-        // --- ELIMINATION VIEW (Default) ---
-        const isDoubleElim = Object.keys(losersRounds).length > 0;
-        const roundTabs: { label: string; filter: FilterState }[] = [
-            { label: 'All', filter: { type: 'all' } },
-            ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
-                label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
-                filter: { type: 'winners' as const, round: r },
-            })),
-            ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
-                label: `LB R${r}`,
-                filter: { type: 'losers' as const, round: r },
-            })),
-            ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
-        ];
-
-        const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
-
+        if (viewMode === 'matches') {
+            return <BracketMatchList matches={matches} activeFilter={round.filter} foundTeamId={foundTeamId} onMatchClick={openDetails} hasResultsMap={games} />;
+        }
         return (
-            <>
-                {/* Round tabs */}
-                <div className="sticky top-0 z-40 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-zinc-950 px-4 py-2">
-                    <div className="mr-2 flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-900/70 p-1">
-                        <CommandSegmentedButton
-                            onClick={() => setViewMode('bracket')}
-                            active={viewMode === 'bracket'}
-                            className="shrink-0 whitespace-nowrap"
-                        >
-                            <Network className="w-3.5 h-3.5 mr-1" />
-                            Bracket
-                        </CommandSegmentedButton>
-                        <CommandSegmentedButton
-                            onClick={() => setViewMode('matches')}
-                            active={viewMode === 'matches'}
-                            className="shrink-0 whitespace-nowrap"
-                        >
-                            <List className="w-3.5 h-3.5 mr-1" />
-                            Matches
-                        </CommandSegmentedButton>
-                    </div>
-                    {roundTabs.map(tab => (
-                        <CommandSegmentedButton
-                            key={tab.label}
-                            onClick={() => setActiveFilter(tab.filter)}
-                            active={isTabActive(tab.filter)}
-                            className="shrink-0 whitespace-nowrap"
-                        >
-                            {tab.label}
-                        </CommandSegmentedButton>
-                    ))}
-
-                    <div className="ml-auto flex items-center gap-2 pl-4">
-                        {onFullscreen && (
-                            <CommandButton
-                                variant="secondary"
-                                size="sm"
-                                onClick={onFullscreen}
-                            >
-                                <Maximize2 className="w-4 h-4 mr-2" />
-                                Fullscreen
-                            </CommandButton>
-                        )}
-                        <BracketExporter
-                            matches={matches}
-                            triggerButton={
-                                <CommandButton variant="secondary" size="sm">
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Export
-                                </CommandButton>
-                            }
-                        />
-                    </div>
-                </div>
-
-                {viewMode === 'matches' ? (
-                    <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4" data-lenis-prevent>
-                        <div className="mx-auto max-w-5xl space-y-5">
-                            {matchListGroups.map(([group, groupMatches]) => (
-                                <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-4">
-                                    <div className="mb-3 flex items-center justify-between">
-                                        <h3 className="text-sm font-semibold uppercase tracking-wider text-white">{group}</h3>
-                                        <span className="text-xs text-zinc-500">{groupMatches.length} match{groupMatches.length === 1 ? '' : 'es'}</span>
-                                    </div>
-                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                        {groupMatches.map((match) => (
-                                            <ReadOnlyMatchCard
-                                                key={match.id}
-                                                match={match}
-                                                className="w-full"
-                                                onClick={() => {
-                                                    setResultsDialogMatch(match);
-                                                    setResultsDialogOpen(true);
-                                                }}
-                                                hasAutomatedResults={(automatedGames?.[getRawId(match.id)]?.length ?? 0) > 0}
-                                                hasProofs={(proofs?.[getRawId(match.id)]?.length ?? 0) > 0}
-                                                hoveredTeamId={hoveredTeamId}
-                                                onTeamHover={setHoveredTeamId}
-                                            />
-                                        ))}
-                                    </div>
-                                </section>
-                            ))}
-                            {matchListGroups.length === 0 && (
-                                <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500">
-                                    No matches found for this filter.
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    <div
-                        ref={bracketScroll.scrollRef}
-                        tabIndex={0}
-                        aria-label="Scrollable tournament bracket canvas"
-                        className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                        data-lenis-prevent
-                    >
-                        <BracketRenderer
-                            matches={matches}
-                            activeFilter={activeFilter}
-                            onMatchClick={(m) => {
-                                setResultsDialogMatch(m);
-                                setResultsDialogOpen(true);
-                            }}
-                            hasResultsMap={automatedGames}
-                            hasProofsMap={proofs}
-                            isSingleElimination={currentStage?.format === 'single_elimination'}
-                            disableAnimations={shouldDisableMotion}
-                            hoveredTeamId={hoveredTeamId}
-                            onTeamHover={setHoveredTeamId}
-                        />
-                    </div>
-                )}
-            </>
+            <BracketRenderer
+                matches={matches} activeFilter={round.filter} onMatchClick={openDetails} hasResultsMap={games} hasProofsMap={proofs}
+                disableAnimations={disableMotion ?? matches.length > 24} hoveredTeamId={highlight} onTeamHover={setHoveredTeamId}
+            />
         );
     };
 
     return (
         <div
-            className={cn(
-                'flex min-h-0 w-full overflow-hidden',
-                mode === 'embedded' ? 'h-full' : 'h-[calc(100vh-140px)]',
-                className,
-            )}
+            className={cn('flex min-h-0 w-full flex-col overflow-hidden bg-background', mode === 'page' ? 'md:h-[calc(100dvh-140px)] md:min-h-[560px]' : 'h-full', className)}
             style={height ? { height } : undefined}
         >
-            {/* 
-               Only show Side Filter primarily for Elimination (Round Highlighting).
-               Swiss/Group views manage their own internal filtering/tabs.
-               However, we keep the structure to allow stage switching if stages>1 
-               (The sidebar handles stage switching props).
-            */}
-            {mode !== 'embedded' ? (
-                <BracketSidebarFilter
-                    winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
-                    losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
-                    hasFinals={finalsMatches.length > 0}
-                    activeFilter={activeFilter}
-                    onFilterChange={setActiveFilter}
-
-                    stages={stages}
-                    selectedStageId={selectedStageId}
-                    onStageSelect={onStageSelect}
-                    versionsMap={versionsMap}
+            {stages.length > 1 && onStageSelect ? (
+                <BracketStageTabs stages={stages} selectedStageId={selectedStageId ?? null} versionsMap={versionsMap} onSelect={onStageSelect} />
+            ) : null}
+            {mode !== 'embedded' && elimination && matches.length > 0 ? (
+                <BracketSummaryStrip played={summary.played} total={summary.total} live={summary.live} teams={summary.teams} champion={champion} />
+            ) : null}
+            {versionId && matches.length > 0 ? (
+                <BracketToolbar
+                    viewMode={elimination ? viewMode : undefined}
+                    onViewMode={setViewMode}
+                    rounds={elimination ? rounds : undefined}
+                    activeKey={round.key}
+                    onRound={setRound}
+                    teams={teams}
+                    foundTeamId={foundTeamId}
+                    onFindTeam={setFoundTeamId}
+                    actions={actions}
                 />
             ) : null}
-
-            <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
-                {renderContent()}
+            <div
+                ref={canvas.scrollRef}
+                tabIndex={0}
+                aria-label="Tournament bracket"
+                className={cn("min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20", mode === 'page' && viewMode === 'bracket' && 'min-h-[70vh] md:min-h-0')}
+                data-lenis-prevent
+            >
+                {content()}
             </div>
-
             <PublicMatchDetailsDialog
-                open={resultsDialogOpen}
-                onOpenChange={setResultsDialogOpen}
-                match={resultsDialogMatch}
-                results={resultsDialogMatch ? (proofs?.[getRawId(resultsDialogMatch.id)] || []).map((url: string) => ({
-                    image_url: url,
-                    comment: null,
-                    created_at: new Date().toISOString(),
-                    reporter_user_id: ''
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                match={openMatch}
+                results={openMatch ? (proofs[rawMatchId(String(openMatch.id))] ?? []).map((url) => ({
+                    image_url: url, comment: null, created_at: new Date().toISOString(), reporter_user_id: '',
                 })) : []}
-                automatedResults={resultsDialogMatch ? (automatedGames?.[getRawId(resultsDialogMatch.id)] || []) : []}
+                automatedResults={openMatch ? games[rawMatchId(String(openMatch.id))] ?? [] : []}
             />
         </div>
     );

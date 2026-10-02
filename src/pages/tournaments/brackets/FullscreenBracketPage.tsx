@@ -1,115 +1,60 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
-import { apiClient } from '@/lib/apiClient';
-import { PublicBracketView } from './PublicBracketView';
-import { DraggableContainer } from '@/components/DraggableContainer';
-import { useBracketRealtime } from '@/hooks/useBracketRealtime';
-import { CommandButton } from '@/components/management/CommandSurface';
+import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { getWebsiteAssetUrl } from '@/lib/storage';
+import { CommandButton } from '@/components/management/CommandSurface';
+import { EYEBROW_CLASS } from '@/components/ui/kit';
+import { BracketCanvasSkeleton } from '@/components/bracket/BracketCanvasSkeleton';
+import { BracketEmptyState } from '@/components/bracket/BracketEmptyState';
+import { useTournamentBracketSource } from '@/hooks/useTournamentBracketSource';
+import { PublicBracketView } from './PublicBracketView';
 
+const ESPORTRA_LOGO = getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png');
+
+/**
+ * The bracket on its own: a slim header and the whole screen for the tree.
+ * Meant for a second monitor, a venue screen or a stream capture.
+ */
 const FullscreenBracketPage = () => {
     const { slug } = useParams<{ slug: string }>();
-    const navigate = useNavigate();
-    const [tournament, setTournament] = useState<any | null>(null);
-    const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const fetchTournamentData = useCallback(async () => {
-        try {
-            setLoading(true);
-
-            // Fetch tournament — returns wrapped { tournament, participants, stages, ... }
-            const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
-            if (!response?.tournament) throw new Error('Tournament not found');
-
-            const tournamentData = response.tournament;
-            setTournament(tournamentData);
-
-            // Fetch bracket version (active or draft)
-            const versionsData = await apiClient.get<Array<{ id: string }>>(`/api/tournaments/${tournamentData.id}/bracket-versions?status=active,draft`);
-            if (versionsData && versionsData.length > 0) {
-                setActiveVersionId(versionsData[0].id);
-            } else {
-                setActiveVersionId(null);
-            }
-
-        } catch (error: any) {
-            console.error('Error fetching tournament:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [slug]);
-
-    useEffect(() => {
-        if (slug) {
-            fetchTournamentData();
-        }
-    }, [slug, fetchTournamentData]);
-
-    // Realtime updates
-    useBracketRealtime({
-        versionId: activeVersionId || undefined,
-        enabled: !!tournament?.id && !!activeVersionId
-    });
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
-                <div className="border border-white/10 bg-[#0a0a0c] p-8">
-                    <LoadingSpinner size={80} text="Loading Bracket..." />
-                </div>
-            </div>
-        );
-    }
-
-    if (!tournament || !activeVersionId) {
-        return (
-            <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
-                <div className="border border-white/10 bg-[#0a0a0c] p-8 text-center">
-                    <div className="text-6xl mb-4">🏆</div>
-                    <h3 className="text-xl font-semibold text-zinc-300 mb-2">Bracket Not Found</h3>
-                    <p className="text-zinc-500">The tournament bracket is not available yet.</p>
-                </div>
-            </div>
-        );
-    }
-
-
-
-    const handleBack = () => {
-        // Navigate back to the tournament management page (Stages tab usually)
-        if (tournament?.slug) {
-            navigate(`/organizer/tournament/${tournament.slug}`);
-        } else if (tournament?.id) {
-            navigate(`/organizer/tournament/${tournament.id}`);
-        } else {
-            navigate(-1);
-        }
-    };
+    const source = useTournamentBracketSource(slug);
+    const { tournament } = source;
+    const backTo = source.isOrganizer ? `/organizer/tournament/${slug}` : `/tournaments/${slug}`;
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-[#050505] overflow-hidden font-sans">
-            {/* Back Navigation */}
-            <div className="absolute top-6 left-6 z-50">
-                <CommandButton
-                    onClick={handleBack}
-                    variant="secondary"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Stages
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-background text-white">
+            <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-white/[0.07] px-4 sm:px-5">
+                <div className="flex min-w-0 items-center gap-4">
+                    <img src={ESPORTRA_LOGO} alt="Esportra" className="h-5 w-auto shrink-0" />
+                    <span aria-hidden className="h-5 w-px bg-white/15" />
+                    <div className="min-w-0">
+                        <p className={EYEBROW_CLASS}>Bracket</p>
+                        <p className="truncate font-heading text-[15px] font-bold leading-tight">{tournament?.name ?? ' '}</p>
+                    </div>
+                </div>
+                <CommandButton asChild variant="secondary" size="sm">
+                    <Link to={backTo}>
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{source.isOrganizer ? 'Back to manage' : 'Back to tournament'}</span>
+                    </Link>
                 </CommandButton>
-            </div>
-
-            <DraggableContainer className="h-full w-full border border-white/5 bg-black/30">
-                <div className="min-w-[2000px] min-h-[1500px] p-20">
+            </header>
+            <div className="min-h-0 flex-1">
+                {source.loading ? (
+                    <BracketCanvasSkeleton />
+                ) : !tournament ? (
+                    <BracketEmptyState message="This tournament could not be found." />
+                ) : (
                     <PublicBracketView
-                        versionId={activeVersionId}
+                        versionId={source.activeVersionId}
                         tournamentId={tournament.id}
+                        stages={source.stages}
+                        selectedStageId={source.selectedStageId}
+                        onStageSelect={source.selectStage}
+                        versionsMap={source.versionsMap}
                         mode="fullscreen"
                     />
-                </div>
-            </DraggableContainer>
+                )}
+            </div>
         </div>
     );
 };

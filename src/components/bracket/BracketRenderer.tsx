@@ -1,376 +1,163 @@
 import React, { useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
-import { BracketMatch } from '@/types/bracketTypes';
+import { motion } from 'framer-motion';
+import type { BracketMatch } from '@/types/bracketTypes';
+import {
+    bracketChampion,
+    computeBracketLayout,
+    DEFAULT_BRACKET_DIMS,
+    rawMatchId,
+    teamRoute,
+    type BracketColumn,
+    type BracketDims,
+} from '@/services/bracket/bracketLayout';
+import { ReadOnlyMatchCard, type MatchRouteState } from './ReadOnlyMatchCard';
+import { BracketColumnHeader, BracketSectionTitle } from './BracketColumnHeader';
+import { BracketChampionSeat } from './BracketChampionSeat';
+import { BracketConnectors } from './BracketConnectors';
+
 interface BracketRendererProps {
     matches: BracketMatch[];
     activeFilter: { type: string; round?: number };
     customFilterPredicate?: (match: BracketMatch) => boolean;
     onMatchClick?: (match: BracketMatch) => void;
-    hasResultsMap?: Record<string, any[]>;
+    hasResultsMap?: Record<string, unknown[]>;
     hasProofsMap?: Record<string, string[]>;
-    // Optional overrides for layout
     cardWidth?: number;
     cardHeight?: number;
     roundGap?: number;
     matchGap?: number;
-    leftPadding?: number;
-    headingHeight?: number;
-    headingMargin?: number;
-    bracketSpacing?: number;
     disableAnimations?: boolean;
+    /** Kept for callers; the layout reads the format from the matches themselves. */
     isSingleElimination?: boolean;
+    /** The found or hovered team: its route lights up through the tree. */
     hoveredTeamId?: string | null;
     onTeamHover?: (teamId: string | null) => void;
+    /** Outlines the match being edited. */
+    selectedMatchId?: string | null;
 }
 
+const PAD = 24;
+
+const matchesFilter = (match: BracketMatch, filter: BracketRendererProps['activeFilter']) => {
+    if (filter.type === 'all') return true;
+    if (filter.type === 'final') return match.bracketSide === 'final';
+    const side = match.bracketSide === 'losers' ? 'losers' : 'winners';
+    return side === filter.type && match.round === filter.round && match.bracketSide !== 'final';
+};
+
+function routeStateOf(id: string, teamId: string | null | undefined, route: ReturnType<typeof teamRoute>): MatchRouteState | null {
+    if (!teamId) return null;
+    if (route.played.has(id)) return 'played';
+    if (route.ahead.has(id)) return 'ahead';
+    return 'off';
+}
+
+/**
+ * An elimination bracket as a broadcast tree: named rounds with progress, quiet
+ * connectors that brighten as matches are decided, a found team's route lit in
+ * rose, and the champion's seat at the end. A round filter shows that round as a list.
+ */
 export const BracketRenderer: React.FC<BracketRendererProps> = ({
-    matches,
-    activeFilter,
-    customFilterPredicate,
-    onMatchClick,
-    hasResultsMap = {},
-    hasProofsMap = {},
-    cardWidth = 260,
-    cardHeight = 86,
-    roundGap = 70,
-    matchGap = 30,
-    leftPadding = 10,
-    headingHeight = 40,
-    headingMargin = 40,
-    bracketSpacing = 80,
-    disableAnimations = false,
-    isSingleElimination = false,
-    hoveredTeamId,
-    onTeamHover,
+    matches, activeFilter, customFilterPredicate, onMatchClick, hasResultsMap = {}, hasProofsMap = {},
+    cardWidth, cardHeight, roundGap, matchGap, disableAnimations = false, hoveredTeamId = null, onTeamHover, selectedMatchId = null,
 }) => {
-    const isDoubleElimination = useMemo(() => {
-        if (isSingleElimination) return false;
-        return matches.some((match) => match.bracketSide === 'losers');
-    }, [isSingleElimination, matches]);
+    const dims: BracketDims = useMemo(() => ({
+        ...DEFAULT_BRACKET_DIMS,
+        cardWidth: cardWidth ?? DEFAULT_BRACKET_DIMS.cardWidth,
+        cardHeight: cardHeight ?? DEFAULT_BRACKET_DIMS.cardHeight,
+        roundGap: roundGap ?? DEFAULT_BRACKET_DIMS.roundGap,
+        matchGap: matchGap ?? DEFAULT_BRACKET_DIMS.matchGap,
+        championWidth: cardWidth ?? DEFAULT_BRACKET_DIMS.championWidth,
+    }), [cardWidth, cardHeight, roundGap, matchGap]);
+    const layout = useMemo(() => computeBracketLayout(matches, dims), [matches, dims]);
+    const route = useMemo(() => teamRoute(matches, hoveredTeamId), [matches, hoveredTeamId]);
+    const champion = useMemo(() => bracketChampion(matches, layout.champion?.sourceId), [matches, layout.champion?.sourceId]);
+    const doubleElimination = layout.sections.length > 0;
+    const columnIndex = useMemo(() => new Map(layout.columns.map((column) => [column.x, column])), [layout.columns]);
 
-    // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
-    const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
+    const renderCard = (match: BracketMatch, position?: { x: number; y: number }) => (
+        <ReadOnlyMatchCard
+            match={match}
+            x={position ? 0 : undefined}
+            y={position ? 0 : undefined}
+            width={dims.cardWidth}
+            height={dims.cardHeight}
+            className={position ? undefined : 'w-full'}
+            onClick={onMatchClick ? () => onMatchClick(match) : undefined}
+            hasAutomatedResults={(hasResultsMap[rawMatchId(String(match.id))]?.length ?? 0) > 0}
+            hasProofs={(hasProofsMap[rawMatchId(String(match.id))]?.length ?? 0) > 0}
+            hoveredTeamId={hoveredTeamId}
+            onTeamHover={onTeamHover}
+            isDoubleElimination={doubleElimination}
+            routeState={routeStateOf(match.id, hoveredTeamId, route)}
+            selected={selectedMatchId === match.id}
+        />
+    );
 
-    // Calculate positions using the robust slot-based algorithm
-    const { matchPositions, totalWidth, totalHeight, winnersBottomY } = useMemo(() => {
-        const map = new Map<string, { x: number; y: number }>();
-        if (matches.length === 0) return { matchPositions: {}, totalWidth: 0, totalHeight: 0, winnersBottomY: 0 };
-
-        // 1. Group by Round and Bracket Side
-        const rounds: Record<string, Record<number, any[]>> = {
-            winners: {},
-            losers: {},
-            final: {}
-        };
-
-        matches.forEach(m => {
-            const side = m.bracketSide || 'winners';
-            if (!rounds[side][m.round]) rounds[side][m.round] = [];
-            rounds[side][m.round].push(m);
-        });
-
-        // Sort matches in each round by matchNumber
-        Object.keys(rounds).forEach(side => {
-            Object.keys(rounds[side]).forEach(r => {
-                rounds[side][Number(r)].sort((a, b) => a.matchNumber - b.matchNumber);
-            });
-        });
-
-        // 2. Calculate Positions for Winners Bracket (Slot-Based)
-        const wRounds = Object.keys(rounds.winners).map(Number).sort((a, b) => a - b);
-        const matchSlots = new Map<string, number>();
-
-        console.log('[BracketRenderer] Winners rounds:', wRounds, 'matches per round:', Object.fromEntries(Object.entries(rounds.winners).map(([r, m]) => [r, (m as any[]).length])));
-
-        wRounds.forEach((round, rIdx) => {
-            const roundMatches = rounds.winners[round];
-            roundMatches.forEach((m, idx) => {
-                const id = String(m.id);
-                const rawId = getRawId(id);
-                // Formula for perfect binary tree symmetry:
-                // slot = idx * 2^r + (2^r - 1) / 2
-                const power = Math.pow(2, rIdx);
-                const slot = idx * power + (power - 1) / 2;
-
-                console.log(`[BracketRenderer] Round=${round} rIdx=${rIdx} idx=${idx} power=${power} slot=${slot} matchNumber=${m.matchNumber}`);
-
-                matchSlots.set(id, slot);
-                matchSlots.set(rawId, slot);
-
-                const x = leftPadding + (rIdx * (cardWidth + roundGap));
-                const y = headingHeight + headingMargin + (slot * (cardHeight + matchGap));
-                map.set(id, { x, y });
-                map.set(rawId, { x, y });
-            });
-        });
-
-        // 3. Process Losers Bracket
-        const maxWinnersY = Math.max(...Array.from(map.values()).map(p => p.y + cardHeight), 0);
-        const losersHeadingY = maxWinnersY + bracketSpacing;
-        const losersStartY = losersHeadingY + headingHeight + headingMargin;
-
-        const lRounds = Object.keys(rounds.losers).map(Number).sort((a, b) => a - b);
-
-        lRounds.forEach((round, rIdx) => {
-            rounds.losers[round].forEach((m, idx) => {
-                const id = String(m.id);
-                const rawId = getRawId(id);
-                const x = leftPadding + (rIdx * (cardWidth + roundGap));
-                const y = losersStartY + (idx * (cardHeight + matchGap));
-                map.set(id, { x, y });
-                map.set(rawId, { x, y });
-            });
-        });
-
-        // 4. Finals - center vertically between all matches in last winners round
-        const finalX = leftPadding + (wRounds.length * (cardWidth + roundGap));
-        const lastRoundMatches = rounds.winners[wRounds[wRounds.length - 1]] || [];
-        let finalY = 100;
-        if (lastRoundMatches.length > 0) {
-            const positions = lastRoundMatches.map(m => map.get(String(m.id))?.y ?? 0);
-            const minY = Math.min(...positions);
-            const maxY = Math.max(...positions);
-            finalY = (minY + maxY + cardHeight) / 2 - cardHeight / 2;
-        }
-
-        const fRounds = Object.keys(rounds.final).map(Number).sort((a, b) => a - b);
-        fRounds.forEach((r, rIdx) => {
-            rounds.final[r].forEach((m, i) => {
-                const id = String(m.id);
-                const rawId = getRawId(id);
-                // Use rIdx for X positioning to separate rounds (e.g. GF vs Reset)
-                const x = finalX + (rIdx * (cardWidth + roundGap)) + (i * (cardWidth + 50));
-                map.set(id, { x, y: finalY });
-                map.set(rawId, { x, y: finalY });
-            });
-        });
-
-        // Calculate total dimensions
-        let maxX = 0, maxY = 0;
-        map.forEach(pos => {
-            maxX = Math.max(maxX, pos.x + cardWidth);
-            maxY = Math.max(maxY, pos.y + cardHeight);
-        });
-
-        return {
-            matchPositions: Object.fromEntries(map),
-            totalWidth: maxX + 100,
-            totalHeight: maxY + 100,
-            winnersBottomY: maxWinnersY
-        };
-    }, [matches, cardWidth, cardHeight, roundGap, matchGap, leftPadding, headingHeight, headingMargin, bracketSpacing]);
-
-    // Calculate X offset for filtering
-    const filterXOffset = useMemo(() => {
-        if (activeFilter.type === 'all') return 0;
-
-        // Find the minimum X of visible matches
-        let minX = Infinity;
-        matches.forEach(m => {
-            if (activeFilter.type === 'winners' && m.bracketSide === 'winners' && m.round === activeFilter.round) {
-                const pos = matchPositions[m.id];
-                if (pos && pos.x < minX) minX = pos.x;
-            }
-            if (activeFilter.type === 'losers' && m.bracketSide === 'losers' && m.round === activeFilter.round) {
-                const pos = matchPositions[m.id];
-                if (pos && pos.x < minX) minX = pos.x;
-            }
-            if (activeFilter.type === 'final' && m.bracketSide === 'final') {
-                const pos = matchPositions[m.id];
-                if (pos && pos.x < minX) minX = pos.x;
-            }
-        });
-
-        return minX === Infinity ? 0 : minX - leftPadding;
-    }, [activeFilter, matches, matchPositions, leftPadding]);
-
-    // Calculate Y offset for filtering (specifically for Losers Bracket)
-    const filterYOffset = useMemo(() => {
-        if (activeFilter.type !== 'losers') return 0;
-
-        let minY = Infinity;
-        matches.forEach(m => {
-            if (m.bracketSide === 'losers' && m.round === activeFilter.round) {
-                const pos = matchPositions[m.id];
-                if (pos && pos.y < minY) minY = pos.y;
-            }
-        });
-
-        // We want the matches to start at roughly y=50 (below the heading)
-        return minY === Infinity ? 0 : minY - 50;
-    }, [activeFilter, matches, matchPositions]);
-
-    // When filtering to a specific round, compute stacked list positions
-    const filteredListPositions = useMemo(() => {
-        if (activeFilter.type === 'all') return null;
-
-        const visibleMatches = matches.filter(m => {
-            if (activeFilter.type === 'winners') return m.bracketSide === 'winners' && m.round === activeFilter.round;
-            if (activeFilter.type === 'losers') return m.bracketSide === 'losers' && m.round === activeFilter.round;
-            if (activeFilter.type === 'final') return m.bracketSide === 'final';
-            return false;
-        });
-
-        // Sort by match_number for consistent ordering
-        visibleMatches.sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
-
-        const listGap = 8;
-        const startY = 50; // below heading
-        const positions: Record<string, { x: number; y: number }> = {};
-        visibleMatches.forEach((m, i) => {
-            positions[m.id] = { x: leftPadding, y: startY + i * (cardHeight + listGap) };
-        });
-
-        const listHeight = visibleMatches.length > 0
-            ? startY + visibleMatches.length * (cardHeight + listGap) + 50
-            : totalHeight;
-
-        return { positions, height: listHeight };
-    }, [activeFilter, matches, leftPadding, cardHeight, totalHeight]);
-
-    const isMatchVisible = (match: BracketMatch) => {
-        if (customFilterPredicate) return customFilterPredicate(match);
-        if (activeFilter.type === 'all') return true;
-        if (activeFilter.type === 'winners') return match.bracketSide === 'winners' && match.round === activeFilter.round;
-        if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
-        if (activeFilter.type === 'final') return match.bracketSide === 'final';
-        return false;
-    };
-
-    const matchHasHoveredTeam = (match: BracketMatch) =>
-        Boolean(
-            hoveredTeamId
-            && (match.team1?.id === hoveredTeamId || match.team2?.id === hoveredTeamId),
-        );
-
-    const renderMatchCards = () => matches.map(match => {
-        if (!match) return null;
-        if (!isMatchVisible(match)) return null;
-
-        const pos = filteredListPositions
-            ? filteredListPositions.positions[match.id]
-            : matchPositions[match.id];
-        if (!pos) return null;
-        const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
-        const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
-        const card = (
-            <ReadOnlyMatchCard
-                match={match}
-                x={0}
-                y={0}
-                onClick={() => onMatchClick?.(match)}
-                hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
-                hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
-                hoveredTeamId={hoveredTeamId}
-                onTeamHover={onTeamHover}
-                isDoubleElimination={isDoubleElimination}
-            />
-        );
-
-        if (disableAnimations) {
-            return (
-                <div key={match.id} style={{ position: 'absolute', left, top }}>
-                    {card}
-                </div>
-            );
-        }
-
+    if (activeFilter.type !== 'all') {
+        const visible = matches.filter((match) => matchesFilter(match, activeFilter)).sort((a, b) => a.matchNumber - b.matchNumber);
+        const column: BracketColumn | undefined = layout.columns.find((c) =>
+            activeFilter.type === 'final' ? c.side === 'final' : c.side === activeFilter.type && c.round === activeFilter.round);
         return (
-            <motion.div
-                key={match.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                style={{ position: 'absolute', left, top }}
-            >
-                {card}
-            </motion.div>
+            <div className="p-6" onMouseLeave={() => onTeamHover?.(null)}>
+                {column ? <div className="relative mb-5 h-12" style={{ width: dims.cardWidth }}><BracketColumnHeader column={{ ...column, x: 0, y: 0 }} width={dims.cardWidth} /></div> : null}
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${dims.cardWidth}px, 1fr))` }}>
+                    {visible.map((match) => <div key={match.id}>{renderCard(match)}</div>)}
+                </div>
+            </div>
         );
-    });
+    }
 
     return (
         <div
             className="relative"
-            style={{ width: totalWidth, height: filteredListPositions ? filteredListPositions.height : totalHeight, minWidth: '100%' }}
+            style={{ width: layout.width + PAD * 2, height: layout.height + PAD * 2, minWidth: '100%' }}
             onMouseLeave={() => onTeamHover?.(null)}
-            onMouseEnter={(e) => {
-                if (e.target === e.currentTarget) {
-                    onTeamHover?.(null);
-                }
-            }}
         >
-            {/* Connector Lines (SVG) — only in full bracket view */}
-            {activeFilter.type === 'all' && (
-                <svg
-                    className="absolute top-0 left-0 pointer-events-none overflow-visible"
-                    style={{ width: totalWidth, height: totalHeight }}
-                >
-                    {matches.map(match => {
-                        if (!match.nextMatchId) return null;
-                        const sourcePos = matchPositions[match.id] || matchPositions[getRawId(String(match.id))];
-                        const targetPos = matchPositions[match.nextMatchId] || matchPositions[getRawId(match.nextMatchId)];
-                        if (!sourcePos || !targetPos) return null;
-
-                        const connectorGap = Math.min(16, Math.max(10, roundGap * 0.18));
-                        const connectorInset = Math.min(30, Math.max(16, (roundGap - connectorGap * 2) * 0.45));
-                        const startX = sourcePos.x + cardWidth + connectorGap;
-                        const startY = sourcePos.y + cardHeight / 2;
-                        const endX = targetPos.x - connectorGap;
-                        const endY = targetPos.y + cardHeight / 2;
-                        const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
-
-                        const onTeamPath = matchHasHoveredTeam(match);
-                        return (
-                            <path
-                                key={`edge-w-${match.id}`}
-                                d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
-                                fill="none"
-                                stroke={onTeamPath ? '#f43f5e' : '#cbd5e1'}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={onTeamPath ? 2.5 : 1.5}
-                                className={onTeamPath ? 'opacity-90' : 'opacity-55'}
-                            />
-                        );
-                    })}
-                </svg>
-            )}
-            {/* Winners Bracket Heading */}
-            {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
-                matches.some(m => m.bracketSide === 'winners') &&
-                !isSingleElimination && (
-                    <div style={{ position: 'absolute', left: leftPadding, top: 0, width: 350, zIndex: 100 }}>
-                        <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
-                            <div className="p-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                                <span className="text-yellow-500">🏆</span>
-                            </div>
-                            Winners Bracket
-                        </h3>
-                    </div>
-                )}
-
-            {/* Losers Bracket Heading */}
-            {(activeFilter.type === 'all' || activeFilter.type === 'losers') && matches.some(m => m.bracketSide === 'losers') && (
-                <div style={{
-                    position: 'absolute',
-                    left: leftPadding,
-                    top: activeFilter.type === 'losers' ? 0 : (winnersBottomY + bracketSpacing),
-                    width: 350,
-                    zIndex: 100
-                }}>
-                    <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
-                        <div className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
-                            <span className="text-red-500">⚔️</span>
-                        </div>
-                        Losers Bracket
-                    </h3>
-                </div>
-            )}
-
-            {/* Match Cards */}
-            {disableAnimations ? renderMatchCards() : <AnimatePresence mode='popLayout'>{renderMatchCards()}</AnimatePresence>}
+            <div className="absolute" style={{ left: PAD, top: PAD, width: layout.width, height: layout.height }}>
+                <BracketConnectors
+                    matches={matches}
+                    layout={layout}
+                    dims={dims}
+                    teamId={hoveredTeamId}
+                    route={route}
+                    championIsTeam={Boolean(hoveredTeamId && champion?.id === hoveredTeamId)}
+                />
+                {layout.sections.map((section) => <BracketSectionTitle key={section.side} side={section.side} y={section.y} />)}
+                {layout.columns.map((column) => <BracketColumnHeader key={column.key} column={column} width={dims.cardWidth} />)}
+                {matches.map((match) => {
+                    const position = layout.positions[match.id];
+                    if (!position || (customFilterPredicate && !customFilterPredicate(match))) return null;
+                    const column = [...columnIndex.keys()].indexOf(position.x);
+                    const style = { position: 'absolute' as const, left: position.x, top: position.y, width: dims.cardWidth, height: dims.cardHeight };
+                    return disableAnimations ? (
+                        <div key={match.id} style={style}>{renderCard(match, position)}</div>
+                    ) : (
+                        <motion.div
+                            key={match.id}
+                            style={style}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.18, ease: [0.2, 0, 0, 1], delay: Math.max(0, column) * 0.04 }}
+                        >
+                            {renderCard(match, position)}
+                        </motion.div>
+                    );
+                })}
+                {layout.champion ? (
+                    <BracketChampionSeat
+                        champion={champion}
+                        x={layout.champion.x}
+                        y={layout.champion.y}
+                        width={dims.championWidth}
+                        height={dims.championHeight}
+                        lit={Boolean(hoveredTeamId) && (champion?.id === hoveredTeamId
+                            || (route.alive && (route.ahead.has(layout.champion.sourceId) || route.played.has(layout.champion.sourceId))))}
+                    />
+                ) : null}
+            </div>
         </div>
     );
 };
+
+export default BracketRenderer;
