@@ -87,17 +87,9 @@ const PublicMapVetoRoom = () => {
     actingRef,
     onUpdated: syncFromServer,
     onReset: syncFromServer,
-    onTossResult: (payload) => {
-      queryClient.setQueryData(stateQueryKey, (prev: PublicVetoState | undefined) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: "toss_choice_pending",
-          tossWinnerTeamId: payload.winnerTeamId,
-          tossWinnerName: payload.winnerTeamName,
-        };
-      });
-    },
+    // Refetch rather than patch: whether this link won (`isTossWinner`) is
+    // computed per link by the server, and the broadcast doesn't carry it.
+    onTossResult: () => void syncFromServer(),
   });
 
   realtimeConnectedRef.current = realtimeConnected;

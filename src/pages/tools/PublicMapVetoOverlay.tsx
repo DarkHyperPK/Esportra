@@ -11,6 +11,8 @@ import { normalizeHistoryEntry, type VetoHistoryEntry } from "@/hooks/useVetoHis
 import { PublicMapVetoBroadcastOverlay } from "./PublicMapVetoBroadcastOverlay";
 import { PublicMapVetoVctOverlay } from "./PublicMapVetoVctOverlay";
 import { buildOverlayStepCards } from "./buildOverlayStepCards";
+import { OverlayTossScreen } from "./OverlayTossScreen";
+import { tossDecisionLine } from "./tossPresentation";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
@@ -198,7 +200,7 @@ const PublicMapVetoOverlay = () => {
       state.tossFirstActorTeamId
     ) {
       setShowActsFirst(true);
-      const timer = window.setTimeout(() => setShowActsFirst(false), 3000);
+      const timer = window.setTimeout(() => setShowActsFirst(false), 6000);
       return () => window.clearTimeout(timer);
     }
     prevStatusRef.current = state?.status ?? null;
@@ -234,66 +236,15 @@ const PublicMapVetoOverlay = () => {
     }
     : null;
   const ThemeOverlay = theme === "vct" ? PublicMapVetoVctOverlay : PublicMapVetoBroadcastOverlay;
-  const sectionStyle = { maxHeight: "min(24vh, 250px)" };
-  const innerStyle = { height: "clamp(168px, 22vh, 238px)" };
-
-  if (state.status === "pending_toss") {
-    return (
-      <main className={cn("h-dvh w-dvw overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
-        <div className="flex h-full w-full items-center justify-center overflow-hidden">
-          <section
-            className="w-full overflow-hidden bg-[#050505] shadow-[0_18px_70px_rgba(0,0,0,0.45)]"
-            style={sectionStyle}
-            aria-label="Map veto OBS overlay"
-          >
-            <div
-              className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center"
-              style={innerStyle}
-            >
-              <div className="text-[clamp(18px,1.6vw,36px)] font-black uppercase tracking-tight text-white">
-                {state.team1Name} <span className="text-white/40">vs</span> {state.team2Name}
-              </div>
-              <div className="text-[clamp(10px,0.9vw,18px)] font-bold uppercase tracking-[0.18em] text-white/50">
-                Waiting for the toss.
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    );
+  if (state.status === "pending_toss" || state.status === "toss_choice_pending") {
+    return <OverlayTossScreen state={state} transparent={transparent} />;
   }
 
-  if (state.status === "toss_choice_pending") {
-    return (
-      <main className={cn("h-dvh w-dvw overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
-        <div className="flex h-full w-full items-center justify-center overflow-hidden">
-          <section
-            className="w-full overflow-hidden bg-[#050505] shadow-[0_18px_70px_rgba(0,0,0,0.45)]"
-            style={sectionStyle}
-            aria-label="Map veto OBS overlay"
-          >
-            <div
-              className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center"
-              style={innerStyle}
-            >
-              <div className="text-[clamp(18px,1.6vw,36px)] font-black uppercase tracking-tight text-white">
-                {state.tossWinnerName ?? "—"}
-              </div>
-              <div className="text-[clamp(10px,0.9vw,18px)] font-bold uppercase tracking-[0.18em] text-white/50">
-                {state.tossWinnerName
-                  ? `${state.tossWinnerName} is choosing.`
-                  : "Waiting for the toss result."}
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    );
-  }
+  const decisionLine = tossDecisionLine(state);
 
   return (
     <div className="relative">
-      {showActsFirst && state.tossFirstActorTeamId && (
+      {showActsFirst && decisionLine && (
         <div
           className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-center justify-center pb-2"
           style={{ bottom: "clamp(168px, 22vh, 238px)" }}
@@ -301,11 +252,7 @@ const PublicMapVetoOverlay = () => {
           aria-atomic="true"
         >
           <div className="bg-black/80 px-4 py-2 text-center text-[clamp(12px,1vw,20px)] font-black uppercase tracking-[0.15em] text-white">
-            {state.tossFirstActorName
-            ?? (state.team1Id && state.tossFirstActorTeamId === state.team1Id
-              ? state.team1Name
-              : state.team2Name)}
-            {" "}acts first.
+            {decisionLine}
           </div>
         </div>
       )}
