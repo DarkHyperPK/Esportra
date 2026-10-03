@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>hud/sys-18-phone-remote</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+
+.scr{position:relative;width:var(--w);height:var(--h);overflow:hidden;background:#09090B}
+.cap{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.24em;color:#71717A}
+.t1{font-family:Poppins,sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.muted{color:#A1A1AA}.hint{color:#71717A}
+.box{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.box2{background:#0d0d10;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.row{display:flex;align-items:center}
+.sep{height:1px;background:rgba(255,255,255,.07)}
+.b{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(255,255,255,.12);color:#FAFAFA;background:rgba(255,255,255,.03);white-space:nowrap}
+.b-pri{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.b-take{background:#F43F5E;border-color:#F43F5E;color:#fff}
+.b-cue{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.55);color:#FDE68A}
+.b-lg{height:46px;font-size:12px;padding:0 20px}
+.b-sm{height:28px;font-size:9.5px;padding:0 10px;letter-spacing:.14em}
+.chip{display:inline-flex;align-items:center;gap:7px;height:22px;padding:0 8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#A1A1AA;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;flex:none}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#71717A;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tbl td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+.field{height:38px;display:flex;align-items:center;padding:0 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font-size:13.5px}
+.lbl{font-size:12px;font-weight:600;color:#E4E4E7;margin-bottom:6px}
+.tog{width:34px;height:18px;position:relative;background:rgba(255,255,255,.12);flex:none}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;background:#A1A1AA}
+.tog.on{background:#FAFAFA}.tog.on::after{left:19px;background:#09090B}
+.seg{display:inline-flex;background:rgba(0,0,0,.4);padding:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.seg span{height:28px;white-space:nowrap;display:inline-flex;align-items:center;padding:0 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#71717A}
+.seg span.on{background:#FAFAFA;color:#09090B}
+.mon{position:relative;background:#000 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.mon .tab{position:absolute;left:0;top:0;height:22px;display:flex;align-items:center;gap:6px;padding:0 9px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em}
+.ann{position:absolute;z-index:50;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#FAFAFA;color:#09090B;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;box-shadow:0 0 0 3px rgba(9,9,11,.85)}
+.nav-i{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;font-size:13px;color:#A1A1AA}
+.nav-i.on{background:rgba(255,255,255,.06);color:#FAFAFA;box-shadow:inset 2px 0 0 #FAFAFA}
+.ic{width:15px;height:15px;flex:none;opacity:.85}
+.bar{height:4px;background:rgba(255,255,255,.08);position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:#FAFAFA}
+</style></head><body><main class="scr" style="--w:1600px;--h:920px"><div style="padding:44px 56px"><header class="row" style="justify-content:space-between;align-items:flex-end;gap:32px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.07)">
+<div><div class="cap" style="margin-bottom:12px"><span style="display:inline-block;width:18px;height:2px;background:#F43F5E;vertical-align:middle;margin-right:12px"></span>SYSTEM · PHONE REMOTE</div><h1 class="t1" style="font-size:40px">The floor producer’s pocket console.</h1></div>
+<p class="muted" style="max-width:520px;font-size:13.5px;text-align:right">Opens from a QR on the desktop app. Same session as the console, so a hold on the phone shows there instantly. Thumb-sized targets, one decision per screen.</p></header>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:30px">
+<div style="display:flex;flex-direction:column;align-items:center"><div style="width:300px;height:640px;background:#09090B;border-radius:34px;box-shadow:0 0 0 8px #18181b,0 0 0 9px #2a2a2e;overflow:hidden;position:relative;padding:44px 16px 16px"><div class="row" style="justify-content:space-between"><img src="../../assets/hud-previews/brand-mark-224.png" style="height:14px;width:auto" alt=""><span class="mono hint" style="font-size:10px">STUDIO PC</span><span class="chip" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>ON AIR</span></div><div style="margin-top:14px"><div class="mon" style="width:268px;height:151px;background-image:url('../../assets/hud-previews/ingame-full.jpg');box-shadow:inset 0 0 0 2px #F43F5E"><span class="tab" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>PGM</span></div></div>
+<div style="margin-top:14px;padding:14px;background:rgba(251,191,36,.07);box-shadow:inset 0 0 0 1px rgba(251,191,36,.45)"><div class="cap" style="font-size:9px;color:#FDE68A">NEXT IN 3</div><b style="font-size:17px;display:block;margin-top:6px">Round recap</b><div class="hint" style="font-size:12px">Between-rounds layer · 6 s</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"><span class="b b-cue" style="height:56px">HOLD</span><span class="b" style="height:56px">SKIP</span></div><span class="b b-take" style="height:56px;width:100%;margin-top:8px">TAKE NOW</span></div><b class="t1" style="font-size:16px;margin-top:20px">Now / next</b></div>
+<div style="display:flex;flex-direction:column;align-items:center"><div style="width:300px;height:640px;background:#09090B;border-radius:34px;box-shadow:0 0 0 8px #18181b,0 0 0 9px #2a2a2e;overflow:hidden;position:relative;padding:44px 16px 16px"><div class="row" style="justify-content:space-between"><img src="../../assets/hud-previews/brand-mark-224.png" style="height:14px;width:auto" alt=""><span class="mono hint" style="font-size:10px">STUDIO PC</span><span class="chip" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>ON AIR</span></div><div class="cap" style="margin-top:18px;font-size:9px">ONE TAP · CONFIRMS ON AIR</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div style="height:74px;padding:10px;background:rgba(251,191,36,.08);box-shadow:inset 0 0 0 1px rgba(251,191,36,.4);display:flex;align-items:flex-end"><b style="font-size:13px">Tech pause</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Timeout</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Replay</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Toast</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Caster L3</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Poll</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Stinger</b></div><div style="height:74px;padding:10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end"><b style="font-size:13px">Sponsor</b></div></div></div><b class="t1" style="font-size:16px;margin-top:20px">Triggers</b></div>
+<div style="display:flex;flex-direction:column;align-items:center"><div style="width:300px;height:640px;background:#09090B;border-radius:34px;box-shadow:0 0 0 8px #18181b,0 0 0 9px #2a2a2e;overflow:hidden;position:relative;padding:44px 16px 16px"><div class="row" style="justify-content:space-between"><img src="../../assets/hud-previews/brand-mark-224.png" style="height:14px;width:auto" alt=""><span class="mono hint" style="font-size:10px">STUDIO PC</span><span class="chip" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>ON AIR</span></div><div style="margin-top:16px;display:grid;gap:8px"><div style="padding:12px;background:rgba(251,191,36,.08);box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><b style="font-size:13px;color:#FDE68A">OBS reconnected</b><p class="muted" style="font-size:12px;margin-top:3px">Autopilot paused · tap to resume</p></div><div style="padding:12px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><b style="font-size:13px;color:#D4D4D8">Observer flagged a moment</b><p class="muted" style="font-size:12px;margin-top:3px">R23 · 20:52:40 · add replay?</p></div><div style="padding:12px;background:rgba(52,211,153,.08);box-shadow:inset 0 0 0 1px rgba(52,211,153,.25)"><b style="font-size:13px;color:#6EE7B7">Map 2 verified</b><p class="muted" style="font-size:12px;margin-top:3px">Bracket updated</p></div></div><span class="b b-pri" style="width:100%;height:52px;margin-top:14px">Resume autopilot</span></div><b class="t1" style="font-size:16px;margin-top:20px">Alerts</b></div></div></div><div class="cap" style="position:absolute;left:56px;right:56px;bottom:22px;display:flex;justify-content:space-between;font-size:9px"><span>ESPORTRA BROADCAST · UI/UX</span><span>hud/sys-18-phone-remote</span></div></main></body></html>

@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>hud/sys-16-states</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+
+.scr{position:relative;width:var(--w);height:var(--h);overflow:hidden;background:#09090B}
+.cap{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.24em;color:#71717A}
+.t1{font-family:Poppins,sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.muted{color:#A1A1AA}.hint{color:#71717A}
+.box{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.box2{background:#0d0d10;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.row{display:flex;align-items:center}
+.sep{height:1px;background:rgba(255,255,255,.07)}
+.b{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(255,255,255,.12);color:#FAFAFA;background:rgba(255,255,255,.03);white-space:nowrap}
+.b-pri{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.b-take{background:#F43F5E;border-color:#F43F5E;color:#fff}
+.b-cue{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.55);color:#FDE68A}
+.b-lg{height:46px;font-size:12px;padding:0 20px}
+.b-sm{height:28px;font-size:9.5px;padding:0 10px;letter-spacing:.14em}
+.chip{display:inline-flex;align-items:center;gap:7px;height:22px;padding:0 8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#A1A1AA;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;flex:none}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#71717A;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tbl td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+.field{height:38px;display:flex;align-items:center;padding:0 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font-size:13.5px}
+.lbl{font-size:12px;font-weight:600;color:#E4E4E7;margin-bottom:6px}
+.tog{width:34px;height:18px;position:relative;background:rgba(255,255,255,.12);flex:none}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;background:#A1A1AA}
+.tog.on{background:#FAFAFA}.tog.on::after{left:19px;background:#09090B}
+.seg{display:inline-flex;background:rgba(0,0,0,.4);padding:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.seg span{height:28px;white-space:nowrap;display:inline-flex;align-items:center;padding:0 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#71717A}
+.seg span.on{background:#FAFAFA;color:#09090B}
+.mon{position:relative;background:#000 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.mon .tab{position:absolute;left:0;top:0;height:22px;display:flex;align-items:center;gap:6px;padding:0 9px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em}
+.ann{position:absolute;z-index:50;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#FAFAFA;color:#09090B;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;box-shadow:0 0 0 3px rgba(9,9,11,.85)}
+.nav-i{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;font-size:13px;color:#A1A1AA}
+.nav-i.on{background:rgba(255,255,255,.06);color:#FAFAFA;box-shadow:inset 2px 0 0 #FAFAFA}
+.ic{width:15px;height:15px;flex:none;opacity:.85}
+.bar{height:4px;background:rgba(255,255,255,.08);position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:#FAFAFA}
+</style></head><body><main class="scr" style="--w:1600px;--h:790px"><div style="padding:44px 56px"><header class="row" style="justify-content:space-between;align-items:flex-end;gap:32px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.07)">
+<div><div class="cap" style="margin-bottom:12px"><span style="display:inline-block;width:18px;height:2px;background:#F43F5E;vertical-align:middle;margin-right:12px"></span>SYSTEM · STATES</div><h1 class="t1" style="font-size:40px">Every failure has a designed answer.</h1></div>
+<p class="muted" style="max-width:520px;font-size:13.5px;text-align:right">Graphics never depend on OBS or the internet, so most failures pause automation instead of breaking the show. Each state says what happened, what still works and the one thing to do.</p></header>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px">
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div class="row" style="position:absolute;left:12px;right:12px;top:12px;gap:8px;padding:8px 10px;background:rgba(251,191,36,.08);box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24"></span><span style="font-size:11.5px;color:#FDE68A">OBS lost · autopilot paused · retrying</span></div><div style="position:absolute;left:12px;right:12px;bottom:12px;height:70px;background:#000 url('../../assets/hud-previews/ingame.jpg') center/cover;opacity:.5"></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">OBS disconnected</b><span class="chip" style="background:rgba(251,191,36,.08);color:#FDE68A;box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24;width:6px;height:6px"></span>Console</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Graphics keep updating inside OBS’s last scene. No automatic takes until OBS is back.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: Resume autopilot (appears on reconnect)</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div class="row" style="position:absolute;left:12px;right:12px;top:12px;gap:8px;padding:8px 10px;background:rgba(251,191,36,.08);box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24"></span><span style="font-size:11.5px;color:#FDE68A">GEP silent for 12 s · live stats frozen</span></div><div class="mono" style="position:absolute;left:12px;bottom:14px;font-size:11px;color:#71717A">last event 20:53:41</div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Game feed stale</b><span class="chip" style="background:rgba(251,191,36,.08);color:#FDE68A;box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24;width:6px;height:6px"></span>Console</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Stats freeze with a small “feed paused” tag on screen. Scores can be kept by hand.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: Check observer PC · Switch to manual score</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div style="position:absolute;inset:12px;display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:#000 url('../../assets/hud-previews/casters.jpg') center/cover;opacity:.35;box-shadow:inset 0 0 0 2px #EF4444"></div><div style="background:#000 url('../../assets/hud-previews/holding.jpg') center/cover;opacity:.6"></div></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Output dropped</b><span class="chip" style="background:rgba(239,68,68,.08);color:#FCA5A5;box-shadow:inset 0 0 0 1px rgba(239,68,68,.25)"><span class="dot" style="background:#EF4444;width:6px;height:6px"></span>Outputs</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Casters source closed in OBS 40 s ago. Usually a hidden scene with “shutdown when not visible” on.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: Open in OBS · Show me how</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div class="row" style="position:absolute;left:12px;right:12px;top:12px;gap:8px;padding:8px 10px;background:rgba(239,68,68,.08);box-shadow:inset 0 0 0 1px rgba(239,68,68,.25)"><span class="dot" style="background:#EF4444"></span><span style="font-size:11.5px;color:#FCA5A5">Booth B offline since 20:31</span></div><div style="position:absolute;left:12px;right:12px;bottom:12px" class="hint"><span style="font-size:11.5px">Its next match: Zero Ping vs Ghost Unit · 21:30</span></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Node offline</b><span class="chip" style="background:rgba(239,68,68,.08);color:#FCA5A5;box-shadow:inset 0 0 0 1px rgba(239,68,68,.25)"><span class="dot" style="background:#EF4444;width:6px;height:6px"></span>Web</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Web shows when it was last seen and what it was meant to run next.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: Move next match to another node</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div class="row" style="position:absolute;left:12px;right:12px;top:12px;gap:8px;padding:8px 10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A"></span><span style="font-size:11.5px;color:#D4D4D8">21:00 → 21:30 · countdown updated</span></div><div class="t1" style="position:absolute;left:12px;bottom:12px;font-size:40px">21:30</div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Match rescheduled</b><span class="chip" style="background:rgba(255,255,255,.04);color:#D4D4D8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A;width:6px;height:6px"></span>Web + node</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Rundown and the starting-soon countdown shift on their own. Nobody touches OBS.</p><span class="hint" style="font-size:11.5px;margin-top:auto">No action needed</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div class="row" style="position:absolute;left:12px;right:12px;top:12px;gap:8px;padding:8px 10px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A"></span><span style="font-size:11.5px;color:#D4D4D8">Ghost Unit forfeited · series ends</span></div><div style="position:absolute;left:12px;right:12px;bottom:12px;height:60px;background:#000 url('../../assets/hud-previews/schedule.jpg') center/cover;opacity:.55"></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Forfeit</b><span class="chip" style="background:rgba(255,255,255,.04);color:#D4D4D8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A;width:6px;height:6px"></span>Node</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Autopilot skips to the result card with a forfeit label, then the next match.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: Hold to keep casters on the desk</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 18px"><b style="font-size:15px">No shows yet.</b><span class="hint" style="font-size:12px;margin-top:4px">Link a tournament and every match becomes one.</span></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">No shows yet</b><span class="chip" style="background:rgba(255,255,255,.04);color:#D4D4D8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A;width:6px;height:6px"></span>Web · empty</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Empty states say when content will appear and offer the one next step.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Action: New show</span></div></div>
+<div style="background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:flex;flex-direction:column">
+<div style="height:150px;position:relative;overflow:hidden;background:#0b0b0d;border-bottom:1px solid rgba(255,255,255,.06)"><div style="position:absolute;left:12px;top:14px;width:130px;height:74px;background:rgba(255,255,255,.06)"></div><div style="position:absolute;left:150px;top:14px;width:130px;height:74px;background:rgba(255,255,255,.06)"></div><div style="position:absolute;left:12px;top:104px;width:260px;height:10px;background:rgba(255,255,255,.06)"></div><div style="position:absolute;left:12px;top:122px;width:180px;height:10px;background:rgba(255,255,255,.06)"></div></div>
+<div style="padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1"><div class="row" style="justify-content:space-between"><b style="font-size:14px">Loading</b><span class="chip" style="background:rgba(255,255,255,.04);color:#D4D4D8;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="dot" style="background:#71717A;width:6px;height:6px"></span>Console</span></div><p class="muted" style="font-size:12.5px;line-height:1.5">Skeletons take the real layout’s shape. Monitors show the last frame, never a spinner.</p><span class="hint" style="font-size:11.5px;margin-top:auto">Lasts under a second on a paired node</span></div></div>
+</div></div><div class="cap" style="position:absolute;left:56px;right:56px;bottom:22px;display:flex;justify-content:space-between;font-size:9px"><span>ESPORTRA BROADCAST · UI/UX</span><span>hud/sys-16-states</span></div></main></body></html>

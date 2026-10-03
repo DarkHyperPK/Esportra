@@ -118,7 +118,7 @@ ${body}</section></div>`;
 const DESK_NAV = [['console', 'Console'], ['scenes', 'Scenes'], ['capture', 'Capture'], ['outputs', 'Outputs'], ['data', 'Data'], ['sync', 'Sync']];
 
 /** Esportra Broadcast desktop app: window chrome, icon rail, node status bar. */
-export function desktopShell({ active, show = 'KVO 2026 · Grand final · PRX vs FNC', status, body, offline = false }) {
+export function desktopShell({ active, show = 'KVO 2026 · Upper semi-final · Night Owls vs Crimson Five', status, body, offline = false }) {
   const st = status ?? [health('GEP', '38 ms'), health('OBS', 'Studio PC'), health('CLOUD', offline ? 'Offline' : 'Synced', offline ? 'warning' : 'success'), health('LAN', '192.168.1.40:5300', 'neutral')].join('');
   return `<div class="row" style="height:34px;padding:0 12px;background:#060607;border-bottom:1px solid rgba(255,255,255,.06);gap:10px">
 ${mark(14)}<span class="cap" style="font-size:9.5px;color:${C.secondary}">ESPORTRA BROADCAST</span><span class="hint" style="font-size:12px">— ${show}</span>

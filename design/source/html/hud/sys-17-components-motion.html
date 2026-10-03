@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>hud/sys-17-components-motion</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+
+.scr{position:relative;width:var(--w);height:var(--h);overflow:hidden;background:#09090B}
+.cap{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.24em;color:#71717A}
+.t1{font-family:Poppins,sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.muted{color:#A1A1AA}.hint{color:#71717A}
+.box{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.box2{background:#0d0d10;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.row{display:flex;align-items:center}
+.sep{height:1px;background:rgba(255,255,255,.07)}
+.b{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(255,255,255,.12);color:#FAFAFA;background:rgba(255,255,255,.03);white-space:nowrap}
+.b-pri{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.b-take{background:#F43F5E;border-color:#F43F5E;color:#fff}
+.b-cue{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.55);color:#FDE68A}
+.b-lg{height:46px;font-size:12px;padding:0 20px}
+.b-sm{height:28px;font-size:9.5px;padding:0 10px;letter-spacing:.14em}
+.chip{display:inline-flex;align-items:center;gap:7px;height:22px;padding:0 8px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:#A1A1AA;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;flex:none}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#71717A;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tbl td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+.field{height:38px;display:flex;align-items:center;padding:0 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font-size:13.5px}
+.lbl{font-size:12px;font-weight:600;color:#E4E4E7;margin-bottom:6px}
+.tog{width:34px;height:18px;position:relative;background:rgba(255,255,255,.12);flex:none}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;background:#A1A1AA}
+.tog.on{background:#FAFAFA}.tog.on::after{left:19px;background:#09090B}
+.seg{display:inline-flex;background:rgba(0,0,0,.4);padding:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.seg span{height:28px;white-space:nowrap;display:inline-flex;align-items:center;padding:0 12px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#71717A}
+.seg span.on{background:#FAFAFA;color:#09090B}
+.mon{position:relative;background:#000 center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+.mon .tab{position:absolute;left:0;top:0;height:22px;display:flex;align-items:center;gap:6px;padding:0 9px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.2em}
+.ann{position:absolute;z-index:50;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#FAFAFA;color:#09090B;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;box-shadow:0 0 0 3px rgba(9,9,11,.85)}
+.nav-i{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;font-size:13px;color:#A1A1AA}
+.nav-i.on{background:rgba(255,255,255,.06);color:#FAFAFA;box-shadow:inset 2px 0 0 #FAFAFA}
+.ic{width:15px;height:15px;flex:none;opacity:.85}
+.bar{height:4px;background:rgba(255,255,255,.08);position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:#FAFAFA}
+</style></head><body><main class="scr" style="--w:1600px;--h:740px"><div style="padding:44px 56px"><header class="row" style="justify-content:space-between;align-items:flex-end;gap:32px;padding-bottom:22px;border-bottom:1px solid rgba(255,255,255,.07)">
+<div><div class="cap" style="margin-bottom:12px"><span style="display:inline-block;width:18px;height:2px;background:#F43F5E;vertical-align:middle;margin-right:12px"></span>SYSTEM · COMPONENTS & MOTION</div><h1 class="t1" style="font-size:40px">Fast hands, calm screen.</h1></div>
+<p class="muted" style="max-width:520px;font-size:13.5px;text-align:right">Rose means on air and nothing else. Amber means cued or counting down. White is the action. Every control has a hotkey, and motion only marks a change of state.</p></header>
+<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:44px;margin-top:24px">
+<div>
+<div class="cap" style="margin-bottom:12px">TAKE / CUE / HOLD · STATES</div>
+<div style="display:grid;grid-template-columns:90px repeat(5,1fr);gap:10px 10px;align-items:center">
+<span></span><span class="cap" style="font-size:8.5px">REST</span><span class="cap" style="font-size:8.5px">HOVER</span><span class="cap" style="font-size:8.5px">FOCUS</span><span class="cap" style="font-size:8.5px">PRESSED</span><span class="cap" style="font-size:8.5px">DISABLED</span>
+<span class="cap" style="font-size:9px">TAKE</span><div><span class="b b-take" style="">Take</span></div><div><span class="b b-take" style="background:#E11D48;border-color:#E11D48">Take</span></div><div><span class="b b-take" style="box-shadow:0 0 0 2px #09090B,0 0 0 4px rgba(255,255,255,.5)">Take</span></div><div><span class="b b-take" style="transform:translateY(1px);background:#BE123C;border-color:#BE123C">Take</span></div><div><span class="b b-take" style="opacity:.35">Take</span></div>
+<span class="cap" style="font-size:9px">HOLD</span><div><span class="b b-cue" style="">Hold</span></div><div><span class="b b-cue" style="background:rgba(251,191,36,.2)">Hold</span></div><div><span class="b b-cue" style="box-shadow:0 0 0 2px #09090B,0 0 0 4px rgba(255,255,255,.5)">Hold</span></div><div><span class="b b-cue" style="background:#FBBF24;color:#09090B">Held</span></div><div><span class="b b-cue" style="opacity:.35">Hold</span></div>
+<span class="cap" style="font-size:9px">PRIMARY</span><div><span class="b b-pri" style="">Start</span></div><div><span class="b b-pri" style="background:#E4E4E7">Start</span></div><div><span class="b b-pri" style="box-shadow:0 0 0 2px #09090B,0 0 0 4px rgba(255,255,255,.5)">Start</span></div><div><span class="b b-pri" style="transform:translateY(1px)">Start</span></div><div><span class="b b-pri" style="opacity:.35">Start</span></div>
+<span class="cap" style="font-size:9px">SECONDARY</span><div><span class="b " style="">Skip</span></div><div><span class="b " style="border-color:rgba(255,255,255,.35)">Skip</span></div><div><span class="b " style="box-shadow:0 0 0 2px #09090B,0 0 0 4px rgba(255,255,255,.5)">Skip</span></div><div><span class="b " style="background:rgba(255,255,255,.08)">Skip</span></div><div><span class="b " style="opacity:.35">Skip</span></div></div>
+<div class="cap" style="margin:26px 0 12px">TALLY · CHIPS · TOGGLES</div>
+<div class="row" style="gap:10px;flex-wrap:wrap"><span class="chip" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>ON AIR</span><span class="chip" style="background:rgba(251,191,36,.12);color:#FDE68A;box-shadow:inset 0 0 0 1px rgba(251,191,36,.45)">PVW</span><span class="chip" style="color:#71717A;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)">OFF</span><span class="chip" style="background:rgba(251,191,36,.08);color:#FDE68A;box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24;width:6px;height:6px"></span>Auto</span><span class="chip" style="background:rgba(52,211,153,.08);color:#6EE7B7;box-shadow:inset 0 0 0 1px rgba(52,211,153,.25)"><span class="dot" style="background:#34D399;width:6px;height:6px"></span>Live</span><span class="chip" style="background:rgba(251,191,36,.08);color:#FDE68A;box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)"><span class="dot" style="background:#FBBF24;width:6px;height:6px"></span>Covered</span><span class="chip" style="background:rgba(239,68,68,.08);color:#FCA5A5;box-shadow:inset 0 0 0 1px rgba(239,68,68,.25)"><span class="dot" style="background:#EF4444;width:6px;height:6px"></span>Not in OBS</span><span class="tog on"></span><span class="tog"></span><span class="seg"><span class="on">LAN</span><span>This PC</span></span></div>
+<div class="cap" style="margin:26px 0 12px">MONITORS</div>
+<div class="row" style="gap:14px"><div class="mon" style="width:250px;height:141px;background-image:url('../../assets/hud-previews/round-recap.jpg');box-shadow:inset 0 0 0 2px #FBBF24"><span class="tab" style="background:#FBBF24;color:#09090B">PVW</span></div><div class="mon" style="width:250px;height:141px;background-image:url('../../assets/hud-previews/ingame-full.jpg');box-shadow:inset 0 0 0 2px #F43F5E"><span class="tab" style="background:#F43F5E;color:#fff"><span class="dot" style="background:#fff;width:6px;height:6px"></span>PGM</span></div><div class="mon" style="width:150px;height:84px;background-image:url('../../assets/hud-previews/holding.jpg');"><span class="tab" style="background:rgba(9,9,11,.85);color:#A1A1AA">READY</span></div></div></div>
+<div>
+<div class="cap" style="margin-bottom:12px">HOLD COUNTDOWN · 5 S, THEN TAKE</div>
+<div class="row" style="gap:14px"><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="0" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">5</span></div><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="28.899999999999995" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">4</span></div><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="57.800000000000004" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">3</span></div><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="86.7" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">2</span></div><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#FBBF24" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="115.60000000000001" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">1</span></div><div style="position:relative;width:54px;height:54px"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="4"/><circle cx="27" cy="27" r="23" fill="none" stroke="#F43F5E" stroke-width="4" stroke-dasharray="144.5" stroke-dashoffset="0" transform="rotate(-90 27 27)"/></svg><span class="t1" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px">TAKE</span></div></div>
+<p class="hint" style="font-size:12px;margin-top:10px">Ring drains linearly each second. H holds (ring freezes amber, card says “Held by Ayesha”), S skips, Space takes now.</p>
+<div class="cap" style="margin:24px 0 12px">TAKE · PVW → PGM</div>
+<div class="row" style="gap:10px"><div style="position:relative;width:150px;height:84px;background:#000 url('../../assets/hud-previews/ingame-full.jpg') center/cover;box-shadow:inset 0 0 0 2px #F43F5E;overflow:hidden"><div style="position:absolute;inset:0 100% 0 0;background:#000 url('../../assets/hud-previews/round-recap.jpg') left/150px 84px;box-shadow:inset -2px 0 0 #fff"></div><span class="mono" style="position:absolute;right:6px;bottom:4px;font-size:9px;background:rgba(0,0,0,.7);padding:1px 4px">0 ms</span></div><div style="position:relative;width:150px;height:84px;background:#000 url('../../assets/hud-previews/ingame-full.jpg') center/cover;box-shadow:inset 0 0 0 2px #F43F5E;overflow:hidden"><div style="position:absolute;inset:0 50% 0 0;background:#000 url('../../assets/hud-previews/round-recap.jpg') left/150px 84px;box-shadow:inset -2px 0 0 #fff"></div><span class="mono" style="position:absolute;right:6px;bottom:4px;font-size:9px;background:rgba(0,0,0,.7);padding:1px 4px">120 ms</span></div><div style="position:relative;width:150px;height:84px;background:#000 url('../../assets/hud-previews/ingame-full.jpg') center/cover;box-shadow:inset 0 0 0 2px #F43F5E;overflow:hidden"><div style="position:absolute;inset:0 0% 0 0;background:#000 url('../../assets/hud-previews/round-recap.jpg') left/150px 84px;box-shadow:inset -2px 0 0 #fff"></div><span class="mono" style="position:absolute;right:6px;bottom:4px;font-size:9px;background:rgba(0,0,0,.7);padding:1px 4px">240 ms</span></div></div>
+<p class="hint" style="font-size:12px;margin-top:10px">Monitors mirror OBS: the console never animates a take OBS didn’t make. Stinger takes show the stinger’s cut point (600 ms).</p>
+<div class="cap" style="margin:24px 0 12px">EASING</div>
+<div class="row" style="gap:20px"><div><svg width="130" height="80" viewBox="-2 -2 134 84" style="overflow:visible">
+<rect x="0" y="0" width="130" height="80" fill="none" stroke="rgba(255,255,255,.07)"/>
+<line x1="0" y1="80" x2="130" y2="0" stroke="rgba(255,255,255,.08)" stroke-dasharray="3 4"/>
+<line x1="0" y1="80" x2="26" y2="80" stroke="rgba(255,255,255,.25)"/>
+<line x1="130" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,.25)"/>
+<circle cx="26" cy="80" r="3" fill="#FAFAFA"/><circle cx="0" cy="0" r="3" fill="#FAFAFA"/>
+<path d="M0.0 80.0 C26.0 80.0 0.0 0.0 130.0 0.0" fill="none" stroke="#FAFAFA" stroke-width="2.5"/></svg><div class="row" style="justify-content:space-between;margin-top:6px"><b style="font-size:12.5px">Enter</b><span class="mono hint" style="font-size:11px">180 ms</span></div></div><div><svg width="130" height="80" viewBox="-2 -2 134 84" style="overflow:visible">
+<rect x="0" y="0" width="130" height="80" fill="none" stroke="rgba(255,255,255,.07)"/>
+<line x1="0" y1="80" x2="130" y2="0" stroke="rgba(255,255,255,.08)" stroke-dasharray="3 4"/>
+<line x1="0" y1="80" x2="52" y2="80" stroke="rgba(255,255,255,.25)"/>
+<line x1="130" y1="0" x2="130" y2="0" stroke="rgba(255,255,255,.25)"/>
+<circle cx="52" cy="80" r="3" fill="#FAFAFA"/><circle cx="130" cy="0" r="3" fill="#FAFAFA"/>
+<path d="M0.0 80.0 C52.0 80.0 130.0 0.0 130.0 0.0" fill="none" stroke="#FAFAFA" stroke-width="2.5"/></svg><div class="row" style="justify-content:space-between;margin-top:6px"><b style="font-size:12.5px">Exit</b><span class="mono hint" style="font-size:11px">120 ms</span></div></div><div><svg width="130" height="80" viewBox="-2 -2 134 84" style="overflow:visible">
+<rect x="0" y="0" width="130" height="80" fill="none" stroke="rgba(255,255,255,.07)"/>
+<line x1="0" y1="80" x2="130" y2="0" stroke="rgba(255,255,255,.08)" stroke-dasharray="3 4"/>
+<line x1="0" y1="80" x2="39" y2="80" stroke="rgba(255,255,255,.25)"/>
+<line x1="130" y1="0" x2="0" y2="0" stroke="rgba(255,255,255,.25)"/>
+<circle cx="39" cy="80" r="3" fill="#FAFAFA"/><circle cx="0" cy="0" r="3" fill="#FAFAFA"/>
+<path d="M0.0 80.0 C39.0 80.0 0.0 0.0 130.0 0.0" fill="none" stroke="#FAFAFA" stroke-width="2.5"/></svg><div class="row" style="justify-content:space-between;margin-top:6px"><b style="font-size:12.5px">Alert in</b><span class="mono hint" style="font-size:11px">240 ms</span></div></div></div>
+<p class="hint" style="font-size:12px;margin-top:10px">Reduced motion: rings become a number, wipes become cuts, slide-ins become fades.</p></div></div></div><div class="cap" style="position:absolute;left:56px;right:56px;bottom:22px;display:flex;justify-content:space-between;font-size:9px"><span>ESPORTRA BROADCAST · UI/UX</span><span>hud/sys-17-components-motion</span></div></main></body></html>

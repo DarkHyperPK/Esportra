@@ -864,6 +864,288 @@
         "web"
       ],
       "bytes": 337531
+    },
+    {
+      "id": "hud/web-05-crew-links",
+      "group": "hud",
+      "file": "hud-studio/web-05-crew-links.png",
+      "source": "source/html/hud/web-05-crew-links.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Crew & links: roles, invites, tokenised browser sources with OBS tally, one-click OBS scene build, co-stream links.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web"
+      ],
+      "bytes": 185329
+    },
+    {
+      "id": "hud/web-06-report",
+      "group": "hud",
+      "file": "hud-studio/web-06-report.png",
+      "source": "source/html/hud/web-06-report.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Post-show report: on-air and automation stats, sponsor proof, VOD chapters, results sent to the bracket, incidents.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web"
+      ],
+      "bytes": 156276
+    },
+    {
+      "id": "hud/desk-07-pair-readiness",
+      "group": "hud",
+      "file": "hud-studio/desk-07-pair-readiness.png",
+      "source": "source/html/hud/desk-07-pair-readiness.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Pair and readiness: node pairing code, show and match pick, readiness checklist (GEP, OBS, scenes, sources, internet).",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop"
+      ],
+      "bytes": 154771
+    },
+    {
+      "id": "hud/desk-08-console",
+      "group": "hud",
+      "file": "hud-studio/desk-08-console.png",
+      "source": "source/html/hud/desk-08-console.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Producer console: PVW/PGM from OBS, Take/Cut/Stinger, autopilot now/next with hold countdown, graphic layers with hotkeys, trigger pad, live data, event log.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "automation"
+      ],
+      "bytes": 634903
+    },
+    {
+      "id": "hud/desk-09-scenes",
+      "group": "hud",
+      "file": "hud-studio/desk-09-scenes.png",
+      "source": "source/html/hud/desk-09-scenes.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · OBS/vMix: connection, one-click scene build with slots for your own sources, segment → scene map, transitions and replay buffer.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "obs"
+      ],
+      "bytes": 283703
+    },
+    {
+      "id": "hud/desk-10-capture",
+      "group": "hud",
+      "file": "hud-studio/desk-10-capture.png",
+      "source": "source/html/hud/desk-10-capture.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Capture: GEP feature status and freshness, fallbacks for missing fields, optional player PCs, live state, simulator.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "data"
+      ],
+      "bytes": 144816
+    },
+    {
+      "id": "hud/desk-11-observer",
+      "group": "hud",
+      "file": "hud-studio/desk-11-observer.png",
+      "source": "source/html/hud/desk-11-observer.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Observer PC in capture-only mode: sends GEP to the production PC, hotkeys, no show controls.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "data"
+      ],
+      "bytes": 609404
+    },
+    {
+      "id": "hud/desk-12-outputs",
+      "group": "hud",
+      "file": "hud-studio/desk-12-outputs.png",
+      "source": "source/html/hud/desk-12-outputs.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Outputs: every browser source served by the node with live preview, connections, URL and frame health.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "obs"
+      ],
+      "bytes": 437283
+    },
+    {
+      "id": "hud/desk-13-data-fix",
+      "group": "hud",
+      "file": "hud-studio/desk-13-data-fix.png",
+      "source": "source/html/hud/desk-13-data-fix.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Fix data drawer: score, names, sides and series with an optional bracket correction and history.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "data"
+      ],
+      "bytes": 737187
+    },
+    {
+      "id": "hud/desk-14-offline-sync",
+      "group": "hud",
+      "file": "hud-studio/desk-14-offline-sync.png",
+      "source": "source/html/hud/desk-14-offline-sync.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Desktop · Offline: the show keeps running locally, queued sync, and a conflict resolver when the connection returns.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "desktop",
+        "states"
+      ],
+      "bytes": 111066
+    },
+    {
+      "id": "hud/sys-15-how-it-works",
+      "group": "hud",
+      "file": "hud-studio/sys-15-how-it-works.png",
+      "source": "source/html/hud/sys-15-how-it-works.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "System · How it works: web ↔ production node ↔ OBS ↔ stream, observer PC over LAN, and a match start to finish across Esportra, autopilot, OBS scene and on-screen graphic.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "system",
+        "architecture"
+      ],
+      "bytes": 153476
+    },
+    {
+      "id": "hud/sys-16-states",
+      "group": "hud",
+      "file": "hud-studio/sys-16-states.png",
+      "source": "source/html/hud/sys-16-states.html",
+      "size": [
+        1600,
+        790
+      ],
+      "direction": "command console",
+      "description": "System · States: OBS disconnected, feed stale, output dropped, node offline, rescheduled, forfeit, empty, loading.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "system",
+        "states"
+      ],
+      "bytes": 201261
+    },
+    {
+      "id": "hud/sys-17-components-motion",
+      "group": "hud",
+      "file": "hud-studio/sys-17-components-motion.png",
+      "source": "source/html/hud/sys-17-components-motion.html",
+      "size": [
+        1600,
+        740
+      ],
+      "direction": "command console",
+      "description": "System · Components and motion: Take/Hold/primary/secondary states, tally and chips, monitors, hold countdown frames, take wipe, easing.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "system",
+        "motion"
+      ],
+      "bytes": 279738
+    },
+    {
+      "id": "hud/sys-18-phone-remote",
+      "group": "hud",
+      "file": "hud-studio/sys-18-phone-remote.png",
+      "source": "source/html/hud/sys-18-phone-remote.html",
+      "size": [
+        1600,
+        920
+      ],
+      "direction": "command console",
+      "description": "System · Phone remote: now/next with hold, triggers, alerts.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "system",
+        "mobile"
+      ],
+      "bytes": 160815
+    },
+    {
+      "id": "hud/sys-19-onboarding",
+      "group": "hud",
+      "file": "hud-studio/sys-19-onboarding.png",
+      "source": "source/html/hud/sys-19-onboarding.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "System · Onboarding: nine-step setup from tournament link to crew invite.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "system",
+        "web"
+      ],
+      "bytes": 143063
     }
   ]
 }

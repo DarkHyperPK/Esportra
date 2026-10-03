@@ -137,10 +137,63 @@ ${[['Ayesha · Producer', 'Holding the recap, casters want the replay first.', '
 <div style="margin-top:16px">${sectionTitle('INCIDENTS TODAY')}${[['warning', 'Booth B · OBS dropped 9 s'], ['neutral', 'Manual take · Studio PC · replay'], ['neutral', 'Score corrected · 11–12 (was 12–11)']].map(([t, d]) => `<div class="row" style="gap:8px;padding:6px 0;font-size:12.5px"><span class="dot" style="background:${TONES[t].dot}"></span>${d}</div>`).join('')}</div></div>
 <div class="box" style="grid-column:span 2;padding:14px 16px">${sectionTitle('STARTING NEXT', '<span class="hint" style="font-size:12px">Nodes pick these up on their own</span>')}
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${[[ZP, GU, '21:30 · Booth B', 'Countdown on air in 46 min'], [NO, LL, '22:00 · Studio PC', 'Waits for current series'], [BF, ZP, '22:45 · no node', 'Assign a node']].map(([a, b, t, s], i) => `<div style="padding:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px ${i === 2 ? TONES.critical.ring : 'rgba(255,255,255,.07)'}">${teamPair(a, b, 16)}<div class="mono hint" style="font-size:11px;margin-top:8px">${t}</div><div style="font-size:12.5px;margin-top:4px;color:${i === 2 ? '#FCA5A5' : C.secondary}">${s}</div></div>`).join('')}</div></div></div>
-<div class="box" style="position:absolute;left:268px;right:32px;bottom:26px;padding:14px 16px">${sectionTitle('SHOW TIMELINE · STUDIO PC · LAST 60 MIN', '<span class="row" style="gap:14px;font-size:11.5px" class="hint"><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:rgba(255,255,255,.18)"></span><span class="hint">Auto take</span></span><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:#FBBF24"></span><span class="hint">Hold</span></span><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:#fff"></span><span class="hint">Manual take</span></span></span>')}
+<div class="box" style="margin-top:14px;padding:14px 16px">${sectionTitle('SHOW TIMELINE · STUDIO PC · LAST 60 MIN', '<span class="row" style="gap:14px;font-size:11.5px" class="hint"><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:rgba(255,255,255,.18)"></span><span class="hint">Auto take</span></span><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:#FBBF24"></span><span class="hint">Hold</span></span><span class="row" style="gap:6px"><span style="width:10px;height:10px;background:#fff"></span><span class="hint">Manual take</span></span></span>')}
 <div style="position:relative;height:34px;display:flex;gap:2px">${[['Starting soon', 8], ['Intro', 3], ['Veto', 5], ['Agents', 3], ['Map 1 · Ascent', 30], ['Result', 3], ['Map 2', 26], ['Result', 3], ['Map 3 · Lotus', 19]].map(([t, w], i) => `<div style="flex:${w};background:${i === 8 ? 'rgba(244,63,94,.18)' : 'rgba(255,255,255,.06)'};box-shadow:inset 0 0 0 1px ${i === 8 ? 'rgba(244,63,94,.5)' : 'rgba(255,255,255,.06)'};display:flex;align-items:center;padding:0 8px;font-size:11px;color:${C.secondary};white-space:nowrap;overflow:hidden">${t}</div>`).join('')}
 ${[12, 23, 31, 44, 58, 66, 71, 83, 90, 96].map((x, i) => `<span style="position:absolute;left:${x}%;top:-6px;width:3px;height:46px;background:${i === 4 || i === 9 ? '#FBBF24' : i === 7 ? '#fff' : 'rgba(255,255,255,.28)'}"></span>`).join('')}</div>
 <div class="row" style="justify-content:space-between;margin-top:8px" ><span class="mono hint" style="font-size:10.5px">18:45</span><span class="mono hint" style="font-size:10.5px">19:15</span><span class="mono" style="font-size:10.5px;color:#FDA4AF">NOW 19:43</span></div></div>
-${ann(1, 244, 178)}${ann(2, 548, 470)}${ann(3, 1000, 470)}${ann(4, 1250, 178)}${ann(5, 244, 600)}${ann(6, 244, 860)}`;
+${ann(1, 244, 178)}${ann(2, 548, 470)}${ann(3, 1000, 470)}${ann(4, 1250, 178)}${ann(5, 244, 600)}${ann(6, 244, 700)}`;
   return screen({ id: 'hud/web-04-live-monitor', body: webShell({ active: 'Live monitor', eyebrow: 'LIVE MONITOR · 2 ON AIR', title: 'Everything on air, from anywhere', sub: 'Remote eyes on every node. Hold or take from here; the node does the work.', actions: '<span class="seg"><span class="on">Grid</span><span>Focus</span></span>', body }) });
+}
+
+export function crewLinks() {
+  const crew = [
+    ['Ayesha Raza', 'Producer', 'Desktop console · phone remote', 'success', 'On shift'],
+    ['Bilal Khan', 'Ops lead', 'Web · all nodes', 'success', 'On shift'],
+    ['Hamza Ali', 'Observer', 'Capture only · Observer PC 1', 'success', 'Feeding'],
+    ['Sara Malik', 'Caster', 'Talent card · lower thirds', 'neutral', 'Invited'],
+    ['Studio crew', 'Crew', 'Sources page only', 'neutral', '2 devices'],
+  ];
+  const src = (name, path, connected, live) => `<div class="row" style="gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05)">
+<div style="width:150px"><b style="font-size:13px">${name}</b><div class="hint" style="font-size:11px">1920 × 1080</div></div>
+<div class="field mono" style="flex:1;height:32px;font-size:11.5px;color:${C.secondary};overflow:hidden;white-space:nowrap">http://192.168.1.40:5300/o/${path}?k=••••</div>
+<span class="b b-sm" style="width:32px;padding:0">${icon('copy', C.ink, 12)}</span>
+<span style="width:86px;text-align:right">${live ? tally('pgm') : connected ? chip('In OBS', 'success') : chip('Not added', 'neutral')}</span></div>`;
+  const body = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+<div><div class="box" style="padding:14px 16px">${sectionTitle('CREW · KVO PLAYOFFS', '<span class="b b-sm b-pri">Invite</span>')}
+<table class="tbl"><tr><th>Person</th><th>Role</th><th>Sees</th><th>Status</th></tr>${crew.map(([n, r, a, t, st]) => `<tr><td><b>${n}</b></td><td>${r}</td><td class="muted" style="font-size:12.5px">${a}</td><td>${chip(st, t)}</td></tr>`).join('')}</table></div>
+<div class="box" style="padding:14px 16px;margin-top:16px">${sectionTitle('ROLES')}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${[['Ops lead', 'Every show and node, remote take, rules'], ['Producer', 'One node: console, holds, triggers, fixes'], ['Observer', 'Capture only: feeds GEP, no controls'], ['Crew', 'Sources page: URLs and checks, no controls']].map(([r, d]) => `<div style="padding:12px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)"><b style="font-size:13px">${r}</b><p class="hint" style="font-size:12px;margin-top:3px">${d}</p></div>`).join('')}</div></div>
+<div class="box" style="padding:14px 16px;margin-top:16px">${sectionTitle('CO-STREAM LINKS · FOR TEAMS AND CREATORS')}
+<p class="muted" style="font-size:12.5px">A watch-party overlay with score, series and veto. No player cams, no controls. Expires when the series ends.</p>
+<div class="row" style="gap:10px;margin-top:12px"><div class="field mono" style="flex:1;font-size:11.5px;color:${C.secondary}">https://live.esportra.gg/co/kvo-gf-7Q2X</div><span class="b b-sm">Copy</span><span class="b b-sm">${icon('qr', C.ink, 12)} QR</span></div></div></div>
+<div class="box" style="padding:14px 16px;align-self:start">${sectionTitle('BROWSER SOURCES · STUDIO PC', '<span class="seg"><span class="on">LAN</span><span>This PC</span><span>Cloud relay</span></span>')}
+${src('In-game HUD', 'ingame', true, true)}${src('Fullscreen scenes', 'fullscreen', true, false)}${src('Holding', 'holding', true, false)}${src('Replay bug', 'replay', true, false)}${src('Casters', 'casters', false, false)}${src('Stinger (live)', 'stinger', true, false)}
+<div style="margin-top:16px;padding:14px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)">
+<div class="row" style="justify-content:space-between"><b style="font-size:13.5px">Let the app build your OBS scenes</b>${chip('Recommended', 'success')}</div>
+<p class="muted" style="font-size:12.5px;margin-top:6px">The desktop app creates Holding, Gameplay, Fullscreen, Replay and Casters in OBS with these sources already inside. Your crew only drops in the game feed and cameras.</p>
+<div class="row" style="gap:10px;margin-top:12px"><span class="b b-pri b-sm">Open on Studio PC</span><span class="b b-sm">Manual setup guide</span></div></div>
+<div class="row" style="gap:8px;margin-top:12px;font-size:12px">${icon('link', C.hint, 13)}<span class="hint">Links carry a key. Rotate it and every source updates on its own.</span><span class="b b-sm" style="margin-left:auto">Rotate key</span></div></div></div>
+${ann(1, 244, 196)}${ann(2, 244, 466)}${ann(3, 244, 740)}${ann(4, 864, 196)}${ann(5, 864, 636)}`;
+  return screen({ id: 'hud/web-05-crew-links', body: webShell({ active: 'Crew & links', eyebrow: 'CREW & LINKS · KVO PLAYOFFS', title: 'Who runs it, and what they add', sub: 'Everyone gets exactly what their job needs. The studio crew only ever sees the sources page.', actions: '<span class="b">Send crew pack</span>', body }) });
+}
+
+export function report() {
+  const sponsors = [['Arclight PC', 41, 'Presenting · ticker · bug'], ['Nova Energy', 28, 'Bug · break reads'], ['Karachi Telecom', 17, 'Bug']];
+  const chapters = ['00:00 Starting soon', '12:40 Match intro', '15:02 Map veto', '19:10 Map 1 · Ascent', '58:31 Map 1 result · NO 13–9', '1:02:10 Map 2 · Bind', '1:41:55 Map 2 result · C5 13–10', '1:46:20 Map 3 · Lotus', '2:31:04 Series · Night Owls win 2–1'];
+  const body = `${kpis([['ON AIR', '2h 38m', 'Studio PC'], ['AUTOMATIC TAKES', '412 / 438', '94% hands-free'], ['HOLDS & MANUAL', '26', '9 holds · 17 manual'], ['INCIDENTS', '3', 'Longest 9 s', 'warning'], ['FEED', '41 ms', 'Median GEP latency', 'success']])}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px">
+<div class="box" style="padding:14px 16px">${sectionTitle('SPONSOR TIME ON AIR')}
+${sponsors.map(([n, m, d]) => `<div style="padding:10px 0"><div class="row" style="justify-content:space-between"><b style="font-size:13.5px">${n}</b><span class="mono" style="font-size:12px">${m} min</span></div><div class="bar" style="margin-top:8px"><i style="width:${(m / 45) * 100}%"></i></div><div class="hint" style="font-size:11.5px;margin-top:6px">${d}</div></div>`).join('')}
+<span class="b b-sm" style="margin-top:8px">Export sponsor proof (PDF)</span></div>
+<div class="box" style="padding:14px 16px">${sectionTitle('VOD CHAPTERS · FROM ROUND EVENTS', '<span class="b b-sm">Copy for YouTube</span>')}
+<div class="mono" style="font-size:12px;line-height:2.05;color:${C.label}">${chapters.join('<br>')}</div></div>
+<div class="box" style="padding:14px 16px">${sectionTitle('RESULTS SENT TO THE BRACKET')}
+${[['Map 1 · Ascent', 'NO 13–9', 'Verified from Riot'], ['Map 2 · Bind', 'C5 13–10', 'Verified from Riot'], ['Map 3 · Lotus', 'NO 13–11', 'Verified from Riot']].map(([m, sc, v]) => `<div class="row" style="gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)">${icon('check', C.success, 14)}<span style="font-size:13px">${m}</span><span class="mono" style="font-size:12px;margin-left:auto">${sc}</span></div>`).join('')}
+<p class="hint" style="font-size:12px;margin-top:10px">Series 2–1 to Night Owls. Upper final unlocked, its show queued on Studio PC.</p>
+<div class="row" style="gap:8px;margin-top:14px"><span style="width:96px;height:54px;background:#000 url('${img('map-result.jpg')}') center/cover;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></span><span style="width:96px;height:54px;background:#000 url('${img('champion.jpg')}') center/cover;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></span><span class="b b-sm" style="margin-left:auto">Share cards</span></div></div></div>
+<div class="box" style="padding:14px 16px;margin-top:16px">${sectionTitle('INCIDENTS AND OVERRIDES')}
+<table class="tbl"><tr><th>Time</th><th>Node</th><th>What happened</th><th>Who</th><th>Impact</th></tr>
+${[['19:41', 'Booth B', 'OBS connection dropped, autopilot paused', 'System', chip('9 s', 'warning')], ['19:43', 'Studio PC', 'Held round recap for a replay', 'Ayesha', chip('Hold', 'neutral')], ['20:12', 'Studio PC', 'Score corrected 11–12 (feed said 12–11)', 'Ayesha', chip('Data fix', 'neutral')]].map((r) => `<tr>${r.map((c, i) => `<td class="${i === 0 ? 'mono' : ''}">${c}</td>`).join('')}</tr>`).join('')}</table></div>
+${ann(1, 244, 214)}${ann(2, 244, 330)}${ann(3, 680, 330)}${ann(4, 1110, 330)}${ann(5, 244, 720)}`;
+  return screen({ id: 'hud/web-06-report', body: webShell({ active: 'Reports', eyebrow: 'REPORTS · UPPER SEMI-FINAL · NIGHT OWLS VS CRIMSON FIVE', title: 'Show report', sub: 'Generated when the series ends. Proof for sponsors, chapters for the VOD, and results already in the bracket.', actions: '<span class="b">Download CSV</span><span class="b b-pri">Share report</span>', body }) });
 }
