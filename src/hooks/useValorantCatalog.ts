@@ -10,10 +10,10 @@ import { useQuery } from '@tanstack/react-query';
 
 const BASE = 'https://valorant-api.com/v1';
 const DAY_MS = 24 * 60 * 60 * 1000;
-const CACHE_PREFIX = 'esportra:valorant-catalog:v2:';
+const CACHE_PREFIX = 'esportra:valorant-catalog:v3:';
 
 export interface ValorantAbility { slot?: string; displayIcon?: string; displayName?: string }
-export interface ValorantAgent { uuid: string; displayName?: string; displayIcon?: string; fullPortrait?: string; abilities?: ValorantAbility[] }
+export interface ValorantAgent { uuid: string; displayName?: string; displayIcon?: string; fullPortrait?: string; role?: string; abilities?: ValorantAbility[] }
 export interface ValorantMap {
     displayName?: string;
     displayIcon?: string;
@@ -72,6 +72,7 @@ const slimAgent = (a: Raw): ValorantAgent => ({
     displayName: str(a.displayName),
     displayIcon: str(a.displayIcon),
     fullPortrait: str(a.fullPortrait),
+    role: str((a.role as Raw | undefined)?.displayName),
     abilities: Array.isArray(a.abilities)
         ? (a.abilities as Raw[]).map((ab) => ({ slot: str(ab.slot), displayIcon: str(ab.displayIcon), displayName: str(ab.displayName) }))
         : undefined,

@@ -16,6 +16,8 @@ type Props = {
     teamBName: string;
     teamALogo?: string;
     teamBLogo?: string;
+    teamAColor?: string | null;
+    teamBColor?: string | null;
     mapName: string;
     playerPuuid?: string | null;
     leftPlayerPuuid?: string | null;
@@ -48,7 +50,7 @@ function PlayerCardFor({ model, puuid, agents, splash }: { model: ShareCardModel
 }
 
 /** OBS browser source for the "esportra" theme: the redesigned share cards, scaled to fit. */
-export function EsportraOverlay({ match, mode, leftSide, teamAName, teamBName, teamALogo, teamBLogo, mapName, playerPuuid, leftPlayerPuuid, rightPlayerPuuid }: Props) {
+export function EsportraOverlay({ match, mode, leftSide, teamAName, teamBName, teamALogo, teamBLogo, teamAColor, teamBColor, mapName, playerPuuid, leftPlayerPuuid, rightPlayerPuuid }: Props) {
     const agents = useValorantAgents().data ?? EMPTY;
     const model = useMemo(
         () => buildShareCardModel(match, { team1Name: teamAName, team2Name: teamBName, team1Logo: teamALogo, team2Logo: teamBLogo, t1Side: leftSide, mapName }),
@@ -68,7 +70,7 @@ export function EsportraOverlay({ match, mode, leftSide, teamAName, teamBName, t
         <main className="grid h-dvh w-dvw place-items-center overflow-hidden bg-transparent">
             <div style={{ width: size.width * scale, height: size.height * scale }}>
                 <div style={{ ...size, transform: `scale(${scale})`, transformOrigin: 'top left', display: 'flex', gap: 48 }}>
-                    {mode === 'match' ? <MatchShareCard model={model} agents={agents} mapSplash={splash} /> : null}
+                    {mode === 'match' ? <MatchShareCard model={model} agents={agents} mapSplash={splash} teamColors={[teamAColor, teamBColor]} /> : null}
                     {mode === 'player' ? <PlayerCardFor model={model} puuid={first} agents={agents} splash={splash} /> : null}
                     {mode === 'compare' ? (
                         <>

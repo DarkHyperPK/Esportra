@@ -1130,6 +1130,8 @@ const RiotPostMatchOverlay = () => {
         teamBName={teamBName}
         teamALogo={leftPanel.logo || undefined}
         teamBLogo={rightPanel.logo || undefined}
+        teamAColor={params.get("teamAColor") ? teamAColor : null}
+        teamBColor={params.get("teamBColor") ? teamBColor : null}
         mapName={mapName}
         playerPuuid={params.get("playerPuuid")}
         leftPlayerPuuid={params.get("leftPlayerPuuid")}

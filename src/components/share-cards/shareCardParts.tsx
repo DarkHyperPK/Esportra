@@ -37,15 +37,3 @@ export const Cue = ({ width = 96, style }: { width?: number; style?: CSSProperti
 export const Wordmark = ({ height = 34 }: { height?: number }) => (
     <img src={LOGO_URL} crossOrigin="anonymous" alt="Esportra" style={{ height, width: 'auto', objectFit: 'contain' }} />
 );
-
-/** Full-bleed art behind a card, faded into the stage from one side. */
-export function Backdrop({ src, fade, opacity = 0.32 }: { src: string | null; fade: string; opacity?: number }) {
-    return (
-        <>
-            {src ? (
-                <img src={src} crossOrigin="anonymous" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity }} />
-            ) : null}
-            <div style={{ position: 'absolute', inset: 0, background: fade }} />
-        </>
-    );
-}
