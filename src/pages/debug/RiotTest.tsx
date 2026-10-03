@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React, { useState } from 'react';
 import { Button, CtaButton } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -600,6 +601,9 @@ const RiotTest = () => {
                 <p className="text-zinc-400">
                     Production environment for full MatchDto parsing and analytics verification.
                 </p>
+                <Link to="/debug/riot/ocr" className="inline-block text-sm font-semibold text-rose-400 underline-offset-4 hover:text-rose-300 hover:underline">
+                    Scoreboard OCR test bench →
+                </Link>
             </div>
 
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

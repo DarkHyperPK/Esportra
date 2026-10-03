@@ -192,6 +192,7 @@ const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
 const RiotPostMatchOverlay = lazyWithRetry(() => import("./pages/debug/RiotPostMatchOverlay"));
 const RiotShareCardsPreview = lazyWithRetry(() => import("./pages/debug/RiotShareCardsPreview"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
+const ScoreboardOcrDebug = lazyWithRetry(() => import("./pages/debug/ScoreboardOcrDebug"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
@@ -621,6 +622,7 @@ const AppContent = React.memo(() => {
 
                 {/* Debug Routes */}
                 <Route path="/debug/riot" element={<RiotTest />} />
+                <Route path="/debug/riot/ocr" element={<ScoreboardOcrDebug />} />
                 <Route path="/debug/igdb" element={<IgdbTest />} />
 
                 {/* Catch-all route */}

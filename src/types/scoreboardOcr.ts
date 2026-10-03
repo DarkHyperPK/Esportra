@@ -106,3 +106,33 @@ export interface OcrDraft {
   players: OcrDraftPlayer[];
   warnings: OcrWarning[];
 }
+
+/** Staff OCR test bench (/debug/riot/ocr). */
+export interface ScoreboardOcrDebugResponse {
+  elapsedMs: number;
+  result: ScoreboardOcrResult;
+}
+
+export interface ScoreboardOcrHealth {
+  configured: boolean;
+  reachable: boolean;
+  agents: number;
+}
+
+/** Expected-values file in services/scoreboard-ocr/tests/fixtures/real/<name>.json. */
+export interface ScoreboardOcrFixture {
+  outcome: OcrOutcome | null;
+  ally: number | null;
+  enemy: number | null;
+  map: string | null;
+  rows: Array<{
+    side: OcrSide | null;
+    name: string | null;
+    kills: number | null;
+    deaths: number | null;
+    assists: number | null;
+    firstBloods: number | null;
+    plants: number | null;
+    defuses: number | null;
+  }>;
+}
