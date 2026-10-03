@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
 import type { OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
-import { REVIEW_STATS } from './reviewStats';
+import { desktopGridClass, mobileStatsGridClass, type ReviewStat } from './reviewStats';
 
 const CELL = 'h-9 rounded-none border border-white/10 bg-black/40 px-2 text-sm text-white outline-none transition-colors hover:border-white/20 focus-visible:border-rose-400/70';
 const FLAG = 'border-amber-400/70 bg-amber-400/[0.06]';
@@ -11,15 +11,16 @@ interface Props {
   index: number;
   teamNames: Record<TeamSlot, string>;
   agents: ValorantAgentOption[];
+  stats: ReviewStat[];
   onChange: (patch: { team?: TeamSlot; name?: string; agentId?: string | null; stat?: [OcrStatKey, number | null] }) => void;
 }
 
 /** One editable scoreboard line. Amber outline = the reader was unsure; it clears once edited. */
-export function ScoreboardOcrRow({ player, index, teamNames, agents, onChange }: Props) {
+export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, onChange }: Props) {
   const flagged = (field: string) => player.uncertain.some((f) => f === field);
   const rowLabel = player.name || `Player ${index + 1}`;
   return (
-    <div className="grid grid-cols-2 gap-2 border-b border-white/[0.06] py-2 last:border-b-0 sm:grid-cols-[7.5rem_8.5rem_minmax(0,1fr)_repeat(5,3.6rem)] sm:items-center">
+    <div className={cn('grid grid-cols-2 gap-2 border-b border-white/[0.06] py-2 last:border-b-0 sm:items-center', desktopGridClass(stats.length))}>
       <select
         aria-label={`${rowLabel} team`}
         value={player.team ?? ''}
@@ -45,11 +46,12 @@ export function ScoreboardOcrRow({ player, index, teamNames, agents, onChange }:
         aria-label={`Player ${index + 1} name`}
         value={player.name}
         maxLength={40}
+        placeholder="Name not readable — type it"
         onChange={(event) => onChange({ name: event.target.value })}
         className={cn(CELL, 'col-span-2 font-medium sm:col-span-1', flagged('name') && FLAG)}
       />
-      <div className="col-span-2 grid grid-cols-5 gap-2 sm:contents">
-        {REVIEW_STATS.map(({ key, label, title }) => (
+      <div className={cn('col-span-2 grid gap-2 sm:contents', mobileStatsGridClass(stats.length))}>
+        {stats.map(({ key, label, title }) => (
           <input
             key={key}
             aria-label={`${rowLabel} ${title}`}

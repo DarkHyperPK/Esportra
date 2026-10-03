@@ -4,6 +4,7 @@ vi.mock('@/lib/apiClient', () => ({ apiClient: {} }));
 import { scoreboardOcrParseSchema, ocrReviewSchema, validateScreenshotFile } from '@/schemas/scoreboardOcrSchema';
 import { buildOcrSubmission, draftFromParse, updateDraftPlayer } from '@/services/scoreboardOcr';
 import { resolveStoredEnrichedMatch } from '@/hooks/useRiotGameDetails';
+import { visibleStats } from '@/components/tournament/scoreboard-ocr/reviewStats';
 import type { OcrPlayerRow, ScoreboardOcrParse } from '@/types/scoreboardOcr';
 
 const sure = <T,>(value: T) => ({ value, confidence: 0.99 });
@@ -138,5 +139,51 @@ describe('validateScreenshotFile', () => {
     expect(validateScreenshotFile(new File(['x'], 'a.png', { type: 'image/png' }))).toBeNull();
     expect(validateScreenshotFile(new File(['x'], 'a.gif', { type: 'image/gif' }))).not.toBeNull();
     expect(validateScreenshotFile(new File(['x'], 'a.png', { type: 'image/svg+xml' }))).not.toBeNull();
+  });
+});
+
+describe('real client layout (KDA, first bloods, plants, defuses — no ACS)', () => {
+  const realRow = (name: string, side: 'ally' | 'enemy', k: number, d: number, a: number): OcrPlayerRow => ({
+    side,
+    sideConfidence: 0.95,
+    name: sure(name),
+    rosterMatch: { userId: `u-${name}`, team: side === 'ally' ? 'team1' : 'team2', matchedName: name, score: 1 },
+    agent: { value: null, confidence: 0 },
+    stats: { kills: sure(k), deaths: sure(d), assists: sure(a), firstBloods: sure(1), plants: sure(2), defuses: sure(0) },
+  });
+  const real = (): ScoreboardOcrParse => {
+    const base = parse();
+    return {
+      ...base,
+      result: {
+        ...base.result,
+        allyTeam: sure('team1'),
+        allyScore: sure(13),
+        enemyScore: sure(5),
+        columns: ['assists', 'deaths', 'defuses', 'firstBloods', 'kills', 'plants'],
+        players: [
+          ...['tr1ck', 'Kenshiro', 'Cryogeyser', 'dem0nzx', 'expired pickle'].map((n, i) => realRow(n, 'ally', 20 - i, 7 + i, 3)),
+          ...['LAGGING', 'AHK', 'osa1d', 'Shini', 'X'].map((n, i) => realRow(n, 'enemy', 13 - i, 14 + i, 1)),
+        ],
+      },
+    };
+  };
+
+  it('never invents ACS and shows the columns the screenshot had', () => {
+    const draft = draftFromParse(real(), 'team1');
+    expect(draft.columns).not.toContain('acs');
+    expect(visibleStats(draft.columns).map((s) => s.label)).toEqual(['K', 'D', 'A', 'FK', 'PL', 'DF']);
+
+    const submission = buildOcrSubmission(draft, {
+      matchId: 'm', gameNumber: 1, reportedByTeamId: 't1', reporterSlot: 'team1', team1Id: 't1', team2Id: 't2',
+    });
+    const first = submission.matchData.players?.[0];
+    expect(first).toMatchObject({ kills: 20, deaths: 7, assists: 3, firstBloods: 1 });
+    expect(first?.acs).toBeUndefined();
+    expect(first?.score).toBeUndefined();
+  });
+
+  it('still shows K/D/A/FK when the reader found no stat columns', () => {
+    expect(visibleStats([]).map((s) => s.key)).toEqual(['kills', 'deaths', 'assists', 'firstBloods']);
   });
 });

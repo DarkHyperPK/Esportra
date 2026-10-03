@@ -48,7 +48,7 @@ export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, tea
         Read from screenshot{mapName ? ` · ${mapName}` : ''}
       </p>
       <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <p className={cn('truncate text-right font-heading text-base font-bold sm:text-lg', t1Leads ? 'text-white' : 'text-zinc-400')}>
+        <p className={cn('line-clamp-2 break-words text-right font-heading text-sm font-bold leading-tight sm:text-base', t1Leads ? 'text-white' : 'text-zinc-400')}>
           {team1Name}
         </p>
         <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, tea
           <span className="font-heading text-3xl font-black text-zinc-600" aria-hidden>:</span>
           <ScoreInput label={team2Name} value={team2Score} leading={t2Leads} uncertain={uncertain} onChange={(v) => onChange('team2', v)} />
         </div>
-        <p className={cn('truncate font-heading text-base font-bold sm:text-lg', t2Leads ? 'text-white' : 'text-zinc-400')}>
+        <p className={cn('line-clamp-2 break-words font-heading text-sm font-bold leading-tight sm:text-base', t2Leads ? 'text-white' : 'text-zinc-400')}>
           {team2Name}
         </p>
       </div>

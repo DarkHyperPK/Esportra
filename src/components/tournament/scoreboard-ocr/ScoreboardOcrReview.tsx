@@ -4,7 +4,8 @@ import { EYEBROW_CLASS, InlineNotice } from '@/components/ui/kit';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
 import type { OcrDraft, OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
 import { ScoreboardOcrRow } from './ScoreboardOcrRow';
-import { REVIEW_STATS } from './reviewStats';
+import { desktopGridClass, mobileStatsGridClass, visibleStats, type ReviewStat } from './reviewStats';
+import { cn } from '@/lib/utils';
 import { ScoreboardOcrScoreHeader } from './ScoreboardOcrScoreHeader';
 
 /** Warnings that are already visible as row highlights are not repeated in the summary. */
@@ -22,19 +23,19 @@ interface Props {
   onManual: () => void;
 }
 
-function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDraftPlayer[] } & Pick<Props, 'teamNames' | 'agents' | 'onPlayerChange'> & { offset: number }) {
+function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDraftPlayer[]; stats: ReviewStat[]; offset: number } & Pick<Props, 'teamNames' | 'agents' | 'onPlayerChange'>) {
   if (players.length === 0) return null;
   return (
     <section aria-label={title} className="border border-white/[0.07] bg-black/20 px-3 py-2">
-      <div className="hidden grid-cols-[7.5rem_8.5rem_minmax(0,1fr)_repeat(5,3.6rem)] gap-2 pb-1 sm:grid">
+      <div className={cn('hidden gap-2 pb-1 sm:grid', desktopGridClass(rest.stats.length))}>
         <span className={EYEBROW_CLASS}>{title}</span>
         <span className={EYEBROW_CLASS}>Agent</span>
         <span className={EYEBROW_CLASS}>Player</span>
-        {REVIEW_STATS.map((s) => <span key={s.key} className={`${EYEBROW_CLASS} text-center`}>{s.label}</span>)}
+        {rest.stats.map((s) => <span key={s.key} title={s.title} className={`${EYEBROW_CLASS} text-center`}>{s.label}</span>)}
       </div>
       <p className={`${EYEBROW_CLASS} pb-1 sm:hidden`}>{title}</p>
-      <div className="grid grid-cols-5 gap-2 pb-1 sm:hidden" aria-hidden>
-        {REVIEW_STATS.map((s) => <span key={s.key} className={`${EYEBROW_CLASS} text-center`}>{s.label}</span>)}
+      <div className={cn('grid gap-2 pb-1 sm:hidden', mobileStatsGridClass(rest.stats.length))} aria-hidden>
+        {rest.stats.map((s) => <span key={s.key} className={`${EYEBROW_CLASS} text-center`}>{s.label}</span>)}
       </div>
       {players.map((player, i) => (
         <ScoreboardOcrRow
@@ -43,6 +44,7 @@ function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDra
           index={rest.offset + i}
           teamNames={rest.teamNames}
           agents={rest.agents}
+          stats={rest.stats}
           onChange={(patch) => rest.onPlayerChange(player.key, patch)}
         />
       ))}
@@ -58,7 +60,8 @@ export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitti
   }), [draft.players]);
   const flaggedCount = draft.players.reduce((sum, p) => sum + p.uncertain.length, 0) + (draft.uncertainScore ? 1 : 0);
   const summary = draft.warnings.filter((w) => !ROW_LEVEL.has(w.code));
-  const shared = { teamNames, agents, onPlayerChange };
+  const stats = useMemo(() => visibleStats(draft.columns), [draft.columns]);
+  const shared = { teamNames, agents, onPlayerChange, stats };
 
   return (
     <div className="space-y-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2">
