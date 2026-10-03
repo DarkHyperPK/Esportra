@@ -290,6 +290,11 @@ export function isTeamRegistrationMode(
   return getParticipantMode(gameName, modeKey) === 'team';
 }
 
+/** Screenshot scoreboard reading (server OCR) — Valorant only for now; mirrors the API's check. */
+export function supportsScreenshotScoreboard(gameName?: string | null): boolean {
+  return /valorant/i.test(gameName ?? '');
+}
+
 /** Catalog indicates this game/mode integrates with Riot account linking. */
 export function gameSupportsRiotAccountLink(gameName: string, modeKey?: string | null): boolean {
   return getEffectiveGameFeatures(gameName, modeKey).assistedReporting;

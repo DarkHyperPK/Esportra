@@ -254,7 +254,18 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
               <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">
                 {isMyReport ? 'Your Report' : 'Opponent Reported'}
               </span>
+              {activeReport.source === 'ocr' && (
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                  Read from screenshot · checked by reporter
+                </span>
+              )}
             </div>
+            {activeReport.source === 'ocr' && !isMyReport && (
+              <p className="mb-3 text-left text-xs leading-relaxed text-zinc-400">
+                These numbers were read from the screenshot below and confirmed by the other captain. Compare them with
+                the image before you accept. If anything is wrong, dispute it.
+              </p>
+            )}
             <div className="text-center py-2">
               <p className="text-sm font-black text-white uppercase tracking-widest mb-6">
                 {activeReport.map_name || 'MAP'}

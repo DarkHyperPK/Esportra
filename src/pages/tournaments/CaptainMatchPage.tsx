@@ -20,7 +20,8 @@ import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { MatchResultVerification } from '@/components/tournament/MatchResultVerification';
 import { BracketMatch, BracketTeam, BracketSide, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
-import { gameHasMapVeto, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
+import { gameHasMapVeto, isAssistedMatchReportingEnabled, supportsScreenshotScoreboard } from '@/utils/gameFeatures';
+import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
@@ -1286,8 +1287,15 @@ const CaptainMatchPage = () => {
             </Dialog>
 
             <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                <DialogContent className="sm:max-w-md bg-[#18181b] border-zinc-800 p-0">
-                    <DialogTitle className="sr-only">Manual Result Report</DialogTitle>
+                <DialogContent
+                    className={cn(
+                        "bg-[#18181b] border-zinc-800 p-0",
+                        supportsScreenshotScoreboard(tournament?.game)
+                            ? "sm:max-w-5xl max-h-[92dvh] overflow-y-auto overscroll-contain"
+                            : "sm:max-w-md",
+                    )}
+                >
+                    <DialogTitle className="sr-only">Report match result</DialogTitle>
                     <MatchResultUpload
                         matchId={(uploadMatchId || '').replace(/^(db-|wb-|lb-)/, '')}
                         teamId={userTeamId}
@@ -1299,6 +1307,7 @@ const CaptainMatchPage = () => {
                         team1Name={activeMatch?.team1?.name || `${terminology.competitorLabel} 1`}
                         team2Name={activeMatch?.team2?.name || `${terminology.competitorLabel} 2`}
                         isCaptain={isCaptain}
+                        game={tournament?.game}
                         onSuccess={() => {
                             setUploadOpen(false);
                             fetchMatchGames();

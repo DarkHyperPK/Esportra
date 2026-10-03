@@ -2,10 +2,11 @@ import React, { useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { EsportraOverlay } from "./EsportraOverlay";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
+import { getApiErrorMessage } from "@/lib/apiClient";
 import type { AbilityCasts } from "@/types/scoreboardPlayer";
 import type { EnrichedRiotMatchData } from "@/types/enrichedRiotMatch";
 import { resolveEnrichedPlayer } from "@/types/enrichedRiotMatch";
+import { useOverlayMatchSource } from "@/hooks/useOverlayMatchSource";
 
 type OverlayMode = "match" | "player" | "compare";
 type OverlayTransition = "none" | "up" | "left" | "right";
@@ -1046,11 +1047,11 @@ const RiotPostMatchOverlay = () => {
   const teamAColor = safeColor(params.get("teamAColor"), "#4c1d83");
   const teamBColor = safeColor(params.get("teamBColor"), "#cf69da");
 
-  const matchQuery = useQuery({
-    queryKey: ["riot-post-match-overlay", region, matchId],
-    queryFn: () => apiClient.post<EnrichedRiotMatchData>("/api/integrations/riot/enriched-match", { region, matchId }),
-    enabled: Boolean(matchId),
-    refetchInterval: false,
+  const matchQuery = useOverlayMatchSource({
+    region,
+    riotMatchId: matchId,
+    esportraMatchId: params.get("esportraMatchId") || "",
+    parseId: params.get("parseId") || "",
   });
 
   const agentsQuery = useQuery({
@@ -1079,7 +1080,7 @@ const RiotPostMatchOverlay = () => {
   const allPlayers = useMemo(() => (match ? buildAllPlayers(match, agents) : []), [agents, match]);
   const mapAsset = useMemo(() => mapsQuery.data?.find((map) => map.mapUrl === match?.matchInfo.mapId), [mapsQuery.data, match?.matchInfo.mapId]);
 
-  if (matchQuery.isLoading || !matchId) {
+  if (matchQuery.isLoading || !matchQuery.hasSource) {
     return (
       <main className="h-dvh w-dvw bg-transparent" />
     );
@@ -1088,7 +1089,7 @@ const RiotPostMatchOverlay = () => {
   if (matchQuery.error || !match) {
     return (
       <main className="grid h-dvh w-dvw place-items-center bg-black px-6 text-center text-sm text-white/70">
-        {getApiErrorMessage(matchQuery.error, "This Riot overlay could not be loaded.")}
+        {getApiErrorMessage(matchQuery.error, "This match overlay could not be loaded.")}
       </main>
     );
   }

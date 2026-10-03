@@ -23,6 +23,9 @@ export interface MatchResultReport {
   responded_by: string | null;
   responded_at: string | null;
   dispute_reason: string | null;
+  /** riot = picked from Riot match history, ocr = read from a screenshot, manual = typed in. Null on older reports. */
+  source?: 'riot' | 'manual' | 'ocr' | null;
+  ocr_parse_id?: string | null;
   created_at: string;
 }
 

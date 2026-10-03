@@ -26,6 +26,8 @@ export interface ScoreboardPlayer {
   abilityCasts?: AbilityCasts | null;
   isTeam1?: boolean;
   isTeam2?: boolean;
+  /** Esportra user matched from the roster (screenshot reports only). */
+  userId?: string;
 }
 
 export function resolvePlayerAcs(player: ScoreboardPlayer): number | null {

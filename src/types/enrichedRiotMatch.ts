@@ -50,6 +50,8 @@ export interface EnrichedRiotMatchData {
   roundTimeline?: RoundTimelineEntry[];
   economyTimeline?: EconomyTimelineEntry[];
   weaponSummaries?: WeaponSummaryEntry[];
+  /** Set when the snapshot was built from a screenshot read (no Riot match behind it). */
+  ocrSource?: { parseId: string; matchId: string };
 }
 
 export function hasEnrichedRiotDetails(match: EnrichedRiotMatchData): boolean {

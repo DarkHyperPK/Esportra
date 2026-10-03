@@ -24,4 +24,6 @@ export interface MatchDetailsPayload {
   economyTimeline?: EconomyTimelineEntry[];
   weaponSummaries?: WeaponSummaryEntry[];
   enrichedSnapshot?: EnrichedRiotMatchData;
+  /** Where the scoreboard came from; absent on older reports. */
+  source?: 'riot' | 'ocr';
 }

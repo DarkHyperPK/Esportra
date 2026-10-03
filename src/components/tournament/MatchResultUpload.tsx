@@ -9,6 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { MatchResultVerification } from './MatchResultVerification';
+import { ScoreboardOcrPanel } from './scoreboard-ocr/ScoreboardOcrPanel';
+import { supportsScreenshotScoreboard } from '@/utils/gameFeatures';
 
 interface Props {
   matchId?: string;
@@ -23,12 +25,14 @@ interface Props {
   team1Logo?: string;
   team2Logo?: string;
   isCaptain: boolean;
+  /** Tournament game name; enables "read from screenshot" where supported. */
+  game?: string;
   onSuccess?: () => void;
 }
 
 const MatchResultUpload: React.FC<Props> = ({
   matchId, teamId, team1Id, team2Id, gameNumber, mapName, mapId, team1Name, team2Name,
-  team1Logo, team2Logo, isCaptain, onSuccess,
+  team1Logo, team2Logo, isCaptain, game, onSuccess,
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -38,6 +42,8 @@ const MatchResultUpload: React.FC<Props> = ({
   const [team1Score, setTeam1Score] = useState('');
   const [team2Score, setTeam2Score] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const ocrAvailable = supportsScreenshotScoreboard(game) && isCaptain && !!matchId && !!teamId && !!team1Id && !!team2Id;
+  const [mode, setMode] = useState<'screenshot' | 'manual'>(ocrAvailable ? 'screenshot' : 'manual');
 
   const { activeReport, acceptedReport } = useMatchResultReport(matchId, gameNumber);
 
@@ -134,12 +140,39 @@ const MatchResultUpload: React.FC<Props> = ({
     );
   }
 
+  if (ocrAvailable && mode === 'screenshot' && matchId && teamId && team1Id && team2Id) {
+    return (
+      <div className="p-4 sm:p-5">
+        <ScoreboardOcrPanel
+          matchId={matchId}
+          gameNumber={gameNumber}
+          reportedByTeamId={teamId}
+          team1Id={team1Id}
+          team2Id={team2Id}
+          team1Name={team1Name || 'Team 1'}
+          team2Name={team2Name || 'Team 2'}
+          mapName={mapName}
+          mapId={mapId}
+          onSubmitted={() => onSuccess?.()}
+          onManual={() => setMode('manual')}
+        />
+      </div>
+    );
+  }
+
   const scoresValid = team1Score !== '' && team2Score !== '' &&
     !isNaN(parseInt(team1Score)) && !isNaN(parseInt(team2Score));
 
   return (
     <div className="bg-[#0a0a0c] border border-white/10/30 rounded-xl p-4">
-      <h3 className="text-white font-semibold mb-1">Manual Result Report</h3>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <h3 className="text-white font-semibold">Manual Result Report</h3>
+        {ocrAvailable && (
+          <button type="button" onClick={() => setMode('screenshot')} className="text-xs text-zinc-400 underline-offset-4 hover:text-white hover:underline">
+            Read from screenshot instead
+          </button>
+        )}
+      </div>
       {mapName && (
         <p className="text-sm text-rose-500 mb-3">
           Game {gameNumber} — {mapName}
