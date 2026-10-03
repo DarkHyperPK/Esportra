@@ -68,7 +68,6 @@ export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot
                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                     <ResultSourceBadge source={source} />
                     <span className="text-[13px] text-zinc-300">{sourceLine(game, source, reportedBy)}</span>
-                    {game.riotMatchId ? <code className="max-w-[16rem] truncate font-mono text-[11px] text-zinc-500" title={game.riotMatchId}>{game.riotMatchId}</code> : null}
                 </div>
                 {verification ? <StatusPill label={verification.label} tone={verification.tone} /> : null}
             </div>

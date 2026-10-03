@@ -120,7 +120,9 @@ async function ensureGameLoaded(game: string) {
 
   try {
     const data = await fetchGameData(game.trim());
-    store.assets = data;
+    // An empty API answer must not wipe the bundled art we already show.
+    const hasArt = Boolean(data.gameBanner || data.cover || data.rawgScreenshots.length);
+    store.assets = hasArt || !store.assets ? data : store.assets;
     store.carouselIndex = 0;
     startCarousel(key);
   } finally {

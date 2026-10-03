@@ -540,6 +540,20 @@ const RiotTest = () => {
         return `${window.location.origin}${route}?${params.toString()}`;
     };
 
+    /** The redesigned match-room share cards for this match, on their own debug page. */
+    const buildShareCardsUrl = (match: EnrichedRiotMatchData) => {
+        const params = new URLSearchParams({
+            matchId: match.matchInfo.matchId ?? '',
+            region: resolveValRegion(region),
+            teamA: teamAAlias.trim() || 'Team A',
+            teamB: teamBAlias.trim() || 'Team B',
+        });
+        if (teamALogoUrl.trim()) params.set('teamALogo', teamALogoUrl.trim());
+        if (teamBLogoUrl.trim()) params.set('teamBLogo', teamBLogoUrl.trim());
+        if (mapNameOverride.trim()) params.set('mapName', mapNameOverride.trim());
+        return `/debug/riot/share-cards?${params.toString()}`;
+    };
+
     const copyOverlayUrl = async (match: EnrichedRiotMatchData) => {
         const url = buildOverlayUrl(match);
         if (!url) {
@@ -1115,6 +1129,12 @@ const RiotTest = () => {
                                             <MonitorUp className="mr-2 h-4 w-4" />
                                             Copy {overlayType} OBS Link
                                         </CtaButton>
+                                        <Button asChild size="sm" variant="outline" className="gap-2 border-zinc-700 text-zinc-200 hover:bg-zinc-800">
+                                            <a href={buildShareCardsUrl(match)} target="_blank" rel="noopener noreferrer">
+                                                <Eye className="h-4 w-4" />
+                                                Share cards (new)
+                                            </a>
+                                        </Button>
                                         <Button
                                             type="button"
                                             size="sm"

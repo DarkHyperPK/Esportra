@@ -190,6 +190,7 @@ const PublicMapVetoRoom = lazyWithRetry(() => import('./pages/tools/PublicMapVet
 const PublicMapVetoOverlay = lazyWithRetry(() => import('./pages/tools/PublicMapVetoOverlay'));
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
 const RiotPostMatchOverlay = lazyWithRetry(() => import("./pages/debug/RiotPostMatchOverlay"));
+const RiotShareCardsPreview = lazyWithRetry(() => import("./pages/debug/RiotShareCardsPreview"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
@@ -633,6 +634,7 @@ const AppContent = React.memo(() => {
               <Route path="/debug/riot/overlay/match" element={<RiotPostMatchOverlay />} />
               <Route path="/debug/riot/overlay/player" element={<RiotPostMatchOverlay />} />
               <Route path="/debug/riot/overlay/compare" element={<RiotPostMatchOverlay />} />
+              <Route path="/debug/riot/share-cards" element={<RiotShareCardsPreview />} />
             </Routes >
           </SuspensionGuard>
         </React.Suspense >
