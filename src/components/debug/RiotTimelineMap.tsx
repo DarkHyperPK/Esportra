@@ -477,7 +477,7 @@ const PlayerFovCone: React.FC<{
         transform: `translate(-50%, -50%) rotate(${degrees}deg)`,
       }}
     >
-      <div className="h-full w-full bg-cyan-300/20 blur-[0.5px] [clip-path:polygon(50%_50%,18%_0,82%_0)]" />
+      <div className="h-full w-full bg-zinc-300/20 blur-[0.5px] [clip-path:polygon(50%_50%,18%_0,82%_0)]" />
     </div>
   );
 };
@@ -501,7 +501,7 @@ const AgentMapMarker: React.FC<{
       className={cn(
         'relative flex h-[18px] w-[18px] items-center justify-center rounded-full shadow-sm transition-all duration-300 ease-out',
         teamTone === 'ally' && 'ring-2 ring-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.55)]',
-        teamTone === 'enemy' && 'ring-2 ring-rose-300 shadow-[0_0_10px_rgba(251,113,133,0.55)]',
+        teamTone === 'enemy' && 'ring-2 ring-red-300 shadow-[0_0_10px_rgba(248,113,113,0.55)]',
         teamTone === 'neutral' && 'opacity-75 ring-1 ring-white/30',
         isFocused && 'scale-110 brightness-125 saturate-150',
         isDimmed && 'scale-95 opacity-35 brightness-75 saturate-50',
@@ -567,8 +567,8 @@ const SpikeBadge: React.FC<{ icon?: string | null }> = ({ icon }) => {
       ) : (
         <div className="relative z-10 h-7 w-6 drop-shadow-[0_0_12px_rgba(251,191,36,0.45)]">
           <div className="absolute left-1/2 top-0 h-3 w-5 -translate-x-1/2 rounded-t-full border border-amber-100/80" />
-          <div className="absolute bottom-0 left-1/2 h-5 w-4 -translate-x-1/2 bg-gradient-to-b from-slate-300 to-zinc-800 [clip-path:polygon(50%_0,100%_22%,82%_100%,18%_100%,0_22%)]" />
-          <div className="absolute bottom-1 left-1/2 h-3 w-1 -translate-x-1/2 rounded-full bg-cyan-200 shadow-[0_0_8px_rgba(125,211,252,0.95)]" />
+          <div className="absolute bottom-0 left-1/2 h-5 w-4 -translate-x-1/2 bg-gradient-to-b from-zinc-300 to-zinc-800 [clip-path:polygon(50%_0,100%_22%,82%_100%,18%_100%,0_22%)]" />
+          <div className="absolute bottom-1 left-1/2 h-3 w-1 -translate-x-1/2 rounded-full bg-zinc-200 shadow-[0_0_8px_rgba(125,211,252,0.95)]" />
         </div>
       )}
     </div>
@@ -743,11 +743,11 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
 
   return (
     <div className="mx-auto w-full max-w-[1080px] space-y-4">
-      <div className="min-w-0 overflow-hidden border border-white/5 bg-[#07111a] shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-[linear-gradient(90deg,#2a4054,#172636)] px-4 py-2.5">
+      <div className="min-w-0 overflow-hidden border border-white/5 bg-[#0a0a0c] shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-[linear-gradient(90deg,#27272a,#18181b)] px-4 py-2.5">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-100/85">Event Log</p>
-            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-100/85">Event Log</p>
+            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Click an action to stage the minimap
             </p>
           </div>
@@ -769,7 +769,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <div className="min-w-0 overflow-hidden border border-white/5 bg-[#07111a] shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
+        <div className="min-w-0 overflow-hidden border border-white/5 bg-[#0a0a0c] shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
         <div className="max-h-[620px] overflow-y-auto">
           <div className="space-y-1">
           {roundActions.map((action) => {
@@ -801,18 +801,18 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
                 className={cn(
                   'group relative grid min-h-[46px] w-full grid-cols-[2.25rem_2.9rem_minmax(4.75rem,1fr)_2.9rem_2.25rem] items-center gap-2 overflow-hidden border-0 border-b border-black/35 px-2 py-1.5 text-left transition-all duration-200 ease-out',
                   perspective === 'ally' && 'bg-[linear-gradient(90deg,rgba(20,184,166,0.62),rgba(17,74,74,0.88))] hover:brightness-110',
-                  perspective === 'enemy' && 'bg-[linear-gradient(90deg,rgba(136,19,55,0.9),rgba(58,12,28,0.96))] hover:brightness-110',
+                  perspective === 'enemy' && 'bg-[linear-gradient(90deg,rgba(136,19,55,0.9),rgba(42,20,22,0.96))] hover:brightness-110',
                   perspective === 'neutral' && (isKill
-                    ? 'bg-[linear-gradient(90deg,#152435,#0d1722)] hover:brightness-110'
+                    ? 'bg-[linear-gradient(90deg,#18181b,#0d1722)] hover:brightness-110'
                     : 'bg-[linear-gradient(90deg,rgba(251,191,36,0.24),rgba(46,38,18,0.9))] hover:brightness-110'),
                   isSelected && 'z-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.32),0_0_24px_rgba(255,255,255,0.08)] brightness-110',
                 )}
               >
                 <span className={cn(
                   'absolute inset-y-0 left-0 w-1',
-                  perspective === 'ally' && 'bg-teal-200',
-                  perspective === 'enemy' && 'bg-rose-300',
-                  perspective === 'neutral' && (isKill ? 'bg-slate-400' : 'bg-amber-200'),
+                  perspective === 'ally' && 'bg-emerald-200',
+                  perspective === 'enemy' && 'bg-red-300',
+                  perspective === 'neutral' && (isKill ? 'bg-zinc-400' : 'bg-amber-200'),
                 )} />
                 <span className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.12),transparent_38%)]" />
                 {isKill ? (
@@ -851,10 +851,10 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
         </div>
       </div>
 
-      <div className="min-w-0 bg-[#0e1a24]">
-        <div className="flex items-center justify-between border-b border-white/5 bg-[#263b4d] px-3 py-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-200/80">Player Positions</p>
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-300/60">Show everyone</p>
+      <div className="min-w-0 bg-[#111114]">
+        <div className="flex items-center justify-between border-b border-white/5 bg-[#27272a] px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-200/80">Player Positions</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-300/60">Show everyone</p>
         </div>
         <div className="relative mx-auto aspect-square w-full max-w-[620px] overflow-hidden bg-[#101922]">
           {mapImage ? (

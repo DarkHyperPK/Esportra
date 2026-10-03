@@ -83,11 +83,11 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
 
     return (
       <div className="grid min-w-max grid-cols-[120px_repeat(var(--round-count),40px)] items-center gap-1">
-        <div className="sticky left-0 z-20 flex h-8 items-center gap-2 bg-[#08131c] pr-3">
-          <span className={cn('max-w-[88px] truncate text-right text-xs font-bold', isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]')}>
+        <div className="sticky left-0 z-20 flex h-8 items-center gap-2 bg-[#0a0a0c] pr-3">
+          <span className={cn('max-w-[88px] truncate text-right text-xs font-bold', isTeamA ? 'text-[#34d399]' : 'text-[#f87171]')}>
             {label}
           </span>
-          <span className={cn('font-mono text-2xl font-black leading-none', isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]')}>
+          <span className={cn('font-mono text-2xl font-black leading-none', isTeamA ? 'text-[#34d399]' : 'text-[#f87171]')}>
             {score}
           </span>
         </div>
@@ -106,20 +106,20 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
               className={cn(
                 'group relative flex h-8 w-10 items-center justify-center border-b border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
                 isActive && 'bg-white/[0.055]',
-                isActive && isTeamA && 'border-[#20f5c6]',
-                isActive && !isTeamA && 'border-[#ff5b73]',
+                isActive && isTeamA && 'border-[#34d399]',
+                isActive && !isTeamA && 'border-[#f87171]',
               )}
             >
               {isWinner ? (
                 <Icon
                   className={cn(
                     'h-4 w-4 transition-transform duration-200 group-hover:scale-110',
-                    isTeamA ? 'text-[#67fff0] drop-shadow-[0_0_8px_rgba(32,245,198,0.65)]' : 'text-[#ff687d] drop-shadow-[0_0_8px_rgba(255,91,115,0.55)]',
+                    isTeamA ? 'text-[#6ee7b7] drop-shadow-[0_0_8px_rgba(52,211,153,0.65)]' : 'text-[#f87171] drop-shadow-[0_0_8px_rgba(248,113,113,0.55)]',
                   )}
                   strokeWidth={3}
                 />
               ) : (
-                <span className="h-1 w-1 rounded-full bg-slate-600/55" />
+                <span className="h-1 w-1 rounded-full bg-zinc-600/55" />
               )}
             </button>
           );
@@ -130,23 +130,23 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
 
   if (!rounds.length) {
     return (
-      <div className={cn('border border-white/5 bg-[#08131c] px-5 py-6 text-center text-sm font-bold text-slate-400', className)}>
+      <div className={cn('border border-white/5 bg-[#0a0a0c] px-5 py-6 text-center text-sm font-bold text-zinc-400', className)}>
         No round event log available.
       </div>
     );
   }
 
   return (
-    <div className={cn('overflow-hidden border border-white/5 bg-[#08131c] shadow-[0_18px_55px_rgba(0,0,0,0.35)]', className)}>
+    <div className={cn('overflow-hidden border border-white/5 bg-[#0a0a0c] shadow-[0_18px_55px_rgba(0,0,0,0.35)]', className)}>
       <div
-        className="scroller-hide overflow-x-auto border-t-2 border-[#ff4655] px-3 py-3"
+        className="scroller-hide overflow-x-auto border-t-2 border-[#f87171] px-3 py-3"
         style={{ '--round-count': rounds.length } as React.CSSProperties}
       >
         <div className="space-y-1">
           {renderTeamRow('Team A', teamALabel, resolvedTeamA, derivedTeamAScore)}
           {renderTeamRow('Team B', teamBLabel, resolvedTeamB, derivedTeamBScore)}
           <div className="grid min-w-max grid-cols-[120px_repeat(var(--round-count),40px)] items-center gap-1 pt-1">
-            <div className="sticky left-0 z-20 bg-[#08131c]" />
+            <div className="sticky left-0 z-20 bg-[#0a0a0c]" />
             {rounds.map((round) => (
               <button
                 key={`round-number-${round.round}`}
@@ -154,7 +154,7 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
                 onClick={() => onSelectRound(round.round)}
                 className={cn(
                   'h-5 w-10 text-center font-mono text-[10px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-white/30',
-                  activeRound === round.round ? 'text-white' : 'text-sky-200/75 hover:text-white',
+                  activeRound === round.round ? 'text-white' : 'text-zinc-200/75 hover:text-white',
                 )}
               >
                 {round.round}

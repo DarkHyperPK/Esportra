@@ -44,6 +44,8 @@ export interface PublicGame {
     t1Side?: RiotTeamSide;
     rounds: PublicRound[];
     riotMatchId: string | null;
+    /** The stored Riot match record, when the map was pulled from Riot. */
+    enriched: EnrichedRiotMatchData | null;
     verification: GameVerification | null;
     reportedByTeamId: string | null;
     completedAt: string | null;
@@ -150,6 +152,7 @@ function toPublicGame(game: RawMatchGame, index: number, team1Id?: string | null
             winner: t1Side ? (entry.winningTeam === t1Side ? 'team1' : 'team2') : null,
         })),
         riotMatchId: game.riot_match_id?.trim() || null,
+        enriched,
         verification: readVerification(game.verification_status),
         reportedByTeamId: game.reported_by_team_id ?? details?.reportedByTeamId ?? null,
         completedAt: game.completed_at ?? null,

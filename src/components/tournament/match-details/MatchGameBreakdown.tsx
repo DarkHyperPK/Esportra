@@ -5,6 +5,7 @@ import { valorantMapSplash } from '@/services/maps/valorantMapAssets';
 import type { GameVerification, PublicGame } from '@/services/matchStats/publicGameStats';
 import type { ResultSource } from '@/services/matchStats/matchEvidence';
 import { MatchRoundStrip } from './MatchRoundStrip';
+import { MatchRiotStats } from './MatchRiotStats';
 import { ResultSourceBadge } from './ResultSourceBadge';
 import { EvidenceThumbs } from './EvidenceThumbs';
 import type { EvidenceShot } from './EvidenceLightbox';
@@ -35,7 +36,10 @@ function sourceLine(game: PublicGame, source: ResultSource, reportedBy: string |
     return reportedBy ? `Score reported by ${reportedBy}` : 'Score reported by the teams';
 }
 
-/** One map: the result on its art, how it was reported, the rounds, the scoreboard and its screenshots. */
+/**
+ * One map: the result on its art, how it was reported, then the full Riot record
+ * when the map was pulled from Riot (otherwise rounds and scoreboard), and its screenshots.
+ */
 export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot, team1Name, team2Name, team1Id, panelId }: Props) => {
     const hasScore = game.team1Score !== null && game.team2Score !== null;
     const verification = game.verification ? VERIFICATION[game.verification] : null;
@@ -69,23 +73,29 @@ export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot
                 {verification ? <StatusPill label={verification.label} tone={verification.tone} /> : null}
             </div>
 
-            <MatchRoundStrip rounds={game.rounds} team1Name={team1Name} team2Name={team2Name} />
+            {game.enriched?.players?.length && game.t1Side ? (
+                <MatchRiotStats enriched={game.enriched} t1Side={game.t1Side} team1Name={team1Name} team2Name={team2Name} />
+            ) : (
+                <>
+                    <MatchRoundStrip rounds={game.rounds} team1Name={team1Name} team2Name={team2Name} />
 
-            {game.players.length > 0 ? (
-                <FullScoreboard
-                    players={game.players}
-                    team1Name={team1Name}
-                    team2Name={team2Name}
-                    team1Score={game.team1Score ?? 0}
-                    team2Score={game.team2Score ?? 0}
-                    team1Id={team1Id}
-                    t1Side={game.t1Side}
-                />
-            ) : shots.length === 0 ? (
-                <p className="border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-500">
-                    {hasScore ? 'Score recorded. No player stats came with this map.' : 'No result reported for this map yet.'}
-                </p>
-            ) : null}
+                    {game.players.length > 0 ? (
+                        <FullScoreboard
+                            players={game.players}
+                            team1Name={team1Name}
+                            team2Name={team2Name}
+                            team1Score={game.team1Score ?? 0}
+                            team2Score={game.team2Score ?? 0}
+                            team1Id={team1Id}
+                            t1Side={game.t1Side}
+                        />
+                    ) : shots.length === 0 ? (
+                        <p className="border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-500">
+                            {hasScore ? 'Score recorded. No player stats came with this map.' : 'No result reported for this map yet.'}
+                        </p>
+                    ) : null}
+                </>
+            )}
 
             {shots.length > 0 ? (
                 <section aria-label="Screenshots for this map">

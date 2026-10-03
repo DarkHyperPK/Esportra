@@ -54,7 +54,8 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     const [foundTeamId, setFoundTeamId] = useState<string | null>(null);
     const [openMatch, setOpenMatch] = useState<BracketMatch | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
-    const canvas = useBracketWheelScroll<HTMLDivElement>();
+    const fullHeight = mode === 'page';
+    const canvas = useBracketWheelScroll<HTMLDivElement>({ verticalToHorizontal: !fullHeight });
     useDragToPan(canvas.scrollRef);
 
     // A different stage is a different bracket: start from the whole tree again.
@@ -135,7 +136,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
     return (
         <div
-            className={cn('flex min-h-0 w-full flex-col overflow-hidden bg-background', mode === 'page' ? 'md:h-[calc(100dvh-140px)] md:min-h-[560px]' : 'h-full', className)}
+            className={cn('flex w-full flex-col bg-background', fullHeight ? 'overflow-clip' : 'h-full min-h-0 overflow-hidden', className)}
             style={height ? { height } : undefined}
         >
             {stages.length > 1 && onStageSelect ? (
@@ -145,24 +146,30 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 <BracketSummaryStrip played={summary.played} total={summary.total} live={summary.live} teams={summary.teams} champion={champion} />
             ) : null}
             {versionId && matches.length > 0 ? (
-                <BracketToolbar
-                    viewMode={elimination ? viewMode : undefined}
-                    onViewMode={setViewMode}
-                    rounds={elimination ? rounds : undefined}
-                    activeKey={round.key}
-                    onRound={setRound}
-                    teams={teams}
-                    foundTeamId={foundTeamId}
-                    onFindTeam={setFoundTeamId}
-                    actions={actions}
-                />
+                // Page mode grows to full height, so the toolbar pins under the site navbar while you scroll.
+                <div className={cn(fullHeight && 'sticky top-[5.5rem] z-20 bg-background')}>
+                    <BracketToolbar
+                        viewMode={elimination ? viewMode : undefined}
+                        onViewMode={setViewMode}
+                        rounds={elimination ? rounds : undefined}
+                        activeKey={round.key}
+                        onRound={setRound}
+                        teams={teams}
+                        foundTeamId={foundTeamId}
+                        onFindTeam={setFoundTeamId}
+                        actions={actions}
+                    />
+                </div>
             ) : null}
             <div
                 ref={canvas.scrollRef}
                 tabIndex={0}
                 aria-label="Tournament bracket"
-                className={cn("bracket-canvas min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20", mode === 'page' && viewMode === 'bracket' && 'min-h-[70vh] md:min-h-0')}
-                data-lenis-prevent
+                className={cn(
+                    'bracket-canvas focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20',
+                    fullHeight ? 'overflow-x-auto overflow-y-hidden overscroll-x-contain [touch-action:pan-x_pan-y]' : 'min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y]',
+                )}
+                data-lenis-prevent={fullHeight ? undefined : true}
             >
                 {content()}
             </div>

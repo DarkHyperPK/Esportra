@@ -21,6 +21,8 @@ interface MatchHistoryCardProps {
     t1Side?: 'Blue' | 'Red';
     /** Skip personal-stat collapse header; show analytics tabs immediately (captain match room). */
     directView?: boolean;
+    /** With directView: skip the map and score summary when the host already shows it. */
+    hideSummary?: boolean;
 }
 
 interface CompetitiveTierMetadata {
@@ -77,8 +79,8 @@ function formatRankName(rank?: CompetitiveTierMetadata, tierNumber?: number): st
 function getRoundResultMeta(code?: string | null) {
     if (code === 'Elimination') return { label: 'Elimination', short: 'ELIM', tone: 'text-white' };
     if (code === 'Detonate') return { label: 'Spike detonated', short: 'BOOM', tone: 'text-amber-100' };
-    if (code === 'Defuse') return { label: 'Spike defused', short: 'DEF', tone: 'text-cyan-100' };
-    if (code === 'TimeOut') return { label: 'Time expired', short: 'TIME', tone: 'text-slate-100' };
+    if (code === 'Defuse') return { label: 'Spike defused', short: 'DEF', tone: 'text-zinc-100' };
+    if (code === 'TimeOut') return { label: 'Time expired', short: 'TIME', tone: 'text-zinc-100' };
     return { label: code || 'Round win', short: 'WIN', tone: 'text-white' };
 };
 
@@ -125,6 +127,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     team2Name,
     t1Side,
     directView = false,
+    hideSummary = false,
 }) => {
     const [agentData, setAgentData] = useState<{ displayIcon?: string } | null>(null);
     const [mapData, setMapData] = useState<ValorantMapMetadata | null>(null);
@@ -430,17 +433,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
 
     if (!player) {
         return (
-            <div className="rounded-xl border border-white/5 bg-[#0a0a0c] p-4 text-center">
+            <div className="rounded-none border border-white/5 bg-[#0a0a0c] p-4 text-center">
                 <p className="text-sm text-zinc-400">Player data not found in this match.</p>
             </div>
         );
     }
 
     const renderScoreboardTable = (players: EnrichedRiotMatchData['players']) => (
-        <div className="overflow-x-auto rounded-lg border border-white/[0.06] bg-[#0d1117]">
+        <div className="overflow-x-auto rounded-none border border-white/[0.06] bg-[#111114]">
             <table className="w-full border-collapse text-left text-[11px]">
                 <thead>
-                    <tr className="border-b border-white/[0.08] bg-[#161b22]">
+                    <tr className="border-b border-white/[0.08] bg-[#18181b]">
                         <th className="px-4 py-2.5 font-black uppercase tracking-tighter text-zinc-500">Player</th>
                         <th className="border-l border-white/[0.06] px-3 py-2.5 text-left font-black uppercase tracking-tighter text-zinc-500">Rank</th>
                         <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">ACS</th>
@@ -478,8 +481,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 ?? (p.stats.deaths > 0
                                     ? (p.stats.kills / p.stats.deaths).toFixed(2)
                                     : String(p.stats.kills));
-                            const diffColor = killDiff > 0 ? 'text-emerald-400' : (killDiff < 0 ? 'text-rose-400' : 'text-zinc-500');
-                            const kdColor = Number(kdRatio) >= 1 ? 'text-emerald-400' : 'text-rose-400';
+                            const diffColor = killDiff > 0 ? 'text-emerald-400' : (killDiff < 0 ? 'text-red-400' : 'text-zinc-500');
+                            const kdColor = Number(kdRatio) >= 1 ? 'text-emerald-400' : 'text-red-400';
 
                             const isHighlighted = p.puuid === targetPuuid;
                             const isEven = idx % 2 === 0;
@@ -491,13 +494,13 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         isHighlighted
                                             ? 'bg-white/[0.07] shadow-[inset_2px_0_0_0_theme(colors.white/0.4)]'
                                             : isEven
-                                                ? 'bg-[#0d1117] hover:bg-white/[0.03]'
-                                                : 'bg-[#111820] hover:bg-white/[0.03]'
+                                                ? 'bg-[#111114] hover:bg-white/[0.03]'
+                                                : 'bg-[#111114] hover:bg-white/[0.03]'
                                     }`}
                                 >
                                     <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 overflow-hidden rounded border border-white/[0.08] bg-black/40">
+                                            <div className="h-8 w-8 overflow-hidden rounded-none border border-white/[0.08] bg-black/40">
                                                 {agent?.displayIcon ? (
                                                     <img src={agent.displayIcon} loading="lazy" className="h-full w-full" alt="" />
                                                 ) : null}
@@ -548,7 +551,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                     <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-emerald-500">
                                         {enriched?.firstBloods ?? pAnalytics?.fb ?? 0}
                                     </td>
-                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-rose-500">{pAnalytics?.fd ?? 0}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-red-500">{pAnalytics?.fd ?? 0}</td>
                                 </tr>
                             );
                         })}
@@ -602,17 +605,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     });
     const resultTone = isWin
         ? {
-            rail: 'border-l-[#20f5c6]',
-            text: 'text-[#20f5c6]',
-            soft: 'text-[#8fffe6]',
-            badge: 'border-[#20f5c6]/45 bg-[#20f5c6]/16 text-[#b8fff0]',
-            glow: 'shadow-[0_0_30px_rgba(32,245,198,0.18)]',
+            rail: 'border-l-[#34d399]',
+            text: 'text-[#34d399]',
+            soft: 'text-[#6ee7b7]',
+            badge: 'border-[#34d399]/45 bg-[#34d399]/16 text-[#a7f3d0]',
+            glow: 'shadow-[0_0_30px_rgba(52,211,153,0.18)]',
         }
         : {
-            rail: 'border-l-[#ff4d6d]',
-            text: 'text-[#ff4d6d]',
-            soft: 'text-[#ff9aad]',
-            badge: 'border-[#ff4d6d]/45 bg-[#ff4d6d]/16 text-[#ffd0d8]',
+            rail: 'border-l-[#f87171]',
+            text: 'text-[#f87171]',
+            soft: 'text-[#fca5a5]',
+            badge: 'border-[#f87171]/45 bg-[#f87171]/16 text-[#fecaca]',
             glow: 'shadow-[0_0_30px_rgba(255,77,109,0.18)]',
         };
     const matchMvp = matchData.players
@@ -655,9 +658,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     const renderPremiumRounds = () => {
         if (!debugRounds.length) {
             return (
-                <div className="border border-white/5 bg-[#0e1a24] px-6 py-10 text-center">
-                    <p className="text-sm font-bold text-slate-300">No round timeline available.</p>
-                    <p className="mt-1 text-xs text-slate-500">This match did not include round-level Riot data.</p>
+                <div className="border border-white/5 bg-[#111114] px-6 py-10 text-center">
+                    <p className="text-sm font-bold text-zinc-300">No round timeline available.</p>
+                    <p className="mt-1 text-xs text-zinc-500">This match did not include round-level Riot data.</p>
                 </div>
             );
         }
@@ -675,10 +678,10 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
         const sideInfo = getRoundSideInfo(selectedSummary.round);
         const winningTeam = selectedSummary.winningTeam;
         const isTeamAWinner = winningTeam === teamAId;
-        const winningTone = isTeamAWinner ? 'text-[#b8fff0]' : 'text-[#ffd0d8]';
+        const winningTone = isTeamAWinner ? 'text-[#a7f3d0]' : 'text-[#fecaca]';
         const winningSurface = isTeamAWinner
-            ? 'from-[#20f5c6]/20 via-[#0a302d] to-[#08131f]'
-            : 'from-[#ff4d6d]/22 via-[#28121d] to-[#0f1118]';
+            ? 'from-[#34d399]/20 via-[#0b2a20] to-[#0a0a0c]'
+            : 'from-[#f87171]/22 via-[#2a1416] to-[#111114]';
 
         const allRoundKills = (selectedRaw?.playerStats ?? [])
             .flatMap((stats) => (stats.kills ?? []).map((kill) => ({
@@ -712,20 +715,20 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             const teamLabel = labelForTeam(team);
 
             return (
-                <div className="min-w-0 bg-[#0e1a24]">
+                <div className="min-w-0 bg-[#111114]">
                     <div className={cn(
                         'flex items-center justify-between border-b border-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em]',
-                        isTeamA ? 'bg-[#20f5c6]/10 text-[#b8fff0]' : 'bg-[#ff4d6d]/10 text-[#ffd0d8]',
+                        isTeamA ? 'bg-[#34d399]/10 text-[#a7f3d0]' : 'bg-[#f87171]/10 text-[#fecaca]',
                     )}>
                         <span className="flex items-center gap-2">
-                            <span className={cn('h-2 w-2', isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]')} />
+                            <span className={cn('h-2 w-2', isTeamA ? 'bg-[#34d399]' : 'bg-[#f87171]')} />
                             {teamLabel}
                         </span>
-                        <span className="text-slate-300/70">{sideInfo.attackingTeam === team ? 'Attack' : 'Defense'}</span>
+                        <span className="text-zinc-300/70">{sideInfo.attackingTeam === team ? 'Attack' : 'Defense'}</span>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-[11px]">
-                            <thead className="bg-[#101d28] text-[9px] uppercase tracking-wider text-slate-500">
+                            <thead className="bg-[#111114] text-[9px] uppercase tracking-wider text-zinc-500">
                                 <tr>
                                     <th className="px-3 py-2">Player</th>
                                     <th className="px-2 py-2 text-center">K</th>
@@ -742,17 +745,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         <tr
                                             key={entry.puuid}
                                             className={cn(
-                                                'border-t border-black/40 bg-[#0b141d] text-slate-300 transition-colors',
+                                                'border-t border-black/40 bg-[#111114] text-zinc-300 transition-colors',
                                                 selectedPlayer.puuid === entry.puuid && (isTeamA
-                                                    ? 'bg-[#20f5c6]/[0.08] text-white'
-                                                    : 'bg-[#ff4d6d]/[0.08] text-white'),
+                                                    ? 'bg-[#34d399]/[0.08] text-white'
+                                                    : 'bg-[#f87171]/[0.08] text-white'),
                                             )}
                                         >
                                             <td className="px-3 py-2">
                                                 <div className="flex min-w-[140px] items-center gap-2">
                                                     <div className={cn(
                                                         'h-7 w-7 overflow-hidden border bg-black/30 shadow-[0_0_10px_rgba(0,0,0,0.35)]',
-                                                        isTeamA ? 'border-[#20f5c6]/45' : 'border-[#ff4d6d]/45',
+                                                        isTeamA ? 'border-[#34d399]/45' : 'border-[#f87171]/45',
                                                     )}>
                                                         {agent?.displayIcon ? (
                                                             <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
@@ -760,15 +763,15 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="truncate font-black">{entry.gameName}</div>
-                                                        <div className="text-[9px] text-slate-500">#{entry.tagLine}</div>
+                                                        <div className="text-[9px] text-zinc-500">#{entry.tagLine}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-2 py-2 text-center font-black text-white">{roundStats.kills}</td>
-                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.deaths}</td>
-                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.assists}</td>
-                                            <td className="px-2 py-2 text-right font-mono text-slate-200">{roundStats.damage}</td>
-                                            <td className="px-3 py-2 text-right font-mono text-slate-400">{roundStats.spent.toLocaleString()}</td>
+                                            <td className="px-2 py-2 text-center text-zinc-400">{roundStats.deaths}</td>
+                                            <td className="px-2 py-2 text-center text-zinc-400">{roundStats.assists}</td>
+                                            <td className="px-2 py-2 text-right font-mono text-zinc-200">{roundStats.damage}</td>
+                                            <td className="px-3 py-2 text-right font-mono text-zinc-400">{roundStats.spent.toLocaleString()}</td>
                                         </tr>
                                     );
                                 })}
@@ -797,18 +800,18 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                     <div className={cn('relative overflow-hidden bg-gradient-to-br p-5 shadow-[0_18px_55px_rgba(0,0,0,0.3)]', winningSurface)}>
                         <div className={cn(
                             'absolute inset-y-0 left-0 w-1',
-                            isTeamAWinner ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]',
+                            isTeamAWinner ? 'bg-[#34d399]' : 'bg-[#f87171]',
                         )} />
                         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-300/70">Round {selectedSummary.round}</p>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-300/70">Round {selectedSummary.round}</p>
                                 <div className="mt-2 flex items-center gap-3">
                                     <div className={cn(
                                         'flex h-12 w-12 items-center justify-center border font-mono text-[11px] font-black tracking-wider',
                                         isTeamAWinner
-                                            ? 'border-[#20f5c6]/50 bg-[#20f5c6]/10 text-[#b8fff0]'
-                                            : 'border-[#ff4d6d]/50 bg-[#ff4d6d]/10 text-[#ffd0d8]',
+                                            ? 'border-[#34d399]/50 bg-[#34d399]/10 text-[#a7f3d0]'
+                                            : 'border-[#f87171]/50 bg-[#f87171]/10 text-[#fecaca]',
                                     )}>
                                         {selectedMeta.short}
                                     </div>
@@ -816,7 +819,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         <div className={cn('text-lg font-black', winningTone)}>
                                             {winningTeam ? labelForTeam(winningTeam) : 'Unknown team'} won
                                         </div>
-                                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
                                             {selectedMeta.label}
                                             {selectedSummary.plantSite ? ` · Site ${selectedSummary.plantSite}` : ''}
                                         </div>
@@ -826,19 +829,19 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         </div>
                         <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
                             <div className="border border-white/5 bg-black/20 p-3">
-                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Attack</div>
-                                <div className="mt-1 font-black text-slate-100">{labelForTeam(sideInfo.attackingTeam)}</div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Attack</div>
+                                <div className="mt-1 font-black text-zinc-100">{labelForTeam(sideInfo.attackingTeam)}</div>
                             </div>
                             <div className="border border-white/5 bg-black/20 p-3">
-                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Defense</div>
-                                <div className="mt-1 font-black text-slate-100">{labelForTeam(sideInfo.defendingTeam)}</div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Defense</div>
+                                <div className="mt-1 font-black text-zinc-100">{labelForTeam(sideInfo.defendingTeam)}</div>
                             </div>
                             <div className="border border-white/5 bg-black/20 p-3">
-                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Kills</div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Kills</div>
                                 <div className="mt-1 font-mono text-lg font-black text-white">{allRoundKills.length}</div>
                             </div>
                             <div className="border border-white/5 bg-black/20 p-3">
-                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Spike</div>
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Spike</div>
                                 <div className="mt-1 font-black text-white">{selectedSummary.plantSite ? `Site ${selectedSummary.plantSite}` : '-'}</div>
                             </div>
                         </div>
@@ -855,17 +858,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
 
     return (
         <Card className={cn(
-            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#070d13] shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-all duration-500 hover:border-white/20',
+            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#0a0a0c] shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-all duration-500 hover:border-white/20',
             resultTone.rail,
             directView ? '' : resultTone.glow,
         )}>
-            {directView ? (
-                <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#101a24_0%,#0c151e_48%,#091017_100%)] px-5 py-4">
+            {directView ? (hideSummary ? null : (
+                <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#111114_0%,#111114_48%,#0a0a0c_100%)] px-5 py-4">
                     {mapData?.listViewIcon ? (
                         <div
                             className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-25"
                             style={{
-                                backgroundImage: `linear-gradient(to right, rgba(7, 13, 19, 0.98), rgba(7, 13, 19, 0.55)), url(${mapData.listViewIcon})`,
+                                backgroundImage: `linear-gradient(to right, rgba(10, 10, 12, 0.98), rgba(10, 10, 12, 0.55)), url(${mapData.listViewIcon})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
                             }}
@@ -873,44 +876,44 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                     ) : null}
                     <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
                         <div className="min-w-0">
-                            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-400">Official match data</p>
+                            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-400">Official match data</p>
                             <h3 className="mt-1 font-heading text-xl font-black uppercase tracking-tight text-white">
                                 {mapData?.displayName || 'Valorant match'}
                             </h3>
-                            <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-zinc-400">
                                 {matchData.matchInfo.queueId || 'Custom'}
                                 {parsedInfo?.region ? ` · ${parsedInfo.region}` : ''}
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-slate-500">Match score</p>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Match score</p>
                             <p className="mt-1 font-mono text-2xl font-black tabular-nums text-white">
-                                <span className={cn(tournamentMode && t1Side && matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#20f5c6]' : 'text-white')}>
+                                <span className={cn(tournamentMode && t1Side && matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#34d399]' : 'text-white')}>
                                     {targetRounds}
                                 </span>
-                                <span className="mx-2 text-slate-600">–</span>
-                                <span className={cn(tournamentMode && t1Side && !matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#ff4d6d]' : 'text-[#ff4d6d]')}>
+                                <span className="mx-2 text-zinc-600">–</span>
+                                <span className={cn(tournamentMode && t1Side && !matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#f87171]' : 'text-[#f87171]')}>
                                     {opponentRounds}
                                 </span>
                             </p>
                             {tournamentMode ? (
-                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                                     {team1Name} vs {team2Name}
                                 </p>
                             ) : null}
                         </div>
                     </div>
                 </div>
-            ) : (
+            )) : (
             <div
-                className="relative z-10 grid cursor-pointer gap-4 overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#101a24_0%,#0c151e_48%,#091017_100%)] px-5 py-4 transition-colors hover:bg-[#101b26] md:grid-cols-[minmax(260px,1fr)_auto_auto]"
+                className="relative z-10 grid cursor-pointer gap-4 overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#111114_0%,#111114_48%,#0a0a0c_100%)] px-5 py-4 transition-colors hover:bg-[#111114] md:grid-cols-[minmax(260px,1fr)_auto_auto]"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 {mapData?.listViewIcon ? (
                     <div
                         className="pointer-events-none absolute inset-y-0 left-[34%] right-0 opacity-35 transition-all duration-500 group-hover:opacity-50"
                         style={{
-                            backgroundImage: `linear-gradient(to right, rgba(7, 13, 19, 0.98) 0%, rgba(7, 13, 19, 0.62) 38%, rgba(7, 13, 19, 0.86) 100%), url(${mapData.listViewIcon})`,
+                            backgroundImage: `linear-gradient(to right, rgba(10, 10, 12, 0.98) 0%, rgba(10, 10, 12, 0.62) 38%, rgba(10, 10, 12, 0.86) 100%), url(${mapData.listViewIcon})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             filter: 'contrast(1.18) saturate(1.18) brightness(0.78)',
@@ -942,14 +945,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 {isWin ? 'Win' : 'Loss'}
                             </span>
                         </div>
-                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-wider text-slate-300/65">
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-wider text-zinc-300/65">
                             <span>{matchData.matchInfo.queueId || 'Custom'}</span>
                             {gameModeLabel ? <span>{gameModeLabel}</span> : null}
                             {rankedLabel ? <span>Ranked</span> : null}
                             <span>{Math.round((matchData.matchInfo.gameLengthMillis ?? 0) / 60000)}m</span>
                         </div>
                         {parsedInfo?.region ? (
-                            <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                            <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-zinc-500">
                                 Region {parsedInfo.region}
                             </div>
                         ) : null}
@@ -960,20 +963,20 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                     <div className="text-left md:text-right">
                         <div className="text-2xl font-black leading-none tracking-tight text-white drop-shadow-lg">
                             {player.stats.kills}
-                            <span className="mx-1.5 text-slate-600">/</span>
+                            <span className="mx-1.5 text-zinc-600">/</span>
                             {player.stats.deaths}
-                            <span className="mx-1.5 text-slate-600">/</span>
+                            <span className="mx-1.5 text-zinc-600">/</span>
                             {player.stats.assists}
                         </div>
                         <div className="mt-1 flex justify-start gap-3 md:justify-end">
-                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                            <div className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
                                 KD{' '}
-                                <span className="text-slate-100">
+                                <span className="text-zinc-100">
                                     {(player.stats.kills / Math.max(1, player.stats.deaths)).toFixed(2)}
                                 </span>
                             </div>
-                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
-                                ACS <span className="text-slate-100">{enrichedTarget?.acs ?? '-'}</span>
+                            <div className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                                ACS <span className="text-zinc-100">{enrichedTarget?.acs ?? '-'}</span>
                             </div>
                         </div>
                     </div>
@@ -983,10 +986,10 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                             <span className={resultTone.text}>
                                 {targetRounds}
                             </span>
-                            <span className="text-slate-600">/</span>
-                            <span className="text-[#ff4d6d]">{opponentRounds}</span>
+                            <span className="text-zinc-600">/</span>
+                            <span className="text-[#f87171]">{opponentRounds}</span>
                         </div>
-                        <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                        <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-zinc-400">
                             Match Score
                         </div>
                     </div>
@@ -995,17 +998,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                 <div className="relative z-10 flex items-center justify-between gap-4 md:justify-end">
                     <div className="grid grid-cols-2 gap-2 text-right">
                         <div className="border border-white/10 bg-black/20 px-3 py-2">
-                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">KAST</div>
-                            <div className="font-mono text-sm font-black text-slate-100">{targetKAST}%</div>
+                            <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">KAST</div>
+                            <div className="font-mono text-sm font-black text-zinc-100">{targetKAST}%</div>
                         </div>
                         <div className="border border-white/10 bg-black/20 px-3 py-2">
-                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">FK</div>
+                            <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">FK</div>
                             <div className={cn('font-mono text-sm font-black', resultTone.text)}>
                                 {enrichedTarget?.firstBloods ?? analytics?.playerStatsMap[targetPuuid]?.fb ?? 0}
                             </div>
                         </div>
                     </div>
-                    <div className="text-slate-500 transition-colors group-hover:text-white/70">
+                    <div className="text-zinc-500 transition-colors group-hover:text-white/70">
                         {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </div>
                 </div>
@@ -1013,8 +1016,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             )}
 
             {(directView || isExpanded) ? (
-                <div className="animate-in slide-in-from-top-4 bg-[#0b141d] duration-500">
-                    <div className="grid border-b border-rose-500/40 bg-[#263b4d] text-center sm:grid-cols-5">
+                <div className="animate-in slide-in-from-top-4 bg-[#111114] duration-500">
+                    <div className="grid border-b border-white/10 bg-[#111114] text-center sm:grid-cols-5">
                         {[
                             { id: 'scoreboard', label: 'Scoreboard', icon: List },
                             { id: 'timeline', label: 'Timeline', icon: MapIcon },
@@ -1028,18 +1031,18 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                 className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-[11px] font-black transition-all ${
                                     activeTab === tab.id
-                                        ? 'border-rose-400 bg-[#0f1c28] text-white'
-                                        : 'border-transparent text-slate-200/75 hover:bg-[#203141] hover:text-white'
+                                        ? 'border-white bg-white/[0.04] text-white'
+                                        : 'border-transparent text-zinc-200/75 hover:bg-[#18181b] hover:text-white'
                                 }`}
                             >
-                                <tab.icon className="h-3.5 w-3.5 text-slate-300/80" /> {tab.label}
+                                <tab.icon className="h-3.5 w-3.5 text-zinc-300/80" /> {tab.label}
                             </button>
                         ))}
                     </div>
 
-                    <div className="border-b border-white/5 bg-[#0f1c28] px-5 py-4">
+                    <div className="border-b border-white/5 bg-[#111114] px-5 py-4">
                         <div className="flex flex-wrap items-center justify-center gap-2">
-                            <span className="mr-2 text-xs font-bold text-[#20f5c6]">{teamALabel}</span>
+                            <span className="mr-2 text-xs font-bold text-[#34d399]">{teamALabel}</span>
                             {matchData.players
                                 .slice()
                                 .sort((a, b) => (a.teamId === teamAId ? -1 : 1) - (b.teamId === teamAId ? -1 : 1))
@@ -1050,7 +1053,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                     return (
                                         <React.Fragment key={entry.puuid}>
                                             {index === 5 ? (
-                                                <span className="mx-1 bg-[#203141] px-2 py-1 text-[10px] font-black uppercase text-slate-300">
+                                                <span className="mx-1 bg-[#18181b] px-2 py-1 text-[10px] font-black uppercase text-zinc-300">
                                                     vs
                                                 </span>
                                             ) : null}
@@ -1059,12 +1062,12 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 onClick={() => setSelectedPuuid(entry.puuid)}
                                                 title={`${entry.gameName}#${entry.tagLine}`}
                                                 className={cn(
-                                                    'relative h-9 w-9 overflow-hidden border bg-[#0b141d] transition-all duration-200',
+                                                    'relative h-9 w-9 overflow-hidden border bg-[#111114] transition-all duration-200',
                                                     'hover:-translate-y-0.5 hover:brightness-125 focus:outline-none focus:ring-2 focus:ring-white/40',
-                                                    isFriendly ? 'border-teal-400/70' : 'border-rose-400/70',
+                                                    isFriendly ? 'border-emerald-400/70' : 'border-red-400/70',
                                                     selectedPlayer.puuid === entry.puuid && (isFriendly
-                                                        ? 'border-teal-200 brightness-125 shadow-[0_0_16px_rgba(45,212,191,0.45)]'
-                                                        : 'border-rose-200 brightness-125 shadow-[0_0_16px_rgba(251,113,133,0.45)]'),
+                                                        ? 'border-emerald-200 brightness-125 shadow-[0_0_16px_rgba(52,211,153,0.45)]'
+                                                        : 'border-red-200 brightness-125 shadow-[0_0_16px_rgba(248,113,113,0.45)]'),
                                                     selectedPlayer.puuid !== entry.puuid && 'opacity-75',
                                                 )}
                                             >
@@ -1074,28 +1077,28 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 {selectedPlayer.puuid === entry.puuid ? (
                                                     <span className={cn(
                                                         'absolute inset-x-1 bottom-0 h-0.5',
-                                                        isFriendly ? 'bg-teal-200' : 'bg-rose-200',
+                                                        isFriendly ? 'bg-emerald-200' : 'bg-red-200',
                                                     )} />
                                                 ) : null}
                                             </button>
                                         </React.Fragment>
                                     );
                                 })}
-                            <span className="ml-2 text-xs font-bold text-[#ff5b73]">{teamBLabel}</span>
+                            <span className="ml-2 text-xs font-bold text-[#f87171]">{teamBLabel}</span>
                         </div>
                     </div>
 
-                    <div className="bg-[#0b141d] p-4 lg:p-5">
-                        <div className="mb-4 grid gap-4 bg-[#092f31] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
+                    <div className="bg-[#111114] p-4 lg:p-5">
+                        <div className="mb-4 grid gap-4 bg-[#0b2a20] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
                             <div className="hidden h-28 items-end justify-center md:flex">
                                 {selectedAgent?.displayIcon ? (
-                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85 drop-shadow-[0_0_20px_rgba(45,212,191,0.12)]" alt="" />
+                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85 drop-shadow-[0_0_20px_rgba(52,211,153,0.12)]" alt="" />
                                 ) : null}
                             </div>
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="truncate text-2xl font-black text-white">{selectedPlayer.gameName}</h3>
-                                    <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">#{selectedPlayer.tagLine}</span>
+                                    <span className="bg-white/10 px-2 py-1 text-xs font-black text-zinc-200">#{selectedPlayer.tagLine}</span>
                                     {selectedRank?.smallIcon || selectedRank?.largeIcon ? (
                                         <img src={selectedRank.smallIcon || selectedRank.largeIcon} loading="lazy" className="h-6 w-6 object-contain" alt="" />
                                     ) : null}
@@ -1110,13 +1113,13 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         ['KAST', `${selectedKast}%`],
                                     ].map(([label, value]) => (
                                         <div key={label}>
-                                            <div className="text-[10px] font-black uppercase text-slate-300/65">{label}</div>
-                                            <div className="text-lg font-black text-slate-100">{value}</div>
+                                            <div className="text-[10px] font-black uppercase text-zinc-300/65">{label}</div>
+                                            <div className="text-lg font-black text-zinc-100">{value}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="text-right text-xs font-black uppercase tracking-wider text-slate-300/70">
+                            <div className="text-right text-xs font-black uppercase tracking-wider text-zinc-300/70">
                                 {formatRankName(selectedRank, selectedPlayer.competitiveTier)}
                             </div>
                         </div>
@@ -1128,21 +1131,21 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         type="button"
                                         onClick={() => setSelectedPuuid(matchMvp.player.puuid)}
                                         className={cn(
-                                            'group/mvp relative grid w-full overflow-hidden border bg-[#07131d] text-left shadow-[0_18px_55px_rgba(0,0,0,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
+                                            'group/mvp relative grid w-full overflow-hidden border bg-[#0a0a0c] text-left shadow-[0_18px_55px_rgba(0,0,0,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
                                             matchMvp.isTeamA
-                                                ? 'border-[#20f5c6]/35'
-                                                : 'border-[#ff5b73]/35',
+                                                ? 'border-[#34d399]/35'
+                                                : 'border-[#f87171]/35',
                                         )}
                                     >
                                         <div className={cn(
                                             'absolute inset-x-0 top-0 h-0.5',
-                                            matchMvp.isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff5b73]',
+                                            matchMvp.isTeamA ? 'bg-[#34d399]' : 'bg-[#f87171]',
                                         )} />
                                         <div className={cn(
                                             'relative hidden min-h-[108px] items-end justify-center overflow-hidden md:flex',
                                             matchMvp.isTeamA
-                                                ? 'bg-[radial-gradient(circle_at_50%_30%,rgba(32,245,198,0.22),rgba(7,19,29,0)_68%)]'
-                                                : 'bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,115,0.22),rgba(7,19,29,0)_68%)]',
+                                                ? 'bg-[radial-gradient(circle_at_50%_30%,rgba(52,211,153,0.22),rgba(10,10,12,0)_68%)]'
+                                                : 'bg-[radial-gradient(circle_at_50%_30%,rgba(248,113,113,0.22),rgba(10,10,12,0)_68%)]',
                                         )}>
                                             {matchMvp.agent?.displayIcon ? (
                                                 <img
@@ -1158,15 +1161,15 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 <span className={cn(
                                                     'inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em]',
                                                     matchMvp.isTeamA
-                                                        ? 'border-[#20f5c6]/45 bg-[#20f5c6]/10 text-[#b8fff0]'
-                                                        : 'border-[#ff5b73]/45 bg-[#ff5b73]/10 text-[#ffd0d8]',
+                                                        ? 'border-[#34d399]/45 bg-[#34d399]/10 text-[#a7f3d0]'
+                                                        : 'border-[#f87171]/45 bg-[#f87171]/10 text-[#fecaca]',
                                                 )}>
                                                     <Trophy className="h-3.5 w-3.5" />
                                                     Match MVP
                                                 </span>
                                                 <span className={cn(
                                                     'text-[10px] font-black uppercase tracking-[0.18em]',
-                                                    matchMvp.isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]',
+                                                    matchMvp.isTeamA ? 'text-[#34d399]' : 'text-[#f87171]',
                                                 )}>
                                                     {matchMvp.teamAlias}
                                                 </span>
@@ -1178,14 +1181,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                             {matchMvp.player.gameName || 'Unknown'}
                                                         </h4>
                                                         {matchMvp.player.tagLine ? (
-                                                            <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">
+                                                            <span className="bg-white/10 px-2 py-1 text-xs font-black text-zinc-200">
                                                                 #{matchMvp.player.tagLine}
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-zinc-400">
                                                         <span>{matchMvp.agent?.displayName || 'Agent'}</span>
-                                                        <span className="h-1 w-1 rounded-full bg-slate-600" />
+                                                        <span className="h-1 w-1 rounded-full bg-zinc-600" />
                                                         <span>{formatRankName(matchMvp.rank, matchMvp.player.competitiveTier)}</span>
                                                     </div>
                                                 </div>
@@ -1209,8 +1212,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 ['KAST', analytics ? `${matchMvp.kast}%` : '-'],
                                             ].map(([label, value]) => (
                                                 <div key={label} className="min-w-[72px]">
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</div>
-                                                    <div className="mt-0.5 font-mono text-base font-black text-slate-100">{value}</div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</div>
+                                                    <div className="mt-0.5 font-mono text-base font-black text-zinc-100">{value}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -1218,14 +1221,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 ) : null}
 
                                 <div>
-                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#20f5c6]">
-                                        <div className="h-4 w-1.5 rounded-full bg-[#20f5c6]" /> {teamALabel}
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#34d399]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#34d399]" /> {teamALabel}
                                     </div>
                                     {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamAId))}
                                 </div>
                                 <div>
-                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#ff5b73]">
-                                        <div className="h-4 w-1.5 rounded-full bg-[#ff5b73]" /> {teamBLabel}
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#f87171]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#f87171]" /> {teamBLabel}
                                     </div>
                                     {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamBId))}
                                 </div>
@@ -1253,8 +1256,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         economy={toPerspectiveEconomy(economyTimeline)}
                                         teamALabel={teamALabel}
                                         teamBLabel={teamBLabel}
-                                        teamAColor="#20f5c6"
-                                        teamBColor="#ff5b73"
+                                        teamAColor="#34d399"
+                                        teamBColor="#f87171"
                                     />
                                 ) : (
                                     <RiotEconomyChart
@@ -1267,8 +1270,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         })))}
                                         teamALabel={teamALabel}
                                         teamBLabel={teamBLabel}
-                                        teamAColor="#20f5c6"
-                                        teamBColor="#ff5b73"
+                                        teamAColor="#34d399"
+                                        teamBColor="#f87171"
                                     />
                                 )}
                             </div>
@@ -1290,16 +1293,16 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             ) : null}
 
             {!directView ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-[#050a0f] px-5 py-3">
-                <div className="flex min-w-0 items-center gap-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-[#0a0a0c] px-5 py-3">
+                <div className="flex min-w-0 items-center gap-2 text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">
                     <span className={cn('h-1.5 w-1.5 rounded-full shadow-[0_0_12px_currentColor]', resultTone.text)} />
                     <span className="truncate">Enriched match data</span>
-                    <span className="hidden text-slate-700 sm:inline">/</span>
-                    <span className="hidden font-mono text-slate-600 sm:inline">{matchData.matchInfo.matchId?.slice(0, 12)}…</span>
+                    <span className="hidden text-zinc-700 sm:inline">/</span>
+                    <span className="hidden font-mono text-zinc-600 sm:inline">{matchData.matchInfo.matchId?.slice(0, 12)}…</span>
                 </div>
-                <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
                     <span>{roundTimeline.length || roundResults.length} rounds</span>
-                    <span className="h-1 w-1 rounded-full bg-slate-700" />
+                    <span className="h-1 w-1 rounded-full bg-zinc-700" />
                     <span>{weaponSummaries.length} weapons</span>
                 </div>
             </div>

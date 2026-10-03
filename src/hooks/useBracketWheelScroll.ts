@@ -2,7 +2,15 @@ import { useCallback, useEffect, useRef } from 'react';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-export function useBracketWheelScroll<TElement extends HTMLElement>() {
+interface Options {
+  /**
+   * Turn a plain vertical wheel into sideways scroll when the box can't scroll
+   * vertically. Off for brackets that grow to full height, so the page scrolls.
+   */
+  verticalToHorizontal?: boolean;
+}
+
+export function useBracketWheelScroll<TElement extends HTMLElement>({ verticalToHorizontal = true }: Options = {}) {
   const scrollRef = useRef<TElement | null>(null);
 
   const handleWheel = useCallback((event: WheelEvent) => {
@@ -27,7 +35,7 @@ export function useBracketWheelScroll<TElement extends HTMLElement>() {
       deltaY !== 0 &&
       ((deltaY < 0 && element.scrollTop > 0) || (deltaY > 0 && element.scrollTop < maxTop));
 
-    if (!canMoveY && maxLeft > 0 && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+    if (verticalToHorizontal && !canMoveY && maxLeft > 0 && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
       deltaX += event.deltaY;
       deltaY = 0;
     }
@@ -42,7 +50,7 @@ export function useBracketWheelScroll<TElement extends HTMLElement>() {
     event.stopPropagation();
     element.scrollLeft = nextLeft;
     element.scrollTop = nextTop;
-  }, []);
+  }, [verticalToHorizontal]);
 
   useEffect(() => {
     const el = scrollRef.current;

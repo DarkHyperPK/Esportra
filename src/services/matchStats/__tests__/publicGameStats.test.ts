@@ -92,6 +92,13 @@ describe('buildPublicGames', () => {
         const [game] = buildPublicGames([{ map_name: 'Lotus', match_details: { enrichedSnapshot: snapshot } }]);
 
         expect(game.players).toEqual([expect.objectContaining({ puuid: 'p1', kills: 20, roundsPlayed: 20 })]);
+        expect(game.enriched).toBe(snapshot);
+    });
+
+    it('has no Riot record for a typed score', () => {
+        const [game] = buildPublicGames([{ map_name: 'Ascent', team1_score: 13, team2_score: 9, game_number: 1 }]);
+
+        expect(game.enriched).toBeNull();
     });
 
     it('treats a drawn or unscored map as having no winner', () => {

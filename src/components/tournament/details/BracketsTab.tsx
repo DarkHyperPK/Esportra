@@ -25,7 +25,7 @@ export const BracketsTab: React.FC<BracketsTabProps> = ({
                     <BracketEmptyState message="It appears here when the organizer publishes the first stage." />
                 </div>
             ) : (
-                <div className="w-full overflow-hidden border border-white/[0.07] bg-background">
+                <div className="w-full overflow-clip border border-white/[0.07] bg-background">
                     <PublicBracketView
                         versionId={selectedStageId ? activeVersionsMap[selectedStageId] : null}
                         tournamentId={tournamentId}

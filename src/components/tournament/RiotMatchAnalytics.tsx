@@ -118,7 +118,7 @@ export const RiotRoundTimeline: React.FC<{ rounds: RoundTimelineEntry[] }> = ({ 
                 'flex h-12 w-10 flex-col items-center justify-center gap-1 border',
                 isBlueWin
                   ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
-                  : 'border-rose-500/40 bg-rose-500/10 text-rose-300',
+                  : 'border-red-500/40 bg-red-500/10 text-red-300',
               )}
             >
               <span className="text-[8px] font-bold opacity-70">{round.round}</span>
@@ -143,8 +143,8 @@ export const RiotEconomyChart: React.FC<RiotEconomyChartProps> = ({
   economy,
   teamALabel = 'Blue',
   teamBLabel = 'Red',
-  teamAColor = '#3b82f6',
-  teamBColor = '#f43f5e',
+  teamAColor = '#34d399',
+  teamBColor = '#f87171',
 }) => {
   if (!economy.length) {
     return (
@@ -264,7 +264,7 @@ export const RiotWeaponSummaries: React.FC<{ weapons: WeaponSummaryEntry[] }> = 
               </div>
               <div className="h-1.5 overflow-hidden bg-zinc-900">
                 <div
-                  className="h-full bg-rose-500/70"
+                  className="h-full bg-red-500/70"
                   style={{ width: `${Math.max(8, (entry.roundCount / maxCount) * 100)}%` }}
                 />
               </div>
