@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import MatchHistoryCard from '@/components/debug/MatchHistoryCard';
 import { pickEnrichedTargetPuuid } from '@/hooks/useRiotGameDetails';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
@@ -15,7 +15,7 @@ type Props = {
  * The full Riot record for one map: scoreboard, timeline, economy, rounds and
  * weapons. Reads the stored snapshot only; spectators never trigger a Riot fetch.
  */
-export const MatchRiotStats = ({ enriched, t1Side, team1Name, team2Name }: Props) => {
+export const MatchRiotStats = memo(function MatchRiotStats({ enriched, t1Side, team1Name, team2Name }: Props) {
     const targetPuuid = useMemo(() => pickEnrichedTargetPuuid(enriched, t1Side), [enriched, t1Side]);
     if (!targetPuuid) return null;
 
@@ -32,6 +32,6 @@ export const MatchRiotStats = ({ enriched, t1Side, team1Name, team2Name }: Props
             />
         </section>
     );
-};
+});
 
 export default MatchRiotStats;

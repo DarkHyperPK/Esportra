@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Crosshair, Target } from 'lucide-react';
 import { RoundEventLog, type DebugRoundEventLogRound } from '@/components/debug/RoundEventLog';
 import { cn } from '@/lib/utils';
+import { useValorantWeapons } from '@/hooks/useValorantCatalog';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import type { RiotMapPoint, RiotPlayerLocation, RiotRoundResult } from '@/types/riotMatchDetails';
 
@@ -470,14 +471,14 @@ const PlayerFovCone: React.FC<{
 
   return (
     <div
-      className="pointer-events-none absolute h-28 w-28 -translate-x-1/2 -translate-y-1/2 opacity-55 transition-all duration-300 ease-out"
+      className="pointer-events-none absolute h-28 w-28 opacity-55 transition-[left,top] duration-300 ease-out motion-reduce:transition-none"
       style={{
         left: `${point.left}%`,
         top: `${point.top}%`,
         transform: `translate(-50%, -50%) rotate(${degrees}deg)`,
       }}
     >
-      <div className="h-full w-full bg-zinc-300/20 blur-[0.5px] [clip-path:polygon(50%_50%,18%_0,82%_0)]" />
+      <div className="h-full w-full bg-zinc-300/20 [clip-path:polygon(50%_50%,18%_0,82%_0)]" />
     </div>
   );
 };
@@ -492,19 +493,19 @@ const AgentMapMarker: React.FC<{
 }> = ({ icon, point, role, teamTone, isFocused, isDimmed }) => (
   <div
     className={cn(
-      'absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ease-out',
+      'absolute -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-300 ease-out motion-reduce:transition-none',
       isFocused ? 'z-20' : 'z-10',
     )}
     style={{ left: `${point.left}%`, top: `${point.top}%` }}
   >
     <div
       className={cn(
-        'relative flex h-[18px] w-[18px] items-center justify-center rounded-full shadow-sm transition-all duration-300 ease-out',
+        'relative flex h-[18px] w-[18px] items-center justify-center rounded-full shadow-sm transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none',
         teamTone === 'ally' && 'ring-2 ring-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.55)]',
         teamTone === 'enemy' && 'ring-2 ring-red-300 shadow-[0_0_10px_rgba(248,113,113,0.55)]',
         teamTone === 'neutral' && 'opacity-75 ring-1 ring-white/30',
-        isFocused && 'scale-110 brightness-125 saturate-150',
-        isDimmed && 'scale-95 opacity-35 brightness-75 saturate-50',
+        isFocused && 'scale-110 brightness-125',
+        isDimmed && 'scale-95 opacity-35',
       )}
     >
       {icon ? (
@@ -513,9 +514,9 @@ const AgentMapMarker: React.FC<{
         <Crosshair className="h-3 w-3 text-zinc-300" />
       )}
       {role === 'victim' ? (
-        <span className="pointer-events-none absolute inset-[-6px] z-30 drop-shadow-[0_0_8px_rgba(248,113,113,1)]">
-          <span className="absolute left-1/2 top-1/2 h-[3px] w-8 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-red-400" />
-          <span className="absolute left-1/2 top-1/2 h-[3px] w-8 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-red-400" />
+        <span className="pointer-events-none absolute inset-[-6px] z-30">
+          <span className="absolute left-1/2 top-1/2 h-[3px] w-8 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.9)]" />
+          <span className="absolute left-1/2 top-1/2 h-[3px] w-8 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.9)]" />
         </span>
       ) : null}
     </div>
@@ -533,7 +534,7 @@ const WeaponBadge: React.FC<{ weapon?: DamageAssetMetadata; label?: string }> = 
           src={weapon.displayIcon}
           alt={cleanLabel || ''}
           className={cn(
-            'relative z-10 h-5 max-w-[72px] object-contain brightness-125 contrast-125 drop-shadow-[0_0_8px_rgba(255,255,255,0.18)]',
+            'relative z-10 h-5 max-w-[72px] object-contain brightness-125 contrast-125',
             weapon.kind === 'ability' && 'max-w-6 rounded-sm',
           )}
           loading="lazy"
@@ -556,16 +557,16 @@ const WeaponBadge: React.FC<{ weapon?: DamageAssetMetadata; label?: string }> = 
 const SpikeBadge: React.FC<{ icon?: string | null }> = ({ icon }) => {
   return (
     <div className="relative flex h-8 w-8 items-center justify-center">
-      <div className="absolute inset-1 rounded-full bg-amber-300/20 blur-md" />
+      <div className="absolute -inset-1 rounded-full bg-[radial-gradient(circle,rgba(252,211,77,0.28),transparent_70%)]" />
       {icon ? (
         <img
           src={icon}
           alt=""
-          className="relative z-10 max-h-8 max-w-8 object-contain drop-shadow-[0_0_12px_rgba(251,191,36,0.45)]"
+          className="relative z-10 max-h-8 max-w-8 object-contain"
           loading="lazy"
         />
       ) : (
-        <div className="relative z-10 h-7 w-6 drop-shadow-[0_0_12px_rgba(251,191,36,0.45)]">
+        <div className="relative z-10 h-7 w-6">
           <div className="absolute left-1/2 top-0 h-3 w-5 -translate-x-1/2 rounded-t-full border border-amber-100/80" />
           <div className="absolute bottom-0 left-1/2 h-5 w-4 -translate-x-1/2 bg-gradient-to-b from-zinc-300 to-zinc-800 [clip-path:polygon(50%_0,100%_22%,82%_100%,18%_100%,0_22%)]" />
           <div className="absolute bottom-1 left-1/2 h-3 w-1 -translate-x-1/2 rounded-full bg-zinc-200 shadow-[0_0_8px_rgba(125,211,252,0.95)]" />
@@ -584,23 +585,8 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
   teamBLabel,
   displayTeamASide,
 }) => {
-  const [weapons, setWeapons] = useState<Record<string, DamageAssetMetadata>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('https://valorant-api.com/v1/weapons')
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled || !Array.isArray(data?.data)) return;
-        setWeapons(buildWeaponMap(data.data));
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const weaponCatalog = useValorantWeapons().data;
+  const weapons = useMemo(() => buildWeaponMap(weaponCatalog ?? []), [weaponCatalog]);
 
   const actions = useMemo(
     () => buildTimelineActions(matchData.roundResults ?? []),
@@ -799,7 +785,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
                 onClick={() => setSelectedActionId(action.id)}
                 onFocus={() => setSelectedActionId(action.id)}
                 className={cn(
-                  'group relative grid min-h-[46px] w-full grid-cols-[2.25rem_2.9rem_minmax(4.75rem,1fr)_2.9rem_2.25rem] items-center gap-2 overflow-hidden border-0 border-b border-black/35 px-2 py-1.5 text-left transition-all duration-200 ease-out',
+                  'group relative grid min-h-[46px] w-full grid-cols-[2.25rem_2.9rem_minmax(4.75rem,1fr)_2.9rem_2.25rem] items-center gap-2 overflow-hidden border-0 border-b border-black/35 px-2 py-1.5 text-left transition-colors duration-200 ease-out',
                   perspective === 'ally' && 'bg-[linear-gradient(90deg,rgba(20,184,166,0.62),rgba(17,74,74,0.88))] hover:brightness-110',
                   perspective === 'enemy' && 'bg-[linear-gradient(90deg,rgba(136,19,55,0.9),rgba(42,20,22,0.96))] hover:brightness-110',
                   perspective === 'neutral' && (isKill
@@ -936,7 +922,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
             >
               <div className="relative">
                 <SpikeBadge icon={OFFICIAL_SPIKE_ICON_URL} />
-                <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full border border-amber-200/40" />
+                <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber-200/40" />
                 <div className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black">
                   Spike planted
                 </div>

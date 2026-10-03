@@ -104,7 +104,7 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
               onClick={() => onSelectRound(round.round)}
               title={`Round ${round.round}: ${isWinner ? `${label} won` : `${label} lost`} · ${resultTitle(round)}`}
               className={cn(
-                'group relative flex h-8 w-10 items-center justify-center border-b border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
+                'group relative flex h-8 w-10 items-center justify-center border-b border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
                 isActive && 'bg-white/[0.055]',
                 isActive && isTeamA && 'border-[#34d399]',
                 isActive && !isTeamA && 'border-[#f87171]',
@@ -114,7 +114,7 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
                 <Icon
                   className={cn(
                     'h-4 w-4 transition-transform duration-200 group-hover:scale-110',
-                    isTeamA ? 'text-[#6ee7b7] drop-shadow-[0_0_8px_rgba(52,211,153,0.65)]' : 'text-[#f87171] drop-shadow-[0_0_8px_rgba(248,113,113,0.55)]',
+                    isTeamA ? 'text-[#6ee7b7]' : 'text-[#f87171]',
                   )}
                   strokeWidth={3}
                 />
@@ -137,7 +137,7 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
   }
 
   return (
-    <div className={cn('overflow-hidden border border-white/5 bg-[#0a0a0c] shadow-[0_18px_55px_rgba(0,0,0,0.35)]', className)}>
+    <div className={cn('overflow-hidden border border-white/5 bg-[#0a0a0c]', className)}>
       <div
         className="scroller-hide overflow-x-auto border-t-2 border-[#f87171] px-3 py-3"
         style={{ '--round-count': rounds.length } as React.CSSProperties}

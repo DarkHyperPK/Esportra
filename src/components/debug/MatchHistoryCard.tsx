@@ -12,6 +12,7 @@ import { resolveEnrichedPlayer } from '@/types/enrichedRiotMatch';
 import { formatAbilityCasts, formatStat } from '@/types/scoreboardPlayer';
 import { resolveRoundResultCode, type EconomyTimelineEntry, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
 import { cn } from '@/lib/utils';
+import { useValorantAgents, useValorantMaps, useValorantTiers } from '@/hooks/useValorantCatalog';
 
 interface MatchHistoryCardProps {
     matchData: EnrichedRiotMatchData;
@@ -42,23 +43,6 @@ interface ValorantAgentMetadata {
         displayIcon?: string;
         displayName?: string;
     }>;
-}
-
-function buildCompetitiveTierMap(
-    entries: Array<{ tiers?: CompetitiveTierMetadata[] }>,
-): Record<number, CompetitiveTierMetadata> {
-    const latestWithRanks = entries
-        .slice()
-        .reverse()
-        .find((entry) => entry.tiers?.some((tier) => tier.largeIcon || tier.smallIcon));
-
-    const tiers: Record<number, CompetitiveTierMetadata> = {};
-    latestWithRanks?.tiers?.forEach((tier) => {
-        if (typeof tier.tier === 'number') {
-            tiers[tier.tier] = tier;
-        }
-    });
-    return tiers;
 }
 
 function formatRankName(rank?: CompetitiveTierMetadata, tierNumber?: number): string {
@@ -120,6 +104,9 @@ function getFallbackAttackingTeam(round: number): ValorantTeamId {
     return round % 2 === 1 ? 'Red' : 'Blue';
 }
 
+const EMPTY_AGENTS: Record<string, ValorantAgentMetadata> = {};
+const EMPTY_TIERS: Record<number, CompetitiveTierMetadata> = {};
+
 const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     matchData,
     targetPuuid,
@@ -129,14 +116,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     directView = false,
     hideSummary = false,
 }) => {
-    const [agentData, setAgentData] = useState<{ displayIcon?: string } | null>(null);
-    const [mapData, setMapData] = useState<ValorantMapMetadata | null>(null);
     const [isExpanded, setIsExpanded] = useState(directView);
     const [activeTab, setActiveTab] = useState<'scoreboard' | 'timeline' | 'economy' | 'rounds' | 'weapons'>('scoreboard');
     const [selectedPuuid, setSelectedPuuid] = useState(targetPuuid);
     const [selectedRoundNumber, setSelectedRoundNumber] = useState<number | null>(null);
-    const [allAgents, setAllAgents] = useState<Record<string, ValorantAgentMetadata>>({});
-    const [competitiveTiers, setCompetitiveTiers] = useState<Record<number, CompetitiveTierMetadata>>({});
+    // Catalogs are fetched once per session and shared by every stats view.
+    const allAgents: Record<string, ValorantAgentMetadata> = useValorantAgents().data ?? EMPTY_AGENTS;
+    const competitiveTiers: Record<number, CompetitiveTierMetadata> = useValorantTiers().data ?? EMPTY_TIERS;
+    const valorantMaps = useValorantMaps().data;
 
     const player = matchData.players.find((entry) => entry.puuid === targetPuuid);
     const enrichedTarget = resolveEnrichedPlayer(matchData, targetPuuid);
@@ -318,60 +305,11 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
         setSelectedPuuid(targetPuuid);
     }, [targetPuuid, matchData.matchInfo.matchId]);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        if (player?.characterId) {
-            fetch(`https://valorant-api.com/v1/agents/${player.characterId}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    if (!cancelled) setAgentData(data.data ?? null);
-                })
-                .catch(() => {
-                    if (!cancelled) setAgentData(null);
-                });
-        } else {
-            setAgentData(null);
-        }
-
-        fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true')
-            .then((res) => res.json())
-            .then((data) => {
-                if (cancelled || !Array.isArray(data?.data)) return;
-                const map: Record<string, ValorantAgentMetadata> = {};
-                data.data.forEach((agent: ValorantAgentMetadata) => {
-                    if (!agent.uuid) return;
-                    map[agent.uuid.toLowerCase()] = agent;
-                });
-                setAllAgents(map);
-            })
-            .catch(() => undefined);
-
-        const mapUri = matchData.matchInfo.mapId;
-        fetch('https://valorant-api.com/v1/maps')
-            .then((res) => res.json())
-            .then((data) => {
-                if (cancelled || !Array.isArray(data?.data)) return;
-                const foundMap = data.data.find((mapEntry: ValorantMapMetadata) => mapEntry.mapUrl === mapUri);
-                setMapData(foundMap);
-            })
-            .catch(() => {
-                if (!cancelled) setMapData(null);
-            });
-
-        fetch('https://valorant-api.com/v1/competitivetiers')
-            .then((res) => res.json())
-            .then((data) => {
-                if (!cancelled && Array.isArray(data?.data)) {
-                    setCompetitiveTiers(buildCompetitiveTierMap(data.data));
-                }
-            })
-            .catch(() => undefined);
-
-        return () => {
-            cancelled = true;
-        };
-    }, [player?.characterId, matchData.matchInfo.mapId]);
+    const agentData = player?.characterId ? allAgents[player.characterId.toLowerCase()] ?? null : null;
+    const mapData: ValorantMapMetadata | null = useMemo(
+        () => valorantMaps?.find((entry) => entry.mapUrl === matchData.matchInfo.mapId) ?? null,
+        [valorantMaps, matchData.matchInfo.mapId],
+    );
 
     const roundTimeline = useMemo(() => matchData.roundTimeline ?? [], [matchData.roundTimeline]);
     const economyTimeline = matchData.economyTimeline ?? [];
@@ -519,7 +457,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 <img
                                                     src={rank.smallIcon || rank.largeIcon}
                                                     loading="lazy"
-                                                    className="h-6 w-6 object-contain drop-shadow"
+                                                    className="h-6 w-6 object-contain"
                                                     alt=""
                                                 />
                                             ) : (
@@ -802,7 +740,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                             'absolute inset-y-0 left-0 w-1',
                             isTeamAWinner ? 'bg-[#34d399]' : 'bg-[#f87171]',
                         )} />
-                        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
+                        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.05),transparent_70%)]" />
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-300/70">Round {selectedSummary.round}</p>
@@ -858,7 +796,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
 
     return (
         <Card className={cn(
-            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#0a0a0c] shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-all duration-500 hover:border-white/20',
+            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#0a0a0c] transition-colors duration-300 hover:border-white/20',
             resultTone.rail,
             directView ? '' : resultTone.glow,
         )}>
@@ -1016,7 +954,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
             )}
 
             {(directView || isExpanded) ? (
-                <div className="animate-in slide-in-from-top-4 bg-[#111114] duration-500">
+                <div className="animate-in fade-in bg-[#111114] duration-200 motion-reduce:animate-none">
                     <div className="grid border-b border-white/10 bg-[#111114] text-center sm:grid-cols-5">
                         {[
                             { id: 'scoreboard', label: 'Scoreboard', icon: List },
@@ -1029,7 +967,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-[11px] font-black transition-all ${
+                                className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-[11px] font-black transition-colors ${
                                     activeTab === tab.id
                                         ? 'border-white bg-white/[0.04] text-white'
                                         : 'border-transparent text-zinc-200/75 hover:bg-[#18181b] hover:text-white'
@@ -1062,7 +1000,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 onClick={() => setSelectedPuuid(entry.puuid)}
                                                 title={`${entry.gameName}#${entry.tagLine}`}
                                                 className={cn(
-                                                    'relative h-9 w-9 overflow-hidden border bg-[#111114] transition-all duration-200',
+                                                    'relative h-9 w-9 overflow-hidden border bg-[#111114] transition-[transform,opacity,border-color] duration-200 motion-reduce:transition-none',
                                                     'hover:-translate-y-0.5 hover:brightness-125 focus:outline-none focus:ring-2 focus:ring-white/40',
                                                     isFriendly ? 'border-emerald-400/70' : 'border-red-400/70',
                                                     selectedPlayer.puuid === entry.puuid && (isFriendly
@@ -1092,7 +1030,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         <div className="mb-4 grid gap-4 bg-[#0b2a20] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
                             <div className="hidden h-28 items-end justify-center md:flex">
                                 {selectedAgent?.displayIcon ? (
-                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85 drop-shadow-[0_0_20px_rgba(52,211,153,0.12)]" alt="" />
+                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85" alt="" />
                                 ) : null}
                             </div>
                             <div className="min-w-0">
@@ -1125,13 +1063,13 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         </div>
 
                         {activeTab === 'scoreboard' ? (
-                            <div className="animate-in fade-in space-y-8 duration-500">
+                            <div className="animate-in fade-in duration-200 motion-reduce:animate-none space-y-8">
                                 {matchMvp ? (
                                     <button
                                         type="button"
                                         onClick={() => setSelectedPuuid(matchMvp.player.puuid)}
                                         className={cn(
-                                            'group/mvp relative grid w-full overflow-hidden border bg-[#0a0a0c] text-left shadow-[0_18px_55px_rgba(0,0,0,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
+                                            'group/mvp relative grid w-full overflow-hidden border bg-[#0a0a0c] text-left transition-[transform,border-color] duration-300 hover:-translate-y-0.5 motion-reduce:transition-none hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
                                             matchMvp.isTeamA
                                                 ? 'border-[#34d399]/35'
                                                 : 'border-[#f87171]/35',
@@ -1151,7 +1089,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 <img
                                                     src={matchMvp.agent.displayIcon}
                                                     loading="lazy"
-                                                    className="max-h-[104px] object-contain opacity-95 drop-shadow-[0_12px_22px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover/mvp:scale-105"
+                                                    className="max-h-[104px] object-contain opacity-95 transition-transform duration-300 group-hover/mvp:scale-105 motion-reduce:transition-none"
                                                     alt=""
                                                 />
                                             ) : null}
@@ -1196,7 +1134,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                     <img
                                                         src={matchMvp.rank.smallIcon || matchMvp.rank.largeIcon}
                                                         loading="lazy"
-                                                        className="h-7 w-7 object-contain drop-shadow"
+                                                        className="h-7 w-7 object-contain"
                                                         alt=""
                                                     />
                                                 ) : null}
@@ -1236,7 +1174,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         ) : null}
 
                         {activeTab === 'timeline' ? (
-                            <div className="animate-in fade-in duration-500">
+                            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
                                 <RiotTimelineMap
                                     matchData={matchData}
                                     targetPuuid={targetPuuid}
@@ -1250,7 +1188,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         ) : null}
 
                         {activeTab === 'economy' ? (
-                            <div className="animate-in zoom-in-95 duration-500">
+                            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
                                 {economyTimeline.length > 0 ? (
                                     <RiotEconomyChart
                                         economy={toPerspectiveEconomy(economyTimeline)}
@@ -1278,13 +1216,13 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         ) : null}
 
                         {activeTab === 'rounds' ? (
-                            <div className="animate-in slide-in-from-right-4 duration-500">
+                            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
                                 {renderPremiumRounds()}
                             </div>
                         ) : null}
 
                         {activeTab === 'weapons' ? (
-                            <div className="animate-in fade-in duration-500">
+                            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
                                 <RiotWeaponSummaries weapons={weaponSummaries} />
                             </div>
                         ) : null}

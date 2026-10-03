@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Clock, Skull, Target, Trophy, Zap } from 'lucide-react';
 import {
   Area,
@@ -10,6 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { useValorantWeapons } from '@/hooks/useValorantCatalog';
 import type { EconomyTimelineEntry, RoundTimelineEntry, WeaponSummaryEntry } from '@/types/riotMatchDetails';
 import { resolveRoundResultCode } from '@/types/riotMatchDetails';
 
@@ -200,24 +201,8 @@ export const RiotEconomyChart: React.FC<RiotEconomyChartProps> = ({
 };
 
 export const RiotWeaponSummaries: React.FC<{ weapons: WeaponSummaryEntry[] }> = ({ weapons }) => {
-  const [weaponMetadata, setWeaponMetadata] = useState<Record<string, WeaponMetadata>>({});
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('https://valorant-api.com/v1/weapons')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && Array.isArray(data?.data)) {
-          setWeaponMetadata(buildWeaponMetadataMap(data.data));
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const weaponCatalog = useValorantWeapons().data;
+  const weaponMetadata = useMemo(() => buildWeaponMetadataMap(weaponCatalog ?? []), [weaponCatalog]);
 
   const resolvedWeapons = useMemo(
     () => weapons.map((entry) => {
