@@ -60,9 +60,6 @@ export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, tea
           {team2Name}
         </p>
       </div>
-      {uncertain && (
-        <p className="mt-2 text-center text-xs text-amber-200">Check the score — we could not read it with confidence.</p>
-      )}
     </div>
   );
 }

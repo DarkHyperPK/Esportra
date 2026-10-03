@@ -8,9 +8,6 @@ import { desktopGridClass, mobileStatsGridClass, visibleStats, type ReviewStat }
 import { cn } from '@/lib/utils';
 import { ScoreboardOcrScoreHeader } from './ScoreboardOcrScoreHeader';
 
-/** Warnings that are already visible as row highlights are not repeated in the summary. */
-const ROW_LEVEL = new Set(['NAME_UNMATCHED', 'AGENT_UNCERTAIN', 'LOW_CONFIDENCE', 'SIDE_UNKNOWN']);
-
 interface Props {
   draft: OcrDraft;
   teamNames: Record<TeamSlot, string>;
@@ -21,6 +18,8 @@ interface Props {
   onPlayerChange: (key: string, patch: { team?: TeamSlot; name?: string; agentId?: string | null; stat?: [OcrStatKey, number | null] }) => void;
   onSubmit: () => void;
   onManual: () => void;
+  /** Preview only (staff test bench): no submit or manual-entry actions. */
+  readOnly?: boolean;
 }
 
 function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDraftPlayer[]; stats: ReviewStat[]; offset: number } & Pick<Props, 'teamNames' | 'agents' | 'onPlayerChange'>) {
@@ -52,14 +51,12 @@ function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDra
   );
 }
 
-export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual }: Props) {
+export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, readOnly = false }: Props) {
   const groups = useMemo(() => ({
     unassigned: draft.players.filter((p) => p.team === null),
     team1: draft.players.filter((p) => p.team === 'team1'),
     team2: draft.players.filter((p) => p.team === 'team2'),
   }), [draft.players]);
-  const flaggedCount = draft.players.reduce((sum, p) => sum + p.uncertain.length, 0) + (draft.uncertainScore ? 1 : 0);
-  const summary = draft.warnings.filter((w) => !ROW_LEVEL.has(w.code));
   const stats = useMemo(() => visibleStats(draft.columns), [draft.columns]);
   const shared = { teamNames, agents, onPlayerChange, stats };
 
@@ -82,12 +79,7 @@ export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitti
             uncertain={draft.uncertainScore}
             onChange={onScoreChange}
           />
-          <p className="text-[13px] text-zinc-400">
-            {flaggedCount > 0
-              ? `${flaggedCount} ${flaggedCount === 1 ? 'value is' : 'values are'} outlined in amber. Check them against the screenshot.`
-              : 'Everything read cleanly. Give it one look before sending.'}
-          </p>
-          {summary.map((w) => <InlineNotice key={w.code} tone="warning">{w.message}</InlineNotice>)}
+          <p className="text-[13px] text-zinc-400">Read from your screenshot. Give it a quick look and fix anything that's off before sending.</p>
         </div>
       </div>
       <div className="space-y-3">
@@ -99,12 +91,12 @@ export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitti
             <ul className="list-disc pl-4">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
           </InlineNotice>
         )}
-        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+        {!readOnly && <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <GhostButton type="button" onClick={onManual} disabled={submitting}>Enter result manually</GhostButton>
           <CtaButton type="button" onClick={onSubmit} disabled={submitting}>
             {submitting ? 'Sending…' : 'Send to opponent to confirm'}
           </CtaButton>
-        </div>
+        </div>}
       </div>
     </div>
   );

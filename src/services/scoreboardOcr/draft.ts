@@ -40,7 +40,8 @@ function draftPlayer(row: OcrPlayerRow, index: number, allyTeam: TeamSlot, colum
     stats,
     uncertain: [
       ...uncertainStats,
-      ...(row.name.confidence < LOW_CONFIDENCE || !row.rosterMatch ? (['name'] as const) : []),
+      // Only an unreadable name is highlighted; not being on the roster (subs, unlinked accounts) is normal.
+      ...(!row.name.value || row.name.confidence < LOW_CONFIDENCE ? (['name'] as const) : []),
       ...(!row.agent.value || row.agent.confidence < LOW_CONFIDENCE ? (['agent'] as const) : []),
       ...(team === null || row.sideConfidence < LOW_CONFIDENCE || teamDisagrees ? (['team'] as const) : []),
     ],
