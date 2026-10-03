@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { EsportraOverlay } from "./EsportraOverlay";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import type { AbilityCasts } from "@/types/scoreboardPlayer";
@@ -8,7 +9,7 @@ import { resolveEnrichedPlayer } from "@/types/enrichedRiotMatch";
 
 type OverlayMode = "match" | "player" | "compare";
 type OverlayTransition = "none" | "up" | "left" | "right";
-type OverlayTheme = "tactical" | "premium" | "glitch";
+type OverlayTheme = "tactical" | "premium" | "glitch" | "esportra";
 
 type AgentAsset = {
   uuid: string;
@@ -179,7 +180,7 @@ const objectFitParam = (value: string | null): "contain" | "cover" =>
   value === "cover" ? "cover" : "contain";
 
 const themeParam = (value: string | null): OverlayTheme =>
-  value === "premium" || value === "glitch" ? value : "tactical";
+  value === "premium" || value === "glitch" || value === "esportra" ? value : "tactical";
 
 const transitionAnimationName = (transition: OverlayTransition) => {
   if (transition === "up") return "riotOverlaySlideUp";
@@ -1118,6 +1119,24 @@ const RiotPostMatchOverlay = () => {
   const selectedPlayer = allPlayers.find((player) => player.puuid === params.get("playerPuuid")) ?? allPlayers[0] ?? null;
   const selectedLeft = allPlayers.find((player) => player.puuid === params.get("leftPlayerPuuid")) ?? allPlayers[0] ?? null;
   const selectedRight = allPlayers.find((player) => player.puuid === params.get("rightPlayerPuuid")) ?? allPlayers.find((player) => player.puuid !== selectedLeft?.puuid) ?? null;
+
+  if (options.theme === "esportra") {
+    return (
+      <EsportraOverlay
+        match={match}
+        mode={mode}
+        leftSide={teamIds.left}
+        teamAName={teamAName}
+        teamBName={teamBName}
+        teamALogo={leftPanel.logo || undefined}
+        teamBLogo={rightPanel.logo || undefined}
+        mapName={mapName}
+        playerPuuid={params.get("playerPuuid")}
+        leftPlayerPuuid={params.get("leftPlayerPuuid")}
+        rightPlayerPuuid={params.get("rightPlayerPuuid")}
+      />
+    );
+  }
 
   return (
     <main className="grid h-dvh w-dvw place-items-center overflow-hidden bg-black">

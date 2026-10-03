@@ -16,6 +16,7 @@ const OBS_PREVIEW_HEIGHT = 900;
 const SPONSOR_CANVAS_WIDTH = 250;
 const SPONSOR_CANVAS_HEIGHT = 340;
 const OVERLAY_THEMES = [
+    { value: 'esportra', label: 'Esportra (new)' },
     { value: 'tactical', label: 'Tactical Neon' },
     { value: 'premium', label: 'Premium Minimal' },
     { value: 'glitch', label: 'Glitch Arena' },
@@ -291,7 +292,7 @@ const RiotTest = () => {
     const [sponsorOffsetY, setSponsorOffsetY] = useState('0');
     const [sponsorFit, setSponsorFit] = useState('contain');
     const [overlayType, setOverlayType] = useState<'match' | 'player' | 'compare'>('match');
-    const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>('tactical');
+    const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>('esportra');
     const [selectedPlayerPuuid, setSelectedPlayerPuuid] = useState('');
     const [selectedLeftPlayerPuuid, setSelectedLeftPlayerPuuid] = useState('');
     const [selectedRightPlayerPuuid, setSelectedRightPlayerPuuid] = useState('');
