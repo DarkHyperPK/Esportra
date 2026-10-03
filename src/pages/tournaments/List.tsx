@@ -361,6 +361,8 @@ const TournamentList = () => {
                   currentUserId={user?.id}
                   region={(tournament as any).region}
                   currency={(tournament as any).currency}
+                  registration_deadline={tournament.registration_deadline}
+                  winner_name={(tournament as { winner_team_name?: string }).winner_team_name}
                   card_badge={mapTournamentCardBadge(tournament)}
                 />
               </div>

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, RotateCcw, Clock } from 'lucide-react';
-import { OrganizerTournamentCard } from '@/components/organizer/OrganizerTournamentCard';
+import { TournamentCard } from '@/components/TournamentCard';
 import { useOrganizerGameAssetsPrefetch } from '@/hooks/useOrganizerGameAssets';
 import {
   ORGANIZER_TOURNAMENT_LITE_THRESHOLD,
@@ -46,6 +46,10 @@ interface Tournament {
   end_date?: string;
   created_at?: string;
   currency?: string;
+  registration_deadline?: string | null;
+  checked_in_count?: number | null;
+  pending_payments?: number | null;
+  winner_name?: string;
 }
 
 const normalizeTournamentRows = (value: any): any[] => {
@@ -117,6 +121,13 @@ const TournamentList = () => {
           end_date: tournament.end_date,
           created_at: tournament.created_at,
           currency: tournament.currency,
+          registration_deadline: tournament.registration_deadline ?? null,
+          // Shown only when the list endpoint already returns them; no extra requests per card.
+          checked_in_count: typeof tournament.checked_in_count === 'number' ? tournament.checked_in_count : null,
+          pending_payments: typeof tournament.pending_payments_count === 'number'
+            ? tournament.pending_payments_count
+            : typeof tournament.pending_payments === 'number' ? tournament.pending_payments : null,
+          winner_name: tournament.winner_team_name ?? tournament.winner_name ?? undefined,
         })),
       );
     },
@@ -610,8 +621,9 @@ const TournamentList = () => {
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
                 {tournaments.map((tournament) => (
-                  <OrganizerTournamentCard
+                  <TournamentCard
                     key={tournament.id}
+                    mode="manage"
                     id={tournament.id}
                     name={tournament.name}
                     game={tournament.game || 'Unknown'}
@@ -620,12 +632,16 @@ const TournamentList = () => {
                     max_participants={tournament.max_participants}
                     current_participants={tournament.current_participants}
                     prize_pool={tournament.prize_pool}
-                    entry_fee={tournament.entry_fee || 'Free'}
+                    entry_fee={tournament.entry_fee}
                     currency={tournament.currency}
                     is_online={tournament.is_online ?? false}
-                    image_url={tournament.image_url || undefined}
+                    image_url={tournament.image_url}
                     start_date={tournament.start_date}
-                    created_at={tournament.created_at}
+                    registration_deadline={tournament.registration_deadline}
+                    team_size={tournament.team_size}
+                    checked_in_count={tournament.checked_in_count}
+                    pending_payments={tournament.pending_payments}
+                    winner_name={tournament.winner_name}
                     lite={liteList}
                     selectable
                     selected={selectedActiveIds.has(tournament.id)}
