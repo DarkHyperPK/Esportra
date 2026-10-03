@@ -1,6 +1,6 @@
 {
   "name": "Esportra design dataset",
-  "generated": "2026-09-29",
+  "generated": "2026-10-03",
   "source": "design/source/build.mjs",
   "canonical": [
     ".claude/skills/esportra-brand/",
@@ -791,6 +791,79 @@
         "states"
       ],
       "bytes": 76719
+    },
+    {
+      "id": "hud/web-01-home",
+      "group": "hud",
+      "file": "hud-studio/web-01-home.png",
+      "source": "source/html/hud/web-01-home.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Broadcast home: live shows with autopilot state, the queue built from the schedule, production nodes, alerts.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web"
+      ],
+      "bytes": 363507
+    },
+    {
+      "id": "hud/web-02-show-setup",
+      "group": "hud",
+      "file": "hud-studio/web-02-show-setup.png",
+      "source": "source/html/hud/web-02-show-setup.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Show setup step 2: HUD pack, theme, and teams synced from the tournament.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web"
+      ],
+      "bytes": 283908
+    },
+    {
+      "id": "hud/web-03-rundown",
+      "group": "hud",
+      "file": "hud-studio/web-03-rundown.png",
+      "source": "source/html/hud/web-03-rundown.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Rundown and rules: segments driven by tournament state, each with graphics, OBS scene and hold window; rule editor with test fire.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web",
+        "automation"
+      ],
+      "bytes": 202832
+    },
+    {
+      "id": "hud/web-04-live-monitor",
+      "group": "hud",
+      "file": "hud-studio/web-04-live-monitor.png",
+      "source": "source/html/hud/web-04-live-monitor.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command console",
+      "description": "Web · Live monitor: every node on air with PGM/PVW, autopilot countdown, remote hold/take, node chat and incidents.",
+      "tags": [
+        "hud",
+        "broadcast",
+        "web"
+      ],
+      "bytes": 337531
     }
   ]
 }
