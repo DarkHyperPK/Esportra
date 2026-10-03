@@ -78,7 +78,7 @@ export const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonPr
       {...(!asChild ? { type } : {})}
       ref={ref}
       className={cn(
-        'group relative inline-flex items-center justify-center overflow-hidden rounded-none border font-mono font-bold uppercase tracking-wider transition-colors duration-300 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+        'group relative isolate inline-flex items-center justify-center overflow-hidden rounded-none border font-mono font-bold uppercase tracking-wider transition-colors duration-300 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
         sizeClasses[size],
         styles.base,
         styles.text,
@@ -86,7 +86,7 @@ export const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonPr
       )}
       {...props}
     >
-      {slide ? <span className={cn('absolute inset-0 translate-y-full transition-transform duration-300 group-hover:translate-y-0', styles.fill)} /> : null}
+      {slide ? <span className={cn('absolute inset-0 -z-10 translate-y-full transition-transform duration-300 group-hover:translate-y-0 group-focus-visible:translate-y-0 motion-reduce:transition-none', styles.fill)} /> : null}
       {asChild ? (
         <Slottable>{children}</Slottable>
       ) : (

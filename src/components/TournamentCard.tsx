@@ -110,7 +110,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = (p) => {
     <article
       ref={cardRef}
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden bg-[#111114] transition-transform duration-300 hover:-translate-y-0.5 motion-reduce:transition-none',
+        'group/card relative flex h-full flex-col overflow-hidden bg-[#111114] transition-transform duration-300 [contain-intrinsic-size:auto_360px] [content-visibility:auto] hover:-translate-y-0.5 motion-reduce:transition-none',
         'after:pointer-events-none after:absolute after:inset-0 after:z-20 after:transition-shadow',
         p.selected ? 'after:shadow-[inset_0_0_0_1px_rgba(244,63,94,0.75)]' : 'after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]',
       )}
@@ -120,12 +120,12 @@ const TournamentCardInner: React.FC<TournamentCardProps> = (p) => {
         selectable={p.selectable} selected={p.selected} onToggleSelect={() => p.onToggleSelect?.(p.id)}
       />
 
-      <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
         <p className="truncate font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
           <span className="text-zinc-300">{p.game}</span>
           {meta.map((m) => <span key={String(m)}> · {m}</span>)}
         </p>
-        <h3 className="mt-1.5 line-clamp-2 min-h-[2.4em] font-heading text-xl font-bold leading-[1.2] tracking-tight text-white">
+        <h3 className="mt-1 line-clamp-2 min-h-[2.4em] font-heading text-lg font-bold leading-[1.2] tracking-tight text-white">
           <Link
             to={mode === 'manage' ? managePath : publicPath}
             className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-white/40"
@@ -161,7 +161,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = (p) => {
           </a>
         )}
 
-        <div className="relative z-10 mt-auto flex items-center gap-2 pt-3.5">
+        <div className="relative z-10 mt-auto flex items-center gap-2 pt-3">
           {action.kind === 'registered' ? (
             <span className="inline-flex h-10 flex-1 items-center gap-2 bg-emerald-500/[0.08] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-300 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.25)]">
               <CheckCircle2 className="h-4 w-4" aria-hidden /> Registered

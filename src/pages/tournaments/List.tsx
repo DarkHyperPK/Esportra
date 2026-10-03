@@ -321,7 +321,7 @@ const TournamentList = () => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="bg-[#0a0a0c] border-white/10/30">
                 <CardContent className="p-6">
@@ -335,7 +335,7 @@ const TournamentList = () => {
             ))}
           </div>
         ) : filteredTournaments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredTournaments.map((tournament) => (
               <div key={tournament.id}>
                 <TournamentCard

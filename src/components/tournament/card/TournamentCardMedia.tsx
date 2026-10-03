@@ -28,20 +28,22 @@ export function TournamentCardMedia({
     || assets.gameBanner || assets.cover || assets.rawgScreenshots[0] || assets.gameLogo || null;
 
   return (
-    <div className="relative aspect-[16/8.2] overflow-hidden bg-[#0d0d10]">
+    <div className="relative h-32 overflow-hidden bg-[#0d0d10] sm:h-36">
       {src ? (
         <img
           src={src}
           alt=""
           loading="lazy"
           decoding="async"
+          fetchPriority="low"
+          sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
           onError={() => setCustomFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover object-[center_30%] opacity-50 transition-[opacity,transform] duration-500 group-hover:scale-[1.03] group-hover:opacity-60 motion-reduce:transition-none"
+          className="absolute inset-0 h-full w-full object-cover object-[center_30%] opacity-50 transition-[opacity,transform] duration-500 group-hover/card:scale-[1.03] group-hover/card:opacity-60 motion-reduce:transition-none"
         />
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-t from-[#111114] via-[#111114]/55 to-[#111114]/10" />
 
-      <div className="absolute inset-x-3.5 top-3.5 flex items-start justify-between gap-2">
+      <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {selectable && (
             <button
@@ -58,7 +60,7 @@ export function TournamentCardMedia({
               {selected && <Check className="h-3 w-3" strokeWidth={3} aria-hidden />}
             </button>
           )}
-          <span className={cn('inline-flex h-6 items-center gap-2 bg-black/80 px-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-sm', TONE_TEXT[status.tone])}>
+          <span className={cn('inline-flex h-6 items-center gap-2 bg-black/85 px-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]', TONE_TEXT[status.tone])}>
             <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', TONE_DOT[status.tone])} />
             {status.label}
           </span>
@@ -74,7 +76,7 @@ export function TournamentCardMedia({
         )}
       </div>
 
-      <div className="absolute -bottom-px left-3.5 flex h-[46px] w-[46px] items-center justify-center bg-background p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]">
+      <div className="absolute -bottom-px left-3 flex h-10 w-10 items-center justify-center bg-background p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]">
         <GameLogoImage gameName={game} alt={`${game} logo`} className="max-h-full max-w-full object-contain" />
       </div>
     </div>
