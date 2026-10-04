@@ -492,11 +492,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         if (!version || publishingStageId) return;
 
         const stage = stages.find((s) => s.id === stageId);
-        const rawConfig = stage?.config;
-        const config: any = typeof rawConfig === 'string'
-            ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })()
-            : (rawConfig || null);
-        const selfPlayEnabled = Boolean(config?.self_play_enabled ?? config?.selfPlayEnabled);
+        const rawSchedulingConfig = stage?.scheduling_config;
+        const schedulingCfg: any = typeof rawSchedulingConfig === 'string'
+            ? (() => { try { return JSON.parse(rawSchedulingConfig); } catch { return null; } })()
+            : (rawSchedulingConfig ?? null);
+        const selfPlayEnabled = Boolean(schedulingCfg?.self_play_enabled ?? schedulingCfg?.selfPlayEnabled);
 
         setPublishingStageId(stageId);
         try {
