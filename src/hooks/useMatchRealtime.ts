@@ -2,7 +2,7 @@
  * useMatchRealtime — live match lifecycle events via SignalR MatchHub.
  *
  * Groups joined: match:{matchId}
- * Events: ReportSubmitted, ReportAccepted, ReportDisputed, DisputeResolved,
+ * Events: ReportSubmitted, ReportVerified, ReportAccepted, ReportDisputed, DisputeResolved,
  *         CheckInUpdated, TimeProposalUpdated, StatusChanged, ScheduleChanged,
  *         GoingLive, MatchScoreUpdated, MapResultFinalized (MatchZy)
  */
@@ -57,6 +57,8 @@ interface Options {
   matchId: string | null | undefined;
   enabled?: boolean;
   onReportSubmitted?: (payload: MatchRealtimePayload) => void;
+  /** A screenshot report was checked against Riot's record of the match. */
+  onReportVerified?:  (payload: MatchRealtimePayload) => void;
   onReportAccepted?:  (payload: MatchRealtimePayload) => void;
   onReportDisputed?:  (payload: MatchRealtimePayload) => void;
   onDisputeResolved?: (payload: MatchRealtimePayload) => void;
@@ -73,6 +75,7 @@ export function useMatchRealtime({
   matchId,
   enabled = true,
   onReportSubmitted,
+  onReportVerified,
   onReportAccepted,
   onReportDisputed,
   onDisputeResolved,
@@ -92,6 +95,7 @@ export function useMatchRealtime({
 
   const callbacksRef = useRef({
     onReportSubmitted,
+    onReportVerified,
     onReportAccepted,
     onReportDisputed,
     onDisputeResolved,
@@ -105,6 +109,7 @@ export function useMatchRealtime({
   });
   callbacksRef.current = {
     onReportSubmitted,
+    onReportVerified,
     onReportAccepted,
     onReportDisputed,
     onDisputeResolved,
@@ -151,6 +156,7 @@ export function useMatchRealtime({
       };
 
     const handleReportSubmitted = wrap((p) => callbacksRef.current.onReportSubmitted?.(p));
+    const handleReportVerified = wrap((p) => callbacksRef.current.onReportVerified?.(p));
     const handleReportAccepted = wrap((p) => callbacksRef.current.onReportAccepted?.(p));
     const handleReportDisputed = wrap((p) => callbacksRef.current.onReportDisputed?.(p));
     const handleDisputeResolved = wrap((p) => callbacksRef.current.onDisputeResolved?.(p));
@@ -181,6 +187,7 @@ export function useMatchRealtime({
     };
 
     conn.on('ReportSubmitted',    handleReportSubmitted);
+    conn.on('ReportVerified',     handleReportVerified);
     conn.on('ReportAccepted',     handleReportAccepted);
     conn.on('ReportDisputed',     handleReportDisputed);
     conn.on('DisputeResolved',    handleDisputeResolved);
@@ -195,6 +202,7 @@ export function useMatchRealtime({
     return () => {
       active = false;
       conn.off('ReportSubmitted',    handleReportSubmitted);
+      conn.off('ReportVerified',     handleReportVerified);
       conn.off('ReportAccepted',     handleReportAccepted);
       conn.off('ReportDisputed',     handleReportDisputed);
       conn.off('DisputeResolved',    handleDisputeResolved);

@@ -3,5 +3,16 @@ export { buildOcrSubmission, type OcrReportSubmission, type OcrSubmissionContext
 export { toFixtureJson } from './fixture';
 export { countRecognisedAgents, describeOcrEngine } from './engineLabel';
 export { OCR_VIEW_COLUMNS, hasAcs, pickMvpKey, plusMinus, presentColumns, rankByImpact, type OcrViewColumn } from './scoreboardView';
-export { VERIFICATION_LABELS, disputeReasonFor, liveStatus, nameKey, needsReview, type VerificationTone } from './verification';
+export {
+  RIOT_LABELS,
+  VERIFICATION_LABELS,
+  badgeFor,
+  disputeReasonFor,
+  liveStatus,
+  nameKey,
+  needsReview,
+  riotCheckSummary,
+  type VerificationLabel,
+  type VerificationTone,
+} from './verification';
 export { describeOnlineOcr, type OcrHealthSummary } from './health';

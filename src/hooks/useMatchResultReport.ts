@@ -59,6 +59,7 @@ export const useMatchResultReport = (
     matchId,
     enabled: subscribeRealtime && !!matchId,
     onReportSubmitted: () => queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] }),
+    onReportVerified:  () => queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] }),
     onReportAccepted:  () => {
       queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });
       queryClient.invalidateQueries({ queryKey: ['bracket'] });

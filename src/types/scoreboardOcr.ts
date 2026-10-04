@@ -96,6 +96,9 @@ export type VerificationStatus =
   | 'duplicate'
   | 'unknown';
 
+/** Per-player check against Riot's own record of the match, by PUUID (the screenshot has no #tags). */
+export type RiotStatus = 'confirmed' | 'other_account' | 'not_in_match' | 'unregistered';
+
 export interface VerifiedPlayer {
   index: number;
   name: string;
@@ -104,13 +107,27 @@ export interface VerifiedPlayer {
   status: VerificationStatus;
   source: OcrNameSource | null;
   readName: string | null;
+  riotStatus?: RiotStatus | null;
+  /** Full Riot ID ("name#tag") of the account Riot lists for this row. */
+  riotId?: string | null;
+  /** Riot's K/D/A when the submitted one differs. */
+  riotKda?: string | null;
 }
 
-export type VerificationFlag = 'screenshot_reused' | 'date_mismatch';
+export type VerificationFlag = 'screenshot_reused' | 'date_mismatch' | 'stats_mismatch' | 'score_mismatch';
+
+export type RiotCheckStatus = 'pending' | 'confirmed' | 'not_found' | 'unavailable';
+
+export interface RiotCheck {
+  status: RiotCheckStatus;
+  matchId?: string | null;
+  checkedAt?: string | null;
+}
 
 export interface OcrVerification {
   players: VerifiedPlayer[];
   flags: VerificationFlag[];
+  riot?: RiotCheck | null;
 }
 
 export interface ScoreboardOcrParse {

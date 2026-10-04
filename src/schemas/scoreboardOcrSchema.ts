@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import type { VerificationFlag } from '@/types/scoreboardOcr';
+
+const VERIFICATION_FLAGS = ['screenshot_reused', 'date_mismatch', 'stats_mismatch', 'score_mismatch'] as const satisfies readonly VerificationFlag[];
 
 const field = <T extends z.ZodTypeAny>(value: T) =>
   z.object({ value: value.nullable().optional().transform((v) => v ?? null), confidence: z.number().min(0).max(1) });
@@ -30,9 +33,24 @@ export const ocrVerificationSchema = z.object({
       status: z.enum(['verified', 'claimed', 'username_only', 'unconfirmed', 'edited', 'other_team', 'duplicate', 'unknown']),
       source: nameSource.nullable(),
       readName: z.string().nullable(),
+      riotStatus: z.enum(['confirmed', 'other_account', 'not_in_match', 'unregistered']).nullish().catch(null),
+      riotId: z.string().nullish(),
+      riotKda: z.string().nullish(),
     }),
   ),
-  flags: z.array(z.enum(['screenshot_reused', 'date_mismatch'])).catch([]),
+  // Unknown flags from a newer API are dropped instead of failing the whole check.
+  flags: z
+    .array(z.string())
+    .catch([])
+    .transform((flags) => flags.filter((f): f is VerificationFlag => (VERIFICATION_FLAGS as readonly string[]).includes(f))),
+  riot: z
+    .object({
+      status: z.enum(['pending', 'confirmed', 'not_found', 'unavailable']),
+      matchId: z.string().nullish(),
+      checkedAt: z.string().nullish(),
+    })
+    .nullish()
+    .catch(null),
 });
 
 export const scoreboardOcrResultSchema = z.object({
