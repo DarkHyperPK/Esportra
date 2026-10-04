@@ -49,7 +49,7 @@ function Nameplate({ side, align }: { side: Side; align: 'left' | 'right' }) {
 
 const STATS: Array<{ label: string; value: (p: SharePlayer) => number | null; show: (p: SharePlayer) => string }> = [
     { label: 'K / D', value: (p) => p.kills - p.deaths, show: (p) => `${p.kills}/${p.deaths}` },
-    { label: 'ACS', value: (p) => p.acs, show: (p) => String(p.acs) },
+    { label: 'ACS', value: (p) => p.acs, show: (p) => (p.acs === null ? '–' : String(p.acs)) },
     { label: 'ADR', value: (p) => p.adr, show: (p) => (p.adr === null ? '–' : String(p.adr)) },
     { label: 'HS%', value: (p) => p.hsPct, show: (p) => (p.hsPct === null ? '–' : `${p.hsPct}%`) },
     { label: 'FK', value: (p) => p.firstKills, show: (p) => (p.firstKills === null ? '–' : String(p.firstKills)) },

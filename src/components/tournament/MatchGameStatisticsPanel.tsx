@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { ShareCardsPanel } from '@/components/share-cards/ShareCardsPanel';
 import MatchHistoryCard from '@/components/debug/MatchHistoryCard';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import { OcrMatchScoreboard } from '@/components/tournament/ocr-scoreboard/OcrMatchScoreboard';
 import {
   pickEnrichedTargetPuuid,
   resolveStoredEnrichedMatch,
@@ -113,14 +114,25 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
           />
         ) : null}
 
-        <MatchHistoryCard
-          matchData={enriched}
-          targetPuuid={targetPuuid}
-          team1Name={team1Name}
-          team2Name={team2Name}
-          t1Side={resolvedT1Side}
-          directView={captainRoomMode}
-        />
+        {enriched.ocrSource ? (
+          <OcrMatchScoreboard
+            players={enriched.enrichedPlayers ?? details?.players ?? []}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            team1Score={team1Score}
+            team2Score={team2Score}
+            mapName={mapName}
+          />
+        ) : (
+          <MatchHistoryCard
+            matchData={enriched}
+            targetPuuid={targetPuuid}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            t1Side={resolvedT1Side}
+            directView={captainRoomMode}
+          />
+        )}
       </div>
     );
   }

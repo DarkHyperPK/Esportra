@@ -23,6 +23,9 @@ export interface ScoreboardPlayer {
   hsPct?: number;
   kdRatio?: number;
   firstBloods?: number;
+  /** Spike plants and defuses (screenshot reports only; the client scoreboard shows them). */
+  plants?: number;
+  defuses?: number;
   abilityCasts?: AbilityCasts | null;
   isTeam1?: boolean;
   isTeam2?: boolean;

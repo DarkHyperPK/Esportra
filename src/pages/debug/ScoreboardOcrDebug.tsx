@@ -11,6 +11,7 @@ import { OcrDebugSummary } from '@/components/debug/scoreboard-ocr/OcrDebugSumma
 import { OcrDebugTable } from '@/components/debug/scoreboard-ocr/OcrDebugTable';
 import { OcrDebugJson } from '@/components/debug/scoreboard-ocr/OcrDebugJson';
 import { OcrReviewPreview } from '@/components/debug/scoreboard-ocr/OcrReviewPreview';
+import { OcrScoreboardPreview } from '@/components/debug/scoreboard-ocr/OcrScoreboardPreview';
 import { useScoreboardOcrDebug } from '@/hooks/useScoreboardOcrDebug';
 import { getApiErrorMessage } from '@/lib/apiClient';
 
@@ -70,12 +71,16 @@ export default function ScoreboardOcrDebug() {
       {data && (
         <section className="space-y-4 motion-safe:animate-in motion-safe:fade-in">
           <OcrDebugSummary result={data.result} elapsedMs={data.elapsedMs} />
-          <Tabs defaultValue="raw">
-            <TabsList>
+          <Tabs defaultValue="scoreboard">
+            <TabsList className="h-auto flex-wrap">
+              <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
               <TabsTrigger value="raw">Raw read</TabsTrigger>
               <TabsTrigger value="review">Captain review preview</TabsTrigger>
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
+            <TabsContent value="scoreboard">
+              <OcrScoreboardPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} agentsLoaded={health.data?.reachable ? health.data.agents : null} />
+            </TabsContent>
             <TabsContent value="raw"><OcrDebugTable result={data.result} /></TabsContent>
             <TabsContent value="review"><OcrReviewPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} /></TabsContent>
             <TabsContent value="json"><OcrDebugJson result={data.result} fileName={file?.name ?? 'scoreboard'} /></TabsContent>

@@ -54,7 +54,7 @@ export function ShareCardsPanel({ enriched, playerPuuids, caption, team1Name, te
             <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/[0.07] px-5 py-4">
                 <div>
                     <p className="font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Share cards</p>
-                    <p className="mt-1 text-[13px] text-zinc-300">PNG images for X, Instagram and Discord, made from this map's Riot record.</p>
+                    <p className="mt-1 text-[13px] text-zinc-300">PNG images for X, Instagram and Discord, made from {enriched.ocrSource ? "this map's screenshot report" : "this map's Riot record"}.</p>
                 </div>
             </header>
 
@@ -87,7 +87,7 @@ export function ShareCardsPanel({ enriched, playerPuuids, caption, team1Name, te
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate text-[14px] font-semibold text-white">{player.name}</span>
                                     <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-                                        {player.kills}/{player.deaths}/{player.assists} · {player.acs} ACS
+                                        {player.kills}/{player.deaths}/{player.assists}{player.acs === null ? '' : ` · ${player.acs} ACS`}
                                         {isMvp ? <span className="ml-2 text-rose-400">MVP</span> : null}
                                     </span>
                                 </span>

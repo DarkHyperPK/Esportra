@@ -44,3 +44,17 @@ describe('shareFileName', () => {
         expect(shareFileName('')).toBe('esportra-match.png');
     });
 });
+
+describe('buildShareCardModel without ACS (screenshot reports)', () => {
+    const ocr: EnrichedRiotMatchData = {
+        ...match,
+        players: [player('b1', 'Blue', 18, 0), player('b2', 'Blue', 25, 0), player('r1', 'Red', 20, 0)],
+        enrichedPlayers: [],
+    };
+
+    it('leaves ACS empty instead of showing 0 and ranks by kills', () => {
+        const model = buildShareCardModel(ocr, { team1Name: 'A', team2Name: 'B', t1Side: 'Blue', mapName: 'Lotus' });
+        expect(model.teams[0].players.map((p) => [p.puuid, p.acs])).toEqual([['b2', null], ['b1', null]]);
+        expect(model.mvpPuuid).toBe('b2');
+    });
+});

@@ -9,7 +9,8 @@ export interface SharePlayer {
     kills: number;
     deaths: number;
     assists: number;
-    acs: number;
+    /** Null when the source has no ACS (screenshot reports). */
+    acs: number | null;
     adr: number | null;
     hsPct: number | null;
     kd: number;
@@ -45,6 +46,14 @@ export interface ShareCardInput {
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
+function resolveAcs(enrichedAcs: number | undefined, score: number, rounds: number): number | null {
+    if (typeof enrichedAcs === 'number') return Math.round(enrichedAcs);
+    return score > 0 ? Math.round(score / Math.max(1, rounds)) : null;
+}
+
+/** ACS first when there is one, then kills, then fewer deaths. */
+const byImpact = (a: SharePlayer, b: SharePlayer) => (b.acs ?? 0) - (a.acs ?? 0) || b.kills - a.kills || a.deaths - b.deaths;
+
 function toPlayer(match: EnrichedRiotMatchData, player: EnrichedRiotMatchData['players'][number], rounds: number): SharePlayer {
     const enriched = match.enrichedPlayers?.find((entry) => entry.puuid === player.puuid);
     const { kills, deaths, assists, score } = player.stats;
@@ -56,7 +65,7 @@ function toPlayer(match: EnrichedRiotMatchData, player: EnrichedRiotMatchData['p
         kills,
         deaths,
         assists,
-        acs: Math.round(enriched?.acs ?? score / Math.max(1, rounds)),
+        acs: resolveAcs(enriched?.acs, score, rounds),
         adr: typeof enriched?.adr === 'number' ? Math.round(enriched.adr) : null,
         hsPct: typeof enriched?.hsPct === 'number' ? Math.round(enriched.hsPct) : null,
         kd: round1(enriched?.kdRatio ?? kills / Math.max(1, deaths)),
@@ -81,14 +90,14 @@ export function buildShareCardModel(match: EnrichedRiotMatchData, input: ShareCa
         players: match.players
             .filter((player) => player.teamId === side)
             .map((player) => toPlayer(match, player, roundCount))
-            .sort((a, b) => b.acs - a.acs || b.kills - a.kills),
+            .sort(byImpact),
     });
 
     const teams: [ShareTeam, ShareTeam] = [
         team(input.t1Side, input.team1Name, input.team1Logo),
         team(t2Side, input.team2Name, input.team2Logo),
     ];
-    const everyone = [...teams[0].players, ...teams[1].players].sort((a, b) => b.acs - a.acs || b.kills - a.kills);
+    const everyone = [...teams[0].players, ...teams[1].players].sort(byImpact);
 
     return { mapName: input.mapName, teams, mvpPuuid: everyone[0]?.puuid ?? null, roundCount };
 }
