@@ -125,7 +125,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 for (const sid of Object.keys(versionInfo)) {
                     try {
                         const matches = await apiClient.get<any[]>(`/api/stages/${sid}/matches`).catch(() => []);
-                        const hasTeams = (matches || []).some((m: any) => m.team1_id != null);
+                        const hasTeams = (matches || []).some((m: any) => m.team1_id != null && m.status !== 'completed');
                         seededStatus[sid] = hasTeams;
                     } catch {
                         seededStatus[sid] = false;
@@ -468,6 +468,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Update local state
             setHasBrackets(prev => ({ ...prev, [stageToDelete]: false }));
             setBracketVersionInfo(prev => { const next = { ...prev }; delete next[stageToDelete]; return next; });
+            queryClient.invalidateQueries({ queryKey: ['standings'] });
             toast({ title: 'Success', description: 'Bracket deleted successfully.' });
             setDeleteBracketDialogOpen(false);
             setStageToDelete(null);
@@ -943,7 +944,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             onClick={() => handleDeleteStageBracket(stage.id)}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                                            Delete Matches
+                                                            Delete Bracket
                                                         </Button>
                                                     )}
                                                     {/* Open Schedule bridge — after seeding, before publish */}
