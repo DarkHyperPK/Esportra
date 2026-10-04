@@ -11,7 +11,8 @@ import {
 } from '@/lib/timeUtils';
 import { BRACKET_SECTION_LABELS, formatWhen, getRoundName } from './schedule/roundNaming';
 import { RoundRow, type RoundState } from './schedule/RoundRow';
-import { MatchTimeList, type SchedulableMatch, deriveMatchStatusInfo } from './schedule/MatchTimeList';
+import { MatchTimeList, type SchedulableMatch } from './schedule/MatchTimeList';
+import { deriveMatchStatusInfo } from './schedule/matchStatusUtils';
 
 interface RoundSchedulingPanelProps {
   stageId: string;

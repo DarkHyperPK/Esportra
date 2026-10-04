@@ -1,37 +1,11 @@
 import { Input } from '@/components/ui/input';
 import { CommandButton } from '@/components/management/CommandSurface';
-import { CONTROL_CLASS, StatusPill, type Tone } from '@/components/ui/kit';
+import { CONTROL_CLASS, StatusPill } from '@/components/ui/kit';
 import { utcToLocalInput, localInputToUTC } from '@/lib/timeUtils';
 import { cn } from '@/lib/utils';
+import { deriveMatchStatusInfo, type SchedulableMatch } from './matchStatusUtils';
 
-export interface SchedulableMatch {
-  id: string;
-  match_number: number;
-  scheduled_time: string | null;
-  team1_name: string | null;
-  team2_name: string | null;
-  /** Match status from the DB (e.g. 'pending', 'completed'). */
-  status?: string;
-  /** Set when a captain has escalated a scheduling dispute to the organizer. */
-  scheduling_escalated_at?: string | null;
-}
-
-type StatusInfo = { label: string; tone: Tone };
-
-/**
- * Derives the organizer-facing scheduling status label for a match.
- * Returns null when no special label applies (e.g. match is already complete).
- */
-export function deriveMatchStatusInfo(
-  m: Pick<SchedulableMatch, 'status' | 'scheduled_time' | 'scheduling_escalated_at'>,
-): StatusInfo | null {
-  if (m.scheduling_escalated_at) return { label: 'Time dispute', tone: 'warning' };
-  if (m.status === 'pending' && m.scheduled_time) {
-    return { label: `Time agreed: ${new Date(m.scheduled_time).toLocaleString()}`, tone: 'success' };
-  }
-  if (m.status === 'pending' && !m.scheduled_time) return { label: 'No proposal yet', tone: 'neutral' };
-  return null;
-}
+export type { SchedulableMatch };
 
 interface MatchTimeListProps {
   matches: SchedulableMatch[];
