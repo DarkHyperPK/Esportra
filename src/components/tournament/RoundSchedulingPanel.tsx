@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { addDays, format, isWithinInterval, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { CommandButton } from '@/components/management/CommandSurface';
-import { CONTROL_CLASS, EYEBROW_CLASS, Field, InlineNotice } from '@/components/ui/kit';
+import { CONTROL_CLASS, EYEBROW_CLASS, Field, InlineNotice, StatusPill } from '@/components/ui/kit';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { cn } from '@/lib/utils';
 import {
@@ -12,6 +12,7 @@ import {
 import { BRACKET_SECTION_LABELS, formatWhen, getRoundName } from './schedule/roundNaming';
 import { RoundRow, type RoundState } from './schedule/RoundRow';
 import { MatchTimeList, type SchedulableMatch } from './schedule/MatchTimeList';
+import { deriveMatchStatusInfo } from './schedule/matchStatusUtils';
 
 interface RoundSchedulingPanelProps {
   stageId: string;
@@ -224,13 +225,34 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             {saving && canSave ? 'Saving' : canSave || !(selfPlay ? cfg?.deadline : cfg?.startTime) ? 'Save round' : 'Saved'}
           </CommandButton>
         </div>
-        <p className={cn('text-xs', outOfWindow ? 'text-amber-300' : 'text-zinc-500')}>
+        <p className={cn("text-xs", outOfWindow ? "text-amber-300" : "text-zinc-500")}>
           {outOfWindow
-            ? 'This is outside the tournament dates. Teams will still see it, but check it’s right.'
+            ? "This is outside the tournament dates. Teams will still see it, but check it's right."
             : selfPlay
               ? `Teams have until 11:59 PM (${getTimezoneAbbr()}) that day to play.`
-              : `All ${roundMatches.length} match${roundMatches.length === 1 ? '' : 'es'} start together (${getTimezoneAbbr()}).`}
+              : `All ${roundMatches.length} match${roundMatches.length === 1 ? "" : "es"} start together (${getTimezoneAbbr()}).`}
         </p>
+        {selfPlay && roundMatches.length > 0 && (
+          <div className="border-t border-white/[0.06] pt-3">
+            <div className="space-y-2">
+              {roundMatches.map((m) => {
+                const info = deriveMatchStatusInfo(m);
+                return (
+                  <div key={m.id} className="flex items-center justify-between gap-4">
+                    <span className="min-w-0 truncate text-sm text-zinc-300">
+                      {m.team1_name || 'TBD'} <span className="text-zinc-600">vs</span> {m.team2_name || 'TBD'}
+                    </span>
+                    {info ? (
+                      <StatusPill label={info.label} tone={info.tone} className="shrink-0" />
+                    ) : (
+                      <span className="shrink-0 text-xs text-zinc-600">—</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -262,6 +284,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         </div>
         {windowLabel && <p className="text-xs text-zinc-500">Event dates <span className="text-zinc-300">{windowLabel}</span> · {getTimezoneAbbr()}</p>}
       </div>
+
+      {selfPlay && (
+        <InlineNotice tone="neutral" className="mb-3">
+          Captains are scheduling their own matches. You can set deadlines and override times from this panel.
+        </InlineNotice>
+      )}
 
       {invalidWindow && (
         <InlineNotice tone="warning" className="mb-3">

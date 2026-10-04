@@ -63,6 +63,9 @@ export interface DashboardTournament {
     registration_open?: boolean;
     max_participants?: number;
     settings?: any;
+    pendingEscalations?: number;
+    unseededMatchCount?: number;
+    unscheduledFirstRoundCount?: number;
 }
 
 export interface DashboardParticipant {
