@@ -167,6 +167,8 @@ export interface ScoreboardOcrHealth {
   bankAgents?: number;
   /** Installed recognisers: "default" plus e.g. "arabic", "korean". */
   scripts?: string[];
+  /** Recognisers not loaded yet, with the reason. The service keeps retrying the download. */
+  missingScripts?: Record<string, string>;
   catalogVersion?: string | null;
   refreshedAt?: string | null;
 }

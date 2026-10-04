@@ -11,6 +11,7 @@ const healthSchema = z.object({
   agents: z.number(),
   bankAgents: z.number().optional(),
   scripts: z.array(z.string()).optional(),
+  missingScripts: z.record(z.string(), z.string()).optional(),
   catalogVersion: z.string().nullish(),
   refreshedAt: z.string().nullish(),
 });
