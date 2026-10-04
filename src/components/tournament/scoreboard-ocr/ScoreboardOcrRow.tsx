@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import type { OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
+import type { OcrDraftPlayer, OcrStatKey, TeamSlot, VerificationStatus } from '@/types/scoreboardOcr';
 import { desktopGridClass, mobileStatsGridClass, type ReviewStat } from './reviewStats';
+import { VerificationBadge } from './VerificationBadge';
 
 const CELL = 'h-9 rounded-none border border-white/10 bg-black/40 px-2 text-sm text-white outline-none transition-colors hover:border-white/20 focus-visible:border-rose-400/70';
 const FLAG = 'border-amber-400/70 bg-amber-400/[0.06]';
@@ -12,11 +13,21 @@ interface Props {
   teamNames: Record<TeamSlot, string>;
   agents: ValorantAgentOption[];
   stats: ReviewStat[];
-  onChange: (patch: { team?: TeamSlot; name?: string; agentId?: string | null; stat?: [OcrStatKey, number | null] }) => void;
+  /** Roster check for this row, when the API returned one. */
+  verification?: VerificationStatus | null;
+  onChange: (patch: RowPatch) => void;
+}
+
+export type RowPatch = { team?: TeamSlot; name?: string; agentId?: string | null; agentName?: string | null; stat?: [OcrStatKey, number | null] };
+
+/** valorant-api agents by uuid; agents it doesn't list yet (read from the screenshot) by name. */
+function agentValue(player: OcrDraftPlayer): string {
+  if (player.agentId) return player.agentId;
+  return player.agentName ? `name:${player.agentName}` : '';
 }
 
 /** One editable scoreboard line. Amber outline = the reader was unsure; it clears once edited. */
-export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, onChange }: Props) {
+export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, verification, onChange }: Props) {
   const flagged = (field: string) => player.uncertain.some((f) => f === field);
   const rowLabel = player.name || `Player ${index + 1}`;
   return (
@@ -33,23 +44,32 @@ export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, onCh
       </select>
       <select
         aria-label={`${rowLabel} agent`}
-        value={player.agentId ?? ''}
-        onChange={(event) => onChange({ agentId: event.target.value || null })}
+        value={agentValue(player)}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value.startsWith('name:')) onChange({ agentId: null, agentName: value.slice(5) });
+          else onChange({ agentId: value || null, agentName: agents.find((a) => a.uuid === value)?.name ?? null });
+        }}
         className={cn(CELL, flagged('agent') && FLAG, '[color-scheme:dark]')}
       >
         <option value="">Unknown agent</option>
+        {!player.agentId && player.agentName ? <option value={`name:${player.agentName}`}>{player.agentName}</option> : null}
         {agents.map((agent) => (
           <option key={agent.uuid} value={agent.uuid}>{agent.name}</option>
         ))}
       </select>
-      <input
-        aria-label={`Player ${index + 1} name`}
-        value={player.name}
-        maxLength={40}
-        placeholder="Name not readable — type it"
-        onChange={(event) => onChange({ name: event.target.value })}
-        className={cn(CELL, 'col-span-2 font-medium sm:col-span-1', flagged('name') && FLAG)}
-      />
+      <div className="col-span-2 flex min-w-0 flex-col gap-1 sm:col-span-1">
+        <input
+          aria-label={`Player ${index + 1} name`}
+          value={player.name}
+          maxLength={40}
+          dir="auto"
+          placeholder="Name not readable — type it"
+          onChange={(event) => onChange({ name: event.target.value })}
+          className={cn(CELL, 'w-full font-medium', flagged('name') && FLAG)}
+        />
+        {verification ? <VerificationBadge status={verification} /> : null}
+      </div>
       <div className={cn('col-span-2 grid gap-2 sm:contents', mobileStatsGridClass(stats.length))}>
         {stats.map(({ key, label, title }) => (
           <input

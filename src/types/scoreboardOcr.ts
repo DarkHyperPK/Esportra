@@ -15,6 +15,7 @@ export const OCR_STAT_KEYS = [
   'deaths',
   'assists',
   'econ',
+  'trades',
   'firstBloods',
   'plants',
   'defuses',
@@ -31,22 +32,30 @@ export interface OcrMapRef {
 }
 
 export interface OcrAgentRef {
-  uuid: string;
+  /** valorant-api uuid; null for an agent valorant-api doesn't list yet (the name is still known). */
+  uuid: string | null;
   name: string;
   role?: string | null;
 }
+
+export type OcrNameSource = 'riot_verified' | 'riot_previous' | 'riot_claimed' | 'username';
 
 export interface OcrRosterMatch {
   userId: string;
   team: TeamSlot;
   matchedName: string;
   score: number;
+  source?: OcrNameSource | null;
+  /** "elimination": the name couldn't be read; this was the team's only unmatched player. */
+  method?: 'read' | 'elimination';
 }
 
 export interface OcrPlayerRow {
   side: OcrSide | null;
   sideConfidence: number;
   name: OcrField<string>;
+  /** Exactly what the screenshot showed, before roster matching replaced it with the Riot spelling. */
+  nameRead?: string | null;
   rosterMatch?: OcrRosterMatch | null;
   agent: OcrField<OcrAgentRef>;
   stats: Partial<Record<OcrStatKey, OcrField<number>>>;
@@ -66,10 +75,42 @@ export interface ScoreboardOcrResult {
   allyScore: OcrField<number>;
   enemyScore: OcrField<number>;
   map: OcrField<OcrMapRef>;
+  /** Match date printed on the screenshot (ISO). */
+  playedOn?: OcrField<string>;
+  /** Horizontal stretch measured on the capture (1 = native); stretched captures are straightened. */
+  captureStretch?: number;
   allyTeam: OcrField<TeamSlot>;
   columns: string[];
   players: OcrPlayerRow[];
   warnings: OcrWarning[];
+}
+
+/** Per-player check of a screenshot report against the competitors' rosters (computed by the API). */
+export type VerificationStatus =
+  | 'verified'
+  | 'claimed'
+  | 'username_only'
+  | 'unconfirmed'
+  | 'edited'
+  | 'other_team'
+  | 'duplicate'
+  | 'unknown';
+
+export interface VerifiedPlayer {
+  index: number;
+  name: string;
+  team: TeamSlot | null;
+  userId: string | null;
+  status: VerificationStatus;
+  source: OcrNameSource | null;
+  readName: string | null;
+}
+
+export type VerificationFlag = 'screenshot_reused' | 'date_mismatch';
+
+export interface OcrVerification {
+  players: VerifiedPlayer[];
+  flags: VerificationFlag[];
 }
 
 export interface ScoreboardOcrParse {
@@ -79,6 +120,7 @@ export interface ScoreboardOcrParse {
   team1Id: string;
   team2Id: string;
   result: ScoreboardOcrResult;
+  verification?: OcrVerification | null;
 }
 
 /** One editable row in the captain's review. Values are what will be submitted. */
@@ -88,6 +130,8 @@ export interface OcrDraftPlayer {
   name: string;
   userId: string | null;
   agentId: string | null;
+  /** Agent name; set even when valorant-api has no uuid for the agent yet. */
+  agentName: string | null;
   stats: Partial<Record<OcrStatKey, number | null>>;
   /** Fields the reader was unsure about — highlighted until the captain edits them. */
   uncertain: Array<OcrStatKey | 'name' | 'agent' | 'team'>;
@@ -111,12 +155,20 @@ export interface OcrDraft {
 export interface ScoreboardOcrDebugResponse {
   elapsedMs: number;
   result: ScoreboardOcrResult;
+  verification?: OcrVerification | null;
 }
 
 export interface ScoreboardOcrHealth {
   configured: boolean;
   reachable: boolean;
+  /** Agent icons from valorant-api. */
   agents: number;
+  /** Agents the service recognises from real in-game portraits. */
+  bankAgents?: number;
+  /** Installed recognisers: "default" plus e.g. "arabic", "korean". */
+  scripts?: string[];
+  catalogVersion?: string | null;
+  refreshedAt?: string | null;
 }
 
 /** Expected-values file in services/scoreboard-ocr/tests/fixtures/real/<name>.json. */

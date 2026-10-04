@@ -10,11 +10,29 @@ const statFields = z.object({
   deaths: statField,
   assists: statField,
   econ: statField,
+  trades: statField,
   firstBloods: statField,
   plants: statField,
   defuses: statField,
   hsPct: statField,
   adr: statField,
+});
+
+const nameSource = z.enum(['riot_verified', 'riot_previous', 'riot_claimed', 'username']);
+
+export const ocrVerificationSchema = z.object({
+  players: z.array(
+    z.object({
+      index: z.number().int(),
+      name: z.string(),
+      team: z.enum(['team1', 'team2']).nullable(),
+      userId: z.string().nullable(),
+      status: z.enum(['verified', 'claimed', 'username_only', 'unconfirmed', 'edited', 'other_team', 'duplicate', 'unknown']),
+      source: nameSource.nullable(),
+      readName: z.string().nullable(),
+    }),
+  ),
+  flags: z.array(z.enum(['screenshot_reused', 'date_mismatch'])).catch([]),
 });
 
 export const scoreboardOcrResultSchema = z.object({
@@ -25,6 +43,8 @@ export const scoreboardOcrResultSchema = z.object({
   allyScore: field(z.number().int()),
   enemyScore: field(z.number().int()),
   map: field(z.object({ name: z.string(), uuid: z.string().nullish(), mapUrl: z.string().nullish() })),
+  playedOn: field(z.string()).optional(),
+  captureStretch: z.number().optional(),
   allyTeam: field(z.enum(['team1', 'team2'])),
   columns: z.array(z.string()),
   players: z
@@ -33,10 +53,18 @@ export const scoreboardOcrResultSchema = z.object({
         side: z.enum(['ally', 'enemy']).nullable(),
         sideConfidence: z.number(),
         name: field(z.string()),
+        nameRead: z.string().nullish(),
         rosterMatch: z
-          .object({ userId: z.string(), team: z.enum(['team1', 'team2']), matchedName: z.string(), score: z.number() })
+          .object({
+            userId: z.string(),
+            team: z.enum(['team1', 'team2']),
+            matchedName: z.string(),
+            score: z.number(),
+            source: nameSource.nullish(),
+            method: z.enum(['read', 'elimination']).optional(),
+          })
           .nullish(),
-        agent: field(z.object({ uuid: z.string(), name: z.string(), role: z.string().nullish() })),
+        agent: field(z.object({ uuid: z.string().nullable().optional().transform((v) => v ?? null), name: z.string(), role: z.string().nullish() })),
         stats: statFields,
       }),
     )
@@ -51,6 +79,7 @@ export const scoreboardOcrParseSchema = z.object({
   team1Id: z.string().uuid(),
   team2Id: z.string().uuid(),
   result: scoreboardOcrResultSchema,
+  verification: ocrVerificationSchema.nullish(),
 });
 
 const stat = z.number().int().min(0).max(9999).nullable();
@@ -74,13 +103,18 @@ export const ocrReviewSchema = z
           }).passthrough(),
         }),
       )
-      .length(10, 'A Valorant scoreboard has 10 players.'),
+      .min(2, 'Add the players from the scoreboard.')
+      .max(10, 'A Valorant scoreboard has at most 10 players.'),
   })
   .refine((v) => v.team1Score !== v.team2Score, { message: 'A finished match cannot be a draw.', path: ['team1Score'] })
-  .refine((v) => v.players.filter((p) => p.team === 'team1').length === 5, {
-    message: 'Each team needs exactly 5 players.',
-    path: ['players'],
-  });
+  .refine(
+    // 4v5 happens (a player who never connected); more than 5 on a side never does.
+    (v) => (['team1', 'team2'] as const).every((team) => {
+      const count = v.players.filter((p) => p.team === team).length;
+      return count >= 1 && count <= 5;
+    }),
+    { message: 'Each team needs between 1 and 5 players.', path: ['players'] },
+  );
 
 export type OcrReviewInput = z.input<typeof ocrReviewSchema>;
 

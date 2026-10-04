@@ -1,11 +1,19 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiClient } from '@/lib/apiClient';
-import { scoreboardOcrResultSchema, validateScreenshotFile } from '@/schemas/scoreboardOcrSchema';
+import { ocrVerificationSchema, scoreboardOcrResultSchema, validateScreenshotFile } from '@/schemas/scoreboardOcrSchema';
 import type { ScoreboardOcrDebugResponse, ScoreboardOcrHealth } from '@/types/scoreboardOcr';
 
-const debugResponseSchema = z.object({ elapsedMs: z.number(), result: scoreboardOcrResultSchema });
-const healthSchema = z.object({ configured: z.boolean(), reachable: z.boolean(), agents: z.number() });
+const debugResponseSchema = z.object({ elapsedMs: z.number(), result: scoreboardOcrResultSchema, verification: ocrVerificationSchema.nullish() });
+const healthSchema = z.object({
+  configured: z.boolean(),
+  reachable: z.boolean(),
+  agents: z.number(),
+  bankAgents: z.number().optional(),
+  scripts: z.array(z.string()).optional(),
+  catalogVersion: z.string().nullish(),
+  refreshedAt: z.string().nullish(),
+});
 
 export const scoreboardOcrHealthKey = ['scoreboard-ocr-debug', 'health'] as const;
 

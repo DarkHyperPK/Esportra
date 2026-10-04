@@ -8,15 +8,15 @@ import type { ScoreboardOcrResult } from '@/types/scoreboardOcr';
 interface Props {
   result: ScoreboardOcrResult;
   imageUrl: string;
-  /** Agent icons the OCR service has loaded; null while health is unknown. */
-  agentsLoaded: number | null;
+  /** Agents the OCR service learned from game portraits; null while health is unknown. */
+  bankAgents: number | null;
 }
 
 const FIELD = 'h-9 rounded-none border-white/10 bg-black/30 text-sm text-white';
 
-function agentNote(recognised: number, rows: number, loaded: number | null): { tone: 'neutral' | 'warning'; text: string } {
-  if (loaded === 0) {
-    return { tone: 'warning', text: 'The OCR service has no agent icons loaded, so it cannot recognise agents. Restart it with internet access to valorant-api.com.' };
+function agentNote(recognised: number, rows: number, bankAgents: number | null): { tone: 'neutral' | 'warning'; text: string } {
+  if (bankAgents === 0) {
+    return { tone: 'warning', text: 'The OCR service has no learned agent portraits; redeploy the latest image.' };
   }
   if (recognised < rows) {
     return { tone: 'warning', text: `Agents recognised on ${recognised} of ${rows} rows. Rows without an agent show the name only; captains pick the agent in review.` };
@@ -25,14 +25,14 @@ function agentNote(recognised: number, rows: number, loaded: number | null): { t
 }
 
 /** The match stats exactly as players see them once the opponent accepts this screenshot report. */
-export function OcrScoreboardPreview({ result, imageUrl, agentsLoaded }: Props) {
+export function OcrScoreboardPreview({ result, imageUrl, bankAgents }: Props) {
   const [names, setNames] = useState({ team1: 'Team 1', team2: 'Team 2' });
   const submission = useMemo(() => {
     const draft = draftFromParse({ parseId: 'debug', screenshotUrl: imageUrl, mapId: null, team1Id: 'team1', team2Id: 'team2', result }, 'team1');
     return buildOcrSubmission(draft, { matchId: 'debug', gameNumber: 1, reportedByTeamId: 'team1', reporterSlot: 'team1', team1Id: 'team1', team2Id: 'team2' });
   }, [imageUrl, result]);
   const recognised = countRecognisedAgents(result);
-  const note = agentNote(recognised, result.players.length, agentsLoaded);
+  const note = agentNote(recognised, result.players.length, bankAgents);
 
   return (
     <div className="space-y-4">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { getAgentIcon } from '@/components/tournament/fullScoreboardConstants';
+import { agentIconUrl } from '@/components/tournament/fullScoreboardConstants';
 import type { ValorantAgent } from '@/hooks/useValorantCatalog';
 import { plusMinus, type OcrViewColumn } from '@/services/scoreboardOcr';
 import { formatStat, resolvePlayerKdRatio, type ScoreboardPlayer } from '@/types/scoreboardPlayer';
@@ -12,11 +12,12 @@ interface Props {
   tone: 'team1' | 'team2';
   players: ScoreboardPlayer[];
   columns: OcrViewColumn[];
+  showAcs: boolean;
   mvpKey: string | null;
   agents: Record<string, ValorantAgent>;
 }
 
-const LABELS: Record<OcrViewColumn, string> = { firstBloods: 'FB', plants: 'Plants', defuses: 'Defuses' };
+const LABELS: Record<OcrViewColumn, string> = { trades: 'Trades', firstBloods: 'FB', plants: 'Plants', defuses: 'Defuses' };
 const HEAD = 'px-2 py-2 sm:px-3 text-center font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-500';
 const CELL = 'px-2 py-2.5 sm:px-3 text-center text-[13px] tabular-nums';
 const ACCENT = { team1: 'bg-emerald-400', team2: 'bg-red-400' } as const;
@@ -25,16 +26,17 @@ const ICON_TINT = { team1: 'bg-emerald-400/15', team2: 'bg-red-400/15' } as cons
 function AgentPortrait({ player, agent, tone }: { player: ScoreboardPlayer; agent?: ValorantAgent; tone: Props['tone'] }) {
   const [failed, setFailed] = useState(false);
   const id = player.characterId ? String(player.characterId).toLowerCase() : null;
+  const src = agent?.displayIcon ?? agentIconUrl(id, player.agentName);
   return (
     <div className={cn('h-8 w-8 shrink-0 overflow-hidden sm:h-10 sm:w-10', ICON_TINT[tone])}>
-      {id && !failed ? (
-        <img src={agent?.displayIcon ?? getAgentIcon(id)} alt={agent?.displayName ?? ''} loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-cover" />
+      {src && !failed ? (
+        <img src={src} alt={agent?.displayName ?? player.agentName ?? ''} loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-cover" />
       ) : null}
     </div>
   );
 }
 
-function PlayerRow({ player, agent, tone, columns, isMvp }: { player: ScoreboardPlayer; agent?: ValorantAgent; tone: Props['tone']; columns: OcrViewColumn[]; isMvp: boolean }) {
+function PlayerRow({ player, agent, tone, columns, showAcs, isMvp }: { player: ScoreboardPlayer; agent?: ValorantAgent; tone: Props['tone']; columns: OcrViewColumn[]; showAcs: boolean; isMvp: boolean }) {
   const diff = plusMinus(player);
   const kd = resolvePlayerKdRatio(player);
   return (
@@ -47,10 +49,11 @@ function PlayerRow({ player, agent, tone, columns, isMvp }: { player: Scoreboard
               <span className="truncate">{player.gameName || 'Unknown player'}</span>
               {isMvp ? <span className="shrink-0 bg-rose-500 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white">MVP</span> : null}
             </p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{agent?.displayName ?? (player.characterId ? 'Agent' : 'Agent not read')}</p>
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{agent?.displayName ?? player.agentName ?? (player.characterId ? 'Agent' : 'Agent not read')}</p>
           </div>
         </div>
       </td>
+      {showAcs ? <td className={cn(CELL, 'font-heading text-[15px] font-black text-white')}>{formatStat(player.acs)}</td> : null}
       <td className={cn(CELL, 'font-heading text-[15px] font-black text-white')}>
         {formatStat(player.kills)}<span className="px-0.5 text-zinc-600 sm:px-1">/</span>{formatStat(player.deaths)}<span className="px-0.5 text-zinc-600 sm:px-1">/</span>{formatStat(player.assists)}
       </td>
@@ -64,7 +67,7 @@ function PlayerRow({ player, agent, tone, columns, isMvp }: { player: Scoreboard
 }
 
 /** One team's half of a screenshot scoreboard. */
-export function OcrTeamTable({ teamName, score, won, tone, players, columns, mvpKey, agents }: Props) {
+export function OcrTeamTable({ teamName, score, won, tone, players, columns, showAcs, mvpKey, agents }: Props) {
   return (
     <section aria-label={`${teamName} scoreboard`} className="relative pl-3">
       <span aria-hidden className={cn('absolute inset-y-0 left-0 w-[3px]', ACCENT[tone], !won && 'opacity-40')} />
@@ -80,6 +83,7 @@ export function OcrTeamTable({ teamName, score, won, tone, players, columns, mvp
           <thead>
             <tr className="bg-background">
               <th scope="col" className={cn(HEAD, 'text-left')}>Player</th>
+              {showAcs ? <th scope="col" className={HEAD} title="Average combat score (Performance Score in the 2026 client)">ACS</th> : null}
               <th scope="col" className={HEAD}>K / D / A</th>
               <th scope="col" className={cn(HEAD, 'hidden sm:table-cell')}>K/D</th>
               <th scope="col" className={HEAD}>+/-</th>
@@ -94,6 +98,7 @@ export function OcrTeamTable({ teamName, score, won, tone, players, columns, mvp
                 agent={player.characterId ? agents[String(player.characterId).toLowerCase()] : undefined}
                 tone={tone}
                 columns={columns}
+                showAcs={showAcs}
                 isMvp={Boolean(mvpKey) && (player.puuid ?? player.gameName) === mvpKey}
               />
             ))}

@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import type { OcrVerification } from '@/types/scoreboardOcr';
 
 export interface MatchResultReport {
   id: string;
@@ -26,6 +27,8 @@ export interface MatchResultReport {
   /** riot = picked from Riot match history, ocr = read from a screenshot, manual = typed in. Null on older reports. */
   source?: 'riot' | 'manual' | 'ocr' | null;
   ocr_parse_id?: string | null;
+  /** Screenshot reports: who is on it, checked by the API against the competitors' rosters at submit. */
+  ocr_verification?: OcrVerification | null;
   created_at: string;
 }
 

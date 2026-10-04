@@ -33,12 +33,14 @@ export interface OcrReportSubmission {
 
 function toScoreboardPlayer(player: OcrDraftPlayer, index: number, parseId: string, roundsPlayed: number): ScoreboardPlayer {
   const team = player.team ?? 'team1';
-  const { acs = null, kills = null, deaths = null, assists = null, hsPct = null, adr = null, firstBloods = null, plants = null, defuses = null } = player.stats;
+  const { acs = null, kills = null, deaths = null, assists = null, hsPct = null, adr = null, firstBloods = null, plants = null, defuses = null, trades = null } =
+    player.stats;
   return {
     puuid: `ocr-${parseId}-${index}`,
     gameName: player.name.trim(),
     teamId: sideOf(team),
     characterId: player.agentId ?? undefined,
+    agentName: player.agentName ?? undefined,
     kills: kills ?? undefined,
     deaths: deaths ?? undefined,
     assists: assists ?? undefined,
@@ -50,6 +52,7 @@ function toScoreboardPlayer(player: OcrDraftPlayer, index: number, parseId: stri
     firstBloods: firstBloods ?? undefined,
     plants: plants ?? undefined,
     defuses: defuses ?? undefined,
+    trades: trades ?? undefined,
     isTeam1: team === 'team1',
     isTeam2: team === 'team2',
     userId: player.userId ?? undefined,

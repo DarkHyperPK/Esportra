@@ -3,10 +3,10 @@ import { InlineNotice } from '@/components/ui/kit';
 import { ScoreboardOcrReview } from '@/components/tournament/scoreboard-ocr/ScoreboardOcrReview';
 import { useValorantAgents } from '@/hooks/useScoreboardOcr';
 import { draftFromParse, updateDraftPlayer } from '@/services/scoreboardOcr';
-import type { OcrDraft, ScoreboardOcrResult } from '@/types/scoreboardOcr';
+import type { OcrDraft, OcrVerification, ScoreboardOcrResult } from '@/types/scoreboardOcr';
 
 /** What a captain would see in the match room for this screenshot (edits stay local, nothing is sent). */
-export function OcrReviewPreview({ result, imageUrl }: { result: ScoreboardOcrResult; imageUrl: string }) {
+export function OcrReviewPreview({ result, imageUrl, verification }: { result: ScoreboardOcrResult; imageUrl: string; verification?: OcrVerification | null }) {
   const agents = useValorantAgents(true);
   const [draft, setDraft] = useState<OcrDraft>(() =>
     draftFromParse({ parseId: 'debug', screenshotUrl: imageUrl, mapId: null, team1Id: 'team1', team2Id: 'team2', result }, 'team1'),
@@ -25,6 +25,7 @@ export function OcrReviewPreview({ result, imageUrl }: { result: ScoreboardOcrRe
         onPlayerChange={(key, patch) => setDraft((d) => updateDraftPlayer(d, key, patch))}
         onSubmit={() => undefined}
         onManual={() => undefined}
+        verification={verification}
       />
     </div>
   );

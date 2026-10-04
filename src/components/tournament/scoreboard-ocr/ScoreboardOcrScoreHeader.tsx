@@ -28,7 +28,7 @@ function ScoreInput({ label, value, leading, uncertain, onChange }: {
         onChange(digits === '' ? null : Number(digits));
       }}
       className={cn(
-        'w-[2.6ch] bg-transparent text-center font-heading text-5xl font-black tabular-nums tracking-tight outline-none sm:text-6xl',
+        'w-[2.6ch] bg-transparent text-center font-heading text-4xl font-black tabular-nums tracking-tight outline-none sm:text-6xl',
         'border-b-2 border-transparent transition-colors focus-visible:border-rose-400',
         leading ? 'text-white' : 'text-zinc-500',
         uncertain && 'border-amber-400/70',
@@ -47,8 +47,8 @@ export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, tea
       <p className={EYEBROW_CLASS}>
         Read from screenshot{mapName ? ` · ${mapName}` : ''}
       </p>
-      <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <p className={cn('line-clamp-2 break-words text-right font-heading text-sm font-bold leading-tight sm:text-base', t1Leads ? 'text-white' : 'text-zinc-400')}>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3">
+        <p className={cn('line-clamp-2 min-w-0 text-right font-heading text-sm font-bold leading-tight [overflow-wrap:normal] sm:text-base', t1Leads ? 'text-white' : 'text-zinc-400')}>
           {team1Name}
         </p>
         <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, tea
           <span className="font-heading text-3xl font-black text-zinc-600" aria-hidden>:</span>
           <ScoreInput label={team2Name} value={team2Score} leading={t2Leads} uncertain={uncertain} onChange={(v) => onChange('team2', v)} />
         </div>
-        <p className={cn('line-clamp-2 break-words font-heading text-sm font-bold leading-tight sm:text-base', t2Leads ? 'text-white' : 'text-zinc-400')}>
+        <p className={cn('line-clamp-2 min-w-0 font-heading text-sm font-bold leading-tight [overflow-wrap:normal] sm:text-base', t2Leads ? 'text-white' : 'text-zinc-400')}>
           {team2Name}
         </p>
       </div>

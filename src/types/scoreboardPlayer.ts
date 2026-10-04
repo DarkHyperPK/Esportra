@@ -26,6 +26,10 @@ export interface ScoreboardPlayer {
   /** Spike plants and defuses (screenshot reports only; the client scoreboard shows them). */
   plants?: number;
   defuses?: number;
+  /** Trades (2026 client scoreboard). */
+  trades?: number;
+  /** Agent name; screenshot reports keep it for agents valorant-api doesn't list yet (no uuid). */
+  agentName?: string;
   abilityCasts?: AbilityCasts | null;
   isTeam1?: boolean;
   isTeam2?: boolean;

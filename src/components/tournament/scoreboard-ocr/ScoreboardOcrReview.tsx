@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { EYEBROW_CLASS, InlineNotice } from '@/components/ui/kit';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import type { OcrDraft, OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
-import { ScoreboardOcrRow } from './ScoreboardOcrRow';
+import { liveStatus } from '@/services/scoreboardOcr';
+import type { OcrDraft, OcrDraftPlayer, OcrVerification, TeamSlot } from '@/types/scoreboardOcr';
+import { ScoreboardOcrRow, type RowPatch } from './ScoreboardOcrRow';
 import { desktopGridClass, mobileStatsGridClass, visibleStats, type ReviewStat } from './reviewStats';
 import { cn } from '@/lib/utils';
 import { ScoreboardOcrScoreHeader } from './ScoreboardOcrScoreHeader';
@@ -15,14 +16,18 @@ interface Props {
   errors: string[];
   submitting: boolean;
   onScoreChange: (team: TeamSlot, value: number | null) => void;
-  onPlayerChange: (key: string, patch: { team?: TeamSlot; name?: string; agentId?: string | null; stat?: [OcrStatKey, number | null] }) => void;
+  onPlayerChange: (key: string, patch: RowPatch) => void;
+  /** Roster check from the API, by row; badges update locally when a name is edited. */
+  verification?: OcrVerification | null;
   onSubmit: () => void;
   onManual: () => void;
   /** Preview only (staff test bench): no submit or manual-entry actions. */
   readOnly?: boolean;
 }
 
-function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDraftPlayer[]; stats: ReviewStat[]; offset: number } & Pick<Props, 'teamNames' | 'agents' | 'onPlayerChange'>) {
+const rowIndex = (player: OcrDraftPlayer) => Number(player.key.replace('row-', ''));
+
+function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDraftPlayer[]; stats: ReviewStat[]; offset: number } & Pick<Props, 'teamNames' | 'agents' | 'onPlayerChange' | 'verification'>) {
   if (players.length === 0) return null;
   return (
     <section aria-label={title} className="border border-white/[0.07] bg-black/20 px-3 py-2">
@@ -44,6 +49,7 @@ function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDra
           teamNames={rest.teamNames}
           agents={rest.agents}
           stats={rest.stats}
+          verification={liveStatus(player.name, rest.verification?.players.find((v) => v.index === rowIndex(player)))}
           onChange={(patch) => rest.onPlayerChange(player.key, patch)}
         />
       ))}
@@ -51,14 +57,14 @@ function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDra
   );
 }
 
-export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, readOnly = false }: Props) {
+export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, readOnly = false, verification }: Props) {
   const groups = useMemo(() => ({
     unassigned: draft.players.filter((p) => p.team === null),
     team1: draft.players.filter((p) => p.team === 'team1'),
     team2: draft.players.filter((p) => p.team === 'team2'),
   }), [draft.players]);
   const stats = useMemo(() => visibleStats(draft.columns), [draft.columns]);
-  const shared = { teamNames, agents, onPlayerChange, stats };
+  const shared = { teamNames, agents, onPlayerChange, stats, verification };
 
   return (
     <div className="space-y-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2">

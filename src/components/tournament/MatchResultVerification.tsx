@@ -12,6 +12,8 @@ import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { FullScoreboard } from './FullScoreboard';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { competitorIdsMatch } from '@/utils/competitorId';
+import { OcrVerificationSummary } from './scoreboard-ocr/OcrVerificationSummary';
+import { disputeReasonFor } from '@/services/scoreboardOcr';
 
 interface MatchResultVerificationProps {
   matchId: string;
@@ -265,6 +267,18 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                 These numbers were read from the screenshot below and confirmed by the other captain. Compare them with
                 the image before you accept. If anything is wrong, dispute it.
               </p>
+            )}
+            {activeReport.source === 'ocr' && (
+              <div className="mb-3">
+                <OcrVerificationSummary
+                  verification={activeReport.ocr_verification}
+                  teamNames={{ team1: team1Name, team2: team2Name }}
+                  onDispute={isMyReport ? undefined : () => {
+                    setDisputeReason(disputeReasonFor(activeReport.ocr_verification, { team1: team1Name, team2: team2Name }));
+                    setDisputeOpen(true);
+                  }}
+                />
+              </div>
             )}
             <div className="text-center py-2">
               <p className="text-sm font-black text-white uppercase tracking-widest mb-6">

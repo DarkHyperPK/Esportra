@@ -17,4 +17,14 @@ export const MAP_THEMES: Record<string, { color: string; bg: string; id: string 
 };
 
 export const getAgentIcon = (characterId: string | number) => `https://media.valorant-api.com/agents/${characterId}/displayicon.png`;
+
+/** Agents shipped in /public/agents for screenshot reports read before valorant-api lists them. */
+const BUNDLED_AGENT_ICONS = new Set(['miks', 'tejo', 'veto', 'vyse', 'waylay']);
+
+/** valorant-api icon by uuid, else a bundled icon by agent name, else null. */
+export function agentIconUrl(characterId?: string | number | null, agentName?: string | null): string | null {
+  if (characterId) return getAgentIcon(characterId);
+  const slug = agentName?.trim().toLowerCase();
+  return slug && BUNDLED_AGENT_ICONS.has(slug) ? `/agents/${slug}.png` : null;
+}
 export const getMapSplash = (mapId: string) => `https://media.valorant-api.com/maps/${mapId}/splash.png`;

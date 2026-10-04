@@ -79,10 +79,10 @@ export default function ScoreboardOcrDebug() {
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
             <TabsContent value="scoreboard">
-              <OcrScoreboardPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} agentsLoaded={health.data?.reachable ? health.data.agents : null} />
+              <OcrScoreboardPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} bankAgents={health.data?.reachable ? health.data.bankAgents ?? null : null} />
             </TabsContent>
-            <TabsContent value="raw"><OcrDebugTable result={data.result} /></TabsContent>
-            <TabsContent value="review"><OcrReviewPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} /></TabsContent>
+            <TabsContent value="raw"><OcrDebugTable result={data.result} verification={data.verification} /></TabsContent>
+            <TabsContent value="review"><OcrReviewPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} verification={data.verification} /></TabsContent>
             <TabsContent value="json"><OcrDebugJson result={data.result} fileName={file?.name ?? 'scoreboard'} /></TabsContent>
           </Tabs>
         </section>

@@ -3,7 +3,7 @@ import { ScanText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useValorantAgents } from '@/hooks/useValorantCatalog';
 import { valorantMapSplash } from '@/services/maps/valorantMapAssets';
-import { pickMvpKey, presentColumns, rankByImpact } from '@/services/scoreboardOcr';
+import { hasAcs, pickMvpKey, presentColumns, rankByImpact } from '@/services/scoreboardOcr';
 import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
 import { OcrTeamTable } from './OcrTeamTable';
 
@@ -19,10 +19,11 @@ interface Props {
 /** Match scoreboard for a result read from the in-game screenshot: only the stats that screen shows. */
 export function OcrMatchScoreboard({ players, team1Name, team2Name, team1Score, team2Score, mapName }: Props) {
   const agents = useValorantAgents();
-  const { team1, team2, columns, mvpKey } = useMemo(() => ({
+  const { team1, team2, columns, showAcs, mvpKey } = useMemo(() => ({
     team1: rankByImpact(players.filter((p) => p.isTeam1 ?? p.teamId === 'Blue')),
     team2: rankByImpact(players.filter((p) => !(p.isTeam1 ?? p.teamId === 'Blue'))),
     columns: presentColumns(players),
+    showAcs: hasAcs(players),
     mvpKey: pickMvpKey(players),
   }), [players]);
   const splash = mapName ? valorantMapSplash(mapName) : null;
@@ -48,10 +49,10 @@ export function OcrMatchScoreboard({ players, team1Name, team2Name, team1Score, 
         </div>
       </header>
       <div className="space-y-6 p-3 sm:p-5">
-        <OcrTeamTable teamName={team1Name} score={team1Score} won={team1Won} tone="team1" players={team1} columns={columns} mvpKey={mvpKey} agents={agents.data ?? {}} />
-        <OcrTeamTable teamName={team2Name} score={team2Score} won={!team1Won} tone="team2" players={team2} columns={columns} mvpKey={mvpKey} agents={agents.data ?? {}} />
+        <OcrTeamTable teamName={team1Name} score={team1Score} won={team1Won} tone="team1" players={team1} columns={columns} showAcs={showAcs} mvpKey={mvpKey} agents={agents.data ?? {}} />
+        <OcrTeamTable teamName={team2Name} score={team2Score} won={!team1Won} tone="team2" players={team2} columns={columns} showAcs={showAcs} mvpKey={mvpKey} agents={agents.data ?? {}} />
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-600">
-          Read from the in-game scoreboard. ACS, ADR and headshot % are not on that screen.
+          Read from the in-game scoreboard. {showAcs ? 'ADR and headshot % are' : 'ACS, ADR and headshot % are'} not on that screen.
         </p>
       </div>
     </div>

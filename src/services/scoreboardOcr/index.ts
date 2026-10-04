@@ -2,4 +2,5 @@ export { LOW_CONFIDENCE, draftFromParse, otherSlot, updateDraftPlayer } from './
 export { buildOcrSubmission, type OcrReportSubmission, type OcrSubmissionContext } from './submission';
 export { toFixtureJson } from './fixture';
 export { countRecognisedAgents, describeOcrEngine } from './engineLabel';
-export { OCR_VIEW_COLUMNS, pickMvpKey, plusMinus, presentColumns, rankByImpact, type OcrViewColumn } from './scoreboardView';
+export { OCR_VIEW_COLUMNS, hasAcs, pickMvpKey, plusMinus, presentColumns, rankByImpact, type OcrViewColumn } from './scoreboardView';
+export { VERIFICATION_LABELS, disputeReasonFor, liveStatus, nameKey, needsReview, type VerificationTone } from './verification';

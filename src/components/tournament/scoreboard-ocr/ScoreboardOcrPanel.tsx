@@ -73,6 +73,7 @@ export function ScoreboardOcrPanel(props: Props) {
         onPlayerChange={(key, patch) => setDraft((d) => (d ? updateDraftPlayer(d, key, patch) : d))}
         onSubmit={send}
         onManual={onManual}
+        verification={parse.data?.verification}
       />
     );
   }

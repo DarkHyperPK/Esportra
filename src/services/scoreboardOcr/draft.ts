@@ -37,6 +37,7 @@ function draftPlayer(row: OcrPlayerRow, index: number, allyTeam: TeamSlot, colum
     name: row.name.value ?? '',
     userId: row.rosterMatch?.userId ?? null,
     agentId: row.agent.value?.uuid ?? null,
+    agentName: row.agent.value?.name ?? null,
     stats,
     uncertain: [
       ...uncertainStats,
@@ -79,12 +80,12 @@ export function draftFromParse(parse: ScoreboardOcrParse, reporterSlot: TeamSlot
 export function updateDraftPlayer(
   draft: OcrDraft,
   key: string,
-  patch: Partial<Pick<OcrDraftPlayer, 'team' | 'name' | 'agentId'>> & { stat?: [OcrStatKey, number | null] },
+  patch: Partial<Pick<OcrDraftPlayer, 'team' | 'name' | 'agentId' | 'agentName'>> & { stat?: [OcrStatKey, number | null] },
 ): OcrDraft {
   const touched = [
     ...(patch.team !== undefined ? ['team'] : []),
     ...(patch.name !== undefined ? ['name'] : []),
-    ...(patch.agentId !== undefined ? ['agent'] : []),
+    ...(patch.agentId !== undefined || patch.agentName !== undefined ? ['agent'] : []),
     ...(patch.stat ? [patch.stat[0]] : []),
   ];
   return {
