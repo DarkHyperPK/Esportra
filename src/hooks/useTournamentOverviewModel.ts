@@ -166,6 +166,9 @@ export function useTournamentOverviewModel(input: OverviewModelInput): Tournamen
         pendingCheckIns,
         checkInCountdown: window.closesAt ? formatCountdown(window.closesAt.getTime() - now, false) : null,
         setupGaps: toSetupGaps(completionSummary),
+        pendingEscalations: tournament.pendingEscalations ?? 0,
+        unseededMatchCount: tournament.unseededMatchCount ?? 0,
+        unscheduledFirstRoundCount: tournament.unscheduledFirstRoundCount ?? 0,
       }),
       reachable,
     );

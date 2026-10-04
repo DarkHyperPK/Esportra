@@ -37,12 +37,34 @@ interface StageMatch {
     bracket_type: string;
     team1_name: string | null;
     team2_name: string | null;
+    scheduling_escalated_at: string | null;
 }
 
 interface MatchSchedule {
     matchId: string;
     scheduledTime: string;
     matchNumber: number;
+}
+
+/**
+ * Converts a SchedulingConfig (which may carry dual camelCase/snake_case keys for read
+ * compatibility) to a canonical snake_case-only payload for the PUT endpoint.
+ * The backend normalizer also handles camelCase, but the frontend should send
+ * canonical keys.
+ */
+function toSnakeCasePayload(config: SchedulingConfig): Record<string, unknown> {
+    const raw: Record<string, unknown> = {
+        self_play_enabled: config.self_play_enabled ?? config.selfPlayEnabled,
+        checkin_enabled: config.checkin_enabled ?? config.checkinEnabled,
+        checkin_window_minutes: config.checkin_window_minutes ?? config.checkinWindowMinutes,
+        round_deadline: config.round_deadline ?? config.roundDeadline,
+        round_deadlines: config.round_deadlines ?? config.roundDeadlines,
+        schedule_start_time: config.schedule_start_time ?? config.scheduleStartTime,
+        match_interval_minutes: config.match_interval_minutes ?? config.matchIntervalMinutes,
+        daily_start_time: config.daily_start_time ?? config.dailyStartTime,
+        scheduling_mode: config.scheduling_mode ?? config.schedulingMode,
+    };
+    return Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined));
 }
 
 export const useMatchScheduling = (stageId: string | undefined) => {
@@ -68,7 +90,7 @@ export const useMatchScheduling = (stageId: string | undefined) => {
     const updateConfig = useMutation({
         mutationFn: async (config: SchedulingConfig) => {
             if (!stageId) throw new Error('Stage ID required');
-            return apiClient.put(`/api/stages/${stageId}/scheduling-config`, config);
+            return apiClient.put(`/api/stages/${stageId}/scheduling-config`, toSnakeCasePayload(config));
         },
         onMutate: async (config) => {
             if (!stageId) return;

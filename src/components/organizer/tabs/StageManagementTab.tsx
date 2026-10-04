@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check, Globe, CheckCircle2, Loader2 } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
@@ -515,6 +516,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             } else {
                 const matches = await apiClient.get<any[]>(`/api/stages/${stageId}/matches`).catch(() => []);
                 const firstRoundMatches = (matches || []).filter((m: any) => m.round_index === 0 && m.team1_id && m.team2_id);
+                if (matches.length > 0 && firstRoundMatches.length === 0) {
+                    toast({
+                        title: 'Bracket not seeded',
+                        description: "Teams aren't placed in bracket slots yet. Open the Bracket tab and seed your teams before publishing.",
+                        variant: 'destructive',
+                    });
+                    return;
+                }
                 const unscheduledCount = firstRoundMatches.filter((m: any) => !m.scheduled_time).length;
                 if (firstRoundMatches.length > 0 && unscheduledCount === firstRoundMatches.length) {
                     toast({
@@ -528,7 +537,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             await apiClient.put(`/api/brackets/${version.id}`, { status: 'active', activated_at: new Date().toISOString() });
             setBracketVersionInfo((prev) => ({ ...prev, [stageId]: { ...prev[stageId], status: 'active' } }));
-            toast({ title: 'Bracket Published!', description: 'The bracket is now visible to participants.' });
+            toast({ title: 'Bracket published', description: 'The bracket is now visible to participants.' });
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Error', description: error.message || 'Failed to publish bracket', variant: 'destructive' });
@@ -550,6 +559,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 toast({
                     title: 'Teams seeded',
                     description: `${result.seeded} team(s) placed into bracket slots.${result.byesAdvanced > 0 ? ` ${result.byesAdvanced} bye(s) auto-advanced.` : ''}`,
+                });
+                toast({
+                    title: "Teams placed in the bracket",
+                    description: "Next: set match times in the Schedule tab before you publish.",
+                    action: (
+                        <ToastAction
+                            altText="Open Schedule"
+                            onClick={() => navigate(`/organizer/tournament/${slug}?tab=schedule`)}
+                        >
+                            Open Schedule
+                        </ToastAction>
+                    ),
                 });
                 setBracketSeeded(prev => ({ ...prev, [stageId]: true }));
             }
@@ -923,6 +944,17 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5 mr-2" />
                                                             Delete Matches
+                                                        </Button>
+                                                    )}
+                                                    {/* Open Schedule bridge — after seeding, before publish */}
+                                                    {bracketSeeded[stage.id] === true && bracketVersionInfo[stage.id]?.status !== 'active' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-zinc-400 hover:text-zinc-200 hover:bg-white/5 text-xs font-mono uppercase tracking-wider"
+                                                            onClick={() => navigate(`/organizer/tournament/${slug}?tab=schedule`)}
+                                                        >
+                                                            Open Schedule
                                                         </Button>
                                                     )}
                                                 </>

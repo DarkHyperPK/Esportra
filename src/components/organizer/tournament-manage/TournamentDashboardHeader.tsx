@@ -7,7 +7,7 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { Check, Copy, Eye, Trophy } from 'lucide-react';
+import { Check, Copy, Eye, HelpCircle, Trophy } from 'lucide-react';
 import { CommandButton, CommandIconButton } from '@/components/management/CommandSurface';
 import { useToast } from '@/hooks/use-toast';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
@@ -21,6 +21,7 @@ interface TournamentDashboardHeaderProps {
   phaseTone: Tone;
   staffSummary?: string | null;
   publishSlot?: ReactNode;
+  onOpenTour?: () => void;
 }
 
 function LogoMark({ src }: { src?: string | null }) {
@@ -44,6 +45,7 @@ export function TournamentDashboardHeader({
   phaseTone,
   staffSummary,
   publishSlot,
+  onOpenTour,
 }: TournamentDashboardHeaderProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -90,6 +92,11 @@ export function TournamentDashboardHeader({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {onOpenTour && (
+            <CommandIconButton label="Getting started guide" variant="secondary" onClick={onOpenTour}>
+              <HelpCircle aria-hidden />
+            </CommandIconButton>
+          )}
           <CommandIconButton label={copied ? 'Link copied' : 'Copy public link'} variant="secondary" onClick={() => void copyLink()}>
             {copied ? <Check className="text-emerald-400" aria-hidden /> : <Copy aria-hidden />}
           </CommandIconButton>

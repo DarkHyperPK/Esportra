@@ -32,6 +32,9 @@ export interface AttentionInput {
   checkInCountdown?: string | null;
   /** Draft setup gaps, one entry per configuration panel with missing fields. */
   setupGaps?: SetupGap[];
+  pendingEscalations?: number;
+  unseededMatchCount?: number;
+  unscheduledFirstRoundCount?: number;
 }
 
 export interface SetupGap {
@@ -79,6 +82,16 @@ function countItems(input: AttentionInput): AttentionItem[] {
       title: `${input.openDisputes} open ${plural(input.openDisputes, 'dispute', 'disputes')}`,
       detail: 'Matches are waiting on a ruling.',
       target: 'disputes',
+    });
+  }
+  const isFinished = input.status === 'completed' || input.status === 'cancelled';
+  if ((input.pendingEscalations ?? 0) > 0 && !isFinished) {
+    items.push({
+      id: 'scheduling-escalations',
+      tone: 'critical',
+      title: `${input.pendingEscalations} scheduling escalation(s) need resolution`,
+      detail: 'A captain reported their opponent is not responding. Set a match time or award a walkover.',
+      target: 'format-stages',
     });
   }
   if (input.pendingPayments > 0) {
@@ -160,9 +173,38 @@ function setupGapItems(input: AttentionInput): AttentionItem[] {
   });
 }
 
+function schedulingItems(input: AttentionInput): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  const isFinished = input.status === 'completed' || input.status === 'cancelled';
+  if (isFinished) return items;
+
+  if ((input.unseededMatchCount ?? 0) > 0) {
+    items.push({
+      id: 'unseeded-bracket',
+      tone: 'warning',
+      title: 'Bracket not seeded',
+      detail: 'Seed your teams before scheduling or publishing.',
+      target: 'format-stages',
+    });
+  }
+
+  const unscheduled = input.unscheduledFirstRoundCount ?? 0;
+  if (unscheduled > 0) {
+    items.push({
+      id: 'unscheduled-matches',
+      tone: 'warning',
+      title: `${unscheduled} first-round match${unscheduled === 1 ? '' : 'es'} not scheduled`,
+      detail: 'Set match times before publishing so participants know when to play.',
+      target: 'format-stages',
+    });
+  }
+
+  return items;
+}
+
 export function deriveAttentionItems(input: AttentionInput): AttentionItem[] {
   const checkIn = checkInItem(input);
-  const items = [...(checkIn ? [checkIn] : []), ...countItems(input), ...setupItems(input), ...setupGapItems(input)];
+  const items = [...(checkIn ? [checkIn] : []), ...countItems(input), ...setupItems(input), ...setupGapItems(input), ...schedulingItems(input)];
   return [...items].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
 }
 

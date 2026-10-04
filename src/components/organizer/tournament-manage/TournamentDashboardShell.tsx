@@ -34,6 +34,8 @@ import type { CompletionSummary } from '@/hooks/useCompletionState';
 import type { DashboardNavGroup, DashboardSectionId } from '@/services/tournamentDashboard/dashboardNav';
 import { TournamentDashboardNav } from './TournamentDashboardNav';
 import { TournamentDashboardHeader } from './TournamentDashboardHeader';
+import OrganizerJourneyTour from '@/components/organizer/onboarding/OrganizerJourneyTour';
+import { hasSeenTour, markTourSeen, resetTour } from '@/lib/onboardingFlags';
 import type { Tone } from '@/components/ui/kit/tone';
 import { MobileDrawer } from './MobileDrawer';
 import { CompletionBanner } from './CompletionBanner';
@@ -100,6 +102,18 @@ export function TournamentDashboardShell({
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
   const isDraft = tournament.status === 'draft';
+
+  const [tourOpen, setTourOpen] = useState(() => !hasSeenTour('organizer-bracket'));
+
+  const handleTourComplete = useCallback(() => {
+    markTourSeen('organizer-bracket');
+    setTourOpen(false);
+  }, []);
+
+  const handleOpenTour = useCallback(() => {
+    resetTour('organizer-bracket');
+    setTourOpen(true);
+  }, []);
 
   // Clear dirty state whenever the active tab changes (panel unmounts/remounts)
   useEffect(() => {
@@ -192,6 +206,7 @@ export function TournamentDashboardShell({
             phaseTone={phaseTone}
             staffSummary={staffSummary}
             publishSlot={isDraft && canActAsOwner ? publishButton : null}
+            onOpenTour={handleOpenTour}
           />
 
           {/* Completion Banner */}
@@ -261,6 +276,8 @@ export function TournamentDashboardShell({
         </AlertDialog>
 
         <Footer />
+
+        {tourOpen && <OrganizerJourneyTour onComplete={handleTourComplete} />}
       </CommandShell>
     </DirtyStateContext.Provider>
   );

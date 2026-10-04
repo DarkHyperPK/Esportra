@@ -59,6 +59,45 @@ describe('deriveAttentionItems', () => {
     expect(deriveAttentionItems({ ...calm, status: 'draft', mockCount: 2 })[0].tone).toBe('info');
     expect(deriveAttentionItems({ ...calm, mockCount: 2 })[0].tone).toBe('warning');
   });
+
+  it('surfaces scheduling escalations as critical when there are pending escalations', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'registration', pendingEscalations: 2 });
+    const item = items.find((i) => i.id === 'scheduling-escalations');
+    expect(item).toBeDefined();
+    expect(item?.tone).toBe('critical');
+    expect(item?.title).toContain('2');
+  });
+
+  it('omits the scheduling escalations item when pendingEscalations is 0', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'registration', pendingEscalations: 0 });
+    expect(items.find((i) => i.id === 'scheduling-escalations')).toBeUndefined();
+  });
+
+  it('omits the scheduling escalations item for completed tournaments', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'completed', pendingEscalations: 1 });
+    expect(items.find((i) => i.id === 'scheduling-escalations')).toBeUndefined();
+  });
+
+  it('flags unseeded bracket as a warning when unseededMatchCount is positive', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'registration', unseededMatchCount: 1 });
+    const item = items.find((i) => i.id === 'unseeded-bracket');
+    expect(item).toBeDefined();
+    expect(item?.tone).toBe('warning');
+    expect(item?.title).toBe('Bracket not seeded');
+  });
+
+  it('flags unscheduled first-round matches with correct plural title', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'registration', unscheduledFirstRoundCount: 2 });
+    const item = items.find((i) => i.id === 'unscheduled-matches');
+    expect(item).toBeDefined();
+    expect(item?.tone).toBe('warning');
+    expect(item?.title).toBe('2 first-round matches not scheduled');
+  });
+
+  it('omits unseeded-bracket when the tournament is completed', () => {
+    const items = deriveAttentionItems({ ...calm, status: 'completed', unseededMatchCount: 1 });
+    expect(items.find((i) => i.id === 'unseeded-bracket')).toBeUndefined();
+  });
 });
 
 describe('setup gaps', () => {
