@@ -199,7 +199,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
     const onDate = (v: string) => {
       if (selfPlay) return setRound(k, { deadline: v ? dateInputToUTCEndOfDay(v) : '' });
-      setRound(k, { deadline: v ? dateInputToUTCEndOfDay(v) : '', ...(v && cfg?.startTime ? { startTime: localDateTimeToUTC(v, utcToLocalTime(cfg.startTime)) } : {}) });
+      const existingTime = cfg?.startTime ? utcToLocalTime(cfg.startTime) : '00:00';
+      setRound(k, { deadline: v ? dateInputToUTCEndOfDay(v) : '', startTime: v ? localDateTimeToUTC(v, existingTime) : '' });
     };
     const onTime = (v: string) => {
       if (!v) return setRound(k, { startTime: '' });
