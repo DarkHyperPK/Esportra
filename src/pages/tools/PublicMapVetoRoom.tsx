@@ -23,6 +23,8 @@ const PublicMapVetoRoom = () => {
   const actingRef = useRef(false);
   const realtimeConnectedRef = useRef(false);
   const [acting, setActing] = useState(false);
+  const [team1Logo, setTeam1Logo] = useState<string | null>(null);
+  const [team2Logo, setTeam2Logo] = useState<string | null>(null);
   const statePath = isHost ? `/api/tools/map-veto/host/${token}` : `/api/tools/map-veto/team/${token}`;
   const stateQueryKey = useMemo(() => ["public-map-veto", isHost ? "host" : "team", token] as const, [isHost, token]);
   const historyQueryKey = useMemo(() => ["public-map-veto-history", token] as const, [token]);
@@ -212,6 +214,10 @@ const PublicMapVetoRoom = () => {
         onReset={reset}
         onPerformToss={isHost ? performToss : undefined}
         onPerformTossChoice={!isHost ? performTossChoice : undefined}
+        team1Logo={team1Logo}
+        team2Logo={team2Logo}
+        onTeam1Logo={setTeam1Logo}
+        onTeam2Logo={setTeam2Logo}
       />
     </div>
   );

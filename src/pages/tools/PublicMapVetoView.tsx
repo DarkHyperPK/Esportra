@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { Download, ImagePlus, X } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -13,8 +14,10 @@ import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachin
 import { useCrispMapImages } from "@/hooks/useCrispMapImages";
 import { withMapImages } from "@/services/maps/valorantMapAssets";
 import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory";
+import { MapVetoResultCard } from "./MapVetoResultCard";
 import { PublicVetoTossStage } from "./PublicVetoTossStage";
 import { tossDecisionLine } from "./tossPresentation";
+import { downloadNodeAsPng } from "@/lib/exportNodePng";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
@@ -37,7 +40,54 @@ type PublicMapVetoViewProps = {
   onReset: () => Promise<void>;
   onPerformToss?: () => Promise<void>;
   onPerformTossChoice?: (goFirst: boolean) => Promise<void>;
+  team1Logo: string | null;
+  team2Logo: string | null;
+  onTeam1Logo: (url: string | null) => void;
+  onTeam2Logo: (url: string | null) => void;
 };
+
+const TeamLogoSlot = ({
+  teamName,
+  value,
+  onChange,
+}: {
+  teamName: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+}) => (
+  <div className="relative flex items-center gap-2">
+    <label
+      className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden border border-white/10 bg-black/30 transition-colors hover:border-white/25"
+      title={`Upload ${teamName} logo`}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onChange(URL.createObjectURL(file));
+          e.target.value = "";
+        }}
+      />
+      {value ? (
+        <img src={value} alt={teamName} className="h-full w-full object-contain" />
+      ) : (
+        <ImagePlus className="h-3.5 w-3.5 text-zinc-500" />
+      )}
+    </label>
+    {value && (
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        className="text-zinc-600 transition-colors hover:text-zinc-400"
+        aria-label={`Remove ${teamName} logo`}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    )}
+  </div>
+);
 
 const noOp = () => undefined;
 
@@ -71,7 +121,12 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   onReset,
   onPerformToss,
   onPerformTossChoice,
+  team1Logo,
+  team2Logo,
+  onTeam1Logo,
+  onTeam2Logo,
 }) => {
+  const resultCardRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showSideDialog, setShowSideDialog] = useState(false);
@@ -146,6 +201,16 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       setActionLoading(null);
     }
   }, [acting, onMapAction]);
+
+  const handleDownload = async () => {
+    const node = resultCardRef.current;
+    if (!node) return;
+    await downloadNodeAsPng(
+      node,
+      `map-veto-${state.team1Name}-vs-${state.team2Name}.png`,
+      { width: node.offsetWidth, height: node.offsetHeight },
+    );
+  };
 
   const lineup = (rail: boolean) => (
     <VetoSelectedMaps
@@ -263,6 +328,16 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       {lineup(false)}
       <VetoSequence {...sequenceProps} doneOnly variant="track" />
       {isHost ? hostTools : null}
+      <div className="flex justify-center pt-2">
+        <button
+          type="button"
+          onClick={() => { void handleDownload(); }}
+          className="flex items-center gap-2 border border-white/10 bg-black/30 px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-zinc-300 transition-colors hover:border-white/25 hover:text-white"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download results
+        </button>
+      </div>
     </>
   );
 
@@ -303,15 +378,39 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       </div>
       <div className="mx-auto max-w-[1400px] space-y-6">
         {pageHeader}
+        {isHost && !isComplete && (
+          <div className="flex items-center gap-4">
+            <TeamLogoSlot teamName={state.team1Name} value={team1Logo} onChange={onTeam1Logo} />
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">logos</span>
+            <TeamLogoSlot teamName={state.team2Name} value={team2Logo} onChange={onTeam2Logo} />
+          </div>
+        )}
         <VetoTeamDisplay
           team1Name={state.team1Name}
+          team1Logo={team1Logo}
           team2Name={state.team2Name}
+          team2Logo={team2Logo}
           activeSide={isComplete || !vetoLive ? null : activeSide}
           completed={isComplete}
           bestOf={currentBestOf}
         />
         {tossPending ? tossStage : isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
       </div>
+
+      {isComplete && (
+        <div
+          className="pointer-events-none absolute left-[-9999px] top-0 overflow-hidden"
+          aria-hidden="true"
+        >
+          <MapVetoResultCard
+            ref={resultCardRef}
+            state={state}
+            history={vetoHistory}
+            team1Logo={team1Logo}
+            team2Logo={team2Logo}
+          />
+        </div>
+      )}
 
       {!isHost && (
         <VetoDialogs
