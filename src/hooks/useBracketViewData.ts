@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
-import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
+import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import type { BracketMatch } from '@/types/bracketTypes';
 import type { RawMatchGame } from '@/services/matchStats/publicGameStats';
 import type { MatchEvidence } from '@/services/matchStats/matchEvidence';
@@ -84,10 +84,11 @@ export function useBracketViewData(versionId: string | null, tournamentId: strin
     });
 
     const matches = useMemo<BracketMatch[]>(() => {
-        const cached = graph?.version?.cached_ui_state as BracketMatch[] | undefined;
-        if (cached) return cached;
         if (!graph?.nodes || !graph?.edges) return [];
-        const teams = new Map((teamsQuery.data ?? []).map((team) => [team.id, team]));
+        // Always derive from live nodes — cached_ui_state can pre-date match completion
+        // and won't have winner resolved for solo participants.
+        const teams = buildCompetitorMapFromNodes(graph.nodes);
+        (teamsQuery.data ?? []).forEach((team) => teams.set(team.id, team));
         return adaptGraphToBracketMatches(graph.nodes, graph.edges, teams);
     }, [graph, teamsQuery.data]);
 
