@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Link2 } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -10,19 +9,15 @@ import { VetoTeamDisplay } from "@/components/tournament/map-veto/VetoTeamDispla
 import { VetoTurnBanner } from "@/components/tournament/map-veto/VetoTurnBanner";
 import { TossDecisionNotice } from "@/components/tournament/map-veto/toss/TossDecisionNotice";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CommandButton } from "@/components/management/CommandSurface";
-import { useToast } from "@/hooks/use-toast";
 import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
 import { useCrispMapImages } from "@/hooks/useCrispMapImages";
 import { withMapImages } from "@/services/maps/valorantMapAssets";
 import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory";
-import { copyText } from "./publicToolUtils";
 import { PublicVetoTossStage } from "./PublicVetoTossStage";
 import { tossDecisionLine } from "./tossPresentation";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
-  buildPublicHostVetoUrl,
   buildPublicTeamVetoUrl,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
@@ -77,12 +72,10 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   onPerformToss,
   onPerformTossChoice,
 }) => {
-  const { toast } = useToast();
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showSideDialog, setShowSideDialog] = useState(false);
   const [pendingMapId, setPendingMapId] = useState<string | null>(null);
-  const [copiedHost, setCopiedHost] = useState(false);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
   const storedMaps = useMemo(
@@ -170,13 +163,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     />
   );
 
-  const copyHostLink = async () => {
-    if (!state.hostToken) return;
-    await copyText(buildPublicHostVetoUrl(state.hostToken));
-    setCopiedHost(true);
-    toast({ title: "Host link copied" });
-    window.setTimeout(() => setCopiedHost(false), 2000);
-  };
 
 
   const pageHeader = (
@@ -204,18 +190,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const hostTools = (
     <>
-      {isHost && state.hostToken && (
-        <section className="space-y-3 border-t border-white/[0.07] pt-6" aria-label="Host tools">
-          <h3 className="font-heading text-lg font-bold tracking-tight text-white">Host tools</h3>
-          <div className="flex flex-wrap gap-2">
-            <CommandButton variant="ghost" size="sm" onClick={() => { void copyHostLink(); }}>
-              {copiedHost ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-              Observer link
-            </CommandButton>
-          </div>
-        </section>
-      )}
-
       {!isComplete
         && state.status !== "pending_toss"
         && state.status !== "toss_choice_pending"
