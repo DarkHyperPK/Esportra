@@ -84,7 +84,7 @@ export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, 
               Matched by elimination{' '}&mdash;{' '}
               <button
                 type="button"
-                className="font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40"
+                className="py-2.5 -my-2.5 px-1 -mx-1 font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/40"
                 aria-label={`Confirm ${player.name} is correct`}
                 onClick={onConfirmElimination}
               >
