@@ -11,6 +11,9 @@ import {
 /** Below this the reader is unsure; the field is highlighted for the captain. */
 export const LOW_CONFIDENCE = 0.6;
 
+/** Below this (and method = "read") the player name is shown with a "Check name" prompt. */
+export const NAME_CONFIDENCE_THRESHOLD = 0.7;
+
 export const otherSlot = (slot: TeamSlot): TeamSlot => (slot === 'team1' ? 'team2' : 'team1');
 
 function isStatKey(key: string): key is OcrStatKey {
@@ -31,14 +34,19 @@ function draftPlayer(row: OcrPlayerRow, index: number, allyTeam: TeamSlot, colum
     return !cell || cell.value === null || cell.confidence < LOW_CONFIDENCE;
   });
   const teamDisagrees = row.rosterMatch != null && team != null && row.rosterMatch.team !== team;
+  const isElimination = row.rosterMatch?.method === 'elimination';
+  const resolvedName =
+    isElimination && row.rosterMatch?.matchedName ? row.rosterMatch.matchedName : (row.name.value ?? '');
   return {
     key: `row-${index}`,
     team,
-    name: row.name.value ?? '',
+    name: resolvedName,
     userId: row.rosterMatch?.userId ?? null,
     agentId: row.agent.value?.uuid ?? null,
     agentName: row.agent.value?.name ?? null,
     stats,
+    rosterMatchMethod: row.rosterMatch?.method ?? 'read',
+    nameConfidence: row.name.confidence,
     uncertain: [
       ...uncertainStats,
       // Only an unreadable name is highlighted; not being on the roster (subs, unlinked accounts) is normal.

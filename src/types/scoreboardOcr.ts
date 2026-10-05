@@ -193,6 +193,10 @@ export interface OcrDraftPlayer {
   stats: Partial<Record<OcrStatKey, number | null>>;
   /** Fields the reader was unsure about — highlighted until the captain edits them. */
   uncertain: Array<OcrStatKey | 'name' | 'agent' | 'team'>;
+  /** How the row's player name was resolved: OCR read, or elimination (OCR unreadable, last unmatched). */
+  rosterMatchMethod?: 'read' | 'elimination';
+  /** Raw OCR confidence for the name field (0–1); drives the low-confidence "Check name" indicator. */
+  nameConfidence?: number;
 }
 
 export interface OcrDraft {

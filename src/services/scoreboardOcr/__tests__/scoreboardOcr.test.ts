@@ -87,6 +87,49 @@ describe('draftFromParse', () => {
   });
 });
 
+describe('draftFromParse — elimination method', () => {
+  it('uses matchedName as the initial name for elimination rows', () => {
+    const p = parse();
+    const players = [...p.result.players];
+    players[0] = {
+      ...players[0],
+      name: { value: null, confidence: 0 },
+      rosterMatch: { userId: 'u-elim', team: 'team2', matchedName: 'EliminatedPlayer', score: 1, method: 'elimination' },
+    };
+    const draft = draftFromParse({ ...p, result: { ...p.result, players } }, 'team1');
+    expect(draft.players[0].name).toBe('EliminatedPlayer');
+    expect(draft.players[0].rosterMatchMethod).toBe('elimination');
+    expect(draft.players[0].nameConfidence).toBe(0);
+  });
+
+  it('carries rosterMatchMethod and nameConfidence for normal read rows', () => {
+    const draft = draftFromParse(parse(), 'team1');
+    expect(draft.players[0].rosterMatchMethod).toBe('read');
+    expect(draft.players[0].nameConfidence).toBe(0.99);
+  });
+
+  it('defaults rosterMatchMethod to read when no rosterMatch is present', () => {
+    const p = parse();
+    const players = [...p.result.players];
+    players[0] = { ...players[0], rosterMatch: null };
+    const draft = draftFromParse({ ...p, result: { ...p.result, players } }, 'team1');
+    expect(draft.players[0].rosterMatchMethod).toBe('read');
+  });
+
+  it('falls back to empty string name when elimination row has no matchedName', () => {
+    const p = parse();
+    const players = [...p.result.players];
+    players[0] = {
+      ...players[0],
+      name: { value: null, confidence: 0 },
+      rosterMatch: { userId: 'u-elim', team: 'team2', matchedName: '', score: 0, method: 'elimination' },
+    };
+    const draft = draftFromParse({ ...p, result: { ...p.result, players } }, 'team1');
+    expect(draft.players[0].name).toBe('');
+    expect(draft.players[0].rosterMatchMethod).toBe('elimination');
+  });
+});
+
 describe('updateDraftPlayer', () => {
   it('updates immutably and clears the edited field’s highlight', () => {
     const draft = draftFromParse(parse(), 'team1');

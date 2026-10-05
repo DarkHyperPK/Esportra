@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Image as ImageIcon, ScanSearch } from 'lucide-react';
 import { CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { InlineNotice } from '@/components/ui/kit';
@@ -46,10 +46,12 @@ interface GroupProps {
   teamNames: Record<TeamSlot, string>;
   teamLogos?: Partial<Record<TeamSlot, string>>;
   verification?: OcrVerification | null;
+  confirmedEliminationKeys: ReadonlySet<string>;
+  onConfirmElimination: (key: string) => void;
   onPlayerChange: Props['onPlayerChange'];
 }
 
-function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, teamLogos, verification, onPlayerChange }: GroupProps) {
+function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, teamLogos, verification, confirmedEliminationKeys, onConfirmElimination, onPlayerChange }: GroupProps) {
   if (players.length === 0) return null;
   const rounds = slot === 'team1' ? draft.team1Score : slot === 'team2' ? draft.team2Score : null;
   const other = slot === 'team1' ? draft.team2Score : draft.team1Score;
@@ -73,6 +75,8 @@ function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, te
           agents={choices}
           stats={stats}
           reason={reasonFor(player, verification)}
+          eliminationConfirmed={confirmedEliminationKeys.has(player.key)}
+          onConfirmElimination={() => onConfirmElimination(player.key)}
           onChange={(patch) => onPlayerChange(player.key, patch)}
         />
       ))}
@@ -82,6 +86,23 @@ function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, te
 
 export function ScoreboardOcrReview(props: Props) {
   const { draft, teamNames, teamLogos, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, readOnly = false, verification } = props;
+
+  const [confirmedEliminationKeys, setConfirmedEliminationKeys] = useState(() => new Set<string>());
+
+  const handleConfirmElimination = (key: string) => {
+    setConfirmedEliminationKeys((prev) => new Set([...prev, key]));
+  };
+
+  const handlePlayerChange = (key: string, patch: RowPatch) => {
+    if (patch.name !== undefined) {
+      const player = draft.players.find((p) => p.key === key);
+      if (player?.rosterMatchMethod === 'elimination') {
+        setConfirmedEliminationKeys((prev) => new Set([...prev, key]));
+      }
+    }
+    onPlayerChange(key, patch);
+  };
+
   const groups = useMemo(() => ({
     unassigned: draft.players.filter((p) => p.team === null),
     team1: draft.players.filter((p) => p.team === 'team1'),
@@ -91,7 +112,11 @@ export function ScoreboardOcrReview(props: Props) {
   const choices = useMemo(() => agentChoices(agents, BUNDLED_AGENT_NAMES), [agents]);
   const summary = reviewSummary(draft.players.map((p) => reasonFor(p, verification)));
   const hardToRead = draft.players.reduce((sum, p) => sum + p.uncertain.length, 0) + (draft.uncertainScore ? 1 : 0);
-  const shared = { stats, choices, draft, teamNames, teamLogos, verification, onPlayerChange };
+  const unconfirmedEliminationCount = draft.players.filter(
+    (p) => p.rosterMatchMethod === 'elimination' && !confirmedEliminationKeys.has(p.key),
+  ).length;
+
+  const shared = { stats, choices, draft, teamNames, teamLogos, verification, confirmedEliminationKeys, onConfirmElimination: handleConfirmElimination, onPlayerChange: handlePlayerChange };
 
   return (
     <div className="space-y-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2">
@@ -144,10 +169,22 @@ export function ScoreboardOcrReview(props: Props) {
           <ul className="list-disc pl-4">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
         </InlineNotice>
       )}
+      {unconfirmedEliminationCount > 0 && (
+        <InlineNotice tone="neutral">
+          {unconfirmedEliminationCount === 1
+            ? "1 name couldn't be read and was filled by guessing. Confirm or correct it above to send."
+            : `${unconfirmedEliminationCount} names couldn't be read and were filled by guessing. Confirm or correct them above to send.`}
+        </InlineNotice>
+      )}
       {!readOnly && (
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <GhostButton type="button" onClick={onManual} disabled={submitting}>Enter result manually</GhostButton>
-          <CtaButton type="button" onClick={onSubmit} disabled={submitting}>
+          <CtaButton
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || unconfirmedEliminationCount > 0}
+            title={unconfirmedEliminationCount > 0 ? 'Confirm all guessed names first' : undefined}
+          >
             {submitting ? 'Sending…' : 'Send to opponent to confirm'}
           </CtaButton>
         </div>
