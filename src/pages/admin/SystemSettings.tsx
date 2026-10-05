@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
-  Globe, UserPlus, Trophy, Shield, HardDrive, Bell,
+  Globe, UserPlus, Trophy, Shield, HardDrive, Bell, Plug,
   Save, Eye, EyeOff, AlertCircle, RefreshCw,
   Loader2,
   type LucideIcon,
@@ -38,6 +38,7 @@ const categories: CategoryMeta[] = [
   { key: 'security', label: 'Security', icon: Shield, description: 'Authentication & access controls' },
   { key: 'storage', label: 'Storage', icon: HardDrive, description: 'File upload settings' },
   { key: 'notifications', label: 'Notifications', icon: Bell, description: 'Notification channels' },
+  { key: 'integrations', label: 'Integrations', icon: Plug, description: 'Third-party service connections' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
