@@ -907,7 +907,7 @@ const CaptainMatchPage = () => {
             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
             const vetoReady = !isVetoEnabled || mapVetoCompleted;
 
-            if (activeMatch.status === 'completed' || isMatchDecided || nextGameNumber > bestOf || !vetoReady) {
+            if (!isMatchLive || activeMatch.status === 'completed' || isMatchDecided || nextGameNumber > bestOf || !vetoReady) {
                 return null;
             }
 
@@ -1177,7 +1177,7 @@ const CaptainMatchPage = () => {
                                         (canManageMatchRoom && !!activeMatch.team1?.id && !!activeMatch.team2?.id)
                                         || (isMatchLive && activeMatch.status !== 'completed')
                                     }
-                                    manualReportDisabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
+                                    manualReportDisabled={!isMatchLive || (isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                     manualReportLabel={manualReportLabel}
                                     hideManualReport={isOrganizerMatchView}
                                     assistedAction={assistedMatchReportAction}
