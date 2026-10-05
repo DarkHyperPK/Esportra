@@ -11,8 +11,12 @@ export {
   liveStatus,
   nameKey,
   needsReview,
+  reviewCheck,
   riotCheckSummary,
+  type RowCheck,
   type VerificationLabel,
   type VerificationTone,
 } from './verification';
 export { describeOnlineOcr, type OcrHealthSummary } from './health';
+export { mergeRiotMatch } from './riotMerge';
+export { compareWithRiot, type ComparedCell, type ComparedRow, type RiotComparison } from './riotComparison';

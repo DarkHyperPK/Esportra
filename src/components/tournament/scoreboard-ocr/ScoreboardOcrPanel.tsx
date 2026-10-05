@@ -84,7 +84,7 @@ export function ScoreboardOcrPanel(props: Props) {
       {parse.isPending && (
         <p role="status" className="flex items-center gap-2 text-[13px] text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin text-rose-400 motion-reduce:animate-none" aria-hidden />
-          Reading the scoreboard. This takes a few seconds.
+          Reading the scoreboard and looking for the game in Riot's match history. This takes a few seconds.
         </p>
       )}
       {parse.isError && (

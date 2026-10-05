@@ -48,6 +48,7 @@ export const ocrVerificationSchema = z.object({
       status: z.enum(['pending', 'confirmed', 'not_found', 'unavailable']),
       matchId: z.string().nullish(),
       checkedAt: z.string().nullish(),
+      autoAccepted: z.boolean().optional(),
     })
     .nullish()
     .catch(null),
@@ -90,6 +91,39 @@ export const scoreboardOcrResultSchema = z.object({
   warnings: z.array(z.object({ code: z.string(), message: z.string(), playerIndex: z.number().nullish() })),
 });
 
+const riotPlayerSchema = z.object({
+  puuid: z.string(),
+  gameName: z.string(),
+  tagLine: z.string(),
+  teamId: z.string(),
+  characterId: z.string(),
+  kills: z.number().int(),
+  deaths: z.number().int(),
+  assists: z.number().int(),
+  acs: z.number().nullish().transform((v) => v ?? null),
+  firstBloods: z.number().nullish().transform((v) => v ?? null),
+  isTeam1: z.boolean(),
+  isTeam2: z.boolean(),
+});
+
+/** The screenshot's game in Riot's match history. A malformed block is dropped, never fatal. */
+export const riotLookupSchema = z
+  .object({
+    status: z.enum(['found', 'not_found', 'unavailable', 'skipped']),
+    match: z
+      .object({
+        matchId: z.string(),
+        map: z.string(),
+        startedAt: z.string(),
+        team1Rounds: z.number().int().nullable(),
+        team2Rounds: z.number().int().nullable(),
+        players: z.array(riotPlayerSchema),
+      })
+      .nullable(),
+  })
+  .nullish()
+  .catch(null);
+
 export const scoreboardOcrParseSchema = z.object({
   parseId: z.string().uuid(),
   screenshotUrl: z.string().url(),
@@ -98,6 +132,7 @@ export const scoreboardOcrParseSchema = z.object({
   team2Id: z.string().uuid(),
   result: scoreboardOcrResultSchema,
   verification: ocrVerificationSchema.nullish(),
+  riot: riotLookupSchema,
 });
 
 const stat = z.number().int().min(0).max(9999).nullable();

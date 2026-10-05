@@ -3,13 +3,20 @@ import { InlineNotice } from '@/components/ui/kit';
 import { ScoreboardOcrReview } from '@/components/tournament/scoreboard-ocr/ScoreboardOcrReview';
 import { useValorantAgents } from '@/hooks/useScoreboardOcr';
 import { draftFromParse, updateDraftPlayer } from '@/services/scoreboardOcr';
-import type { OcrDraft, OcrVerification, ScoreboardOcrResult } from '@/types/scoreboardOcr';
+import type { OcrDraft, OcrVerification, RiotLookup, ScoreboardOcrResult } from '@/types/scoreboardOcr';
 
 /** What a captain would see in the match room for this screenshot (edits stay local, nothing is sent). */
-export function OcrReviewPreview({ result, imageUrl, verification }: { result: ScoreboardOcrResult; imageUrl: string; verification?: OcrVerification | null }) {
+interface Props {
+  result: ScoreboardOcrResult;
+  imageUrl: string;
+  verification?: OcrVerification | null;
+  riot?: RiotLookup | null;
+}
+
+export function OcrReviewPreview({ result, imageUrl, verification, riot }: Props) {
   const agents = useValorantAgents(true);
   const [draft, setDraft] = useState<OcrDraft>(() =>
-    draftFromParse({ parseId: 'debug', screenshotUrl: imageUrl, mapId: null, team1Id: 'team1', team2Id: 'team2', result }, 'team1'),
+    draftFromParse({ parseId: 'debug', screenshotUrl: imageUrl, mapId: null, team1Id: 'team1', team2Id: 'team2', result, riot }, 'team1'),
   );
   return (
     <div className="space-y-3">

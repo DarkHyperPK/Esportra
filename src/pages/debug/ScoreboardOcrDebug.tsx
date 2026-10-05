@@ -12,6 +12,7 @@ import { OcrDebugTable } from '@/components/debug/scoreboard-ocr/OcrDebugTable';
 import { OcrDebugJson } from '@/components/debug/scoreboard-ocr/OcrDebugJson';
 import { OcrReviewPreview } from '@/components/debug/scoreboard-ocr/OcrReviewPreview';
 import { OcrScoreboardPreview } from '@/components/debug/scoreboard-ocr/OcrScoreboardPreview';
+import { OcrRiotComparison } from '@/components/debug/scoreboard-ocr/OcrRiotComparison';
 import { useScoreboardOcrDebug } from '@/hooks/useScoreboardOcrDebug';
 import { getApiErrorMessage } from '@/lib/apiClient';
 
@@ -21,6 +22,7 @@ export default function ScoreboardOcrDebug() {
   const [file, setFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [rosters, setRosters] = useState({ team1: '', team2: '' });
+  const [riotId, setRiotId] = useState('');
 
   useEffect(() => {
     if (!file) return undefined;
@@ -33,7 +35,7 @@ export default function ScoreboardOcrDebug() {
     parse.reset();
     setFile(next);
   };
-  const run = () => file && parse.mutate({ file, team1Names: rosters.team1, team2Names: rosters.team2 });
+  const run = () => file && parse.mutate({ file, team1Names: rosters.team1, team2Names: rosters.team2, riotId });
   const data = parse.data;
 
   return (
@@ -45,6 +47,9 @@ export default function ScoreboardOcrDebug() {
         <p className="max-w-2xl text-sm text-zinc-400">
           Drop a Valorant post-match Scoreboard screenshot to see exactly what the reader returns. No match, no report, nothing is saved.
         </p>
+        <p className="max-w-2xl text-xs text-amber-200/80">
+          Automatic reading can make mistakes. Compare the result with the screenshot, or with Riot's record using a Riot ID below.
+        </p>
       </header>
 
       <OcrServiceStatus health={health.data} loading={health.isFetching} error={health.error} onRefresh={() => health.refetch()} />
@@ -53,7 +58,13 @@ export default function ScoreboardOcrDebug() {
         <div className="space-y-3">
           <ScoreboardOcrDropzone disabled={parse.isPending} onFile={pick} />
           {file && <p className="truncate font-mono text-xs text-zinc-500">{file.name} · {(file.size / 1024).toFixed(0)} KB</p>}
-          <OcrRosterInputs team1={rosters.team1} team2={rosters.team2} onChange={(team, value) => setRosters((r) => ({ ...r, [team]: value }))} />
+          <OcrRosterInputs
+            team1={rosters.team1}
+            team2={rosters.team2}
+            onChange={(team, value) => setRosters((r) => ({ ...r, [team]: value }))}
+            riotId={riotId}
+            onRiotIdChange={setRiotId}
+          />
           <CtaButton type="button" onClick={run} disabled={!file || parse.isPending} className="w-full sm:w-auto">
             {parse.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />Reading…</> : 'Read screenshot'}
           </CtaButton>
@@ -75,6 +86,7 @@ export default function ScoreboardOcrDebug() {
             <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
               <TabsTrigger value="raw">Raw read</TabsTrigger>
+              <TabsTrigger value="riot">Riot check{data.riot?.status === 'found' ? ' ✓' : ''}</TabsTrigger>
               <TabsTrigger value="review">Captain review preview</TabsTrigger>
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
@@ -82,7 +94,8 @@ export default function ScoreboardOcrDebug() {
               <OcrScoreboardPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} bankAgents={health.data?.reachable ? health.data.bankAgents ?? null : null} />
             </TabsContent>
             <TabsContent value="raw"><OcrDebugTable result={data.result} verification={data.verification} /></TabsContent>
-            <TabsContent value="review"><OcrReviewPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} verification={data.verification} /></TabsContent>
+            <TabsContent value="riot"><OcrRiotComparison result={data.result} riot={data.riot} /></TabsContent>
+            <TabsContent value="review"><OcrReviewPreview key={data.elapsedMs + data.result.players.length} result={data.result} imageUrl={imageUrl} verification={data.verification} riot={data.riot} /></TabsContent>
             <TabsContent value="json"><OcrDebugJson result={data.result} fileName={file?.name ?? 'scoreboard'} /></TabsContent>
           </Tabs>
         </section>

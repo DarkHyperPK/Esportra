@@ -8,6 +8,8 @@ interface Props {
   team2Score: number | null;
   mapName: string | null;
   uncertain: boolean;
+  /** The score came from Riot's record of the game, not the screenshot. */
+  fromRiot?: boolean;
   onChange: (team: 'team1' | 'team2', value: number | null) => void;
 }
 
@@ -38,14 +40,14 @@ function ScoreInput({ label, value, leading, uncertain, onChange }: {
 }
 
 /** The hero: the round score as a versus lockup. Winner reads white, the other side grey, never red. */
-export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, team2Score, mapName, uncertain, onChange }: Props) {
+export function ScoreboardOcrScoreHeader({ team1Name, team2Name, team1Score, team2Score, mapName, uncertain, fromRiot = false, onChange }: Props) {
   const t1Leads = (team1Score ?? 0) > (team2Score ?? 0);
   const t2Leads = (team2Score ?? 0) > (team1Score ?? 0);
   return (
     <div className="relative border border-white/[0.07] bg-card/70 px-5 py-4">
       <span className="absolute left-0 top-0 h-full w-[2px] bg-rose-500" aria-hidden />
       <p className={EYEBROW_CLASS}>
-        Read from screenshot{mapName ? ` · ${mapName}` : ''}
+        {fromRiot ? "From Riot's record" : 'Read from screenshot'}{mapName ? ` · ${mapName}` : ''}
       </p>
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3">
         <p className={cn('line-clamp-2 min-w-0 text-right font-heading text-sm font-bold leading-tight [overflow-wrap:normal] sm:text-base', t1Leads ? 'text-white' : 'text-zinc-400')}>

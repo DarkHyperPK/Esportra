@@ -1,10 +1,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiClient } from '@/lib/apiClient';
-import { ocrVerificationSchema, scoreboardOcrResultSchema, validateScreenshotFile } from '@/schemas/scoreboardOcrSchema';
+import { ocrVerificationSchema, riotLookupSchema, scoreboardOcrResultSchema, validateScreenshotFile } from '@/schemas/scoreboardOcrSchema';
 import type { ScoreboardOcrDebugResponse, ScoreboardOcrHealth } from '@/types/scoreboardOcr';
 
-const debugResponseSchema = z.object({ elapsedMs: z.number(), result: scoreboardOcrResultSchema, verification: ocrVerificationSchema.nullish() });
+const debugResponseSchema = z.object({
+  elapsedMs: z.number(),
+  result: scoreboardOcrResultSchema,
+  verification: ocrVerificationSchema.nullish(),
+  riot: riotLookupSchema,
+});
 const healthSchema = z.object({
   configured: z.boolean(),
   reachable: z.boolean(),
@@ -22,6 +27,8 @@ interface DebugParseParams {
   file: File;
   team1Names: string;
   team2Names: string;
+  /** Riot ID ("name#tag") of anyone in the game: the API finds the game in their Riot history. */
+  riotId?: string;
 }
 
 /** Staff OCR test bench: read any screenshot without a match; the API stores nothing. */
@@ -35,13 +42,14 @@ export function useScoreboardOcrDebug() {
   });
 
   const parse = useMutation({
-    mutationFn: async ({ file, team1Names, team2Names }: DebugParseParams): Promise<ScoreboardOcrDebugResponse> => {
+    mutationFn: async ({ file, team1Names, team2Names, riotId }: DebugParseParams): Promise<ScoreboardOcrDebugResponse> => {
       const invalid = validateScreenshotFile(file);
       if (invalid) throw new Error(invalid);
       const form = new FormData();
       form.append('file', file);
       form.append('team1Names', team1Names);
       form.append('team2Names', team2Names);
+      if (riotId?.includes('#')) form.append('riotId', riotId.trim());
       const raw = await apiClient.upload<unknown>('/api/debug/scoreboard-ocr', form);
       const checked = debugResponseSchema.safeParse(raw);
       if (!checked.success) throw new Error('The OCR service returned a result this page does not understand.');

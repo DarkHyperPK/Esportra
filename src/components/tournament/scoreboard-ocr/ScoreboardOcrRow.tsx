@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import type { OcrDraftPlayer, OcrStatKey, TeamSlot, VerificationStatus } from '@/types/scoreboardOcr';
+import type { RowCheck } from '@/services/scoreboardOcr';
+import type { OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
 import { desktopGridClass, mobileStatsGridClass, type ReviewStat } from './reviewStats';
 import { VerificationBadge } from './VerificationBadge';
 
@@ -13,8 +14,8 @@ interface Props {
   teamNames: Record<TeamSlot, string>;
   agents: ValorantAgentOption[];
   stats: ReviewStat[];
-  /** Roster check for this row, when the API returned one. */
-  verification?: VerificationStatus | null;
+  /** Roster (and Riot) check for this row, when the API returned one. */
+  verification?: RowCheck | null;
   onChange: (patch: RowPatch) => void;
 }
 
@@ -68,7 +69,12 @@ export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, veri
           onChange={(event) => onChange({ name: event.target.value })}
           className={cn(CELL, 'w-full font-medium', flagged('name') && FLAG)}
         />
-        {verification ? <VerificationBadge status={verification} /> : null}
+        {verification || player.riotId ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            {verification ? <VerificationBadge status={verification.status} riotStatus={verification.riotStatus} /> : null}
+            {player.riotId ? <span className="truncate font-mono text-[10px] text-zinc-500" dir="auto">{player.riotId}</span> : null}
+          </div>
+        ) : null}
       </div>
       <div className={cn('col-span-2 grid gap-2 sm:contents', mobileStatsGridClass(stats.length))}>
         {stats.map(({ key, label, title }) => (

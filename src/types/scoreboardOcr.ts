@@ -122,6 +122,40 @@ export interface RiotCheck {
   status: RiotCheckStatus;
   matchId?: string | null;
   checkedAt?: string | null;
+  /** Riot's record backed every player and number, so the report was accepted without the opponent. */
+  autoAccepted?: boolean;
+}
+
+/** A player in Riot's record of the match (the same payload "Auto report" submits). */
+export interface RiotMatchPlayer {
+  puuid: string;
+  gameName: string;
+  tagLine: string;
+  teamId: string;
+  characterId: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  acs: number | null;
+  firstBloods: number | null;
+  isTeam1: boolean;
+  isTeam2: boolean;
+}
+
+export interface RiotMatchSummary {
+  matchId: string;
+  map: string;
+  startedAt: string;
+  /** Rounds per bracket team; null when no linked player showed which side each team played. */
+  team1Rounds: number | null;
+  team2Rounds: number | null;
+  players: RiotMatchPlayer[];
+}
+
+/** The screenshot's game in Riot's match history, looked up at upload. */
+export interface RiotLookup {
+  status: 'found' | 'not_found' | 'unavailable' | 'skipped';
+  match: RiotMatchSummary | null;
 }
 
 export interface OcrVerification {
@@ -138,6 +172,7 @@ export interface ScoreboardOcrParse {
   team2Id: string;
   result: ScoreboardOcrResult;
   verification?: OcrVerification | null;
+  riot?: RiotLookup | null;
 }
 
 /** One editable row in the captain's review. Values are what will be submitted. */
@@ -152,6 +187,8 @@ export interface OcrDraftPlayer {
   stats: Partial<Record<OcrStatKey, number | null>>;
   /** Fields the reader was unsure about — highlighted until the captain edits them. */
   uncertain: Array<OcrStatKey | 'name' | 'agent' | 'team'>;
+  /** Full Riot ID ("name#tag") when this row was matched to Riot's record of the game. */
+  riotId?: string | null;
 }
 
 export interface OcrDraft {
@@ -166,6 +203,8 @@ export interface OcrDraft {
   columns: OcrStatKey[];
   players: OcrDraftPlayer[];
   warnings: OcrWarning[];
+  /** Set when the numbers came from Riot's record of this game; sent with the report. */
+  riotMatchId: string | null;
 }
 
 /** Staff OCR test bench (/debug/riot/ocr). */
@@ -173,6 +212,7 @@ export interface ScoreboardOcrDebugResponse {
   elapsedMs: number;
   result: ScoreboardOcrResult;
   verification?: OcrVerification | null;
+  riot?: RiotLookup | null;
 }
 
 export interface ScoreboardOcrHealth {

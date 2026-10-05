@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { EYEBROW_CLASS, InlineNotice } from '@/components/ui/kit';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import { liveStatus } from '@/services/scoreboardOcr';
+import { reviewCheck } from '@/services/scoreboardOcr';
 import type { OcrDraft, OcrDraftPlayer, OcrVerification, TeamSlot } from '@/types/scoreboardOcr';
 import { ScoreboardOcrRow, type RowPatch } from './ScoreboardOcrRow';
 import { desktopGridClass, mobileStatsGridClass, visibleStats, type ReviewStat } from './reviewStats';
 import { cn } from '@/lib/utils';
 import { ScoreboardOcrScoreHeader } from './ScoreboardOcrScoreHeader';
+import { ReviewSourceNotice } from './ReviewSourceNotice';
 
 interface Props {
   draft: OcrDraft;
@@ -49,7 +50,7 @@ function TeamGroup({ title, players, ...rest }: { title: string; players: OcrDra
           teamNames={rest.teamNames}
           agents={rest.agents}
           stats={rest.stats}
-          verification={liveStatus(player.name, rest.verification?.players.find((v) => v.index === rowIndex(player)))}
+          verification={reviewCheck(player, rest.verification?.players.find((v) => v.index === rowIndex(player)))}
           onChange={(patch) => rest.onPlayerChange(player.key, patch)}
         />
       ))}
@@ -83,9 +84,10 @@ export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitti
             team2Score={draft.team2Score}
             mapName={draft.mapName}
             uncertain={draft.uncertainScore}
+            fromRiot={draft.riotMatchId !== null}
             onChange={onScoreChange}
           />
-          <p className="text-[13px] text-zinc-400">Read from your screenshot. Give it a quick look and fix anything that's off before sending.</p>
+          <ReviewSourceNotice fromRiot={draft.riotMatchId !== null} />
         </div>
       </div>
       <div className="space-y-3">
@@ -100,7 +102,7 @@ export function ScoreboardOcrReview({ draft, teamNames, agents, errors, submitti
         {!readOnly && <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
           <GhostButton type="button" onClick={onManual} disabled={submitting}>Enter result manually</GhostButton>
           <CtaButton type="button" onClick={onSubmit} disabled={submitting}>
-            {submitting ? 'Sending…' : 'Send to opponent to confirm'}
+            {submitting ? 'Sending…' : draft.riotMatchId ? 'Send result' : 'Send to opponent to confirm'}
           </CtaButton>
         </div>}
       </div>

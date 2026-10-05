@@ -14,6 +14,8 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 import { competitorIdsMatch } from '@/utils/competitorId';
 import { OcrVerificationSummary } from './scoreboard-ocr/OcrVerificationSummary';
 import { disputeReasonFor } from '@/services/scoreboardOcr';
+import { acceptedLabel } from '@/services/matchReports/responseWindow';
+import { ReportResponseTimer } from './ReportResponseTimer';
 
 interface MatchResultVerificationProps {
   matchId: string;
@@ -53,6 +55,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
     isMyReport,
     acceptReport,
     disputeReport,
+    refreshReports,
   } = useMatchResultReport(matchId, gameNumber, { subscribeRealtime });
   const { toast } = useToast();
 
@@ -170,7 +173,8 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
               </div>
               <div className="text-center mt-6">
                 <p className="text-xs text-zinc-500">
-                  Verified {acceptedReport.responded_at ? format(new Date(acceptedReport.responded_at), 'MMM d, h:mm a') : ''}
+                  {acceptedLabel(acceptedReport.auto_accepted)}
+                  {acceptedReport.responded_at ? ` · ${format(new Date(acceptedReport.responded_at), 'MMM d, h:mm a')}` : ''}
                 </p>
               </div>
             </div>
@@ -251,6 +255,14 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
           </div>
         </div>
         <div className="p-4 space-y-4">
+          {activeReport.accept_by ? (
+            <ReportResponseTimer
+              acceptBy={activeReport.accept_by}
+              ownSide={isOwnSideReport}
+              opponentName={competitorIdsMatch(activeReport.reported_by_team_id, team1Id) ? team2Name : team1Name}
+              onExpire={refreshReports}
+            />
+          ) : null}
           <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">

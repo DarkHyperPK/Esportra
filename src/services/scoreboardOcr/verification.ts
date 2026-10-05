@@ -1,4 +1,4 @@
-import type { OcrVerification, RiotCheck, RiotStatus, TeamSlot, VerificationStatus, VerifiedPlayer } from '@/types/scoreboardOcr';
+import type { OcrDraftPlayer, OcrVerification, RiotCheck, RiotStatus, TeamSlot, VerificationStatus, VerifiedPlayer } from '@/types/scoreboardOcr';
 
 export type VerificationTone = 'good' | 'neutral' | 'check';
 
@@ -42,7 +42,9 @@ export function badgeFor(player: Pick<VerifiedPlayer, 'status' | 'riotStatus'>):
 export function riotCheckSummary(riot: RiotCheck | null | undefined): { text: string; tone: VerificationTone } | null {
   switch (riot?.status) {
     case 'confirmed':
-      return { text: "Checked against Riot's record of the match.", tone: 'good' };
+      return riot.autoAccepted
+        ? { text: "Riot's record of the match confirms every player and number, so the result was accepted automatically.", tone: 'good' }
+        : { text: "Checked against Riot's record of the match.", tone: 'good' };
     case 'pending':
       return { text: 'Looking for this game in Riot match history…', tone: 'neutral' };
     case 'not_found':
@@ -76,6 +78,24 @@ export function needsReview(verification: OcrVerification | null | undefined): V
 export function liveStatus(currentName: string, verified: VerifiedPlayer | undefined): VerificationStatus | null {
   if (!verified) return null;
   return nameKey(currentName) !== nameKey(verified.name) ? 'edited' : verified.status;
+}
+
+export interface RowCheck {
+  status: VerificationStatus;
+  riotStatus: RiotStatus | null;
+}
+
+/**
+ * A review row's badge as the captain edits. A row filled from Riot's record keeps Riot's result while
+ * its name is still Riot's; any other renamed row reads "Name changed" until the server re-checks it.
+ */
+export function reviewCheck(player: Pick<OcrDraftPlayer, 'name' | 'riotId'>, found: VerifiedPlayer | undefined): RowCheck | null {
+  const riotName = player.riotId?.split('#')[0];
+  if (riotName && nameKey(player.name) === nameKey(riotName)) {
+    return { status: found && found.status !== 'edited' ? found.status : 'verified', riotStatus: found?.riotStatus ?? null };
+  }
+  const status = liveStatus(player.name, found);
+  return status ? { status, riotStatus: status === 'edited' ? null : found?.riotStatus ?? null } : null;
 }
 
 function describe(player: VerifiedPlayer, teamNames: Record<TeamSlot, string>): string {

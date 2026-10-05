@@ -7,6 +7,7 @@ import {
   type ScoreboardOcrParse,
   type TeamSlot,
 } from '@/types/scoreboardOcr';
+import { mergeRiotMatch } from './riotMerge';
 
 /** Below this the reader is unsure; the field is highlighted for the captain. */
 export const LOW_CONFIDENCE = 0.6;
@@ -55,6 +56,12 @@ function draftPlayer(row: OcrPlayerRow, index: number, allyTeam: TeamSlot, colum
  * ally (tinted) side — and the score is flagged so the captain checks it.
  */
 export function draftFromParse(parse: ScoreboardOcrParse, reporterSlot: TeamSlot): OcrDraft {
+  const read = draftFromRead(parse, reporterSlot);
+  // Riot's record of the same game, when found at upload, replaces what it covers.
+  return parse.riot?.status === 'found' && parse.riot.match ? mergeRiotMatch(read, parse.riot.match) : read;
+}
+
+function draftFromRead(parse: ScoreboardOcrParse, reporterSlot: TeamSlot): OcrDraft {
   const { result } = parse;
   const allyTeam = result.allyTeam.value ?? reporterSlot;
   const columns = result.columns.filter(isStatKey);
@@ -73,6 +80,7 @@ export function draftFromParse(parse: ScoreboardOcrParse, reporterSlot: TeamSlot
     columns,
     players: result.players.map((row, index) => draftPlayer(row, index, allyTeam, columns)),
     warnings: result.warnings,
+    riotMatchId: null,
   };
 }
 

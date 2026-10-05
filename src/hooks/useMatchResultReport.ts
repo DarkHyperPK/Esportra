@@ -1,9 +1,11 @@
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import type { OcrVerification } from '@/types/scoreboardOcr';
+import type { AutoAcceptReason } from '@/services/matchReports/responseWindow';
 
 export interface MatchResultReport {
   id: string;
@@ -29,6 +31,10 @@ export interface MatchResultReport {
   ocr_parse_id?: string | null;
   /** Screenshot reports: who is on it, checked by the API against the competitors' rosters at submit. */
   ocr_verification?: OcrVerification | null;
+  /** When the opponent's response window closes; the API accepts the result then. */
+  accept_by?: string | null;
+  /** Set when the system accepted the result instead of a captain. */
+  auto_accepted?: AutoAcceptReason | null;
   created_at: string;
 }
 
@@ -163,5 +169,11 @@ export const useMatchResultReport = (
     },
   });
 
-  return { reports, activeReport, acceptedReport, isMyReport, isLoading, submitReport, acceptReport, disputeReport };
+  /** Refetch after the response window closes, to show the automatic acceptance. */
+  const refreshReports = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] }),
+    [queryClient, matchId],
+  );
+
+  return { reports, activeReport, acceptedReport, isMyReport, isLoading, submitReport, acceptReport, disputeReport, refreshReports };
 };
