@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Download, ImagePlus, X } from "lucide-react";
+import { Download } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -44,52 +44,7 @@ type PublicMapVetoViewProps = {
   onPerformTossChoice?: (goFirst: boolean) => Promise<void>;
   team1Logo: string | null;
   team2Logo: string | null;
-  onTeam1Logo: (url: string | null) => void;
-  onTeam2Logo: (url: string | null) => void;
 };
-
-const TeamLogoSlot = ({
-  teamName,
-  value,
-  onChange,
-}: {
-  teamName: string;
-  value: string | null;
-  onChange: (url: string | null) => void;
-}) => (
-  <div className="relative flex items-center gap-2">
-    <label
-      className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden border border-white/10 bg-black/30 transition-colors hover:border-white/25"
-      title={`Upload ${teamName} logo`}
-    >
-      <input
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onChange(URL.createObjectURL(file));
-          e.target.value = "";
-        }}
-      />
-      {value ? (
-        <img src={value} alt={teamName} className="h-full w-full object-contain" />
-      ) : (
-        <ImagePlus className="h-3.5 w-3.5 text-zinc-500" />
-      )}
-    </label>
-    {value && (
-      <button
-        type="button"
-        onClick={() => onChange(null)}
-        className="text-zinc-600 transition-colors hover:text-zinc-400"
-        aria-label={`Remove ${teamName} logo`}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    )}
-  </div>
-);
 
 const noOp = () => undefined;
 
@@ -125,8 +80,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   onPerformTossChoice,
   team1Logo,
   team2Logo,
-  onTeam1Logo,
-  onTeam2Logo,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
@@ -399,13 +352,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       </div>
       <div className="mx-auto max-w-[1400px] space-y-6">
         {pageHeader}
-        {isHost && !vetoLive && !isComplete && (
-          <div className="flex items-center gap-4">
-            <TeamLogoSlot teamName={state.team1Name} value={team1Logo} onChange={onTeam1Logo} />
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">logos</span>
-            <TeamLogoSlot teamName={state.team2Name} value={team2Logo} onChange={onTeam2Logo} />
-          </div>
-        )}
         <VetoTeamDisplay
           team1Name={state.team1Name}
           team1Logo={team1Logo}

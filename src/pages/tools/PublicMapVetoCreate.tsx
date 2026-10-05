@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { ArrowLeft, ArrowRight, CheckCircle2, Map as MapIcon, Swords, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, Map as MapIcon, Swords, Users, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +88,8 @@ const PublicMapVetoCreate = () => {
   const [bestOf, setBestOf] = useState("3");
   const [team1Name, setTeam1Name] = useState("Team A");
   const [team2Name, setTeam2Name] = useState("Team B");
+  const [team1Logo, setTeam1Logo] = useState<string | null>(null);
+  const [team2Logo, setTeam2Logo] = useState<string | null>(null);
   const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const gameConfig = PUBLIC_VETO_GAMES.find((item) => item.value === game) ?? PUBLIC_VETO_GAMES[0];
@@ -166,7 +168,7 @@ const PublicMapVetoCreate = () => {
         team2Name: team2Name.trim(),
         mapIds: selectedMapIds,
       });
-      navigate(`/tools/map-veto/host/${response.hostToken}`);
+      navigate(`/tools/map-veto/host/${response.hostToken}`, { state: { team1Logo, team2Logo } });
     } catch (err) {
       toast({ title: "Could not create veto room", description: getApiErrorMessage(err), variant: "destructive" });
     } finally {
@@ -285,6 +287,33 @@ const PublicMapVetoCreate = () => {
                   onChange={(e) => setTeam1Name(e.target.value)}
                   className="h-10 border-white/10 bg-black/40 text-sm text-white"
                 />
+                <div className="flex items-center gap-3 pt-1">
+                  <label className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center overflow-hidden border border-white/10 bg-black/30 transition-colors hover:border-white/25">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setTeam1Logo(URL.createObjectURL(file));
+                        e.target.value = "";
+                      }}
+                    />
+                    {team1Logo ? (
+                      <img src={team1Logo} alt="Team A logo" className="h-full w-full object-contain" />
+                    ) : (
+                      <ImagePlus className="h-3.5 w-3.5 text-zinc-500" />
+                    )}
+                  </label>
+                  <span className="text-[13px] text-zinc-400">
+                    {team1Logo ? "Logo uploaded" : "Upload team logo (optional)"}
+                  </span>
+                  {team1Logo && (
+                    <button type="button" onClick={() => setTeam1Logo(null)} className="ml-auto text-zinc-600 hover:text-zinc-400">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="team-b">Team B</Label>
@@ -294,6 +323,33 @@ const PublicMapVetoCreate = () => {
                   onChange={(e) => setTeam2Name(e.target.value)}
                   className="h-10 border-white/10 bg-black/40 text-sm text-white"
                 />
+                <div className="flex items-center gap-3 pt-1">
+                  <label className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center overflow-hidden border border-white/10 bg-black/30 transition-colors hover:border-white/25">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setTeam2Logo(URL.createObjectURL(file));
+                        e.target.value = "";
+                      }}
+                    />
+                    {team2Logo ? (
+                      <img src={team2Logo} alt="Team B logo" className="h-full w-full object-contain" />
+                    ) : (
+                      <ImagePlus className="h-3.5 w-3.5 text-zinc-500" />
+                    )}
+                  </label>
+                  <span className="text-[13px] text-zinc-400">
+                    {team2Logo ? "Logo uploaded" : "Upload team logo (optional)"}
+                  </span>
+                  {team2Logo && (
+                    <button type="button" onClick={() => setTeam2Logo(null)} className="ml-auto text-zinc-600 hover:text-zinc-400">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="text-sm text-zinc-400">
                 You'll run the toss in the veto room to decide which team goes first.
