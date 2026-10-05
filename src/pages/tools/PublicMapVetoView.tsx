@@ -14,7 +14,8 @@ import { GameMap, isVetoLive, mapApiVetoToLocal } from "@/hooks/useMapVetoMachin
 import { useCrispMapImages } from "@/hooks/useCrispMapImages";
 import { withMapImages } from "@/services/maps/valorantMapAssets";
 import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory";
-import { MapVetoResultCard } from "./MapVetoResultCard";
+import { PublicMapVetoBroadcastOverlay } from "./PublicMapVetoBroadcastOverlay";
+import { buildOverlayStepCards } from "./buildOverlayStepCards";
 import { PublicVetoTossStage } from "./PublicVetoTossStage";
 import { tossDecisionLine } from "./tossPresentation";
 import { downloadNodeAsPng } from "@/lib/exportNodePng";
@@ -22,6 +23,7 @@ import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
   buildPublicTeamVetoUrl,
+  PUBLIC_VETO_GAMES,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
@@ -126,7 +128,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   onTeam1Logo,
   onTeam2Logo,
 }) => {
-  const resultCardRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showSideDialog, setShowSideDialog] = useState(false);
@@ -144,6 +146,25 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   );
 
   const isComplete = veto.status === "completed";
+  const stepCards = useMemo(
+    () => buildOverlayStepCards({
+      veto,
+      history: vetoHistory,
+      maps: gameMaps,
+      game: state.game,
+      bestOf: veto.best_of || state.bestOf || 1,
+      team1Name: state.team1Name,
+      team2Name: state.team2Name,
+      team1Id: state.team1Id,
+      team2Id: state.team2Id,
+    }),
+    [veto, vetoHistory, gameMaps, state.game, state.bestOf, state.team1Name, state.team2Name, state.team1Id, state.team2Id],
+  );
+  const overlayMaps = useMemo(
+    () => gameMaps.map((m) => ({ id: String(m.id), name: m.map_name, imageUrl: m.map_image_url })),
+    [gameMaps],
+  );
+  const gameLabel = PUBLIC_VETO_GAMES.find((g) => g.value === state.game)?.label ?? state.game;
   const vetoLive = isVetoLive(veto);
   const tossPending =
     state.status === "pending_toss" || state.status === "toss_choice_pending";
@@ -203,7 +224,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   }, [acting, onMapAction]);
 
   const handleDownload = async () => {
-    const node = resultCardRef.current;
+    const node = overlayRef.current;
     if (!node) return;
     await downloadNodeAsPng(
       node,
@@ -402,13 +423,22 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
           className="pointer-events-none absolute left-[-9999px] top-0 overflow-hidden"
           aria-hidden="true"
         >
-          <MapVetoResultCard
-            ref={resultCardRef}
-            state={state}
-            history={vetoHistory}
-            team1Logo={team1Logo}
-            team2Logo={team2Logo}
-          />
+          <div ref={overlayRef}>
+            <PublicMapVetoBroadcastOverlay
+              maps={overlayMaps}
+              cards={stepCards}
+              gameLabel={gameLabel}
+              bestOf={currentBestOf}
+              team1Name={state.team1Name}
+              team2Name={state.team2Name}
+              status={veto.status}
+              onClock={null}
+              transparent={false}
+              transition="none"
+              replay={false}
+              ready={true}
+            />
+          </div>
         </div>
       )}
 
