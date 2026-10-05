@@ -20,7 +20,11 @@ export const VetoCrest: React.FC<VetoCrestProps> = ({ name, logo, className }) =
 
     return (
         <span
-            className={cn('flex shrink-0 items-center justify-center overflow-hidden bg-black/70 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]', className)}
+            className={cn(
+                'flex shrink-0 items-center justify-center overflow-hidden',
+                showLogo ? 'bg-transparent' : 'bg-black/70 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]',
+                className,
+            )}
             title={name}
         >
             {showLogo && src ? (
