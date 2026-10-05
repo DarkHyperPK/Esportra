@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { Notification } from '@/contexts/notification-context';
 import type { StaffInviteState } from '@/hooks/useNotificationActions';
 import { getNotificationKind } from '@/utils/notificationRegistry';
-import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
+import { getDenseScheduleNotificationMeta, isLongNotificationMessage } from '@/utils/notificationDisplay';
 import { MatchScheduleNotificationBody } from './MatchScheduleNotificationBody';
 import { NotificationVisual } from './NotificationVisual';
 
@@ -46,6 +46,12 @@ export function NotificationItem({
   const isPendingStaffInvite = n.type === 'staff_invite' && typeof n.data?.organization_staff_id === 'string'
     && staffInvite !== 'accepted' && staffInvite !== 'declined';
   const busy = staffInvite === 'accepting' || staffInvite === 'declining';
+  // Long messages (organizer alerts list several findings) expand in place; the row still opens the action.
+  const isLong = !hasSchedule && !isAnnouncement && isLongNotificationMessage(n.message);
+  const toggleExpanded = () => {
+    setExpanded((v) => !v);
+    onMarkRead(n);
+  };
 
   const handleMain = () => {
     if (isAnnouncement) {
@@ -108,8 +114,13 @@ export function NotificationItem({
           </span>
         </button>
 
-        {(isAnnouncement || isPendingStaffInvite || staffInvite === 'accepted' || staffInvite === 'declined') && (
+        {(isAnnouncement || isLong || isPendingStaffInvite || staffInvite === 'accepted' || staffInvite === 'declined') && (
           <div className="mt-3 flex flex-wrap items-center gap-2 pl-[3.5rem]">
+            {isLong && (
+              <CommandButton variant="ghost" size="sm" onClick={toggleExpanded} aria-expanded={expanded}>
+                {expanded ? 'Show less' : 'Read more'}
+              </CommandButton>
+            )}
             {isAnnouncement && (
               <>
                 <CommandButton variant="ghost" size="sm" onClick={handleMain} aria-expanded={expanded}>

@@ -66,9 +66,11 @@ describe('screenshot report verification', () => {
     expect(reason).toContain('score differs');
   });
 
-  it('says where the Riot check stands', () => {
-    expect(riotCheckSummary({ status: 'pending' })?.text).toContain('Looking for this game');
-    expect(riotCheckSummary({ status: 'not_found' })?.text).toContain('screenshot only');
+  it("speaks up only when Riot's record backs the report", () => {
+    expect(riotCheckSummary({ status: 'confirmed' })?.tone).toBe('good');
+    expect(riotCheckSummary({ status: 'confirmed', autoAccepted: true })?.text).toContain('accepted automatically');
+    expect(riotCheckSummary({ status: 'pending' })).toBeNull();
+    expect(riotCheckSummary({ status: 'not_found' })).toBeNull();
     expect(riotCheckSummary(null)).toBeNull();
   });
 

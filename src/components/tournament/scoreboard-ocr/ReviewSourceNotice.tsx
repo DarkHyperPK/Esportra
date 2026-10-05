@@ -1,27 +1,25 @@
-import { BadgeCheck, TriangleAlert } from 'lucide-react';
+import { BadgeCheck, Sparkles } from 'lucide-react';
 
 /**
- * Where the review's numbers came from. Riot's record is exact; a screenshot read can be wrong, so the
- * captain is asked to check it against the image before sending.
+ * What the reader filled in. Confident by default: the captain only hears about cells the reader
+ * genuinely couldn't make out (they are highlighted), never a blanket "check everything".
  */
-export function ReviewSourceNotice({ fromRiot }: { fromRiot: boolean }) {
-  if (fromRiot) {
+export function ReviewSourceNotice({ hardToRead }: { hardToRead: number }) {
+  if (hardToRead === 0) {
     return (
       <p className="flex items-start gap-2 text-[13px] leading-relaxed text-emerald-300" role="status">
         <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <span>
-          Matched to Riot's record of this game. Names, K/D/A, ACS and the score come from Riot.
-          <span className="text-zinc-400"> Check anything else against your screenshot.</span>
-        </span>
+        <span>Everything's filled in from your screenshot. Send it when you're ready.</span>
       </p>
     );
   }
   return (
-    <p className="flex items-start gap-2 text-[13px] leading-relaxed text-amber-200/90" role="note">
-      <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+    <p className="flex items-start gap-2 text-[13px] leading-relaxed text-zinc-300" role="status">
+      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
       <span>
-        Read automatically from your screenshot. It can make mistakes, so check every number against the image before you
-        send. Highlighted cells were hard to read.
+        Filled in from your screenshot.{' '}
+        {hardToRead === 1 ? 'One spot was' : `${hardToRead} spots were`} hard to make out and{' '}
+        {hardToRead === 1 ? 'is' : 'are'} highlighted.
       </span>
     </p>
   );

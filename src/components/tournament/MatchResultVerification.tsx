@@ -280,7 +280,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                 the image before you accept. If anything is wrong, dispute it.
               </p>
             )}
-            {activeReport.source === 'ocr' && (
+            {(activeReport.ocr_verification?.players.length ?? 0) > 0 && (
               <div className="mb-3">
                 <OcrVerificationSummary
                   verification={activeReport.ocr_verification}

@@ -14,12 +14,12 @@ const NO_TAG_HINT = "Scoreboards don't show the #tag, so a name alone isn't proo
 export const VERIFICATION_LABELS: Record<VerificationStatus, VerificationLabel> = {
   verified: { label: 'Name matches Riot ID', tone: 'neutral', hint: NO_TAG_HINT },
   claimed: { label: 'Name matches typed Riot ID', tone: 'neutral', hint: NO_TAG_HINT },
-  username_only: { label: 'Matched by username', tone: 'neutral' },
-  unconfirmed: { label: 'Name not readable', tone: 'check' },
-  edited: { label: 'Name changed', tone: 'check' },
-  other_team: { label: "On the other team's roster", tone: 'check' },
-  duplicate: { label: 'Listed twice', tone: 'check' },
-  unknown: { label: 'Not on the roster', tone: 'check' },
+  username_only: { label: 'Matched by username', tone: 'neutral', hint: "Matched to an Esportra username; this player hasn't linked a Riot ID." },
+  unconfirmed: { label: 'Name not readable', tone: 'check', hint: "The name couldn't be read, so it was matched to the team's remaining player." },
+  edited: { label: 'Name changed', tone: 'check', hint: 'This name was changed from what the screenshot showed.' },
+  other_team: { label: "On the other team's roster", tone: 'check', hint: 'This player is registered with the other team. Use the arrows to move them if they are on the wrong side.' },
+  duplicate: { label: 'Listed twice', tone: 'check', hint: 'The same player appears on two rows.' },
+  unknown: { label: 'Not on the roster', tone: 'check', hint: "This name isn't on either team's roster. Fix the spelling if it was misread; a substitute can stay as is." },
 };
 
 /** From Riot's own record of the match, by account (PUUID): this is the proof a screenshot can't give. */
@@ -38,22 +38,15 @@ export function badgeFor(player: Pick<VerifiedPlayer, 'status' | 'riotStatus'>):
   return player.riotStatus ? RIOT_LABELS[player.riotStatus] : VERIFICATION_LABELS[player.status];
 }
 
-/** One line on where the Riot check of a report stands. */
+/**
+ * One line when Riot's record backs the report. The background re-check (pending, not found,
+ * unavailable) stays quiet: players only hear about it when it confirms something.
+ */
 export function riotCheckSummary(riot: RiotCheck | null | undefined): { text: string; tone: VerificationTone } | null {
-  switch (riot?.status) {
-    case 'confirmed':
-      return riot.autoAccepted
-        ? { text: "Riot's record of the match confirms every player and number, so the result was accepted automatically.", tone: 'good' }
-        : { text: "Checked against Riot's record of the match.", tone: 'good' };
-    case 'pending':
-      return { text: 'Looking for this game in Riot match history…', tone: 'neutral' };
-    case 'not_found':
-      return { text: "Riot's record of this game wasn't found. Names were checked from the screenshot only.", tone: 'check' };
-    case 'unavailable':
-      return { text: 'Riot match data is unavailable. Names were checked from the screenshot only.', tone: 'neutral' };
-    default:
-      return null;
-  }
+  if (riot?.status !== 'confirmed') return null;
+  return riot.autoAccepted
+    ? { text: "Riot's record of the match confirms every player and number, so the result was accepted automatically.", tone: 'good' }
+    : { text: "Checked against Riot's record of the match.", tone: 'good' };
 }
 
 /** Same comparison key as the API and the OCR service: case, spacing and look-alikes ignored. */
@@ -85,15 +78,8 @@ export interface RowCheck {
   riotStatus: RiotStatus | null;
 }
 
-/**
- * A review row's badge as the captain edits. A row filled from Riot's record keeps Riot's result while
- * its name is still Riot's; any other renamed row reads "Name changed" until the server re-checks it.
- */
-export function reviewCheck(player: Pick<OcrDraftPlayer, 'name' | 'riotId'>, found: VerifiedPlayer | undefined): RowCheck | null {
-  const riotName = player.riotId?.split('#')[0];
-  if (riotName && nameKey(player.name) === nameKey(riotName)) {
-    return { status: found && found.status !== 'edited' ? found.status : 'verified', riotStatus: found?.riotStatus ?? null };
-  }
+/** A review row's badge as the captain edits: a renamed row reads "Name changed" until the server re-checks it. */
+export function reviewCheck(player: Pick<OcrDraftPlayer, 'name'>, found: VerifiedPlayer | undefined): RowCheck | null {
   const status = liveStatus(player.name, found);
   return status ? { status, riotStatus: status === 'edited' ? null : found?.riotStatus ?? null } : null;
 }

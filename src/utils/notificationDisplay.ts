@@ -268,3 +268,9 @@ export function isCaptainMatchNotification(type?: string): boolean {
     || type === 'veto_your_turn'
     || type === 'veto_completed';
 }
+
+/** More than the two lines a collapsed notification shows: it gets "Read more". */
+export function isLongNotificationMessage(message: string | null | undefined): boolean {
+  if (!message) return false;
+  return message.length > 110 || message.split('\n').length > 2;
+}

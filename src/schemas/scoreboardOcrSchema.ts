@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { VerificationFlag } from '@/types/scoreboardOcr';
+import { isRiotCandidate } from '@/services/riotReport/riotReport';
+import type { RiotMatchCandidate } from '@/types/riotMatchCandidate';
 
 const VERIFICATION_FLAGS = ['screenshot_reused', 'date_mismatch', 'stats_mismatch', 'score_mismatch'] as const satisfies readonly VerificationFlag[];
 
@@ -110,6 +112,9 @@ const riotPlayerSchema = z.object({
 export const riotLookupSchema = z
   .object({
     status: z.enum(['found', 'not_found', 'unavailable', 'skipped']),
+    /** The screenshot is provably this Riot game: it is reported from Riot right away. */
+    confident: z.boolean().optional(),
+    candidate: z.custom<RiotMatchCandidate>(isRiotCandidate).nullish().catch(null),
     match: z
       .object({
         matchId: z.string(),

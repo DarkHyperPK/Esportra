@@ -29,8 +29,6 @@ export interface OcrReportSubmission {
   screenshotUrls: string[];
   source: 'ocr';
   ocrParseId: string;
-  /** The game in Riot's history the review was filled from; the API re-checks it. */
-  riotMatchId?: string;
 }
 
 function toScoreboardPlayer(player: OcrDraftPlayer, index: number, parseId: string, roundsPlayed: number): ScoreboardPlayer {
@@ -107,6 +105,5 @@ export function buildOcrSubmission(draft: OcrDraft, ctx: OcrSubmissionContext): 
     screenshotUrls: [draft.screenshotUrl],
     source: 'ocr',
     ocrParseId: draft.parseId,
-    riotMatchId: draft.riotMatchId ?? undefined,
   };
 }

@@ -151,6 +151,8 @@ const MatchResultUpload: React.FC<Props> = ({
           team2Id={team2Id}
           team1Name={team1Name || 'Team 1'}
           team2Name={team2Name || 'Team 2'}
+          team1Logo={team1Logo}
+          team2Logo={team2Logo}
           mapName={mapName}
           mapId={mapId}
           onSubmitted={() => onSuccess?.()}

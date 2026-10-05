@@ -6,39 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/apiClient';
-import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
-import { resolveValShardRegion } from '@/hooks/useRiotGameDetails';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
+import { useSubmitRiotReport } from '@/hooks/useSubmitRiotReport';
+import type { RiotMatchCandidate } from '@/types/riotMatchCandidate';
 import { formatDistanceToNow } from 'date-fns';
 import { MAP_THEMES, getAgentIcon, getMapSplash } from './fullScoreboardConstants';
 
-interface MatchCandidate {
-    id: string;
-    map: string;
-    mapId: string;
-    queueId: string;
-    startTime: number;
-    gameLengthMillis: number;
-    myTeamScore: number;
-    enemyTeamScore: number;
-    reporterSide?: 'Blue' | 'Red';
-    score: string;
-    result: 'Victory' | 'Defeat';
-    kda: string;
-    agent: string;
-    blueTeam: { roundsWon: number; won: boolean };
-    redTeam: { roundsWon: number; won: boolean };
-    players: any[];
-    roundTimeline?: Array<{ round: number; winningTeam: string; resultCode?: string | null; result?: string | null; plantSite?: string | null }>;
-    economyTimeline?: Array<{ round: number; blueSpent: number; redSpent: number; blueLoadout?: number; redLoadout?: number }>;
-    weaponSummaries?: Array<{ weapon: string; roundCount: number }>;
-    matchInfo?: {
-        mapId?: string | null;
-        gameMode?: string | null;
-        region?: string | null;
-        isRanked?: boolean;
-    } | null;
-}
+type MatchCandidate = RiotMatchCandidate;
 
 interface MatchAutoReportProps {
     matchId: string;
@@ -80,8 +54,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     const {
         activeReport,
         acceptedReport,
-        submitReport,
     } = useMatchResultReport(matchId, gameNumber);
+    const submitRiot = useSubmitRiotReport(matchId, gameNumber);
 
     // Scan dialog state
     const [scanOpen, setScanOpen] = useState(false);
@@ -90,7 +64,6 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     const [scanError, setScanError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const isTeam1 = userTeamId === team1Id;
 
     // ── Scan Flow ──
     const handleScan = async () => {
@@ -111,83 +84,17 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     };
 
     const handleSelectMatch = async (candidate: MatchCandidate) => {
+        if (!userTeamId) return;
         setSubmitting(true);
         try {
-            // Determine side identification
-            const blueWon = candidate.blueTeam.won;
-            const reporterWon = candidate.result === 'Victory';
-
-            // Fallback side logic if reporterSide is missing:
-            // If I won and Blue won -> I'm Blue. 
-            // If I lost and Blue won -> I'm Red.
-            // If I won and Red won -> I'm Red.
-            // If I lost and Red won -> I'm Blue.
-            const reporterSide = candidate.reporterSide || (reporterWon ? (blueWon ? 'Blue' : 'Red') : (blueWon ? 'Red' : 'Blue'));
-
-            // Map scores correctly to Tournament Team 1 and Team 2
-            const team1Score = isTeam1 ? candidate.myTeamScore : candidate.enemyTeamScore;
-            const team2Score = isTeam1 ? candidate.enemyTeamScore : candidate.myTeamScore;
-
-            // The winner ID needs to be explicitly the other team if I lost
-            const winnerTeamId = reporterWon ? (userTeamId || null) : (isTeam1 ? (team2Id || null) : (team1Id || null));
-
-            console.log('[AutoReport] Submitting Result:', {
-                map: candidate.map,
-                reporterSide,
-                reporterWon,
-                isTeam1Reporter: isTeam1,
-                team1Score,
-                team2Score,
-                winnerTeamId
+            await submitRiot.mutateAsync({
+                candidate,
+                ctx: { gameNumber, userTeamId, team1Id, team2Id, mapId, mapName },
             });
-
-            // Determine which Riot side corresponds to Tournament Team 1
-            // Reporter is isTeam1 and on reporterSide → team1 is on that side
-            // Reporter is NOT team1 → team1 is on the opposite side
-            const t1Side = isTeam1 ? reporterSide : (reporterSide === 'Blue' ? 'Red' : 'Blue');
-
-            const enrichedSnapshot = await apiClient.post<EnrichedRiotMatchData>(
-                '/api/integrations/riot/enriched-match',
-                {
-                    matchId: candidate.id,
-                    region: resolveValShardRegion(candidate.matchInfo?.region),
-                },
-            );
-
-            await submitReport.mutateAsync({
-                gameNumber,
-                riotMatchId: candidate.id,
-                mapId: mapId || undefined,
-                mapName: candidate.map || mapName,
-                team1Score,
-                team2Score,
-                winnerTeamId: winnerTeamId as any,
-                reportedByTeamId: (userTeamId || null) as any,
-                matchData: {
-                    players: candidate.players,
-                    blueTeam: candidate.blueTeam,
-                    redTeam: candidate.redTeam,
-                    queueId: candidate.queueId,
-                    gameLengthMillis: candidate.gameLengthMillis,
-                    startTime: candidate.startTime,
-                    reporterResult: candidate.result,
-                    reporterKda: candidate.kda,
-                    reporterSide: reporterSide,
-                    reportedByTeamId: userTeamId,
-                    t1Side: t1Side,
-                    roundTimeline: candidate.roundTimeline,
-                    economyTimeline: candidate.economyTimeline,
-                    weaponSummaries: candidate.weaponSummaries,
-                    matchInfo: candidate.matchInfo,
-                    enrichedSnapshot,
-                },
-            });
-
             setScanOpen(false);
             setScanStep('idle');
-        } catch (err: any) {
-            console.error('Submit failed:', err);
-            setScanError(err.message);
+        } catch (err) {
+            setScanError(err instanceof Error ? err.message : 'Could not submit the result.');
         } finally {
             setSubmitting(false);
         }

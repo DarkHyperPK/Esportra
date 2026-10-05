@@ -18,5 +18,5 @@ export {
   type VerificationTone,
 } from './verification';
 export { describeOnlineOcr, type OcrHealthSummary } from './health';
-export { mergeRiotMatch } from './riotMerge';
 export { compareWithRiot, type ComparedCell, type ComparedRow, type RiotComparison } from './riotComparison';
+export { agentChoices, agentIcon, type AgentChoice, type CatalogAgent } from './agentChoices';

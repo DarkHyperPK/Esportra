@@ -19,7 +19,9 @@ export const MAP_THEMES: Record<string, { color: string; bg: string; id: string 
 export const getAgentIcon = (characterId: string | number) => `https://media.valorant-api.com/agents/${characterId}/displayicon.png`;
 
 /** Agents shipped in /public/agents for screenshot reports read before valorant-api lists them. */
-const BUNDLED_AGENT_ICONS = new Set(['miks', 'tejo', 'veto', 'vyse', 'waylay']);
+/** Agents shipped in /public/agents before valorant-api lists them. */
+export const BUNDLED_AGENT_NAMES = ['Miks', 'Tejo', 'Veto', 'Vyse', 'Waylay'] as const;
+const BUNDLED_AGENT_ICONS = new Set<string>(BUNDLED_AGENT_NAMES.map((name) => name.toLowerCase()));
 
 /** valorant-api icon by uuid, else a bundled icon by agent name, else null. */
 export function agentIconUrl(characterId?: string | number | null, agentName?: string | null): string | null {

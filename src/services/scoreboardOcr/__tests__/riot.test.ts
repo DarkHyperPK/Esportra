@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { compareWithRiot, draftFromParse, reviewCheck } from '@/services/scoreboardOcr';
+import { compareWithRiot, reviewCheck } from '@/services/scoreboardOcr';
 import { scoreboardOcrParseSchema } from '@/schemas/scoreboardOcrSchema';
-import type { OcrPlayerRow, RiotMatchPlayer, RiotMatchSummary, ScoreboardOcrParse, ScoreboardOcrResult } from '@/types/scoreboardOcr';
+import type { OcrPlayerRow, RiotMatchPlayer, RiotMatchSummary, ScoreboardOcrResult } from '@/types/scoreboardOcr';
 
 const field = <T,>(value: T | null, confidence = 0.95) => ({ value, confidence });
 
@@ -34,36 +34,11 @@ const match: RiotMatchSummary = {
   players: [riotPlayer('DarkHyper', '007', 'team1', [19, 18, 7]), riotPlayer('ghastii', 'EUW', 'team2', [23, 26, 6]), riotPlayer('شاي حبق', 'AR1', 'team2', [20, 19, 6])],
 };
 
-const parse = (players: OcrPlayerRow[], riot: ScoreboardOcrParse['riot']): ScoreboardOcrParse => ({
-  parseId: 'p', screenshotUrl: 'https://x/s.png', mapId: null, team1Id: 't1', team2Id: 't2', result: result(players), riot,
-});
-
 describe("Riot's record in the captain's review", () => {
-  it("fills names, K/D/A, agents and the score from Riot and stops highlighting them", () => {
-    const players = [row('DarkHyper', 'ally', [19, 18, 7]), row('ghastii', 'enemy', [0, 0, 0], 0.2), row(null, 'enemy', [20, 19, 6])];
-    const draft = draftFromParse(parse(players, { status: 'found', match }), 'team1');
-
-    expect(draft.riotMatchId).toBe('riot-1');
-    expect([draft.team1Score, draft.team2Score, draft.uncertainScore]).toEqual([15, 13, false]);
-    const ghastii = draft.players[1];
-    expect(ghastii.stats).toMatchObject({ kills: 23, deaths: 26, assists: 6, trades: 3 });
-    expect(ghastii.riotId).toBe('ghastii#EUW');
-    expect(ghastii.uncertain).toEqual([]);
-    expect(ghastii.agentId).toBe('agent-riot');
-    // The unreadable Arabic name is the only one left on its team: paired by elimination.
-    expect(draft.players[2]).toMatchObject({ name: 'شاي حبق', riotId: 'شاي حبق#AR1' });
-  });
-
-  it('keeps the screenshot read when Riot has no record of the game', () => {
-    const draft = draftFromParse(parse([row('ghastii', 'enemy', [23, 26, 6])], { status: 'not_found', match: null }), 'team1');
-    expect(draft.riotMatchId).toBeNull();
-    expect(draft.uncertainScore).toBe(true);
-  });
-
-  it("keeps Riot's badge while the name is Riot's, and shows a change once edited", () => {
-    const found = { index: 0, name: 'DarkHyper', team: 'team1' as const, userId: 'u', status: 'verified' as const, source: null, readName: 'DarkHyp3r', riotStatus: 'confirmed' as const };
-    expect(reviewCheck({ name: 'DarkHyper', riotId: 'DarkHyper#007' }, found)).toEqual({ status: 'verified', riotStatus: 'confirmed' });
-    expect(reviewCheck({ name: 'Someone', riotId: 'DarkHyper#007' }, found)).toEqual({ status: 'edited', riotStatus: null });
+  it('shows a renamed row as changed until the server re-checks it', () => {
+    const found = { index: 0, name: 'DarkHyper', team: 'team1' as const, userId: 'u', status: 'verified' as const, source: null, readName: 'DarkHyper', riotStatus: 'confirmed' as const };
+    expect(reviewCheck({ name: 'DarkHyper' }, found)).toEqual({ status: 'verified', riotStatus: 'confirmed' });
+    expect(reviewCheck({ name: 'Someone' }, found)).toEqual({ status: 'edited', riotStatus: null });
   });
 
   it('compares the read with Riot cell by cell', () => {

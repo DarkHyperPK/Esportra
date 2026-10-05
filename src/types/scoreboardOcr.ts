@@ -1,3 +1,5 @@
+import type { RiotMatchCandidate } from '@/types/riotMatchCandidate';
+
 /** Screenshot scoreboard OCR — wire types from POST /api/matches/{id}/reports/parse-screenshot. */
 
 export interface OcrField<T> {
@@ -155,6 +157,10 @@ export interface RiotMatchSummary {
 /** The screenshot's game in Riot's match history, looked up at upload. */
 export interface RiotLookup {
   status: 'found' | 'not_found' | 'unavailable' | 'skipped';
+  /** The screenshot is provably this Riot game, so it is reported from Riot without the review. */
+  confident?: boolean;
+  /** The game as an Auto-fetch candidate, set when confident. */
+  candidate?: RiotMatchCandidate | null;
   match: RiotMatchSummary | null;
 }
 
@@ -187,8 +193,6 @@ export interface OcrDraftPlayer {
   stats: Partial<Record<OcrStatKey, number | null>>;
   /** Fields the reader was unsure about — highlighted until the captain edits them. */
   uncertain: Array<OcrStatKey | 'name' | 'agent' | 'team'>;
-  /** Full Riot ID ("name#tag") when this row was matched to Riot's record of the game. */
-  riotId?: string | null;
 }
 
 export interface OcrDraft {
@@ -203,8 +207,6 @@ export interface OcrDraft {
   columns: OcrStatKey[];
   players: OcrDraftPlayer[];
   warnings: OcrWarning[];
-  /** Set when the numbers came from Riot's record of this game; sent with the report. */
-  riotMatchId: string | null;
 }
 
 /** Staff OCR test bench (/debug/riot/ocr). */

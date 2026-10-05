@@ -82,7 +82,7 @@ export const useMatchResultReport = (
     mutationFn: async (params: {
       gameNumber: number; riotMatchId: string; mapId?: string; mapName?: string;
       team1Score: number; team2Score: number; winnerTeamId: string;
-      reportedByTeamId: string; matchData?: any;
+      reportedByTeamId: string; matchData?: any; screenshotUrls?: string[];
     }) => {
       if (!matchId || !user) throw new Error('Missing required data');
       return apiClient.post<MatchResultReport>(`/api/matches/${matchId}/reports`, {
@@ -95,6 +95,7 @@ export const useMatchResultReport = (
         mapId:            params.mapId ?? null,
         mapName:          params.mapName ?? null,
         matchData:        params.matchData ?? null,
+        screenshotUrls:   params.screenshotUrls,
       });
     },
     onSuccess: () => {

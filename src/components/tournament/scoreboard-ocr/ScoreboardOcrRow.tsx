@@ -1,18 +1,21 @@
 import { cn } from '@/lib/utils';
-import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import type { RowCheck } from '@/services/scoreboardOcr';
+import type { RowCheck, AgentChoice } from '@/services/scoreboardOcr';
 import type { OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
 import { desktopGridClass, mobileStatsGridClass, type ReviewStat } from './reviewStats';
 import { VerificationBadge } from './VerificationBadge';
+import { AgentPicker } from './AgentPicker';
+import { TeamMoveButton } from './TeamMoveButton';
 
-const CELL = 'h-9 rounded-none border border-white/10 bg-black/40 px-2 text-sm text-white outline-none transition-colors hover:border-white/20 focus-visible:border-rose-400/70';
-const FLAG = 'border-amber-400/70 bg-amber-400/[0.06]';
+const CELL = 'h-8 w-full rounded-none border bg-white/[0.03] px-1.5 text-sm text-white outline-none transition-colors focus-visible:border-white/40';
+const QUIET = 'border-transparent hover:border-white/15';
+const FLAG = 'border-amber-400/70 bg-amber-400/[0.08]';
 
 interface Props {
   player: OcrDraftPlayer;
   index: number;
   teamNames: Record<TeamSlot, string>;
-  agents: ValorantAgentOption[];
+  teamLogos?: Partial<Record<TeamSlot, string>>;
+  agents: AgentChoice[];
   stats: ReviewStat[];
   /** Roster (and Riot) check for this row, when the API returned one. */
   verification?: RowCheck | null;
@@ -21,45 +24,25 @@ interface Props {
 
 export type RowPatch = { team?: TeamSlot; name?: string; agentId?: string | null; agentName?: string | null; stat?: [OcrStatKey, number | null] };
 
-/** valorant-api agents by uuid; agents it doesn't list yet (read from the screenshot) by name. */
-function agentValue(player: OcrDraftPlayer): string {
-  if (player.agentId) return player.agentId;
-  return player.agentName ? `name:${player.agentName}` : '';
-}
-
-/** One editable scoreboard line. Amber outline = the reader was unsure; it clears once edited. */
-export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, verification, onChange }: Props) {
+/**
+ * One dense scoreboard line: agent portrait, name, stats, move. Amber = the reader was unsure; it clears
+ * once edited. On phones the stats wrap under the name.
+ */
+export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, stats, verification, onChange }: Props) {
   const flagged = (field: string) => player.uncertain.some((f) => f === field);
   const rowLabel = player.name || `Player ${index + 1}`;
   return (
-    <div className={cn('grid grid-cols-2 gap-2 border-b border-white/[0.06] py-2 last:border-b-0 sm:items-center', desktopGridClass(stats.length))}>
-      <select
-        aria-label={`${rowLabel} team`}
-        value={player.team ?? ''}
-        onChange={(event) => onChange({ team: event.target.value === 'team2' ? 'team2' : 'team1' })}
-        className={cn(CELL, flagged('team') && FLAG, '[color-scheme:dark]')}
-      >
-        <option value="" disabled>Pick team</option>
-        <option value="team1">{teamNames.team1}</option>
-        <option value="team2">{teamNames.team2}</option>
-      </select>
-      <select
-        aria-label={`${rowLabel} agent`}
-        value={agentValue(player)}
-        onChange={(event) => {
-          const value = event.target.value;
-          if (value.startsWith('name:')) onChange({ agentId: null, agentName: value.slice(5) });
-          else onChange({ agentId: value || null, agentName: agents.find((a) => a.uuid === value)?.name ?? null });
-        }}
-        className={cn(CELL, flagged('agent') && FLAG, '[color-scheme:dark]')}
-      >
-        <option value="">Unknown agent</option>
-        {!player.agentId && player.agentName ? <option value={`name:${player.agentName}`}>{player.agentName}</option> : null}
-        {agents.map((agent) => (
-          <option key={agent.uuid} value={agent.uuid}>{agent.name}</option>
-        ))}
-      </select>
-      <div className="col-span-2 flex min-w-0 flex-col gap-1 sm:col-span-1">
+    <div className={cn('grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-x-1.5 gap-y-1 border-b border-white/[0.05] px-2 py-1 last:border-b-0', desktopGridClass(stats.length))}>
+      <AgentPicker
+        agentId={player.agentId}
+        agentName={player.agentName}
+        choices={agents}
+        uncertain={flagged('agent')}
+        playerLabel={rowLabel}
+        onPick={(agentId, agentName) => onChange({ agentId, agentName })}
+      />
+      <div className="flex min-w-0 items-center gap-1.5">
+        {verification ? <VerificationBadge compact status={verification.status} riotStatus={verification.riotStatus} /> : null}
         <input
           aria-label={`Player ${index + 1} name`}
           value={player.name}
@@ -67,16 +50,10 @@ export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, veri
           dir="auto"
           placeholder="Name not readable — type it"
           onChange={(event) => onChange({ name: event.target.value })}
-          className={cn(CELL, 'w-full font-medium', flagged('name') && FLAG)}
+          className={cn(CELL, 'min-w-0 flex-1 px-2 font-medium', flagged('name') ? FLAG : QUIET)}
         />
-        {verification || player.riotId ? (
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-            {verification ? <VerificationBadge status={verification.status} riotStatus={verification.riotStatus} /> : null}
-            {player.riotId ? <span className="truncate font-mono text-[10px] text-zinc-500" dir="auto">{player.riotId}</span> : null}
-          </div>
-        ) : null}
       </div>
-      <div className={cn('col-span-2 grid gap-2 sm:contents', mobileStatsGridClass(stats.length))}>
+      <div className={cn('order-2 col-span-3 grid gap-1 sm:order-none sm:contents', mobileStatsGridClass(stats.length))}>
         {stats.map(({ key, label, title }) => (
           <input
             key={key}
@@ -89,9 +66,19 @@ export function ScoreboardOcrRow({ player, index, teamNames, agents, stats, veri
               const digits = event.target.value.replace(/\D/g, '').slice(0, 4);
               onChange({ stat: [key, digits === '' ? null : Number(digits)] });
             }}
-            className={cn(CELL, 'text-center tabular-nums', flagged(key) && FLAG)}
+            className={cn(CELL, 'px-0.5 text-center text-[13px] tabular-nums sm:px-1.5 sm:text-sm', flagged(key) ? FLAG : QUIET)}
           />
         ))}
+      </div>
+      <div className="order-1 sm:order-none">
+        <TeamMoveButton
+          team={player.team}
+          teamNames={teamNames}
+          teamLogos={teamLogos}
+          playerLabel={rowLabel}
+          uncertain={flagged('team')}
+          onMove={(team) => onChange({ team })}
+        />
       </div>
     </div>
   );
