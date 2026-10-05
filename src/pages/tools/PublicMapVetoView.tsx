@@ -399,7 +399,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       </div>
       <div className="mx-auto max-w-[1400px] space-y-6">
         {pageHeader}
-        {isHost && !isComplete && (
+        {isHost && !vetoLive && !isComplete && (
           <div className="flex items-center gap-4">
             <TeamLogoSlot teamName={state.team1Name} value={team1Logo} onChange={onTeam1Logo} />
             <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">logos</span>
@@ -431,6 +431,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
               bestOf={currentBestOf}
               team1Name={state.team1Name}
               team2Name={state.team2Name}
+              team1Logo={team1Logo}
+              team2Logo={team2Logo}
               status={veto.status}
               onClock={null}
               transparent={false}

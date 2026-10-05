@@ -18,6 +18,8 @@ export type OverlayThemeProps = {
   bestOf: number;
   team1Name: string;
   team2Name: string;
+  team1Logo?: string | null;
+  team2Logo?: string | null;
   status: string;
   onClock?: OverlayOnClock;
   transparent: boolean;

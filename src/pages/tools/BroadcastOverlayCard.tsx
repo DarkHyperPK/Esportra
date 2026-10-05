@@ -15,6 +15,8 @@ type CardProps = {
   focused: boolean;
   /** Another card's moment is on air: this one steps back. */
   dimmed: boolean;
+  /** Team logo for the acting team; shown as a small inline icon next to the caption. */
+  teamLogoUrl?: string | null;
 };
 
 const STATE_CLASS: Record<OverlayMapState["status"], string> = {
@@ -62,7 +64,7 @@ function caption(state: OverlayMapState) {
  * an action happens; the state class switches layers on and the CSS plays them
  * as a paced sequence (see broadcastOverlayStyles).
  */
-export const BroadcastOverlayCard = ({ map, state, index, quiet, focused, dimmed }: CardProps) => (
+export const BroadcastOverlayCard = ({ map, state, index, quiet, focused, dimmed, teamLogoUrl }: CardProps) => (
   <motion.div
     className="bcv-slot h-full min-w-0 max-w-[11.5vw] flex-1"
     initial={{ opacity: 0, y: "2.4vh" }}
@@ -95,7 +97,10 @@ export const BroadcastOverlayCard = ({ map, state, index, quiet, focused, dimmed
           </span>
           <div className="absolute inset-x-[0.8vw] bottom-[1.8vh] z-10">
             <p className="bcv-name truncate font-heading text-[1.75vw] font-black uppercase leading-none tracking-tight">{map.name}</p>
-            <p className="bcv-caption mt-[1vh] truncate font-mono text-[0.68vw] uppercase tracking-[0.18em] text-zinc-300">
+            <p className="bcv-caption mt-[1vh] flex items-center gap-[0.35vw] truncate font-mono text-[0.68vw] uppercase tracking-[0.18em] text-zinc-300">
+              {teamLogoUrl && state.status !== "open" && (
+                <img src={teamLogoUrl} alt="" aria-hidden className="h-[1.15vw] w-[1.15vw] shrink-0 object-contain" />
+              )}
               {caption(state)}
             </p>
           </div>

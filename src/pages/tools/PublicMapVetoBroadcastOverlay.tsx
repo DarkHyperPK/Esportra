@@ -30,8 +30,15 @@ const Bracket = ({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) => (
  * broadcastOverlayStyles) and types the moment out in the caption.
  */
 export const PublicMapVetoBroadcastOverlay = (props: OverlayThemeProps) => {
-  const { maps, cards, gameLabel, bestOf, team1Name, team2Name, status, transparent, transition, onClock, replay, ready } = props;
+  const { maps, cards, gameLabel, bestOf, team1Name, team2Name, team1Logo, team2Logo, status, transparent, transition, onClock, replay, ready } = props;
   const { states, quiet, current, caption } = useOverlayVetoModel({ cards, onClock, ready: ready && maps.length > 0, replay });
+
+  const logoFor = (teamName: string | null | undefined): string | null | undefined => {
+    if (!teamName) return null;
+    if (teamName === team1Name) return team1Logo;
+    if (teamName === team2Name) return team2Logo;
+    return null;
+  };
 
   return (
     <main
@@ -61,23 +68,33 @@ export const PublicMapVetoBroadcastOverlay = (props: OverlayThemeProps) => {
           <h1 className="font-heading text-[4.6vw] font-black uppercase leading-none tracking-[-0.03em] text-zinc-100">
             Map veto
           </h1>
-          <p className="mb-[0.6vh] truncate font-mono text-[1.3vw] uppercase tracking-[0.3em] text-zinc-100">
-            {gameLabel} / {teamCode(team1Name)} vs {teamCode(team2Name)}
-          </p>
+          <div className="mb-[0.6vh] flex items-center gap-[0.7vw] font-mono text-[1.3vw] uppercase tracking-[0.3em] text-zinc-100">
+            {team1Logo && <img src={team1Logo} alt={team1Name} className="h-[2.2vw] w-[2.2vw] shrink-0 object-contain" />}
+            <span>{teamCode(team1Name)}</span>
+            <span className="text-zinc-500">vs</span>
+            <span>{teamCode(team2Name)}</span>
+            {team2Logo && <img src={team2Logo} alt={team2Name} className="h-[2.2vw] w-[2.2vw] shrink-0 object-contain" />}
+            <span className="text-zinc-500">·</span>
+            <span className="text-zinc-400">{gameLabel}</span>
+          </div>
         </div>
 
         <div className="mt-[5vh] flex min-h-0 flex-1 justify-center gap-[0.9vw]">
-          {maps.map((map, index) => (
-            <BroadcastOverlayCard
-              key={map.id}
-              map={map}
-              state={states.get(map.name) ?? OPEN}
-              index={index}
-              quiet={quiet.has(map.name)}
-              focused={current?.mapName === map.name}
-              dimmed={current !== null && current.mapName !== map.name}
-            />
-          ))}
+          {maps.map((map, index) => {
+            const cardState = states.get(map.name) ?? OPEN;
+            return (
+              <BroadcastOverlayCard
+                key={map.id}
+                map={map}
+                state={cardState}
+                index={index}
+                quiet={quiet.has(map.name)}
+                focused={current?.mapName === map.name}
+                dimmed={current !== null && current.mapName !== map.name}
+                teamLogoUrl={logoFor(cardState.teamName)}
+              />
+            );
+          })}
         </div>
 
         <div className="mt-[3.5vh] flex h-[6vh] shrink-0 items-center">
