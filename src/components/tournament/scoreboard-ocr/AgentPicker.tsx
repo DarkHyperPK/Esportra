@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { agentIcon, type AgentChoice } from '@/services/scoreboardOcr';
@@ -38,11 +38,14 @@ export function AgentPicker({ agentId, agentName, choices, uncertain, playerLabe
           aria-label={`${playerLabel} agent: ${current || 'unknown'}. Change agent`}
           title={current || 'Unknown agent'}
           className={cn(
-            'h-8 w-8 shrink-0 overflow-hidden border bg-black/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
-            uncertain ? 'border-amber-400/80' : 'border-white/10 hover:border-white/30',
+            'group relative h-8 w-8 shrink-0 overflow-hidden border bg-black/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+            uncertain ? 'border-amber-400/80' : 'border-white/15 hover:border-white/50',
           )}
         >
           <AgentTile icon={icon} name={current} />
+          <span className="absolute bottom-0 right-0 flex h-3 w-3 items-center justify-center bg-black/80 text-zinc-300 group-hover:text-white" aria-hidden>
+            <ChevronDown className="h-2.5 w-2.5" />
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto rounded-none border-white/10 bg-zinc-950 p-2">

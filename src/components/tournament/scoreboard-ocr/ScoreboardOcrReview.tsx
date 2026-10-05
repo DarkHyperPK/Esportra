@@ -3,7 +3,7 @@ import { Image as ImageIcon, ScanSearch } from 'lucide-react';
 import { CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { InlineNotice } from '@/components/ui/kit';
 import type { ValorantAgentOption } from '@/hooks/useScoreboardOcr';
-import { agentChoices, badgeFor, reviewCheck } from '@/services/scoreboardOcr';
+import { agentChoices, reviewReason, reviewSummary } from '@/services/scoreboardOcr';
 import { BUNDLED_AGENT_NAMES } from '@/components/tournament/fullScoreboardConstants';
 import type { OcrDraft, OcrDraftPlayer, OcrVerification, TeamSlot } from '@/types/scoreboardOcr';
 import { ScoreboardOcrRow, type RowPatch } from './ScoreboardOcrRow';
@@ -31,6 +31,10 @@ interface Props {
 }
 
 const rowIndex = (player: OcrDraftPlayer) => Number(player.key.replace('row-', ''));
+
+/** The server's roster/Riot check for a row, as the captain edits it. */
+const reasonFor = (player: OcrDraftPlayer, verification?: OcrVerification | null) =>
+  reviewReason(player, verification?.players.find((v) => v.index === rowIndex(player)));
 
 interface GroupProps {
   slot: TeamSlot | null;
@@ -68,20 +72,12 @@ function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, te
           teamLogos={teamLogos}
           agents={choices}
           stats={stats}
-          verification={reviewCheck(player, verification?.players.find((v) => v.index === rowIndex(player)))}
+          reason={reasonFor(player, verification)}
           onChange={(patch) => onPlayerChange(player.key, patch)}
         />
       ))}
     </section>
   );
-}
-
-/** Rows whose name needs a look (not on a roster, other team, changed…), for one line above the table. */
-function namesToCheck(players: OcrDraftPlayer[], verification?: OcrVerification | null): number {
-  return players.filter((p) => {
-    const check = reviewCheck(p, verification?.players.find((v) => v.index === rowIndex(p)));
-    return check !== null && badgeFor(check).tone === 'check';
-  }).length;
 }
 
 export function ScoreboardOcrReview(props: Props) {
@@ -93,7 +89,7 @@ export function ScoreboardOcrReview(props: Props) {
   }), [draft.players]);
   const stats = useMemo(() => visibleStats(draft.columns), [draft.columns]);
   const choices = useMemo(() => agentChoices(agents, BUNDLED_AGENT_NAMES), [agents]);
-  const toCheck = namesToCheck(draft.players, verification);
+  const summary = reviewSummary(draft.players.map((p) => reasonFor(p, verification)));
   const hardToRead = draft.players.reduce((sum, p) => sum + p.uncertain.length, 0) + (draft.uncertainScore ? 1 : 0);
   const shared = { stats, choices, draft, teamNames, teamLogos, verification, onPlayerChange };
 
@@ -133,12 +129,12 @@ export function ScoreboardOcrReview(props: Props) {
           <ImageIcon className="h-4 w-4 text-zinc-500" aria-hidden />
           View your screenshot
         </a>
-        {toCheck > 0 ? (
-          <p className="flex items-center gap-2 text-[13px] text-zinc-400">
-            <ScanSearch className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-            {toCheck === 1 ? '1 name is marked for a look.' : `${toCheck} names are marked for a look.`} Tap the icon next to a name to see why.
+        {summary.map((line) => (
+          <p key={line} className="flex items-start gap-2 text-[13px] leading-relaxed text-zinc-300">
+            <ScanSearch className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+            {line}
           </p>
-        ) : null}
+        ))}
       </div>
       <TeamGroup slot={null} players={groups.unassigned} offset={0} {...shared} />
       <TeamGroup slot="team1" players={groups.team1} offset={groups.unassigned.length} {...shared} />

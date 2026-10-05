@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareWithRiot, reviewCheck } from '@/services/scoreboardOcr';
+import { compareWithRiot, reviewReason } from '@/services/scoreboardOcr';
 import { scoreboardOcrParseSchema } from '@/schemas/scoreboardOcrSchema';
 import type { OcrPlayerRow, RiotMatchPlayer, RiotMatchSummary, ScoreboardOcrResult } from '@/types/scoreboardOcr';
 
@@ -35,10 +35,11 @@ const match: RiotMatchSummary = {
 };
 
 describe("Riot's record in the captain's review", () => {
-  it('shows a renamed row as changed until the server re-checks it', () => {
-    const found = { index: 0, name: 'DarkHyper', team: 'team1' as const, userId: 'u', status: 'verified' as const, source: null, readName: 'DarkHyper', riotStatus: 'confirmed' as const };
-    expect(reviewCheck({ name: 'DarkHyper' }, found)).toEqual({ status: 'verified', riotStatus: 'confirmed' });
-    expect(reviewCheck({ name: 'Someone' }, found)).toEqual({ status: 'edited', riotStatus: null });
+  it("flags a row Riot disagrees with until the captain renames it (the server re-checks it on send)", () => {
+    const found = { index: 0, name: 'Saintt', team: 'team1' as const, userId: 'u', status: 'verified' as const, source: null, readName: 'Saintt', riotStatus: 'other_account' as const };
+    expect(reviewReason({ name: 'Saintt', team: 'team1' }, found)).toBe('riot_account');
+    expect(reviewReason({ name: 'Someone', team: 'team1' }, found)).toBeNull();
+    expect(reviewReason({ name: 'Saintt', team: 'team1' }, { ...found, riotStatus: 'confirmed' })).toBeNull();
   });
 
   it('compares the read with Riot cell by cell', () => {

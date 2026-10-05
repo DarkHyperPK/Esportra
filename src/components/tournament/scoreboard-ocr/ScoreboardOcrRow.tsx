@@ -1,8 +1,8 @@
+import { ScanSearch } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { RowCheck, AgentChoice } from '@/services/scoreboardOcr';
+import { reviewTag, type AgentChoice, type ReviewReason } from '@/services/scoreboardOcr';
 import type { OcrDraftPlayer, OcrStatKey, TeamSlot } from '@/types/scoreboardOcr';
 import { desktopGridClass, mobileStatsGridClass, type ReviewStat } from './reviewStats';
-import { VerificationBadge } from './VerificationBadge';
 import { AgentPicker } from './AgentPicker';
 import { TeamMoveButton } from './TeamMoveButton';
 
@@ -17,8 +17,8 @@ interface Props {
   teamLogos?: Partial<Record<TeamSlot, string>>;
   agents: AgentChoice[];
   stats: ReviewStat[];
-  /** Roster (and Riot) check for this row, when the API returned one. */
-  verification?: RowCheck | null;
+  /** Why this row needs a look (roster or Riot check); shown as a visible tag. */
+  reason?: ReviewReason | null;
   onChange: (patch: RowPatch) => void;
 }
 
@@ -28,7 +28,7 @@ export type RowPatch = { team?: TeamSlot; name?: string; agentId?: string | null
  * One dense scoreboard line: agent portrait, name, stats, move. Amber = the reader was unsure; it clears
  * once edited. On phones the stats wrap under the name.
  */
-export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, stats, verification, onChange }: Props) {
+export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, stats, reason, onChange }: Props) {
   const flagged = (field: string) => player.uncertain.some((f) => f === field);
   const rowLabel = player.name || `Player ${index + 1}`;
   return (
@@ -41,8 +41,7 @@ export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, 
         playerLabel={rowLabel}
         onPick={(agentId, agentName) => onChange({ agentId, agentName })}
       />
-      <div className="flex min-w-0 items-center gap-1.5">
-        {verification ? <VerificationBadge compact status={verification.status} riotStatus={verification.riotStatus} /> : null}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 sm:flex-nowrap">
         <input
           aria-label={`Player ${index + 1} name`}
           value={player.name}
@@ -50,8 +49,14 @@ export function ScoreboardOcrRow({ player, index, teamNames, teamLogos, agents, 
           dir="auto"
           placeholder="Name not readable — type it"
           onChange={(event) => onChange({ name: event.target.value })}
-          className={cn(CELL, 'min-w-0 flex-1 px-2 font-medium', flagged('name') ? FLAG : QUIET)}
+          className={cn(CELL, 'min-w-0 flex-1 basis-full px-2 font-medium sm:basis-auto', flagged('name') ? FLAG : QUIET)}
         />
+        {reason ? (
+          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-300 sm:px-0">
+            <ScanSearch className="h-3 w-3" aria-hidden />
+            {reviewTag(reason, player.team, teamNames)}
+          </span>
+        ) : null}
       </div>
       <div className={cn('order-2 col-span-3 grid gap-1 sm:order-none sm:contents', mobileStatsGridClass(stats.length))}>
         {stats.map(({ key, label, title }) => (

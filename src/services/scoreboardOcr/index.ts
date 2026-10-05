@@ -11,9 +11,11 @@ export {
   liveStatus,
   nameKey,
   needsReview,
-  reviewCheck,
+  reviewReason,
+  reviewSummary,
+  reviewTag,
   riotCheckSummary,
-  type RowCheck,
+  type ReviewReason,
   type VerificationLabel,
   type VerificationTone,
 } from './verification';

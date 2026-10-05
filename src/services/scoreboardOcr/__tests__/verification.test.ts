@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeFor, disputeReasonFor, liveStatus, nameKey, needsReview, riotCheckSummary } from '@/services/scoreboardOcr/verification';
+import { badgeFor, disputeReasonFor, liveStatus, nameKey, needsReview, reviewReason, reviewSummary, reviewTag, riotCheckSummary } from '@/services/scoreboardOcr/verification';
 import { ocrVerificationSchema } from '@/schemas/scoreboardOcrSchema';
 import type { OcrVerification, VerifiedPlayer } from '@/types/scoreboardOcr';
 
@@ -64,6 +64,30 @@ describe('screenshot report verification', () => {
     expect(reason).toContain('ghastii#EUW (not linked to either roster)');
     expect(reason).toContain('DarkHyper (Riot: 19/18/7)');
     expect(reason).toContain('score differs');
+  });
+
+  it('gives each review row a visible reason, cleared by the captain\'s own fixes', () => {
+    const row = (name: string, team: 'team1' | 'team2' | null = 'team1') => ({ name, team });
+    expect(reviewReason(row('Ringer'), player('Ringer', 'unknown'))).toBe('not_on_roster');
+    expect(reviewReason(row('Kaidn'), player('Ringer', 'unknown'))).toBeNull();
+    expect(reviewReason(row('Rivers'), player('Rivers', 'other_team'))).toBe('other_team');
+    expect(reviewReason(row('Rivers', 'team2'), player('Rivers', 'other_team'))).toBeNull();
+    expect(reviewReason(row('Twin'), player('Twin', 'duplicate'))).toBe('duplicate');
+    expect(reviewReason(row('ghastii'), player('ghastii', 'unknown', { riotStatus: 'unregistered' }))).toBe('riot_unlinked');
+    expect(reviewReason(row('A'), player('A', 'verified'))).toBeNull();
+    expect(reviewReason(row('A'), undefined)).toBeNull();
+    const names = { team1: 'Alpha', team2: 'Bravo' };
+    expect(reviewTag('not_on_roster', 'team1', names)).toBe('Not on roster');
+    expect(reviewTag('other_team', 'team1', names)).toBe("On Bravo's roster");
+  });
+
+  it('says why in plain words, with counts', () => {
+    expect(reviewSummary([null, null])).toEqual([]);
+    const lines = reviewSummary([...Array(9).fill('not_on_roster'), 'other_team', null]);
+    expect(lines[0]).toMatch(/^9 names aren't on either team's roster\./);
+    expect(lines[1]).toMatch(/^1 player is on the other team's roster\./);
+    expect(reviewSummary(['not_on_roster'])[0]).toMatch(/^1 name isn't/);
+    expect(reviewSummary(['riot_account', 'riot_unlinked'])).toEqual(["2 players' Riot accounts don't match the roster."]);
   });
 
   it("speaks up only when Riot's record backs the report", () => {

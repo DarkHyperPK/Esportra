@@ -1,3 +1,4 @@
+import { otherSlot } from './draft';
 import type { OcrDraftPlayer, OcrVerification, RiotCheck, RiotStatus, TeamSlot, VerificationStatus, VerifiedPlayer } from '@/types/scoreboardOcr';
 
 export type VerificationTone = 'good' | 'neutral' | 'check';
@@ -73,15 +74,67 @@ export function liveStatus(currentName: string, verified: VerifiedPlayer | undef
   return nameKey(currentName) !== nameKey(verified.name) ? 'edited' : verified.status;
 }
 
-export interface RowCheck {
-  status: VerificationStatus;
-  riotStatus: RiotStatus | null;
+/** Why a review row needs the captain's eye; null when it's fine. */
+export type ReviewReason = 'not_on_roster' | 'other_team' | 'duplicate' | 'riot_account' | 'riot_missing' | 'riot_unlinked';
+
+const RIOT_REASON: Partial<Record<RiotStatus, ReviewReason>> = {
+  other_account: 'riot_account',
+  not_in_match: 'riot_missing',
+  unregistered: 'riot_unlinked',
+};
+
+/**
+ * The row's reason as the captain edits. Their own fixes clear it: a renamed row (the server re-checks
+ * it on send) and a row moved off the team it was read on.
+ */
+export function reviewReason(player: Pick<OcrDraftPlayer, 'name' | 'team'>, found: VerifiedPlayer | undefined): ReviewReason | null {
+  const status = liveStatus(player.name, found);
+  if (!found || !status || status === 'edited') return null;
+  const riot = found.riotStatus ? RIOT_REASON[found.riotStatus] : undefined;
+  if (riot) return riot;
+  if (status === 'unknown') return 'not_on_roster';
+  if (status === 'duplicate') return 'duplicate';
+  if (status === 'other_team') return player.team === found.team ? 'other_team' : null;
+  return null;
 }
 
-/** A review row's badge as the captain edits: a renamed row reads "Name changed" until the server re-checks it. */
-export function reviewCheck(player: Pick<OcrDraftPlayer, 'name'>, found: VerifiedPlayer | undefined): RowCheck | null {
-  const status = liveStatus(player.name, found);
-  return status ? { status, riotStatus: status === 'edited' ? null : found?.riotStatus ?? null } : null;
+/** The short tag shown on the row, always visible. */
+export function reviewTag(reason: ReviewReason, team: TeamSlot | null, teamNames: Record<TeamSlot, string>): string {
+  switch (reason) {
+    case 'not_on_roster':
+      return 'Not on roster';
+    case 'other_team':
+      return `On ${teamNames[otherSlot(team ?? 'team2')]}'s roster`;
+    case 'duplicate':
+      return 'Listed twice';
+    case 'riot_account':
+      return 'Different Riot account';
+    case 'riot_missing':
+      return 'Not in the Riot match';
+    case 'riot_unlinked':
+      return 'Riot account not linked';
+  }
+}
+
+const SUMMARY: Record<'not_on_roster' | 'other_team' | 'duplicate' | 'riot', (n: number) => string> = {
+  not_on_roster: (n) =>
+    `${n === 1 ? "1 name isn't" : `${n} names aren't`} on either team's roster. Fix the spelling if one was misread; a substitute can stay as is.`,
+  other_team: (n) =>
+    `${n === 1 ? '1 player is' : `${n} players are`} on the other team's roster. Use the swap button on the row if they're on the wrong side.`,
+  duplicate: (n) => `${n === 1 ? '1 name appears' : `${n} names appear`} twice. Fix the one that was misread.`,
+  riot: (n) => `${n === 1 ? "1 player's Riot account doesn't" : `${n} players' Riot accounts don't`} match the roster.`,
+};
+
+/** One plain sentence per reason, with counts, so the captain never has to open anything to learn why. */
+export function reviewSummary(reasons: ReadonlyArray<ReviewReason | null>): string[] {
+  const count = (match: (r: ReviewReason) => boolean) => reasons.filter((r): r is ReviewReason => r !== null && match(r)).length;
+  const counts = {
+    not_on_roster: count((r) => r === 'not_on_roster'),
+    other_team: count((r) => r === 'other_team'),
+    duplicate: count((r) => r === 'duplicate'),
+    riot: count((r) => r.startsWith('riot_')),
+  };
+  return (Object.keys(SUMMARY) as Array<keyof typeof SUMMARY>).filter((k) => counts[k] > 0).map((k) => SUMMARY[k](counts[k]));
 }
 
 function describe(player: VerifiedPlayer, teamNames: Record<TeamSlot, string>): string {

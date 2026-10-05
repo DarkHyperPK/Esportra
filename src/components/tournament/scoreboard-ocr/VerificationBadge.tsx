@@ -1,6 +1,5 @@
 import { BadgeCheck, CircleDashed, ScanSearch } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { badgeFor } from '@/services/scoreboardOcr';
 import type { RiotStatus, VerificationStatus } from '@/types/scoreboardOcr';
 
@@ -16,35 +15,13 @@ interface Props {
   status: VerificationStatus;
   /** Riot's own check of the match, when it has run: it outranks the screenshot's name match. */
   riotStatus?: RiotStatus | null;
-  /** Icon only (dense rows); the label is the tooltip and screen-reader text. */
-  compact?: boolean;
   className?: string;
 }
 
 /** How a player on a screenshot report matched the competitors' rosters (and Riot's record, once checked). */
-export function VerificationBadge({ status, riotStatus, compact = false, className }: Props) {
+export function VerificationBadge({ status, riotStatus, className }: Props) {
   const { label, tone, hint } = badgeFor({ status, riotStatus });
   const Icon = ICON[tone];
-  if (compact) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={label}
-            title={label}
-            className={cn('inline-flex h-6 w-5 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40', TONE[tone], className)}
-          >
-            <Icon className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 rounded-none border-white/10 bg-zinc-950 p-3 text-xs leading-relaxed text-zinc-300">
-          <p className={cn('font-mono text-[10px] uppercase tracking-[0.18em]', TONE[tone])}>{label}</p>
-          {hint ? <p className="mt-1">{hint}</p> : null}
-        </PopoverContent>
-      </Popover>
-    );
-  }
   return (
     <span
       title={hint}
