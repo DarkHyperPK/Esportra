@@ -252,6 +252,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     availableMaps: gameMaps,
     allAvailableMaps: gameMaps,
     game: state.game,
+    team1Logo,
+    team2Logo,
   };
 
   const mapPoolPanel = (

@@ -51,8 +51,17 @@ export function beatLine(beat: OverlayBeat) {
   }
 }
 
-export function restingLine(onClock: OverlayOnClock | undefined, decider?: string) {
-  if (decider) return `Decider: ${decider}`;
+export function restingLine(
+  onClock: OverlayOnClock | undefined,
+  decider?: string,
+  deciderSide?: { teamName?: string; side?: "attack" | "defend" | null },
+) {
+  if (decider) {
+    const sideStr = deciderSide?.teamName && deciderSide.side
+      ? ` · ${teamCode(deciderSide.teamName)} ${sideCode(deciderSide.side)}`
+      : "";
+    return `Decider: ${decider}${sideStr}`;
+  }
   if (!onClock) return "";
   const verb = onClock.action === "ban" ? "to ban" : onClock.action === "pick" ? "to pick" : "to choose side";
   return `${teamCode(onClock.teamName)} ${verb}`;
@@ -71,10 +80,14 @@ export function useOverlayVetoModel({ cards, onClock, ready, replay }: Options) 
     () => new Set(beats.filter((beat) => beat.kind !== "side" && initial.has(beat.id)).map((beat) => beat.mapName)),
     [beats, initial],
   );
-  const decider = [...states.entries()].find(([, state]) => state.status === "decider" && state.side)?.[0];
+  const deciderEntry = [...states.entries()].find(([, state]) => state.status === "decider");
+  const decider = deciderEntry?.[0];
+  const deciderSide = deciderEntry
+    ? { teamName: deciderEntry[1].sideTeamName, side: deciderEntry[1].side }
+    : undefined;
   // Between beats the last moment stays up; the resting line only returns once playback has caught up.
   const onStage = current ?? (busy ? lastPlayed : null);
-  const caption = onStage ? beatLine(onStage) : busy ? "" : restingLine(onClock, decider);
+  const caption = onStage ? beatLine(onStage) : busy ? "" : restingLine(onClock, decider, deciderSide);
 
   return { states, quiet, current, caption };
 }
