@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Link2, MonitorUp, RefreshCw } from "lucide-react";
+import { Check, Link2 } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -24,7 +24,6 @@ import {
   adaptPublicVetoToMatchVeto,
   buildPublicHostVetoUrl,
   buildPublicTeamVetoUrl,
-  buildPublicVetoOverlayUrl,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
@@ -32,59 +31,6 @@ import {
   serializePublicVetoSide,
 } from "./publicMapVetoUtils";
 
-const OBS_PREVIEW_WIDTH = 1600;
-const OBS_PREVIEW_HEIGHT = 900;
-const OVERLAY_THEMES = [
-  { value: "broadcast", label: "Esportra" },
-  { value: "vct", label: "VCT style" },
-] as const;
-
-const OverlayPreviewFrame = ({
-  src,
-  refreshKey,
-  title,
-}: {
-  src: string;
-  refreshKey: number;
-  title: string;
-}) => {
-  const frameRef = React.useRef<HTMLDivElement | null>(null);
-  const [scale, setScale] = useState(0);
-
-  React.useEffect(() => {
-    const element = frameRef.current;
-    if (!element) return;
-
-    const update = () => setScale(element.clientWidth / OBS_PREVIEW_WIDTH);
-    update();
-
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={frameRef} className="relative aspect-video w-full overflow-hidden border border-white/10 bg-black">
-      <div
-        className="absolute left-0 top-0"
-        style={{
-          width: OBS_PREVIEW_WIDTH,
-          height: OBS_PREVIEW_HEIGHT,
-          transform: `scale(${scale || 0.001})`,
-          transformOrigin: "top left",
-        }}
-      >
-        <iframe
-          key={`${src}-${refreshKey}`}
-          src={src}
-          title={title}
-          className="h-full w-full border-0"
-          loading="eager"
-        />
-      </div>
-    </div>
-  );
-};
 
 type PublicMapVetoViewProps = {
   state: PublicVetoState;
@@ -137,11 +83,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [showSideDialog, setShowSideDialog] = useState(false);
   const [pendingMapId, setPendingMapId] = useState<string | null>(null);
   const [copiedHost, setCopiedHost] = useState(false);
-  const [copiedOverlay, setCopiedOverlay] = useState(false);
-  const [overlayTransition, setOverlayTransition] = useState("up");
-  const [overlayTheme, setOverlayTheme] = useState("broadcast");
-  const [overlayPlayback, setOverlayPlayback] = useState("live");
-  const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
   const storedMaps = useMemo(
@@ -178,9 +119,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     && veto.status === "in_progress"
     && ((state.role === "team1" && resolvedCurrentTeamSide === "team1")
       || (state.role === "team2" && resolvedCurrentTeamSide === "team2"));
-  const overlayToken = state.overlayToken ?? state.hostToken;
-  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme, overlayPlayback) : "";
-
   const handleMapAction = useCallback(async (mapId: string) => {
     if (!veto.current_action || acting) return;
     if (veto.current_action === "pick_side") {
@@ -240,13 +178,6 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     window.setTimeout(() => setCopiedHost(false), 2000);
   };
 
-  const copyOverlayLink = async () => {
-    if (!overlayToken) return;
-    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme, overlayPlayback));
-    setCopiedOverlay(true);
-    toast({ title: "OBS overlay link copied" });
-    window.setTimeout(() => setCopiedOverlay(false), 2000);
-  };
 
   const pageHeader = (
     <div className="space-y-1">
@@ -273,88 +204,15 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const hostTools = (
     <>
-      {isHost && (state.hostToken || state.overlayToken) && (
+      {isHost && state.hostToken && (
         <section className="space-y-3 border-t border-white/[0.07] pt-6" aria-label="Host tools">
           <h3 className="font-heading text-lg font-bold tracking-tight text-white">Host tools</h3>
           <div className="flex flex-wrap gap-2">
-            {state.hostToken && (
-              <CommandButton variant="ghost" size="sm" onClick={() => { void copyHostLink(); }}>
-                {copiedHost ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                Observer link
-              </CommandButton>
-            )}
-            {(state.overlayToken || state.hostToken) && (
-              <div className="flex overflow-hidden border border-white/10">
-                <select
-                  value={overlayTransition}
-                  onChange={(event) => setOverlayTransition(event.target.value)}
-                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
-                  aria-label="OBS overlay transition"
-                >
-                  <option value="up">Slide up</option>
-                  <option value="left">Slide left</option>
-                  <option value="right">Slide right</option>
-                  <option value="none">None</option>
-                </select>
-                <select
-                  value={overlayTheme}
-                  onChange={(event) => setOverlayTheme(event.target.value)}
-                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
-                  aria-label="OBS overlay theme"
-                >
-                  {OVERLAY_THEMES.map((theme) => (
-                    <option key={theme.value} value={theme.value}>{theme.label}</option>
-                  ))}
-                </select>
-                <select
-                  value={overlayPlayback}
-                  onChange={(event) => setOverlayPlayback(event.target.value)}
-                  className="h-9 border-r border-white/10 bg-black/40 px-2 font-mono text-[10px] font-bold uppercase tracking-wide text-zinc-200 outline-none focus-visible:bg-white/[0.06]"
-                  aria-label="OBS overlay playback"
-                >
-                  <option value="live">Follow live</option>
-                  <option value="replay">Full replay</option>
-                </select>
-                <CommandButton variant="ghost" size="sm" className="border-0" onClick={() => { void copyOverlayLink(); }}>
-                  {copiedOverlay ? <Check className="h-3.5 w-3.5" /> : <MonitorUp className="h-3.5 w-3.5" />}
-                  Copy OBS link
-                </CommandButton>
-              </div>
-            )}
-            {overlayPreviewUrl && (
-              <CommandButton variant="ghost" size="sm" onClick={() => setOverlayPreviewKey((key) => key + 1)}>
-                <RefreshCw className="h-3.5 w-3.5" />
-                Refresh preview
-              </CommandButton>
-            )}
+            <CommandButton variant="ghost" size="sm" onClick={() => { void copyHostLink(); }}>
+              {copiedHost ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+              Observer link
+            </CommandButton>
           </div>
-          {overlayPreviewUrl && (
-            <div className="space-y-2 border border-white/[0.07] bg-card p-2">
-              <OverlayPreviewFrame
-                src={overlayPreviewUrl}
-                refreshKey={overlayPreviewKey}
-                title="Map veto OBS overlay preview"
-              />
-              <div className="grid gap-2 sm:grid-cols-2">
-                {OVERLAY_THEMES.map((theme) => (
-                  <button
-                    key={theme.value}
-                    type="button"
-                    onClick={() => setOverlayTheme(theme.value)}
-                    aria-pressed={overlayTheme === theme.value}
-                    className={`space-y-1 p-1 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${overlayTheme === theme.value ? "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]" : "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"}`}
-                  >
-                    <div className="px-1 text-xs text-zinc-300">{theme.label}</div>
-                    <OverlayPreviewFrame
-                      src={overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, theme.value) : ""}
-                      refreshKey={overlayPreviewKey}
-                      title={`Map veto ${theme.label} preview`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
       )}
 
