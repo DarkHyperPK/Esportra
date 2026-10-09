@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { MatchResultVerification } from './MatchResultVerification';
 import { ScoreboardOcrPanel } from './scoreboard-ocr/ScoreboardOcrPanel';
 import { supportsScreenshotScoreboard } from '@/utils/gameFeatures';
+import { useScoreboardOcrEnabled } from '@/hooks/useScoreboardOcrEnabled';
 
 interface Props {
   matchId?: string;
@@ -42,8 +43,16 @@ const MatchResultUpload: React.FC<Props> = ({
   const [team1Score, setTeam1Score] = useState('');
   const [team2Score, setTeam2Score] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const ocrAvailable = supportsScreenshotScoreboard(game) && isCaptain && !!matchId && !!teamId && !!team1Id && !!team2Id;
-  const [mode, setMode] = useState<'screenshot' | 'manual'>(ocrAvailable ? 'screenshot' : 'manual');
+  const { data: ocrStatus } = useScoreboardOcrEnabled();
+  const ocrAvailable = supportsScreenshotScoreboard(game) && isCaptain && !!matchId && !!teamId && !!team1Id && !!team2Id && (ocrStatus?.enabled === true);
+  const [mode, setMode] = useState<'screenshot' | 'manual'>('manual');
+  const modeInitialized = useRef(false);
+  useEffect(() => {
+    if (!modeInitialized.current && ocrStatus !== undefined) {
+      modeInitialized.current = true;
+      if (ocrAvailable) setMode('screenshot');
+    }
+  }, [ocrStatus, ocrAvailable]);
 
   const { activeReport, acceptedReport } = useMatchResultReport(matchId, gameNumber);
 
