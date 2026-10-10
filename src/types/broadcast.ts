@@ -29,6 +29,8 @@ export interface BroadcastShowDetail extends BroadcastShow {
   sponsorCount: number;
   crewCount: number;
   matchSlots: ShowMatchSlot[];
+  /** ISO timestamp of the last successful push-config call. Null = never synced. */
+  lastSyncedAt: string | null;
 }
 
 export interface ShowSegment {

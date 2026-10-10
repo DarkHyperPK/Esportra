@@ -31,11 +31,15 @@ export function useUpdateShowStatus(showId: string) {
 }
 
 export function usePushShowConfig(showId: string) {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
       apiClient.post<{ success: true }>(
         `/api/broadcast/shows/${showId}/push-config`,
       ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: broadcastShowQueryKey(showId) });
+    },
   });
 }
 

@@ -33,7 +33,7 @@ export default function BroadcastSetupPage() {
 
   const crew = crewData?.crew ?? [];
 
-  const { steps, completion, completedCount, totalCount, allRequiredDone, markSynced } =
+  const { steps, completion, completedCount, totalCount, allRequiredDone } =
     useBroadcastSetupStatus({ show, nodes, segments, crew, sponsors, showId });
 
   const showTitle = show?.title ?? '…';
@@ -46,7 +46,6 @@ export default function BroadcastSetupPage() {
   async function handleSync() {
     try {
       await pushConfig.mutateAsync();
-      markSynced();
       toast.success('Config pushed to node.');
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Sync failed. Check node connection.'));

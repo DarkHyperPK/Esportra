@@ -1,4 +1,4 @@
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo } from 'react';
 import type {
   BroadcastShowDetail,
   BroadcastNode,
@@ -35,7 +35,6 @@ function buildSteps(showId: string): SetupStep[] {
 function deriveCompletion(
   steps: SetupStep[],
   input: SetupStatusInput,
-  syncedThisSession: boolean,
 ): boolean[] {
   const { show, nodes, segments, crew, sponsors } = input;
   const matchSlots = show?.matchSlotCount ?? 0;
@@ -51,35 +50,21 @@ function deriveCompletion(
       case 'talent': return (show?.talentCount ?? 0) > 0;
       case 'sponsors': return sponsors.length > 0;
       case 'crew': return crew.length > 0;
-      case 'sync':
-        // DEBT-F1: backend has no last_synced_at on broadcast_shows.
-        // Session ref only — does not persist across page reloads.
-        return syncedThisSession;
+      case 'sync': return show?.lastSyncedAt != null;
       default: return false;
     }
   });
 }
 
 export function useBroadcastSetupStatus(input: SetupStatusInput) {
-  // DEBT-F1: No last_synced_at on broadcast_shows. Track sync in a session ref.
-  // Repayment: add last_synced_at to broadcast_shows, surface in BroadcastShowDetail.
-  const syncedThisSessionRef = useRef(false);
-
-  const markSynced = useCallback(() => {
-    syncedThisSessionRef.current = true;
-  }, []);
-
   const steps = useMemo(
     () => buildSteps(input.showId),
     [input.showId],
   );
 
   const completion = useMemo(
-    () => deriveCompletion(steps, input, syncedThisSessionRef.current),
-    // Recompute when any source data changes; syncedThisSessionRef.current
-    // will be stale until next re-render (known gap, DEBT-F1).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [steps, input.show, input.nodes, input.segments, input.crew, input.sponsors],
+    () => deriveCompletion(steps, input),
+    [steps, input],
   );
 
   const completedCount = completion.filter(Boolean).length;
@@ -87,5 +72,5 @@ export function useBroadcastSetupStatus(input: SetupStatusInput) {
     .filter((s) => s.required)
     .every((s) => completion[steps.indexOf(s)]);
 
-  return { steps, completion, completedCount, totalCount: steps.length, allRequiredDone, markSynced };
+  return { steps, completion, completedCount, totalCount: steps.length, allRequiredDone };
 }
