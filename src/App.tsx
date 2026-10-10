@@ -196,6 +196,14 @@ const ScoreboardOcrDebug = lazyWithRetry(() => import("./pages/debug/ScoreboardO
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
+// Broadcast production management (T27–T32)
+const BroadcastShowsPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowsPage"));
+const BroadcastShowDetailPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowDetailPage"));
+const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastNodeMonitorPage"));
+const BroadcastCrewPage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewPage"));
+const BroadcastSponsorsPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorsPage"));
+const BroadcastSetupPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastSetupPage"));
+
 const isChromelessPath = (pathname: string) =>
   pathname.endsWith('/brackets/fullscreen')
   || pathname.startsWith('/tools/brackets/embed/')
@@ -564,6 +572,38 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
+
+                {/* Broadcast production management (T27–T32) */}
+                <Route path="/broadcast/shows" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastShowsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastShowDetailPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/nodes" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastNodeMonitorPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/crew" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastCrewPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/sponsors" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastSponsorsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/setup" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastSetupPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Public Tools */}
                 <Route path="/tools/brackets" element={<PublicBracketList />} />
