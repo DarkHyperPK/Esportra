@@ -184,7 +184,6 @@ const MobileNav = ({
                   {expandedMenu === "tools" && (
                     <motion.div {...accordionMotion} className="overflow-hidden">
                       <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
-                        <JackSubItem to="/tools/brackets">Bracket Builder</JackSubItem>
                         <JackSubItem to="/tools/map-veto">Map Veto</JackSubItem>
                       </div>
                     </motion.div>

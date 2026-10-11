@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
-import { usePublicVetoRealtime } from "@/hooks/usePublicVetoRealtime";
+import { usePublicVetoOverlayData } from "@/hooks/usePublicVetoOverlayData";
 import { mapApiVetoToLocal } from "@/hooks/useMapVetoMachine";
 import { useCrispMapImages } from "@/hooks/useCrispMapImages";
 import { withMapImages } from "@/services/maps/valorantMapAssets";
@@ -16,15 +14,12 @@ import { tossDecisionLine } from "./tossPresentation";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
+  effectivePublicVetoSequence,
   normalizePublicVetoHistoryRow,
-  normalizePublicVetoState,
   PUBLIC_VETO_GAMES,
   type PublicVetoGameMap,
   type PublicVetoHistoryRow,
 } from "./publicMapVetoUtils";
-
-/** Fallback refresh while the live connection is down; OBS needs moments within seconds. */
-const PUBLIC_VETO_OVERLAY_POLL_MS = 3_000;
 
 const adaptHistory = (
   rows: Array<PublicVetoHistoryRow | Record<string, unknown>>,
@@ -77,86 +72,7 @@ const PublicMapVetoOverlay = () => {
   const transition = overlayTransition(searchParams.get("transition"));
   const theme = overlayTheme(searchParams.get("theme"));
   const replay = searchParams.get("playback") === "replay";
-  const queryClient = useQueryClient();
-  const actingRef = useRef(false);
-  const realtimeConnectedRef = useRef(false);
-  const stateQueryKey = useMemo(() => ["public-map-veto-overlay", token] as const, [token]);
-  const historyQueryKey = useMemo(() => ["public-map-veto-overlay-history", token] as const, [token]);
-  const statePath = `/api/tools/map-veto/overlay/${token}`;
-  const fallbackStatePath = `/api/tools/map-veto/host/${token}`;
-  const historyPath = `/api/tools/map-veto/overlay/${token}/history`;
-  const fallbackHistoryPath = `/api/tools/map-veto/${token}/history`;
-
-  const fetchOverlayState = useCallback(async () => {
-    try {
-      return await apiClient.get<Record<string, unknown>>(statePath);
-    } catch {
-      return apiClient.get<Record<string, unknown>>(fallbackStatePath);
-    }
-  }, [fallbackStatePath, statePath]);
-
-  const fetchOverlayHistory = useCallback(async () => {
-    try {
-      return await apiClient.get<Array<Record<string, unknown>>>(historyPath);
-    } catch {
-      return apiClient.get<Array<Record<string, unknown>>>(fallbackHistoryPath);
-    }
-  }, [fallbackHistoryPath, historyPath]);
-
-  const syncFromServer = useCallback(async () => {
-    if (!token) return;
-    const [rawState, historyRows] = await Promise.all([
-      fetchOverlayState(),
-      fetchOverlayHistory(),
-    ]);
-    const nextState = normalizePublicVetoState(rawState);
-    queryClient.setQueryData(stateQueryKey, nextState);
-    queryClient.setQueryData(
-      historyQueryKey,
-      historyRows.map((row) => normalizePublicVetoHistoryRow(row, nextState.maps, nextState.game)),
-    );
-  }, [fetchOverlayHistory, fetchOverlayState, historyQueryKey, queryClient, stateQueryKey, token]);
-
-  const stateQuery = useQuery({
-    queryKey: stateQueryKey,
-    queryFn: async () => normalizePublicVetoState(await fetchOverlayState()),
-    enabled: Boolean(token),
-    staleTime: 0,
-    refetchIntervalInBackground: false,
-    refetchInterval: (query) => {
-      if (realtimeConnectedRef.current) return false;
-      if (query.state.data?.status === "completed") return false;
-      return PUBLIC_VETO_OVERLAY_POLL_MS;
-    },
-  });
-
-  const historyQuery = useQuery({
-    queryKey: historyQueryKey,
-    queryFn: async () => {
-      const rows = await fetchOverlayHistory();
-      const maps = stateQuery.data?.maps ?? [];
-      const game = stateQuery.data?.game ?? "valorant";
-      return rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game));
-    },
-    enabled: Boolean(token) && Boolean(stateQuery.data),
-    staleTime: 0,
-    refetchIntervalInBackground: false,
-    refetchInterval: () => {
-      if (realtimeConnectedRef.current) return false;
-      if (stateQuery.data?.status === "completed") return false;
-      return PUBLIC_VETO_OVERLAY_POLL_MS;
-    },
-  });
-
-  const { connected: realtimeConnected } = usePublicVetoRealtime({
-    sessionId: stateQuery.data?.id,
-    enabled: Boolean(token) && Boolean(stateQuery.data),
-    actingRef,
-    onUpdated: syncFromServer,
-    onReset: syncFromServer,
-    onTossResult: () => void syncFromServer(),
-  });
-  realtimeConnectedRef.current = realtimeConnected;
+  const { stateQuery, historyQuery, expired } = usePublicVetoOverlayData(token);
 
   const state = stateQuery.data;
   const veto = useMemo(
@@ -184,6 +100,7 @@ const PublicMapVetoOverlay = () => {
         team2Name: state.team2Name,
         team1Id: state.team1Id,
         team2Id: state.team2Id,
+        sequence: effectivePublicVetoSequence(state),
       })
       : [],
     [gameMaps, history, state, veto],
@@ -206,24 +123,14 @@ const PublicMapVetoOverlay = () => {
     prevStatusRef.current = state?.status ?? null;
   }, [state?.status, state?.tossFirstActorTeamId]);
 
-  if (stateQuery.isLoading) {
+  if (expired || stateQuery.isLoading || stateQuery.error || !state || !veto) {
+    const title = expired ? "Session has expired" : stateQuery.isLoading ? "Loading stream overlay" : "Overlay unavailable";
+    const message = expired ? "Ask the host for a new stream overlay link." : stateQuery.isLoading ? null : "Check the connection and reload the browser source.";
     return (
-      <main className={cn("flex h-dvh w-dvw items-center justify-center overflow-hidden text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
-        <div className="bg-black/72 px-6 py-4 text-sm font-black uppercase tracking-[0.2em] text-white/70">
-          Loading map veto overlay
-        </div>
-      </main>
-    );
-  }
-
-  if (stateQuery.error || !state || !veto) {
-    return (
-      <main className={cn("flex h-dvh w-dvw items-center justify-center overflow-hidden px-6 text-center text-white", transparent ? "bg-transparent" : "bg-[#050505]")}>
-        <div className="max-w-lg bg-black/78 px-6 py-5">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-white/75">Overlay unavailable</p>
-          <p className="mt-2 text-sm text-white/70">
-            {getApiErrorMessage(stateQuery.error, "This map veto overlay link is unavailable or has expired.")}
-          </p>
+      <main className={cn("flex h-dvh w-dvw items-center justify-center overflow-hidden px-6 text-center text-white", transparent ? "bg-transparent" : "bg-background")}>
+        <div className="w-full max-w-[480px] border border-white/10 bg-card p-5 sm:p-6" role="status">
+          <h1 className="font-heading text-xl font-bold sm:text-2xl">{title}</h1>
+          {message && <p className="mt-2 text-sm text-zinc-300 sm:text-[15px]">{message}</p>}
         </div>
       </main>
     );
@@ -231,7 +138,7 @@ const PublicMapVetoOverlay = () => {
 
   const onClock = veto.status === "in_progress" && veto.current_action && veto.current_team_id
     ? {
-      teamName: veto.current_team_id === veto.team1_id ? state.team1Name : state.team2Name,
+      teamName: state.currentTeamSide === "team1" ? state.team1Name : state.team2Name,
       action: veto.current_action,
     }
     : null;

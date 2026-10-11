@@ -39,6 +39,13 @@ export type PublicVetoPickedMap = {
   side?: string | null;
 };
 
+export type PublicVetoStep = {
+  actionNumber: number;
+  action: "ban" | "pick" | "pick_side";
+  team: "T1" | "T2";
+  isDecider: boolean;
+};
+
 export type PublicVetoState = {
   id: string;
   game: string;
@@ -61,12 +68,15 @@ export type PublicVetoState = {
   team1Token?: string | null;
   team2Token?: string | null;
   overlayToken?: string | null;
+  tossEnabled: boolean;
+  sequence: PublicVetoStep[];
   role: "host" | "team1" | "team2" | "viewer";
   expiresAt?: string;
   tossWinnerTeamId: string | null;
   tossWinnerName: string | null;
   tossCompletedAt: string | null;
   tossFirstActorTeamId: string | null;
+  tossFirstActorSide: "team1" | "team2" | null;
   /** Server-computed: true/false for team roles, null for host/viewer. */
   isTossWinner?: boolean | null;
   /** Server-computed name of the first-acting team after toss choice. */
@@ -120,12 +130,15 @@ export const normalizePublicVetoState = (raw: Record<string, unknown>): PublicVe
     team1Token: (pickVetoField(raw, "team1Token", "team1_token", "team1token") ?? null) as string | null,
     team2Token: (pickVetoField(raw, "team2Token", "team2_token", "team2token") ?? null) as string | null,
     overlayToken: (pickVetoField(raw, "overlayToken", "overlay_token", "overlaytoken") ?? null) as string | null,
+    tossEnabled: Boolean(pickVetoField(raw, "tossEnabled", "toss_enabled") ?? true),
+    sequence: (pickVetoField(raw, "sequence") as PublicVetoStep[] | undefined) ?? [],
     role: roleRaw === "host" || roleRaw === "team1" || roleRaw === "team2" ? roleRaw : "viewer",
     expiresAt: pickVetoField(raw, "expiresAt", "expires_at", "expiresat") as string | undefined,
     tossWinnerTeamId: (pickVetoField(raw, "tossWinnerTeamId", "toss_winner_team_id") ?? null) as string | null,
     tossWinnerName: (pickVetoField(raw, "tossWinnerName", "toss_winner_name") ?? null) as string | null,
     tossCompletedAt: (pickVetoField(raw, "tossCompletedAt", "toss_completed_at") ?? null) as string | null,
     tossFirstActorTeamId: (pickVetoField(raw, "tossFirstActorTeamId", "toss_first_actor_team_id") ?? null) as string | null,
+    tossFirstActorSide: (pickVetoField(raw, "tossFirstActorSide") ?? null) as "team1" | "team2" | null,
     isTossWinner: (pickVetoField(raw, "isTossWinner") ?? null) as boolean | null,
     tossFirstActorName: (pickVetoField(raw, "tossFirstActorName") ?? null) as string | null,
     currentTeamSide: (pickVetoField(raw, "currentTeamSide") ?? null) as "team1" | "team2" | null,
@@ -225,5 +238,19 @@ export const buildPublicHostVetoUrl = (token: string) =>
   `${window.location.origin}/tools/map-veto/host/${token}`;
 
 /** `playback=replay` plays the whole veto from its first action each time the source loads. */
-export const buildPublicVetoOverlayUrl = (token: string, transition = "up", theme = "broadcast", playback = "live") =>
-  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}&theme=${encodeURIComponent(theme)}${playback === "replay" ? "&playback=replay" : ""}`;
+export const buildPublicVetoOverlayUrl = (token: string, transition = "up", theme = "broadcast", playback = "live", transparent = false) =>
+  `${window.location.origin}/tools/map-veto/overlay/${encodeURIComponent(token)}?transition=${encodeURIComponent(transition)}&theme=${encodeURIComponent(theme)}${playback === "replay" ? "&playback=replay" : ""}${transparent ? "&transparent=1" : ""}`;
+
+export const effectivePublicVetoSequence = (
+  state: Pick<PublicVetoState, "sequence" | "tossFirstActorSide" | "currentTeamSide" | "currentActionNumber">,
+): PublicVetoStep[] => {
+  const currentStep = state.sequence.find((step) => step.actionNumber === state.currentActionNumber);
+  const firstSide = state.currentTeamSide && currentStep
+    ? currentStep.team === "T1"
+      ? state.currentTeamSide
+      : state.currentTeamSide === "team1" ? "team2" : "team1"
+    : state.tossFirstActorSide;
+  return firstSide === "team2"
+    ? state.sequence.map((step) => ({ ...step, team: step.team === "T1" ? "T2" : "T1" }))
+    : state.sequence;
+};

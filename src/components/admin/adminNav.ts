@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   ShieldPlus,
   SlidersHorizontal,
+  Smile,
+  Wrench,
   ToggleRight,
   Trophy,
   UserSearch,
@@ -65,6 +67,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Venues', href: '/admin/content/venues', icon: MapPin, permission: 'venues:view' },
       { label: 'Games', href: '/admin/content/games', icon: Gamepad2, permission: 'games:manage' },
       { label: 'Moderation', href: '/admin/content/moderation', icon: Shield, permission: 'moderation:view' },
+      { label: 'Avatar Pool', href: '/admin/tools/avatar-pool', icon: Smile, permission: 'system:config_view', superOnly: true },
     ],
   },
   {
@@ -102,6 +105,10 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'GDPR', href: '/admin/security/gdpr', icon: Database, permission: 'gdpr:view' },
       { label: 'Ghost Mode', href: '/admin/security/ghost', icon: UserSearch, permission: 'users:impersonate', superOnly: true },
     ],
+  },
+  {
+    label: 'Tools',
+    items: [{ label: 'Map Veto Sessions', href: '/admin/tools/public-veto', icon: Wrench, superOnly: true }],
   },
   {
     label: 'Analytics',

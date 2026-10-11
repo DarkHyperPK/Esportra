@@ -139,7 +139,6 @@ const DesktopNav = ({
           </FramerDropdownTrigger>
           <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
             <div className="space-y-px bg-[#0a0a0c]">
-              <JackItem to="/tools/brackets">Bracket Builder</JackItem>
               <JackItem to="/tools/map-veto">Map Veto</JackItem>
             </div>
           </FramerDropdownContent>

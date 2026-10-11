@@ -17,16 +17,19 @@ import { normalizeHistoryEntry, VetoHistoryEntry } from "@/hooks/useVetoHistory"
 import { PublicMapVetoBroadcastOverlay } from "./PublicMapVetoBroadcastOverlay";
 import { buildOverlayStepCards } from "./buildOverlayStepCards";
 import { PublicVetoTossStage } from "./PublicVetoTossStage";
+import { PublicVetoHostSettings } from "./PublicVetoHostSettings";
 import { tossDecisionLine } from "./tossPresentation";
 import { downloadNodeAsPng } from "@/lib/exportNodePng";
 import {
   adaptPublicMapsToGameMaps,
   adaptPublicVetoToMatchVeto,
+  effectivePublicVetoSequence,
   buildPublicTeamVetoUrl,
   PUBLIC_VETO_GAMES,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
+  PublicVetoStep,
   normalizePublicVetoHistoryRow,
   serializePublicVetoSide,
 } from "./publicMapVetoUtils";
@@ -40,6 +43,7 @@ type PublicMapVetoViewProps = {
   acting: boolean;
   onMapAction: (mapId: string, side?: string | null) => Promise<void>;
   onReset: () => Promise<void>;
+  onSaveSettings: (tossEnabled: boolean, sequence: PublicVetoStep[]) => Promise<void>;
   onPerformToss?: () => Promise<void>;
   onPerformTossChoice?: (goFirst: boolean) => Promise<void>;
   team1Logo: string | null;
@@ -76,6 +80,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   acting,
   onMapAction,
   onReset,
+  onSaveSettings,
   onPerformToss,
   onPerformTossChoice,
   team1Logo,
@@ -110,8 +115,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       team2Name: state.team2Name,
       team1Id: state.team1Id,
       team2Id: state.team2Id,
+      sequence: effectivePublicVetoSequence(state),
     }),
-    [veto, vetoHistory, gameMaps, state.game, state.bestOf, state.team1Name, state.team2Name, state.team1Id, state.team2Id],
+    [veto, vetoHistory, gameMaps, state],
   );
   const overlayMaps = useMemo(
     () => gameMaps.map((m) => ({ id: String(m.id), name: m.map_name, imageUrl: m.map_image_url })),
@@ -193,10 +199,11 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       allAvailableMaps={gameMaps}
       team1Name={state.team1Name}
       team2Name={state.team2Name}
-      team1Id={state.team1Id}
-      team2Id={state.team2Id}
+      team1Id={state.team1Id ?? "team1"}
+      team2Id={state.team2Id ?? "team2"}
       bestOf={currentBestOf}
       history={vetoHistory}
+      externalSequence={effectivePublicVetoSequence(state)}
       game={state.game}
       rail={rail}
     />
@@ -252,6 +259,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     availableMaps: gameMaps,
     allAvailableMaps: gameMaps,
     game: state.game,
+    externalSequence: effectivePublicVetoSequence(state),
     team1Logo,
     team2Logo,
   };
@@ -268,8 +276,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         currentTeamName={currentTeamName}
         team1Name={state.team1Name}
         team2Name={state.team2Name}
-        team1Id={state.team1Id}
-        team2Id={state.team2Id}
+        team1Id={state.team1Id ?? "team1"}
+        team2Id={state.team2Id ?? "team2"}
+        externalSequence={effectivePublicVetoSequence(state)}
         bestOf={currentBestOf}
         game={state.game}
         layoutMode="fullscreen"
@@ -352,8 +361,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       >
         {decisionLine ?? ""}
       </div>
-      <div className="mx-auto max-w-[1400px] space-y-6">
+      <div className="space-y-6">
         {pageHeader}
+        {isHost && <PublicVetoHostSettings key={`${JSON.stringify(state.sequence)}:${state.tossEnabled}`} state={state} acting={acting} onSave={onSaveSettings} />}
         <VetoTeamDisplay
           team1Name={state.team1Name}
           team1Logo={team1Logo}
