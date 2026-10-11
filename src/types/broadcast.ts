@@ -102,6 +102,140 @@ export interface BroadcastSponsor {
   displayOrder: number;
 }
 
+// ── P4 Types: Results + Reports ───────────────────────────────────────────────
+
+/** Pending conflict from a ResultConflict SignalR event. */
+export interface ConflictData {
+  correctionId: string;
+  /** Populated when the backend includes sessionId in the event (not yet — noted as backend gap). */
+  sessionId: string | null;
+  mapNumber: number;
+  submittedA: number;
+  submittedB: number;
+  gepA: number;
+  gepB: number;
+}
+
+// ── T36: Sponsor proof ────────────────────────────────────────────────────────
+
+export interface SponsorSlotBreakdown {
+  totalSeconds: number;
+  count: number;
+}
+
+export interface SponsorProofSponsor {
+  sponsorId: string;
+  name: string;
+  totalOnAirSeconds: number;
+  placementCount: number;
+  bySlotType: Record<string, SponsorSlotBreakdown>;
+  hasIncomplete: boolean;
+  incompleteCount: number;
+}
+
+export interface SponsorProofResponse {
+  showId: string;
+  showTitle: string;
+  generatedAt: string;
+  sponsors: SponsorProofSponsor[];
+}
+
+// ── T37: VOD chapters ─────────────────────────────────────────────────────────
+
+export interface VodChapter {
+  segmentId: string;
+  segmentName: string;
+  segmentType: SegmentType;
+  offsetSeconds: number;
+  durationSeconds: number | null;
+  incomplete: boolean;
+}
+
+export interface VodChaptersApiResponse {
+  showId: string;
+  chapters: VodChapter[];
+}
+
+export interface VodChaptersResult {
+  showNotEnded: boolean;
+  chapters: VodChapter[];
+}
+
+// ── T38: Post-show report ─────────────────────────────────────────────────────
+
+export interface ReportMapScore {
+  mapNumber: number;
+  teamAScore: number | null;
+  teamBScore: number | null;
+  source: 'gep' | 'manual' | 'captain';
+}
+
+export interface ReportMatch {
+  matchId: string;
+  matchCode: string;
+  displayOrder: number;
+  status: 'pending' | 'active' | 'done' | string;
+  maps: ReportMapScore[];
+}
+
+export interface ReportCrewMember {
+  userId: string;
+  displayName: string | null;
+  role: string;
+}
+
+export interface ReportSponsor {
+  sponsorId: string;
+  name: string;
+  totalOnAirSeconds: number;
+  placementCount: number;
+  bySlotType: Record<string, SponsorSlotBreakdown>;
+  hasIncomplete: boolean;
+  incompleteCount: number;
+}
+
+export interface ReportChapter {
+  segmentId: string;
+  segmentName: string;
+  segmentType: SegmentType;
+  offsetSeconds: number;
+  durationSeconds: number | null;
+  incomplete: boolean;
+}
+
+export interface ReportPlayerStat {
+  matchId: string;
+  matchCode: string | null;
+  userId: string;
+  displayName: string | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+}
+
+export interface PostShowReport {
+  show: {
+    id: string;
+    title: string;
+    scheduledAt: string | null;
+    startedAt: string | null;
+    endedAt: string | null;
+    durationSeconds: number;
+  };
+  matches: ReportMatch[];
+  crew: ReportCrewMember[];
+  sponsors: ReportSponsor[];
+  chapters: ReportChapter[];
+  corrections: { count: number };
+  players: ReportPlayerStat[];
+}
+
+export interface PostShowReportResult {
+  showNotEnded: boolean;
+  forbidden: boolean;
+  report: PostShowReport | null;
+}
+
 /** One step in the T32 setup checklist */
 export interface SetupStep {
   id: string;

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Reorder } from 'framer-motion';
+import { AnimatePresence, Reorder } from 'framer-motion';
 import { Plus, PanelLeft, PanelRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -17,17 +17,21 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RundownRow } from '@/components/broadcast/RundownRow';
+import { ConflictCard } from '@/components/broadcast/ConflictCard';
 import { useBroadcastShow, usePushShowConfig, useUpdateShowStatus } from '@/hooks/useBroadcastShow';
 import { useBroadcastSponsors } from '@/hooks/useBroadcastSponsors';
 import {
   useBroadcastShowSegments, useAddSegment, useUpdateSegment,
   useRemoveSegment, useReorderSegments,
 } from '@/hooks/useBroadcastShowSegments';
+import { useResolveConflict } from '@/hooks/useResolveConflict';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useSignalR } from '@/hooks/useSignalR';
+import { HubPaths } from '@/lib/signalrClient';
 import { getApiErrorMessage } from '@/lib/apiClient';
-import type { ShowSegment } from '@/types/broadcast';
+import type { ShowSegment, ConflictData } from '@/types/broadcast';
 
-type RightTab = 'matches' | 'talent' | 'sponsors';
+type RightTab = 'matches' | 'talent' | 'sponsors' | 'reports';
 
 export default function BroadcastShowDetailPage() {
   const { showId = '' } = useParams<{ showId: string }>();
@@ -52,6 +56,83 @@ export default function BroadcastShowDetailPage() {
   const [rightSheetOpen, setRightSheetOpen] = useState(false);
   const [goLiveConfirmOpen, setGoLiveConfirmOpen] = useState(false);
   const [endShowConfirmOpen, setEndShowConfirmOpen] = useState(false);
+
+  // T35: Conflict card state
+  const [conflictData, setConflictData] = useState<ConflictData | null>(null);
+  const [conflictResolved, setConflictResolved] = useState(false);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const resolveConflict = useResolveConflict();
+
+  // T35: Subscribe to broadcast hub ResultConflict events (page-level subscription).
+  const { getConnection } = useSignalR();
+  const hubRef = useRef(getConnection(HubPaths.Broadcast, { autoStart: true }));
+
+  useEffect(() => {
+    const conn = hubRef.current;
+
+    function handleResultConflict(payload: {
+      correctionId: string;
+      sessionId?: string;
+      mapNumber: number;
+      submittedA: number;
+      submittedB: number;
+      gepA: number;
+      gepB: number;
+    }) {
+      setConflictResolved(false);
+      setConflictError(null);
+      setConflictData({
+        correctionId: payload.correctionId,
+        sessionId: payload.sessionId ?? null,
+        mapNumber: payload.mapNumber,
+        submittedA: payload.submittedA,
+        submittedB: payload.submittedB,
+        gepA: payload.gepA,
+        gepB: payload.gepB,
+      });
+    }
+
+    conn.on('ResultConflict', handleResultConflict);
+    return () => { conn.off('ResultConflict', handleResultConflict); };
+  }, []);
+
+  async function handleResolveWithGep() {
+    if (!conflictData?.sessionId) {
+      setConflictError("Cannot resolve: session ID not available. Contact support.");
+      return;
+    }
+    try {
+      await resolveConflict.mutateAsync({
+        sessionId: conflictData.sessionId,
+        mapNumber: conflictData.mapNumber,
+        teamAScore: conflictData.gepA,
+        teamBScore: conflictData.gepB,
+      });
+      setConflictResolved(true);
+      setTimeout(() => setConflictData(null), 2000);
+    } catch (err) {
+      setConflictError(getApiErrorMessage(err, "Could not apply score. Try again."));
+    }
+  }
+
+  async function handleKeepSubmitted() {
+    if (!conflictData?.sessionId) {
+      setConflictError("Cannot resolve: session ID not available. Contact support.");
+      return;
+    }
+    try {
+      await resolveConflict.mutateAsync({
+        sessionId: conflictData.sessionId,
+        mapNumber: conflictData.mapNumber,
+        teamAScore: conflictData.submittedA,
+        teamBScore: conflictData.submittedB,
+      });
+      setConflictResolved(true);
+      setTimeout(() => setConflictData(null), 2000);
+    } catch (err) {
+      setConflictError(getApiErrorMessage(err, "Could not apply score. Try again."));
+    }
+  }
 
   // Sync local segments when server data changes
   React.useEffect(() => {
@@ -207,10 +288,14 @@ export default function BroadcastShowDetailPage() {
     </div>
   );
 
+  const rightTabs: RightTab[] = isEnded
+    ? ['matches', 'talent', 'sponsors', 'reports']
+    : ['matches', 'talent', 'sponsors'];
+
   const rightContent = (
     <div>
       <div className="flex border-b border-white/10">
-        {(['matches', 'talent', 'sponsors'] as RightTab[]).map((t) => (
+        {rightTabs.map((t) => (
           <CommandTabButton
             key={t}
             active={rightTab === t}
@@ -258,6 +343,32 @@ export default function BroadcastShowDetailPage() {
               ))}
             </div>
           )
+        )}
+        {rightTab === 'reports' && isEnded && (
+          <div className="space-y-px">
+            {[
+              {
+                href: `/broadcast/shows/${showId}/sponsor-proof`,
+                label: 'Sponsor proof →',
+                desc: 'On-air time per sponsor, ready to export.',
+              },
+              {
+                href: `/broadcast/shows/${showId}/vod-chapters`,
+                label: 'VOD chapters →',
+                desc: 'Timestamps for your video editor.',
+              },
+              {
+                href: `/broadcast/shows/${showId}/report`,
+                label: 'Post-show report →',
+                desc: 'Complete production record.',
+              },
+            ].map(({ href, label, desc }) => (
+              <Link key={href} to={href} className="block border-b border-white/5 py-3 hover:bg-white/[0.02]">
+                <p className="text-sm font-medium text-white">{label}</p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">{desc}</p>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -317,6 +428,25 @@ export default function BroadcastShowDetailPage() {
           {isEnded && (
             <InlineNotice tone="neutral" className="mx-4 mt-3">This show has ended.</InlineNotice>
           )}
+
+          {/* T35: Conflict card — appears above the rundown on ResultConflict event */}
+          <AnimatePresence>
+            {conflictData && (
+              <ConflictCard
+                matchCode={null}
+                mapNumber={conflictData.mapNumber}
+                submittedA={conflictData.submittedA}
+                submittedB={conflictData.submittedB}
+                gepA={conflictData.gepA}
+                gepB={conflictData.gepB}
+                isResolving={resolveConflict.isPending}
+                resolveError={conflictError}
+                resolved={conflictResolved}
+                onUseGep={() => void handleResolveWithGep()}
+                onKeepSubmitted={() => void handleKeepSubmitted()}
+              />
+            )}
+          </AnimatePresence>
 
           {/* sr-only keyboard instructions */}
           <p className="sr-only">

@@ -107,4 +107,5 @@ export const HubPaths = {
   Live          : '/hubs/live',
   VenueStatus   : '/hubs/venue-status',
   BR            : '/hubs/br',
+  Broadcast     : '/hubs/broadcast',
 } as const;

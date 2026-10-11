@@ -203,6 +203,9 @@ const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/B
 const BroadcastCrewPage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewPage"));
 const BroadcastSponsorsPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorsPage"));
 const BroadcastSetupPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastSetupPage"));
+const BroadcastSponsorProofPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorProofPage"));
+const BroadcastVodChaptersPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastVodChaptersPage"));
+const BroadcastPostShowReportPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastPostShowReportPage"));
 
 const isChromelessPath = (pathname: string) =>
   pathname.endsWith('/brackets/fullscreen')
@@ -602,6 +605,21 @@ const AppContent = React.memo(() => {
                 <Route path="/broadcast/shows/:showId/setup" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <BroadcastSetupPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/sponsor-proof" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastSponsorProofPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/vod-chapters" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastVodChaptersPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/broadcast/shows/:showId/report" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <BroadcastPostShowReportPage />
                   </ProtectedRoute>
                 } />
 
