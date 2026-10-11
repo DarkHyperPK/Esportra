@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   CommandShell, CommandPageGrid, CommandHeader, CommandSection,
-  CommandButton, CommandEmptyState, CommandShowHeader,
+  CommandButton, CommandEmptyState, CommandShowHeader, CommandMetric,
 } from '@/components/management/CommandSurface';
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
 import { EYEBROW_CLASS } from '@/components/ui/kit/tone';
@@ -210,29 +210,18 @@ export default function BroadcastSponsorProofPage() {
 
                   {/* Metrics row */}
                   <div className="mt-4 grid grid-cols-3 gap-4">
-                    <div className="border border-white/10 bg-white/[0.025] p-3">
-                      <div
-                        className="text-xl font-black text-white"
-                        title={`${Math.floor(sponsor.totalOnAirSeconds / 60)} minutes ${Math.floor(sponsor.totalOnAirSeconds % 60)} seconds`}
-                      >
-                        {formatDuration(sponsor.totalOnAirSeconds)}
-                      </div>
-                      <div className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Total on-air
-                      </div>
-                    </div>
-                    <div className="border border-white/10 bg-white/[0.025] p-3">
-                      <div className="text-xl font-black text-white">{sponsor.placementCount}</div>
-                      <div className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Placements
-                      </div>
-                    </div>
-                    <div className="border border-white/10 bg-white/[0.025] p-3">
-                      <div className="text-xl font-black text-white">{slots.length}</div>
-                      <div className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Slots
-                      </div>
-                    </div>
+                    <CommandMetric
+                      value={formatDuration(sponsor.totalOnAirSeconds)}
+                      label="Total on-air"
+                    />
+                    <CommandMetric
+                      value={sponsor.placementCount}
+                      label="Placements"
+                    />
+                    <CommandMetric
+                      value={slots.length}
+                      label="Slot types"
+                    />
                   </div>
 
                   {/* Slot breakdown */}

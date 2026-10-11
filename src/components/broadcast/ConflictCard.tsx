@@ -141,7 +141,7 @@ export function ConflictCard({
               aria-label={
                 bMatch
                   ? undefined
-                  : `GEP score for Team B: ${gepB} (differs from submitted score of ${gepB})`
+                  : `GEP score for Team B: ${gepB} (differs from submitted score of ${submittedB})`
               }
             >
               {gepB}

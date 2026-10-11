@@ -107,8 +107,7 @@ export interface BroadcastSponsor {
 /** Pending conflict from a ResultConflict SignalR event. */
 export interface ConflictData {
   correctionId: string;
-  /** Populated when the backend includes sessionId in the event (not yet — noted as backend gap). */
-  sessionId: string | null;
+  sessionId: string;
   mapNumber: number;
   submittedA: number;
   submittedB: number;

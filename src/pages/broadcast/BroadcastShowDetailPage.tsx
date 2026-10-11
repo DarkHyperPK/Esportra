@@ -72,7 +72,7 @@ export default function BroadcastShowDetailPage() {
 
     function handleResultConflict(payload: {
       correctionId: string;
-      sessionId?: string;
+      sessionId: string;
       mapNumber: number;
       submittedA: number;
       submittedB: number;
@@ -83,7 +83,7 @@ export default function BroadcastShowDetailPage() {
       setConflictError(null);
       setConflictData({
         correctionId: payload.correctionId,
-        sessionId: payload.sessionId ?? null,
+        sessionId: payload.sessionId,
         mapNumber: payload.mapNumber,
         submittedA: payload.submittedA,
         submittedB: payload.submittedB,
@@ -97,10 +97,7 @@ export default function BroadcastShowDetailPage() {
   }, []);
 
   async function handleResolveWithGep() {
-    if (!conflictData?.sessionId) {
-      setConflictError("Cannot resolve: session ID not available. Contact support.");
-      return;
-    }
+    if (!conflictData) return;
     try {
       await resolveConflict.mutateAsync({
         sessionId: conflictData.sessionId,
@@ -116,10 +113,7 @@ export default function BroadcastShowDetailPage() {
   }
 
   async function handleKeepSubmitted() {
-    if (!conflictData?.sessionId) {
-      setConflictError("Cannot resolve: session ID not available. Contact support.");
-      return;
-    }
+    if (!conflictData) return;
     try {
       await resolveConflict.mutateAsync({
         sessionId: conflictData.sessionId,

@@ -29,6 +29,20 @@ One line per shipped surface. The Creative Lead appends after every APPROVED rev
 - Tool: builder with segmented format / best of / size and a slots meter; runner with a report panel (score steppers, winner pre-picked from the score, "Up next" list of ready matches), confirm on reset and delete; embed with a title strip and "Powered by Esportra".
 - Removed: emoji section headings, orange winner bars, rainbow initial avatars, blue "?" placeholders.
 
+## 2026-10-05 — PROJ-053 T3: Scoreboard OCR review surface
+
+- Direction: Broadcast, L0 (inherited scoreboard world). Archetype: scoreboard grid (existing) with inline confirmation rows → submit verdict. Hero: rose cue light (2 px left border + NOT READABLE tag) that migrates from elimination rows to the submit button as each row is confirmed — one cue in motion, never two at once.
+- New: OCR confidence indicators inline in existing rows with zero layout disruption; rose-cue migration enforced in logic (`unconfirmedEliminationCount > 0`); auto-confirm on name edit so fixing a name does not require a second tap; State 4 (all clean) adds no UI at all; negative-margin padding (`py-2.5 -my-2.5`) for 44 px tap target on inline text-only buttons without breaking text flow.
+- Try next: same rose-migrates-to-action pattern for other gated submit flows (proof upload, score dispute).
+
+## 2026-10-08 — PROJ-046 T5: Esportra Broadcast operator UI
+
+- Direction: Control Room (new direction — first desktop production tool in the log). Rejected: Broadcast/web (cinematic staging destroys scannability for 45 peer items), Command Console/web (management-flow patterns do not map to a fixed single-screen tool), Community (wrong register).
+- Archetype: fixed three-panel shell — sidebar (identity + match selector + HUD status) · catalogue grid (3-col, 45 overlay cards) · state editor (field list / raw JSON toggle).
+- Hero: the HUD status bar — one stripe of color (green/gray/amber/rose) at the base of the sidebar, readable from 1 metre. Everything else is utility.
+- New: Control Room direction established for desktop production surfaces; pulse-ring animation spec (only animation in the app beyond copy feedback text swap); state machine for sign-in → match selection rendered in-panel with no modals; two-mode state editor (field list + raw JSON toggle) designed for power-user override without adding a heavy dependency.
+- Try next: if a venue screen surface is built, evaluate Control Room vs Broadcast-scaled; the panel-strip approach (color stripe as health signal) could carry to other monitoring surfaces.
+
 ## 2026-10-02 — Public match details: premium result page with proof
 
 - Direction: Broadcast, L0. Archetype: SPOTLIGHT hero (scoreline) → strip of map cards → per-map breakdown, then tabs for Map veto and Proof.
@@ -36,3 +50,22 @@ One line per shipped surface. The Creative Lead appends after every APPROVED rev
 - Two reporting methods are now first-class: a result pulled from Riot (shield, emerald, Riot match id shown) vs reported with a screenshot (camera) vs a typed score (pen). Each map carries its source and its verification state (Verified / Awaiting confirmation / Disputed / Rejected).
 - Proof tab: "Pulled from Riot" list, then screenshots grouped per map, opening a full-size lightbox (prev/next, arrows, "Open original").
 - Removed: old scorebug, series strip and evidence grid.
+
+## 2026-10-10 — PROJ-057 P3: Esportra Air Web Broadcast screens (T27–T32)
+
+- T27 Shows list: Command Console, L0 strict. Archetype: Scoreboard (list). Hero: rose pulse dot on any live show. Rose cue: one pulse dot per live row; no rose elsewhere. New: status semantic mapping for broadcast show lifecycle (live=rose, scheduled=amber, draft=zinc, ended=zinc-muted).
+- T28 Show detail + rundown editor: Command Console, L0 strict. Archetype: three-panel production workspace. Hero: show status + Go Live/End Show action. Rose cue: 2px border on selected rundown segment (draft); rose strip on header (live). New: `CommandShowHeader` (shared 52px sticky header, status-tinted, added to CommandSurface.tsx); `RundownRow` (drag handle + type icon + inline edit + status chip); Framer Reorder for rundown + sponsor grid DnD. Live state differentiates from draft via header tint only — no page redesign.
+- T29 Node monitor: Command Console, L0 strict. Archetype: Pulse (health) + Scoreboard. Hero: the offline/stale node card. Rose cue: 2px left border on offline card only (emerald for healthy — rose reserved for "needs you"). New: `NodeCard` component with dual health indicators.
+- T30 Crew management: Command Console, L0 strict. Archetype: settings anatomy (invite) + Scoreboard (crew table). Hero: the invite link (shown once in modal). Rose cue: primary "Generate invite link" button (rose fill via slide hover).
+- T31 Sponsor config: Command Console, L0 strict. Archetype: card grid + settings anatomy. Hero: logo preview. Rose cue: "Add sponsor" primary action. New: `SponsorCard` component; drag-to-reorder grid (Framer Reorder).
+- T32 Onboarding checklist: Broadcast (lead), L0 strict. Archetype: Stage header → Path. Hero: N/9 complete count (Poppins 900, 48px). Rose cue: progress bar fill (transitions to emerald at full completion). New: `SetupChecklist` + `StepRow` components; non-wizard checklist pattern (any-order completion, completion derived from backend state not user input). Try next: rose-migrates-to-completion pattern for other setup flows (venue booking, tournament create).
+- Rejected on all six: Broadcast for T27-T31 (hero energy conflicts with multi-panel density); Control Room (reserved for desktop production tool, PROJ-046 T5); Community (wrong register); Command Console for T32 (flat equal-weight treatment loses 0→9 arc).
+- Sameness check: T27–T31 are all Command Console; signals justify the match (expert operator tool, dense management data, L0 strict). T32 Broadcast breaks the run. Five Console + one Broadcast is not habit — it is signal-driven.
+
+## 2026-10-09 — PROJ-057: Esportra Air Desktop P0 screens (Pair, Readiness, Capture, Outputs)
+
+- Direction: Command Console (lead), L0 strict. Rejected: Broadcast (stage presence fights tabular data), Control Room (correct for the live producer console, differentiated for these setup/monitoring screens), Community (wrong register).
+- Archetype: Pair = Path. Readiness = Pulse + Scoreboard. Capture = Scoreboard + Pulse. Outputs = Scoreboard.
+- Hero: Pair = code input field. Readiness = least-healthy row. Capture = GEP feed status line ("Live · 34 msg/s"). Outputs = URL in each row.
+- New: full P0 token set codified (correcting border-radius 4px → 0px throughout; correcting rose focus rings → white 2px solid #F4F4F5; retiring --c-accent for interactive chrome); red #EF4444 for errors distinct from rose #F43F5E (ON AIR only); Mono as the data face for all URLs, latency values, codes, hotkey badges; health row anatomy (dot + label + sub-text + fix action); Regenerate confirmation dialog with consequence copy before destructive verb on button.
+- Try next: if the live producer console (Readiness → console transition) is designed, evaluate whether the status dot system carries into the console's autopilot state indicators with the same anatomy, or whether a distinct tally-style is needed for the PGM/PVW row.

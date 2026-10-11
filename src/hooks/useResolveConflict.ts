@@ -11,10 +11,6 @@ interface ResolveConflictParams {
 /**
  * Resolves a GEP result conflict by calling the game-result endpoint with
  * force: true and the chosen scores.
- *
- * NOTE: The ResultConflict SignalR event does not currently include sessionId
- * (backend gap). This hook works correctly when sessionId is provided.
- * The frontend displays a graceful error when sessionId is null.
  */
 export function useResolveConflict() {
   return useMutation({
