@@ -352,7 +352,7 @@ const PublicMapVetoCreate = () => {
                 </div>
               </div>
               <p className="text-sm text-zinc-400">
-                You'll run the toss in the veto room to decide which team goes first.
+                The host can run a toss or turn it off in the veto room.
               </p>
             </motion.div>
           )}

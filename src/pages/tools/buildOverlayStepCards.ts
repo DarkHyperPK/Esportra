@@ -2,6 +2,7 @@ import type { GameMap, MatchMapVeto } from "@/hooks/useMapVetoMachine";
 import type { VetoHistoryEntry } from "@/hooks/useVetoHistory";
 import { buildVetoSequenceItems } from "@/components/tournament/map-veto/buildVetoSequenceItems";
 import { buildVetoStripCards, type VetoStripCard } from "@/components/tournament/map-veto/buildVetoStripCards";
+import type { PublicVetoStep } from "./publicMapVetoUtils";
 
 type Options = {
   veto: MatchMapVeto;
@@ -13,6 +14,7 @@ type Options = {
   team2Name: string;
   team1Id?: string | null;
   team2Id?: string | null;
+  sequence?: PublicVetoStep[];
 };
 
 /**
@@ -21,7 +23,7 @@ type Options = {
  * so the overlay only ever fills a slot in place.
  */
 export function buildOverlayStepCards(options: Options): VetoStripCard[] {
-  const { veto, history, maps, game, bestOf, team1Name, team2Name, team1Id, team2Id } = options;
+  const { veto, history, maps, game, bestOf, team1Name, team2Name, team1Id, team2Id, sequence } = options;
   const notStarted = veto.status === "pending" && !veto.current_action;
   // Before the first action the sequence is still known; show it with nothing on the clock.
   const planned: MatchMapVeto = notStarted
@@ -39,6 +41,7 @@ export function buildOverlayStepCards(options: Options): VetoStripCard[] {
     availableMaps: maps,
     allAvailableMaps: maps,
     game,
+    externalSequence: sequence,
   });
 
   return buildVetoStripCards(items);

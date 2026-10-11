@@ -103,6 +103,7 @@ const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompl
 const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/AnomalyDetection"));
 const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/GameCatalogManagement"));
 const MapManagement = lazyWithRetry(() => import("./pages/admin/tools/MapManagement"));
+const PublicVetoSessions = lazyWithRetry(() => import("./pages/admin/tools/PublicVetoSessions"));
 const AvatarPoolManagement = lazyWithRetry(() => import("./pages/admin/tools/AvatarPoolManagement"));
 
 // New admin pages
@@ -180,9 +181,6 @@ const PlayerHistory = lazyWithRetry(() => import('./pages/player/History'));
 const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatus'));
 const TournamentDisputesPage = lazyWithRetry(() => import('./pages/organizer/TournamentDisputesPage'));
 const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
-const PublicBracketList = lazyWithRetry(() => import('./pages/tools/PublicBracketList'));
-const PublicBracketBuilder = lazyWithRetry(() => import('./pages/tools/PublicBracketBuilder'));
-const PublicBracketRunner = lazyWithRetry(() => import('./pages/tools/PublicBracketRunner'));
 const PublicBracketShare = lazyWithRetry(() => import('./pages/tools/PublicBracketShare'));
 const PublicBracketEmbed = lazyWithRetry(() => import('./pages/tools/PublicBracketEmbed'));
 const PublicMapVetoCreate = lazyWithRetry(() => import('./pages/tools/PublicMapVetoCreate'));
@@ -390,6 +388,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/scheduled-reports" element={<AdminRouteGuard requiredPermission="reports:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><ScheduledReports /></AdminRouteGuard>} />
                   <Route path="tools/gdpr" element={<AdminRouteGuard requiredPermission="gdpr:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GdprCompliance /></AdminRouteGuard>} />
                   <Route path="tools/anomaly-detection" element={<AdminRouteGuard requiredPermission="system:audit" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AnomalyDetection /></AdminRouteGuard>} />
+                  <Route path="tools/public-veto" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><PublicVetoSessions /></AdminRouteGuard>} />
                   <Route path="tools/avatar-pool" element={<AdminRouteGuard requiredPermission="system:config_view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AvatarPoolManagement /></AdminRouteGuard>} />
 
                   {/* System */}
@@ -566,9 +565,9 @@ const AppContent = React.memo(() => {
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
 
                 {/* Public Tools */}
-                <Route path="/tools/brackets" element={<PublicBracketList />} />
-                <Route path="/tools/brackets/new" element={<PublicBracketBuilder />} />
-                <Route path="/tools/brackets/:id" element={<PublicBracketRunner />} />
+                <Route path="/tools/brackets" element={<Navigate to="/tools/map-veto" replace />} />
+                <Route path="/tools/brackets/new" element={<Navigate to="/tools/map-veto" replace />} />
+                <Route path="/tools/brackets/:id" element={<Navigate to="/tools/map-veto" replace />} />
                 <Route path="/tools/brackets/share/:token" element={<PublicBracketShare />} />
                 <Route path="/tools/map-veto" element={<PublicMapVetoCreate />} />
                 <Route path="/tools/map-veto/host/:token" element={<PublicMapVetoRoom />} />

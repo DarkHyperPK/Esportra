@@ -10,6 +10,7 @@ import {
   normalizePublicVetoState,
   type PublicVetoHistoryRow,
   type PublicVetoState,
+  type PublicVetoStep,
 } from "./publicMapVetoUtils";
 
 const PUBLIC_VETO_FALLBACK_POLL_MS = 30_000;
@@ -59,9 +60,8 @@ const PublicMapVetoRoom = () => {
     enabled: Boolean(token),
     staleTime: 0,
     refetchIntervalInBackground: false,
-    refetchInterval: (query) => {
+    refetchInterval: () => {
       if (actingRef.current || realtimeConnectedRef.current) return false;
-      if (query.state.data?.status === "completed") return false;
       return PUBLIC_VETO_FALLBACK_POLL_MS;
     },
   });
@@ -79,7 +79,6 @@ const PublicMapVetoRoom = () => {
     refetchIntervalInBackground: false,
     refetchInterval: () => {
       if (actingRef.current || realtimeConnectedRef.current) return false;
-      if (stateQuery.data?.status === "completed") return false;
       return PUBLIC_VETO_FALLBACK_POLL_MS;
     },
   });
@@ -187,6 +186,22 @@ const PublicMapVetoRoom = () => {
     }
   };
 
+  const saveSettings = async (tossEnabled: boolean, sequence: PublicVetoStep[]) => {
+    if (!token || actingRef.current) return;
+    beginAction();
+    try {
+      const updated = await apiClient.put<Record<string, unknown>>(
+        `/api/tools/map-veto/host/${token}/settings`, { tossEnabled, sequence });
+      applyServerState(updated);
+      toast({ title: "Veto settings saved" });
+    } catch (err) {
+      toast({ title: "Could not save settings", description: getApiErrorMessage(err), variant: "destructive" });
+      await syncFromServer();
+    } finally {
+      endAction();
+    }
+  };
+
   if (stateQuery.isLoading) {
     return (
       <div className="min-h-screen bg-[#050505]">
@@ -213,6 +228,7 @@ const PublicMapVetoRoom = () => {
         acting={acting}
         onMapAction={performAction}
         onReset={reset}
+        onSaveSettings={saveSettings}
         onPerformToss={isHost ? performToss : undefined}
         onPerformTossChoice={!isHost ? performTossChoice : undefined}
         team1Logo={team1Logo}

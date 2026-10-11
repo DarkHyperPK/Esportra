@@ -4,125 +4,12 @@ import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { motion } from 'framer-motion';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import { Loader2 } from 'lucide-react';
-import {
-  AlertTriangle,
-  BarChart3,
-  Bell,
-  CalendarClock,
-  Database,
-  FileText,
-  FileSignature,
-  Flag,
-  Gamepad2,
-  Home,
-  LayoutDashboard,
-  Lock,
-  LucideIcon,
-  MapPin,
-  Megaphone,
-  Monitor,
-  Scale,
-  Settings,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldPlus,
-  SlidersHorizontal,
-  Smile,
-  ToggleRight,
-  Trophy,
-  UserSearch,
-  Users,
-  UsersRound,
-} from 'lucide-react';
+import { Home, Shield } from 'lucide-react';
+import { adminNavGroups } from './adminNav';
 
 interface AdminLayoutProps {
   children?: React.ReactNode;
 }
-
-type AdminNavItem = {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  permission?: string;
-  superOnly?: boolean;
-};
-
-type AdminNavGroup = {
-  label: string;
-  items: AdminNavItem[];
-};
-
-const adminNavGroups: AdminNavGroup[] = [
-  {
-    label: 'Dashboard',
-    items: [
-      { label: 'Command Centre', href: '/admin/dashboard', icon: LayoutDashboard, permission: 'dashboard:view' },
-    ],
-  },
-  {
-    label: 'Users & Access',
-    items: [
-      { label: 'All Users', href: '/admin/users', icon: Users, permission: 'users:view' },
-      { label: 'Verifications', href: '/admin/users/verifications', icon: ShieldCheck, permission: 'verification:view' },
-      { label: 'Licenses', href: '/admin/users/licenses', icon: Scale, permission: 'licenses:view' },
-      { label: 'Sessions', href: '/admin/users/sessions', icon: Monitor, permission: 'security:view_sessions' },
-    ],
-  },
-  {
-    label: 'Content',
-    items: [
-      { label: 'Tournaments', href: '/admin/content/tournaments', icon: Trophy, permission: 'tournaments:view' },
-      { label: 'Teams', href: '/admin/content/teams', icon: UsersRound, permission: 'teams:view' },
-      { label: 'Venues', href: '/admin/content/venues', icon: MapPin, permission: 'venues:view' },
-      { label: 'Games', href: '/admin/content/games', icon: Gamepad2, permission: 'games:manage' },
-      { label: 'Moderation', href: '/admin/content/moderation', icon: Shield, permission: 'moderation:view' },
-      { label: 'Avatar Pool', href: '/admin/tools/avatar-pool', icon: Smile, permission: 'system:config_view', superOnly: true },
-    ],
-  },
-  {
-    label: 'Partners',
-    items: [
-      { label: 'Sponsors', href: '/admin/partners/sponsors', icon: Flag, permission: 'sponsors:view' },
-      { label: 'Proposals', href: '/admin/proposals', icon: FileSignature, superOnly: true },
-    ],
-  },
-  {
-    label: 'Operations',
-    items: [
-      { label: 'Disputes', href: '/admin/operations/disputes', icon: AlertTriangle, permission: 'disputes:view' },
-      { label: 'Alerts', href: '/admin/operations/alerts', icon: Bell, permission: 'alerts:view' },
-      { label: 'Reports', href: '/admin/operations/reports', icon: CalendarClock, permission: 'reports:view' },
-      { label: 'Broadcasts', href: '/admin/operations/broadcasts', icon: Megaphone, permission: 'broadcasts:view' },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { label: 'Feature Flags', href: '/admin/system/feature-flags', icon: ToggleRight, permission: 'feature_flags:view' },
-      { label: 'Settings', href: '/admin/system/settings', icon: Settings, permission: 'system:config_view' },
-      { label: 'Kill Switches', href: '/admin/system/kill-switches', icon: ShieldAlert, permission: 'system:config_view' },
-      { label: 'Anomalies', href: '/admin/system/anomalies', icon: AlertTriangle, permission: 'system:config_view' },
-    ],
-  },
-  {
-    label: 'Security',
-    items: [
-      { label: 'Role Builder', href: '/admin/security/roles', icon: Lock, permission: 'rbac:view' },
-      { label: 'Admin Access', href: '/admin/security/admins', icon: ShieldPlus, permission: 'admin_users:view' },
-      { label: 'IP Allowlist', href: '/admin/security/ip-allowlist', icon: SlidersHorizontal, permission: 'security:manage_ip_allowlist' },
-      { label: 'Audit Logs', href: '/admin/security/audit-logs', icon: FileText, permission: 'audit:view' },
-      { label: 'GDPR', href: '/admin/security/gdpr', icon: Database, permission: 'gdpr:view' },
-      { label: 'Ghost Mode', href: '/admin/security/ghost', icon: UserSearch, permission: 'users:impersonate', superOnly: true },
-    ],
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { label: 'Overview', href: '/admin/analytics', icon: BarChart3, permission: 'analytics:view' },
-    ],
-  },
-];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const {
@@ -256,7 +143,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
       </aside>
 
-      <main className="relative z-10 min-h-screen lg:pl-72">
+      <main className="relative z-10 min-h-screen min-w-0 lg:pl-72">
         {/* ── Mobile bar ────────────────────────────────────────────────── */}
         <div className="sticky top-0 z-20 border-b border-white/10 bg-black/80 px-4 py-3 backdrop-blur-2xl lg:hidden">
           <div className="flex items-center justify-between gap-3">
@@ -279,7 +166,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </Link>
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1" data-lenis-prevent>
-            {visibleGroups.flatMap((group) => group.items).slice(0, 10).map((item) => (
+            {visibleGroups.flatMap((group) => group.items).map((item) => (
               <NavLink
                 key={item.href}
                 to={item.href}
@@ -298,7 +185,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-[1800px]">
+        <div className="min-w-0 w-full">
           <Suspense fallback={
             <div className="flex items-center justify-center min-h-[60vh]">
               <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
