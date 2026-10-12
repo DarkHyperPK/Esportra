@@ -256,7 +256,7 @@ function ShowRow({ show, index, reduceMotion, duplicatePending, onOpen, onDuplic
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           {show.status === 'live' && (
-            <span aria-hidden className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-rose-500" />
+            <span aria-hidden className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-400" />
           )}
           <span className="text-base font-bold text-white">{show.title}</span>
           <StatusPill tone={STATUS_TONE[show.status]} label={show.status} />

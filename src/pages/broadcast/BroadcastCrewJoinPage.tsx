@@ -7,6 +7,7 @@ import {
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
 import { useAcceptCrewInvite } from '@/hooks/useBroadcastCrew';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const ROLE_LABELS: Record<string, string> = {
   producer:           'Producer',
@@ -20,6 +21,7 @@ export default function BroadcastCrewJoinPage() {
   const navigate = useNavigate();
   const accept = useAcceptCrewInvite();
 
+  const reduceMotion = useReducedMotion();
   const [token, setToken] = useState('');
   const [accepted, setAccepted] = useState<{ showId: string; role: string } | null>(null);
   const [error, setError] = useState('');
@@ -55,8 +57,9 @@ export default function BroadcastCrewJoinPage() {
           />
           <CommandSection>
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', stiffness: 420, damping: 34 }}
               className="flex flex-col gap-4"
             >
               <InlineNotice tone="success">
@@ -79,7 +82,7 @@ export default function BroadcastCrewJoinPage() {
       <CommandPageGrid>
         <CommandHeader
           title="Join Broadcast Crew"
-          description="Accept your invite to join this show's production team"
+          description="Accept your invite to join this show's broadcast crew"
         />
         <CommandSection>
           <motion.div

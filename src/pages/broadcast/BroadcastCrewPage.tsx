@@ -117,7 +117,6 @@ export default function BroadcastCrewPage() {
         showStatus={showStatus as 'draft' | 'live' | 'ended'}
         backHref={`/broadcast/shows/${showId}`}
         backLabel="Back to show"
-        actions={generateButton}
       />
 
       <CommandPageGrid>
@@ -259,9 +258,9 @@ export default function BroadcastCrewPage() {
       <AlertDialog open={!!removeTarget} onOpenChange={(o) => { if (!o) setRemoveTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {removeTarget?.displayName ?? 'crew member'}?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {removeTarget?.displayName ?? 'crew member'} from crew?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove {removeTarget?.displayName ?? 'this person'} from crew?
+              They will lose access to this show immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

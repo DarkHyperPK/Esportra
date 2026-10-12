@@ -85,7 +85,7 @@ export default function BroadcastSetupPage() {
               className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
               onClick={() => navigate(`/broadcast/shows/${showId}`)}
             >
-              Ready to go live →
+              Open show
             </CommandButton>
           ) : undefined
         }
@@ -111,7 +111,7 @@ export default function BroadcastSetupPage() {
                   className="hidden sm:inline-flex border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
                   onClick={() => navigate(`/broadcast/shows/${showId}`)}
                 >
-                  Ready to go live →
+                  Open show
                 </CommandButton>
               ) : undefined
             }

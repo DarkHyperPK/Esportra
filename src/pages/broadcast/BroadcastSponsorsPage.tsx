@@ -260,9 +260,9 @@ export default function BroadcastSponsorsPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove sponsor?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {deleteTarget?.name ?? 'this sponsor'}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove {deleteTarget?.name ?? 'this sponsor'} from this show's sponsors?
+              This sponsor will be removed from all HUD rotations.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
