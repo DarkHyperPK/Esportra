@@ -55,13 +55,13 @@ export function usePublicVetoOverlayData(token?: string) {
   const stateQuery = useQuery({
     queryKey: stateKey, queryFn: fetchState, enabled, retry, staleTime: 0,
     refetchIntervalInBackground: true,
-    refetchInterval: () => terminalToken.current === token ? false : connectedRef.current ? 15_000 : 3_000,
+    refetchInterval: () => terminalToken.current === token ? false : 3_000,
   });
   const expired = expiredToken === token && Boolean(token) || pastDeadline(stateQuery.data?.expiresAt);
   const historyQuery = useQuery({
     queryKey: historyKey, queryFn: fetchHistory, enabled: enabled && !expired && Boolean(stateQuery.data), retry, staleTime: 0,
     refetchIntervalInBackground: true,
-    refetchInterval: () => terminalToken.current === token ? false : connectedRef.current ? 15_000 : 3_000,
+    refetchInterval: () => terminalToken.current === token ? false : 3_000,
   });
   useEffect(() => {
     if (!stateQuery.data?.expiresAt || expired) return;
