@@ -63,8 +63,9 @@ export default function BroadcastCrewPage() {
     }
   }
 
+  // Token is in the URL fragment (#token=) so it never reaches server logs or history.
   const inviteUrl = pendingInviteResult
-    ? `${INVITE_BASE}?token=${pendingInviteResult.token}`
+    ? `${INVITE_BASE}#token=${pendingInviteResult.token}`
     : '';
 
   const handleCopy = useCallback(async () => {

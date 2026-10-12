@@ -194,7 +194,8 @@ const ScoreboardOcrDebug = lazyWithRetry(() => import("./pages/debug/ScoreboardO
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
-// Broadcast production management (T27–T32)
+// Broadcast production management (T27–T32, T34 crew join)
+const BroadcastCrewJoinPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewJoinPage"));
 const BroadcastShowsPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowsPage"));
 const BroadcastShowDetailPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowDetailPage"));
 const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastNodeMonitorPage"));
@@ -574,6 +575,13 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
+
+                {/* Broadcast crew invite accept — any authenticated user (T34) */}
+                <Route path="/broadcast/join" element={
+                  <ProtectedRoute>
+                    <BroadcastCrewJoinPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Broadcast production management (T27–T32) */}
                 <Route path="/broadcast/shows" element={

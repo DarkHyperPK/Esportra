@@ -68,3 +68,18 @@ export function useRemoveCrewMember(showId: string) {
     },
   });
 }
+
+export interface AcceptCrewInviteResult {
+  showId: string;
+  role: string;
+}
+
+export function useAcceptCrewInvite() {
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiClient.post<AcceptCrewInviteResult>(
+        '/api/broadcast/crew/invites/accept',
+        { token },
+      ),
+  });
+}
