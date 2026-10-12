@@ -77,7 +77,7 @@ export function usePublicVetoOverlayData(token?: string) {
   }, [refreshQueries, token]);
   const { connected } = usePublicVetoRealtime({
     sessionId: stateQuery.data?.id, enabled: enabled && !expired && Boolean(stateQuery.data),
-    actingRef, onUpdated: refresh, onReset: refresh, onTossResult: () => { void refresh(); },
+    anonymous: true, actingRef, onUpdated: refresh, onReset: refresh, onTossResult: () => { void refresh(); },
   });
   connectedRef.current = connected;
   return { stateQuery, historyQuery, expired };

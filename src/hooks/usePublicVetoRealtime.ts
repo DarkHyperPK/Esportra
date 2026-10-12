@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { HubConnection } from "@microsoft/signalr";
-import { buildHubConnection, HubPaths, startWithRetry } from "@/lib/signalrClient";
+import { buildAnonymousHubConnection, buildHubConnection, HubPaths, startWithRetry } from "@/lib/signalrClient";
 
 type PublicVetoRealtimePayload = {
   sessionId?: string;
@@ -15,6 +15,7 @@ type TossResultPayload = {
 type UsePublicVetoRealtimeOptions = {
   sessionId?: string;
   enabled?: boolean;
+  anonymous?: boolean;
   actingRef: React.RefObject<boolean>;
   onUpdated: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
@@ -24,6 +25,7 @@ type UsePublicVetoRealtimeOptions = {
 export const usePublicVetoRealtime = ({
   sessionId,
   enabled = true,
+  anonymous = false,
   actingRef,
   onUpdated,
   onReset,
@@ -54,7 +56,9 @@ export const usePublicVetoRealtime = ({
     }
 
     let mounted = true;
-    const connection = buildHubConnection(HubPaths.Veto);
+    const connection = anonymous
+      ? buildAnonymousHubConnection(HubPaths.Veto)
+      : buildHubConnection(HubPaths.Veto);
     connectionRef.current = connection;
 
     const matchesSession = (payload: PublicVetoRealtimePayload) =>
@@ -118,7 +122,7 @@ export const usePublicVetoRealtime = ({
       void connection.stop();
       connectionRef.current = null;
     };
-  }, [actingRef, enabled, sessionId]);
+  }, [actingRef, anonymous, enabled, sessionId]);
 
   return { connected };
 };
