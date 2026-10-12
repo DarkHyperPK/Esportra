@@ -67,6 +67,21 @@ export function buildVenueHubConnection(hubPath: string): HubConnection {
     .build();
 }
 
+/**
+ * Build an anonymous (no-auth) SignalR hub connection against the main API base.
+ * Use for public overlays and embeds where no session is expected — skips the
+ * accessTokenFactory so Supabase auth is never touched in isolated contexts (OBS).
+ */
+export function buildAnonymousHubConnection(hubPath: string): HubConnection {
+  return new HubConnectionBuilder()
+    .withUrl(`${API_BASE_URL}${hubPath}`)
+    .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
+    .configureLogging(
+      import.meta.env.DEV ? LogLevel.Information : LogLevel.Critical,
+    )
+    .build();
+}
+
 // ── Convenience helpers ───────────────────────────────────────────────────────
 
 /** Start a connection with exponential-backoff retry (up to 10 attempts). */
