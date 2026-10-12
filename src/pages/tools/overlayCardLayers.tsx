@@ -27,30 +27,28 @@ function useBoxSize<T extends Element>() {
 /**
  * The ban slash. Measured in real pixels so the dash trick is exact: one dash
  * the full length of the line, slid into place by the `banned` class, with a
- * short bright dash riding its head like a pen tip. It starts just above the
- * card and ends just below it, so it cuts through rather than sits in.
+ * short bright dash riding its head like a pen tip. Runs corner to corner
+ * within the card bounds.
  */
 export const Slash = ({ color = "#f43f5e", tipColor = "#ffe4e6" }: { color?: string; tipColor?: string }) => {
   const { ref, box } = useBoxSize<SVGSVGElement>();
-  const x1 = box.width * 0.06;
-  const x2 = box.width * 0.94;
-  const length = Math.hypot(x2 - x1, box.height);
+  const length = Math.hypot(box.width, box.height);
   const tip = Math.max(8, length * 0.06);
 
   return (
     <svg
       ref={ref}
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 -bottom-[3%] -top-[3%] z-20 h-[106%] w-full overflow-visible"
+      className="pointer-events-none absolute inset-0 z-20 h-full w-full"
       viewBox={`0 0 ${box.width || 1} ${box.height || 1}`}
     >
       {box.width > 0 ? (
         <>
           <line
             className="bcv-slash"
-            x1={x1}
+            x1={0}
             y1={0}
-            x2={x2}
+            x2={box.width}
             y2={box.height}
             stroke={color}
             // Butt caps: a square cap draws a dot at the end even when the dash is fully hidden.
@@ -60,9 +58,9 @@ export const Slash = ({ color = "#f43f5e", tipColor = "#ffe4e6" }: { color?: str
           />
           <line
             className="bcv-slash-tip"
-            x1={x1}
+            x1={0}
             y1={0}
-            x2={x2}
+            x2={box.width}
             y2={box.height}
             stroke={tipColor}
             strokeLinecap="round"
