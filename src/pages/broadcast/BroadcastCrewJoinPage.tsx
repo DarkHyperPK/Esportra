@@ -66,7 +66,7 @@ export default function BroadcastCrewJoinPage() {
                 {`You've joined the broadcast crew as ${roleLabel}.`}
               </InlineNotice>
               <CommandButton
-                onClick={() => navigate(`/broadcast/shows/${accepted.showId}`)}
+                onClick={() => navigate(`/broadcast/crew/shows/${accepted.showId}`)}
               >
                 Open Show
               </CommandButton>

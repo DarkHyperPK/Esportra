@@ -1,4 +1,3 @@
-import React from 'react';
 import { Reorder } from 'framer-motion';
 import { GripVertical, Camera, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';

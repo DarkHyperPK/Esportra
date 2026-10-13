@@ -21,6 +21,7 @@ export function classifyNodeHealth(lastSeenAt: string | null, now: Date): NodeHe
   if (!lastSeenAt) return 'offline';
 
   const elapsed = now.getTime() - Date.parse(lastSeenAt);
+  if (!Number.isFinite(elapsed) || elapsed < -30_000) return 'offline';
 
   if (elapsed < ONLINE_THRESHOLD_MS) return 'online';
   if (elapsed < STALE_THRESHOLD_MS) return 'stale';
@@ -37,6 +38,9 @@ export function relativeLastSeen(lastSeenAt: string | null, now: Date): string {
   if (!lastSeenAt) return 'Never';
 
   const seconds = Math.floor((now.getTime() - Date.parse(lastSeenAt)) / 1_000);
+  if (!Number.isFinite(seconds)) return 'Unknown';
+  if (seconds < -30) return 'Clock mismatch';
+  if (seconds < 0) return 'Just now';
 
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);

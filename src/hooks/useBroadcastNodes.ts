@@ -1,13 +1,14 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
-import type { BroadcastNode } from '@/types/broadcast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { apiClient } from "@/lib/apiClient";
+import type { BroadcastNode } from "@/types/broadcast";
 
 export const broadcastNodesQueryKey = (orgId: string) =>
-  ['broadcast-nodes', orgId] as const;
+  ["broadcast-nodes", orgId] as const;
 
 export function useBroadcastNodes(orgId: string | null | undefined) {
   return useQuery({
-    queryKey: broadcastNodesQueryKey(orgId ?? ''),
+    queryKey: broadcastNodesQueryKey(orgId ?? ""),
     queryFn: () =>
       apiClient.get<BroadcastNode[]>(`/api/broadcast/nodes?orgId=${orgId}`),
     enabled: !!orgId,
@@ -17,14 +18,18 @@ export function useBroadcastNodes(orgId: string | null | undefined) {
   });
 }
 
-type NodeCommand = 'hold' | 'take';
-
-export function useSendNodeCommand() {
+export function useDeactivateBroadcastNode(orgId: string | null | undefined) {
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ nodeId, command }: { nodeId: string; command: NodeCommand }) =>
-      apiClient.post<{ success: true }>(
-        `/api/broadcast/nodes/${nodeId}/command`,
-        { command },
+    mutationFn: (nodeId: string) =>
+      apiClient.delete(
+        `/api/broadcast/nodes/${z.string().uuid().parse(nodeId)}`,
       ),
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: broadcastNodesQueryKey(orgId ?? ""),
+      });
+      void client.invalidateQueries({ queryKey: ["broadcast-home", orgId] });
+    },
   });
 }

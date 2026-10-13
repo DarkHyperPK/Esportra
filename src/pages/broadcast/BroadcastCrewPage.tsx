@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -20,6 +20,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useBroadcastShow } from '@/hooks/useBroadcastShow';
+import { TalentRoster } from '@/components/broadcast/TalentRoster';
+import { CrewRolePicker } from '@/components/broadcast/CrewRolePicker';
 import {
   useBroadcastCrew, useCreateCrewInvite,
   useRevokeCrewInvite, useRemoveCrewMember,
@@ -45,6 +47,7 @@ export default function BroadcastCrewPage() {
   const [pendingInviteResult, setPendingInviteResult] = useState<CrewInviteResult | null>(null);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [inviteRole, setInviteRole] = useState('producer');
   const [revokeTarget, setRevokeTarget] = useState<BroadcastPendingInvite | null>(null);
   const [removeTarget, setRemoveTarget] = useState<BroadcastCrewMember | null>(null);
 
@@ -55,8 +58,9 @@ export default function BroadcastCrewPage() {
 
   async function handleGenerateInvite() {
     try {
-      const result = await createInvite.mutateAsync('producer');
+      const result = await createInvite.mutateAsync(inviteRole);
       setPendingInviteResult(result);
+      createInvite.reset();
       setInviteModalOpen(true);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not generate invite link.'));
@@ -129,10 +133,11 @@ export default function BroadcastCrewPage() {
         {/* Invite section */}
         <CommandSection>
           <p className={EYEBROW_CLASS}>INVITE</p>
+          <CrewRolePicker value={inviteRole} onChange={setInviteRole} disabled={createInvite.isPending} />
           <div className="mt-3">
             {pendingInvites.length > 0 ? (
               <InlineNotice tone="warning">
-                There is an outstanding invite link. Generate a new one to invalidate it.
+                Outstanding invites remain valid until expiry or revocation. Revoke any you no longer need.
               </InlineNotice>
             ) : (
               <InlineNotice tone="neutral">
@@ -148,6 +153,7 @@ export default function BroadcastCrewPage() {
         </CommandSection>
 
         {/* Crew table */}
+        <TalentRoster showId={showId} />
         <CommandSection className="p-0">
           <p className={`${EYEBROW_CLASS} px-5 pt-5`}>CREW</p>
           {isLoading ? (

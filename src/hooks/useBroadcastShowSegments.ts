@@ -1,13 +1,20 @@
 /**
  * Segment CRUD via Supabase RLS.
- * No backend REST endpoint exists for rundown_segments — we call
- * Supabase JS directly. The authenticated user has SELECT/INSERT/UPDATE/DELETE
+ * CRUD uses Supabase JS directly; bulk reorder uses an atomic backend endpoint.
+ * The authenticated user has SELECT/INSERT/UPDATE/DELETE
  * via RLS policies on the rundown_segments table.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { ShowSegment, SegmentType } from '@/types/broadcast';
 import { addSegmentSchema, updateSegmentSchema } from '@/schemas/broadcastSchema';
+import { parseRundownDuration, formatRundownDuration } from '@/services/broadcast/rundownDuration';
+import type { Json } from '@/integrations/supabase/types';
+import { apiClient } from '@/lib/apiClient';
+
+function segmentNotes(config: Json | null): string | null {
+  return config && typeof config === 'object' && !Array.isArray(config) && typeof config.notes === 'string' ? config.notes : null;
+}
 
 export const segmentsQueryKey = (showId: string) =>
   ['broadcast-show-segments', showId] as const;
@@ -18,7 +25,7 @@ export function useBroadcastShowSegments(showId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rundown_segments')
-        .select('id, show_id, type, title, estimated_duration, status, display_order, notes')
+        .select('id, show_id, type, title, duration_seconds, status, display_order, config')
         .eq('show_id', showId)
         .order('display_order', { ascending: true })
         .limit(200);
@@ -31,10 +38,10 @@ export function useBroadcastShowSegments(showId: string | undefined) {
           showId: row.show_id as string,
           type: row.type as SegmentType,
           title: row.title as string,
-          estimatedDuration: (row.estimated_duration as string | null) ?? null,
+          estimatedDuration: formatRundownDuration(row.duration_seconds),
           status: (row.status as ShowSegment['status']) ?? 'pending',
           displayOrder: row.display_order as number,
-          notes: (row.notes as string | null) ?? null,
+          notes: segmentNotes(row.config),
         }),
       );
     },
@@ -61,8 +68,8 @@ export function useAddSegment(showId: string) {
           show_id: showId,
           type: parsed.type,
           title: parsed.title,
-          estimated_duration: parsed.estimatedDuration || null,
-          notes: parsed.notes || null,
+          duration_seconds: parseRundownDuration(parsed.estimatedDuration),
+          config: { notes: parsed.notes || '' },
           display_order: parsed.displayOrder ?? 0,
           status: 'pending',
         })
@@ -88,8 +95,13 @@ export function useUpdateSegment(showId: string) {
       if (parsed.type !== undefined) patch.type = parsed.type;
       if (parsed.title !== undefined) patch.title = parsed.title;
       if (parsed.estimatedDuration !== undefined)
-        patch.estimated_duration = parsed.estimatedDuration || null;
-      if (parsed.notes !== undefined) patch.notes = parsed.notes || null;
+        patch.duration_seconds = parseRundownDuration(parsed.estimatedDuration);
+      if (parsed.notes !== undefined) {
+        const { data: existing, error: readError } = await supabase.from('rundown_segments').select('config').eq('id', parsed.id).eq('show_id', showId).single();
+        if (readError) throw readError;
+        const previous = existing.config && typeof existing.config === 'object' && !Array.isArray(existing.config) ? existing.config : {};
+        patch.config = { ...previous, notes: parsed.notes || '' };
+      }
 
       const { error } = await supabase
         .from('rundown_segments')
@@ -134,14 +146,7 @@ export function useReorderSegments(showId: string) {
         display_order: i,
       }));
 
-      for (const u of updates) {
-        const { error } = await supabase
-          .from('rundown_segments')
-          .update({ display_order: u.display_order })
-          .eq('id', u.id)
-          .eq('show_id', showId);
-        if (error) throw new Error(error.message);
-      }
+      await apiClient.post(`/api/broadcast/shows/${showId}/segments/reorder`, { segmentIds: updates.map(item => item.id) });
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: segmentsQueryKey(showId) });

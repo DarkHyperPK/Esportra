@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { BroadcastNavigation } from '@/components/broadcast/BroadcastNavigation';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Radio, Inbox, Copy, Trash2, Loader2 } from 'lucide-react';
@@ -79,7 +80,7 @@ export default function BroadcastShowsPage() {
       const result = await createMutation.mutateAsync({ title: parsed.data.title });
       setCreateOpen(false);
       setCreateTitle('');
-      navigate(`/broadcast/shows/${result.showId}`);
+      navigate(`/broadcast/get-started?showId=${result.showId}`);
     } catch (err) {
       setCreateError(getApiErrorMessage(err, 'Could not create the show. Try again.'));
     }
@@ -87,8 +88,9 @@ export default function BroadcastShowsPage() {
 
   async function handleDuplicate(show: BroadcastShow) {
     try {
-      await duplicateMutation.mutateAsync(show.id);
-      toast.success('Show duplicated.');
+      const result = await duplicateMutation.mutateAsync(show.id);
+      toast.success('Planning copied to a new draft. Crew and broadcast history are not copied.');
+      navigate(`/broadcast/get-started?showId=${result.showId}`);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not duplicate. Try again.'));
     }
@@ -113,6 +115,7 @@ export default function BroadcastShowsPage() {
   return (
     <CommandShell>
       <CommandPageGrid>
+        <BroadcastNavigation />
         <CommandHeader eyebrow="BROADCAST" title="Shows" actions={newShowButton} />
 
         <CommandTabs
@@ -210,13 +213,14 @@ export default function BroadcastShowsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this show?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>Deletes this unstarted show and its planning, including crew invites. This cannot be undone. Shows with broadcast history are kept for reports.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep show</AlertDialogCancel>
             <AlertDialogAction
               autoFocus
-              onClick={() => void handleDelete()}
+              disabled={deleteMutation.isPending}
+              onClick={event => { event.preventDefault(); void handleDelete(); }}
               className="rounded-none border-red-500/35 bg-red-950/20 text-red-100 hover:bg-red-900/30"
             >
               Delete show
@@ -279,7 +283,7 @@ function ShowRow({ show, index, reduceMotion, duplicatePending, onOpen, onDuplic
         <CommandIconButton variant="ghost" label={`Duplicate ${show.title}`} onClick={onDuplicate} className="hidden sm:inline-flex">
           {duplicatePending ? <Loader2 className="animate-spin" /> : <Copy />}
         </CommandIconButton>
-        <CommandIconButton variant="danger" label={`Delete ${show.title}`} onClick={onDelete} className="hidden sm:inline-flex">
+        <CommandIconButton variant="danger" label={`Delete ${show.title}`} onClick={onDelete} disabled={show.status === 'live' || show.status === 'ended' || !!show.startedAt} className="hidden sm:inline-flex">
           <Trash2 />
         </CommandIconButton>
 
@@ -297,7 +301,7 @@ function ShowRow({ show, index, reduceMotion, duplicatePending, onOpen, onDuplic
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-red-400">Delete</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} disabled={show.status === 'live' || show.status === 'ended' || !!show.startedAt} className="text-red-400">Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

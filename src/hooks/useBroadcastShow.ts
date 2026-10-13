@@ -26,6 +26,11 @@ export function useUpdateShowStatus(showId: string) {
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: broadcastShowQueryKey(showId) });
+      const show = qc.getQueryData<BroadcastShowDetail>(broadcastShowQueryKey(showId));
+      if (show?.orgId) {
+        void qc.invalidateQueries({ queryKey: ['broadcast-shows', show.orgId] });
+        void qc.invalidateQueries({ queryKey: ['broadcast-home', show.orgId] });
+      }
     },
   });
 }
@@ -58,7 +63,7 @@ export function useAddMatchSlot(showId: string) {
     }) =>
       apiClient.post<{ slotId: string }>(
         `/api/broadcast/shows/${showId}/matches`,
-        { matchId, matchCode: matchCode ?? null, displayOrder: displayOrder ?? null },
+        { matchId, ...(matchCode ? { matchCode } : {}), ...(displayOrder !== undefined ? { displayOrder } : {}) },
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: broadcastShowQueryKey(showId) });

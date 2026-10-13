@@ -173,7 +173,7 @@ export function CommandPageGrid({
   className?: string;
 }) {
   return (
-    <div className={cn('relative z-10 grid gap-3 px-3 py-3 lg:grid-cols-[200px_minmax(0,1fr)] xl:px-4', className)}>
+    <div className={cn('relative z-10 grid gap-3 px-3 py-3 xl:px-4', rail ? 'lg:grid-cols-[200px_minmax(0,1fr)]' : 'lg:grid-cols-1', className)}>
       {rail ? <aside className="relative z-30 self-start space-y-4 overflow-visible lg:sticky lg:top-3">{rail}</aside> : null}
       <div className="min-w-0 space-y-2">{children}</div>
     </div>
@@ -376,7 +376,7 @@ export function CommandMetric({
 
 interface CommandShowHeaderProps {
   showTitle: string;
-  showStatus: 'draft' | 'live' | 'ended';
+  showStatus: 'draft' | 'scheduled' | 'live' | 'ended' | 'cancelled';
   backHref: string;
   backLabel?: string;
   actions?: React.ReactNode;
@@ -385,15 +385,19 @@ interface CommandShowHeaderProps {
 
 const SHOW_HEADER_VARIANTS = {
   draft: 'bg-[#0a0a0c]/95 border-b border-white/10',
+  scheduled: 'bg-[#0a0a0c]/95 border-b border-white/10',
   // Live: bottom colour is applied via inline style (rose-500/30) — see render below.
   live:  'bg-rose-950/20 border-b',
   ended: 'bg-white/[0.02] border-b border-white/[0.05]',
+  cancelled: 'bg-white/[0.02] border-b border-white/[0.05]',
 } as const;
 
 const SHOW_STATUS_TONE = {
   draft: 'neutral',
+  scheduled: 'neutral',
   live:  'accent',
   ended: 'neutral',
+  cancelled: 'neutral',
 } as const;
 
 export function CommandShowHeader({
@@ -428,7 +432,7 @@ export function CommandShowHeader({
         </p>
         <span className="text-zinc-600">/</span>
         <p className="min-w-0 truncate text-sm font-bold text-white">{showTitle}</p>
-        <StatusPill tone={SHOW_STATUS_TONE[showStatus]} label={showStatus === 'live' ? 'Live' : showStatus === 'draft' ? 'Draft' : 'Ended'} />
+        <StatusPill tone={SHOW_STATUS_TONE[showStatus]} label={showStatus} />
       </div>
 
       {/* Right: page-level actions slot */}

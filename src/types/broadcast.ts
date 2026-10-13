@@ -14,6 +14,7 @@ export interface BroadcastShow {
   status: BroadcastShowStatus;
   tournamentId: string | null;
   tournamentName: string | null;
+  tournamentSlug?: string | null;
   scheduledAt: string | null;
   startedAt: string | null;
   endedAt: string | null;
@@ -47,11 +48,9 @@ export interface ShowSegment {
 /** Node registered via the Air desktop app */
 export interface BroadcastNode {
   id: string;
-  orgId: string;
   name: string;
-  mode: string;
-  hudOnline: boolean;
-  gepActive: boolean;
+  capabilities: string;
+  isActive: boolean;
   /** ISO timestamp of the last heartbeat received by the backend */
   lastSeenAt: string | null;
 }
@@ -62,9 +61,13 @@ export interface ShowMatchSlot {
   matchId: string;
   matchCode: string | null;
   displayOrder: number;
-  /** Human-readable label from the bracket (e.g. "Grand Finals") */
+  /** Display label for the configured match teams. */
   matchTitle: string | null;
-  roundLabel: string | null;
+  roundLabel?: string | null;
+  teamA?: string;
+  teamB?: string;
+  bestOf?: number;
+  status?: string;
 }
 
 export interface BroadcastCrewMember {

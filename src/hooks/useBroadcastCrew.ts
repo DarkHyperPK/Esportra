@@ -26,6 +26,7 @@ export function useCreateCrewInvite(showId: string) {
   const qc = useQueryClient();
 
   return useMutation({
+    gcTime: 0,
     /**
      * Returns the raw invite token.
      * The caller MUST store this in local state and NOT pass it through

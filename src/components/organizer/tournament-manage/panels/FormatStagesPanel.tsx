@@ -11,9 +11,10 @@ import {
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { getBRConfig, getParticipantMode } from '@/utils/gameFeatures';
-import type { DashboardTournament, DashboardStage } from '@/hooks/useTournamentDashboard';
+import type { DashboardTournament, DashboardStage, DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 interface FormatStagesPanelProps {
+  participants?: DashboardParticipant[];
   tournament: DashboardTournament;
   stages: DashboardStage[];
   isBattleRoyale: boolean;
@@ -22,6 +23,7 @@ interface FormatStagesPanelProps {
 }
 
 export function FormatStagesPanel({
+  participants = [],
   tournament,
   stages,
   isBattleRoyale,
@@ -54,7 +56,7 @@ export function FormatStagesPanel({
         <BRStageManagementTab
           tournamentId={tournament.id}
           stages={stages}
-          participants={[]}
+          participants={participants}
           maxTeams={tournament.max_teams ?? null}
           maxParticipants={tournament.max_participants ?? null}
           teamSize={tournament.team_size ?? null}

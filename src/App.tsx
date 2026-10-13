@@ -197,9 +197,13 @@ const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallba
 // Broadcast production management (T27–T32, T34 crew join)
 const BroadcastCrewJoinPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewJoinPage"));
 const BroadcastShowsPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowsPage"));
+const BroadcastHomePage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastHomePage"));
+const BroadcastGetStartedPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastGetStartedPage"));
 const BroadcastShowDetailPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowDetailPage"));
 const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastNodeMonitorPage"));
+const BroadcastActivityPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastActivityPage"));
 const BroadcastCrewPage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewPage"));
+const BroadcastCrewWorkspacePage = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewWorkspacePage"));
 const BroadcastSponsorsPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorsPage"));
 const BroadcastSetupPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastSetupPage"));
 const BroadcastSponsorProofPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorProofPage"));
@@ -584,6 +588,10 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Broadcast production management (T27–T32) */}
+                <Route path="/broadcast/crew/shows" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
+                <Route path="/broadcast/crew/shows/:showId" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
+                <Route path="/broadcast/home" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastHomePage /></ProtectedRoute>} />
+                <Route path="/broadcast/get-started" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastGetStartedPage /></ProtectedRoute>} />
                 <Route path="/broadcast/shows" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <BroadcastShowsPage />
@@ -599,6 +607,7 @@ const AppContent = React.memo(() => {
                     <BroadcastNodeMonitorPage />
                   </ProtectedRoute>
                 } />
+                <Route path="/broadcast/shows/:showId/activity" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastActivityPage /></ProtectedRoute>} />
                 <Route path="/broadcast/shows/:showId/crew" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <BroadcastCrewPage />

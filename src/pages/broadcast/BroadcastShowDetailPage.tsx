@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RundownRow } from '@/components/broadcast/RundownRow';
+import { MatchSlotPlanner } from '@/components/broadcast/MatchSlotPlanner';
 import { ConflictCard } from '@/components/broadcast/ConflictCard';
 import { useBroadcastShow, usePushShowConfig, useUpdateShowStatus } from '@/hooks/useBroadcastShow';
 import { useBroadcastSponsors } from '@/hooks/useBroadcastSponsors';
@@ -135,7 +136,8 @@ export default function BroadcastShowDetailPage() {
 
   const isLive = show?.status === 'live';
   const isEnded = show?.status === 'ended';
-  const locked = isLive || isEnded;
+  const isClosed = isEnded || show?.status === 'cancelled';
+  const locked = isLive || isClosed;
 
   const handleReorder = useCallback((newOrder: ShowSegment[]) => {
     setLocalSegments(newOrder);
@@ -144,7 +146,10 @@ export default function BroadcastShowDetailPage() {
   const handleReorderEnd = useCallback(() => {
     const unchanged = localSegments.every((seg, i) => seg.id === segments[i]?.id);
     if (unchanged) return;
-    void reorderSegments.mutateAsync(localSegments);
+    void reorderSegments.mutateAsync(localSegments).catch(error => {
+      setLocalSegments(segments);
+      toast.error(getApiErrorMessage(error, 'Could not save rundown order. Previous order restored.'));
+    });
   }, [localSegments, segments, reorderSegments]);
 
   async function handleAddSegment() {
@@ -179,7 +184,7 @@ export default function BroadcastShowDetailPage() {
   async function handleSync() {
     try {
       await pushConfig.mutateAsync();
-      toast.success('Config pushed to node.');
+      toast.success('Configuration sent. Verify it in the desktop app.');
     } catch {
       toast.error('Sync failed. Check node connection.');
     }
@@ -239,8 +244,8 @@ export default function BroadcastShowDetailPage() {
         variant="ghost"
         size="sm"
         onClick={() => void handleSync()}
-        disabled={pushConfig.isPending || isEnded}
-        title={isEnded ? 'Show has ended' : undefined}
+        disabled={pushConfig.isPending || isClosed}
+        title={isClosed ? 'Show is closed' : undefined}
       >
         {pushConfig.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
         Sync to node
@@ -249,9 +254,9 @@ export default function BroadcastShowDetailPage() {
         <CommandButton variant="danger" size="sm" onClick={() => setEndShowConfirmOpen(true)}>
           End show
         </CommandButton>
-      ) : !isEnded ? (
+      ) : !isClosed ? (
         <CommandButton variant="primary" slide size="sm" onClick={() => setGoLiveConfirmOpen(true)}>
-          Go live
+          Mark show live
         </CommandButton>
       ) : null}
     </>
@@ -275,9 +280,11 @@ export default function BroadcastShowDetailPage() {
         )}
       </CommandSection>
       <CommandSection>
+        {show.tournamentSlug && <CommandButton variant="ghost" size="sm" className="mb-2 w-full" asChild><Link to={`/organizer/tournament/${encodeURIComponent(show.tournamentSlug)}?tab=broadcast`}>Tournament broadcast →</Link></CommandButton>}
         <CommandButton variant="ghost" size="sm" className="w-full" asChild>
-          <Link to={`/broadcast/shows/${showId}/setup`}>Show settings →</Link>
+          <Link to={`/broadcast/shows/${showId}/setup`}>Prepare & settings →</Link>
         </CommandButton>
+        <CommandButton variant="ghost" size="sm" className="mt-2 w-full" asChild><Link to={`/broadcast/shows/${showId}/activity`}>Recorded activity →</Link></CommandButton>
       </CommandSection>
     </div>
   );
@@ -302,18 +309,7 @@ export default function BroadcastShowDetailPage() {
       </div>
       <div className="overflow-y-auto p-3 text-sm text-zinc-400">
         {rightTab === 'matches' && (
-          show.matchSlots.length === 0 ? (
-            <p className="mt-4 text-center text-zinc-600">No match slots configured.</p>
-          ) : (
-            <div>
-              {show.matchSlots.map((slot) => (
-                <div key={slot.id} className="flex items-center justify-between py-2 border-b border-white/5">
-                  <span className="text-sm text-white">{slot.matchCode ?? 'MAIN'}</span>
-                  <span className="font-mono text-[11px] text-zinc-500">{slot.matchTitle ?? slot.roundLabel ?? '—'}</span>
-                </div>
-              ))}
-            </div>
-          )
+          <MatchSlotPlanner show={show} />
         )}
         {rightTab === 'talent' && (
           <div>
@@ -372,11 +368,7 @@ export default function BroadcastShowDetailPage() {
     <CommandShell>
       <CommandShowHeader
         showTitle={show.title}
-        showStatus={
-          show.status === 'live' ? 'live'
-          : show.status === 'ended' || show.status === 'cancelled' ? 'ended'
-          : 'draft'
-        }
+        showStatus={show.status}
         backHref="/broadcast/shows"
         actions={headerActions}
       />
@@ -511,15 +503,15 @@ export default function BroadcastShowDetailPage() {
       <AlertDialog open={goLiveConfirmOpen} onOpenChange={setGoLiveConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Go live</AlertDialogTitle>
+            <AlertDialogTitle>Mark show live</AlertDialogTitle>
             <AlertDialogDescription>
-              Push config to all nodes and start the show. This cannot be undone.
+              Record the show start time on the platform. Start the rundown and switch OBS scenes on the production desk.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction autoFocus onClick={() => void handleGoLive()}>
-              Go live
+              Mark show live
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -530,7 +522,7 @@ export default function BroadcastShowDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>End show</AlertDialogTitle>
-            <AlertDialogDescription>Ended shows cannot be restarted.</AlertDialogDescription>
+            <AlertDialogDescription>Finalizes the platform show and reports. Ended shows cannot be restarted. Stop the desktop rundown and capture separately; OBS keeps its current program output.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep show live</AlertDialogCancel>
