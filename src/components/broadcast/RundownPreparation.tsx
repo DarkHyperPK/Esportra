@@ -17,12 +17,12 @@ export function RundownPreparation({
   return (
     <>
       <p className="mb-5 text-zinc-400">
-        {segments.data?.length ?? 0} segments. Start with a holding scene; edit
-        durations, order and notes in the rundown.
+        {segments.data?.length ?? 0} screens. Start with an opening screen; edit
+        durations, order and notes in the broadcast screens.
       </p>
       {segments.isError && (
         <InlineNotice tone="critical">
-          Could not load rundown.{" "}
+          Could not load broadcast screens.{" "}
           <button onClick={() => void segments.refetch()}>Retry</button>
         </InlineNotice>
       )}
@@ -41,7 +41,7 @@ export function RundownPreparation({
         }}
       >
         <label className="sr-only" htmlFor="preparation-segment">
-          Segment title
+          Screen name
         </label>
         <input
           id="preparation-segment"
@@ -59,16 +59,16 @@ export function RundownPreparation({
             ["live", "ended", "cancelled"].includes(show.status)
           }
         >
-          Add segment
+          Add screen
         </CommandButton>
       </form>
       {add.isError && (
         <InlineNotice tone="critical">
-          {getApiErrorMessage(add.error, "Could not add segment.")}
+          {getApiErrorMessage(add.error, "Could not add screen.")}
         </InlineNotice>
       )}
       <CommandButton className="mt-4" variant="ghost" asChild>
-        <Link to={base}>Edit full rundown</Link>
+        <Link to={base}>Edit broadcast screens</Link>
       </CommandButton>
     </>
   );

@@ -12,9 +12,8 @@ export function useBroadcastNodes(orgId: string | null | undefined) {
     queryFn: () =>
       apiClient.get<BroadcastNode[]>(`/api/broadcast/nodes?orgId=${orgId}`),
     enabled: !!orgId,
-    // Nodes send heartbeats every 2s — poll every 10s to surface health changes.
-    refetchInterval: 10_000,
-    staleTime: 8_000,
+    refetchInterval: 2_000,
+    staleTime: 1_500,
   });
 }
 

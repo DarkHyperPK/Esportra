@@ -19,6 +19,7 @@ import {
 import { RundownRow } from '@/components/broadcast/RundownRow';
 import { MatchSlotPlanner } from '@/components/broadcast/MatchSlotPlanner';
 import { ConflictCard } from '@/components/broadcast/ConflictCard';
+import { BroadcastResultReview } from '@/components/broadcast/BroadcastResultReview';
 import { useBroadcastShow, usePushShowConfig, useUpdateShowStatus } from '@/hooks/useBroadcastShow';
 import { useBroadcastSponsors } from '@/hooks/useBroadcastSponsors';
 import {
@@ -62,7 +63,7 @@ export default function BroadcastShowDetailPage() {
   const [conflictData, setConflictData] = useState<ConflictData | null>(null);
   const [conflictResolved, setConflictResolved] = useState(false);
   const [conflictError, setConflictError] = useState<string | null>(null);
-  const resolveConflict = useResolveConflict();
+  const resolveConflict = useResolveConflict(showId);
 
   // T35: Subscribe to broadcast hub ResultConflict events (page-level subscription).
   const { getConnection } = useSignalR();
@@ -148,19 +149,19 @@ export default function BroadcastShowDetailPage() {
     if (unchanged) return;
     void reorderSegments.mutateAsync(localSegments).catch(error => {
       setLocalSegments(segments);
-      toast.error(getApiErrorMessage(error, 'Could not save rundown order. Previous order restored.'));
+      toast.error(getApiErrorMessage(error, 'Could not save screen order. Previous order restored.'));
     });
   }, [localSegments, segments, reorderSegments]);
 
   async function handleAddSegment() {
     try {
       await addSegment.mutateAsync({
-        type: 'custom',
-        title: 'New segment',
+        type: localSegments.length ? 'break' : 'pre_show',
+        title: localSegments.length ? 'Break' : 'Opening',
         displayOrder: localSegments.length,
       });
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not add segment.'));
+      toast.error(getApiErrorMessage(err, 'Could not add screen.'));
     }
   }
 
@@ -392,14 +393,14 @@ export default function BroadcastShowDetailPage() {
         {/* Centre panel */}
         <main className="flex flex-col overflow-y-auto">
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#0a0a0c]/95 px-4 py-3">
-            <p className="font-heading text-base font-bold text-white">Rundown</p>
+            <p className="font-heading text-base font-bold text-white">Broadcast screens</p>
             <div className="flex items-center gap-2">
               {show.nodeCount === 0 && !isLive && (
                 <span className="hidden text-[11px] text-amber-400 md:inline">No nodes paired</span>
               )}
               <CommandButton variant="ghost" size="sm" onClick={() => void handleAddSegment()} disabled={locked || addSegment.isPending}>
                 {addSegment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                Add segment
+                Add screen
               </CommandButton>
             </div>
           </div>
@@ -415,7 +416,8 @@ export default function BroadcastShowDetailPage() {
             <InlineNotice tone="neutral" className="mx-4 mt-3">This show has ended.</InlineNotice>
           )}
 
-          {/* T35: Conflict card — appears above the rundown on ResultConflict event */}
+          <BroadcastResultReview showId={showId!} />
+          {/* T35: Conflict card — appears above the broadcast screens on ResultConflict event */}
           <AnimatePresence>
             {conflictData && (
               <ConflictCard
@@ -447,10 +449,10 @@ export default function BroadcastShowDetailPage() {
             <CommandEmptyState
               className="m-4 border-dashed"
               title="No segments yet"
-              description="Add a segment to build the rundown."
+              description="Add a segment to build the broadcast screens."
               action={
                 <CommandButton variant="ghost" onClick={() => void handleAddSegment()} disabled={locked}>
-                  Add segment
+                  Add screen
                 </CommandButton>
               }
             />
@@ -505,7 +507,7 @@ export default function BroadcastShowDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Mark show live</AlertDialogTitle>
             <AlertDialogDescription>
-              Record the show start time on the platform. Start the rundown and switch OBS scenes on the production desk.
+              Record the show start time on the platform. Start the broadcast screens and switch OBS scenes on the production desk.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -522,7 +524,7 @@ export default function BroadcastShowDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>End show</AlertDialogTitle>
-            <AlertDialogDescription>Finalizes the platform show and reports. Ended shows cannot be restarted. Stop the desktop rundown and capture separately; OBS keeps its current program output.</AlertDialogDescription>
+            <AlertDialogDescription>Finalizes the platform show and reports. Ended shows cannot be restarted. Stop the desktop broadcast screens and capture separately; OBS keeps its current program output.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep show live</AlertDialogCancel>

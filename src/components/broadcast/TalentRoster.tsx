@@ -95,7 +95,7 @@ export function TalentRoster({
                 setRole(event.target.value);
             }}
           >
-            <option value="caster">Caster</option>
+            <option value="caster">Commentator</option>
             <option value="analyst">Analyst</option>
             <option value="host">Host</option>
           </select>

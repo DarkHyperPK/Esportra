@@ -1,128 +1,164 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  CommandHeader,
-  CommandSection,
-  CommandButton,
-} from "@/components/management/CommandSurface";
+import { CommandButton } from "@/components/management/CommandSurface";
 import { InlineNotice } from "@/components/ui/kit/InlineNotice";
 import { ShowSettingsDialog } from "./ShowSettingsDialog";
 import { PairNodeDialog } from "./PairNodeDialog";
 import { PreparationStepContent } from "./PreparationStepContent";
 import { useShowPreparation } from "@/hooks/useShowPreparation";
+import {
+  SETUP_STEPS,
+  isBroadcastEligible,
+  matchTime,
+} from "@/services/broadcast/broadcastSetup";
+import { SetupSidebar } from "./SetupSidebar";
+import "./broadcast-setup.css";
 
-const steps = [
-  "Show identity",
-  "Tournament",
-  "Matches & codes",
-  "Desktop nodes",
-  "Crew",
-  "On-air talent",
-  "Sponsors",
-  "Rundown",
-  "Send to desktop",
-];
 export function ShowPreparation({
   showId,
 }: {
   showId: string;
   orgId?: string;
 }) {
-  const [params, setParams] = useSearchParams(),
-    step = Math.max(0, Math.min(8, Number(params.get("step")) || 0));
+  const [params, setParams] = useSearchParams();
+  const step = Math.max(0, Math.min(7, Math.trunc(Number(params.get("step")) || 0)));
   const [settings, setSettings] = useState(false),
-    [pairing, setPairing] = useState(false);
-  const prepared = useShowPreparation(showId);
-  const { showQuery, show, checks } = prepared;
-  const base = `/broadcast/shows/${showId}`;
-  function select(index: number) {
+    [pairing, setPairing] = useState(false),
+    [previewed, setPreviewed] = useState("");
+  const prepared = useShowPreparation(showId),
+    { showQuery, show, online } = prepared;
+  const slots =
+    show?.matchSlots.filter((slot) =>
+      isBroadcastEligible(slot.matchStatus ?? slot.status),
+    ) ?? [];
+  const match = params.get("match")
+    ? slots.find((slot) => slot.matchId === params.get("match"))
+    : slots[0];
+  const screens =
+    prepared.segments.data?.filter(
+      (segment) => !segment.matchId || segment.matchId === match?.matchId,
+    ) ?? [];
+  const optional = step >= 4 && step <= 6;
+  const checks = [
+    online > 0,
+    !!match,
+    !!match && previewed === match.matchId,
+    screens.length > 0,
+    !!prepared.sponsors.data?.length,
+    !!prepared.talent.data?.length,
+    !!prepared.crew.data?.crew.length,
+    prepared.push.isSuccess,
+  ];
+  function select(index: number, selectedMatch = match?.matchId) {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
       next.set("step", String(index));
+      if (selectedMatch) next.set("match", selectedMatch);
       return next;
     });
   }
   if (showQuery.isLoading)
     return (
       <p role="status" className="text-zinc-400">
-        Loading show preparation…
+        Loading broadcast setup…
       </p>
     );
   if (showQuery.isError || !show)
     return (
       <InlineNotice tone="critical">
-        Could not load show.{" "}
-        <button onClick={() => void showQuery.refetch()}>Retry</button>
+        Could not load this broadcast.{" "}
+        <CommandButton variant="ghost" onClick={() => void showQuery.refetch()}>
+          Retry
+        </CommandButton>
       </InlineNotice>
     );
-  const optional = step >= 4 && step <= 6;
+  const canContinue =
+    step === 0
+      ? online > 0
+      : step === 1 || step === 2
+        ? !!match
+        : step === 3
+          ? screens.length > 0 && !prepared.segments.isError
+          : true;
   return (
-    <>
-      {show.tournamentSlug && (
-        <CommandButton asChild variant="ghost" className="mb-4 w-fit">
-          <Link
-            to={`/organizer/tournament/${encodeURIComponent(show.tournamentSlug)}?tab=broadcast`}
-          >
-            Back to tournament broadcast
-          </Link>
-        </CommandButton>
-      )}
-      <CommandHeader
-        eyebrow={`PREPARE · ${show.title}`}
-        title="Build your show."
-        description="Nine steps from planning to the production desk. Crew, talent and sponsors are optional."
-      />
-      <label className="mb-4 block text-sm text-zinc-400 lg:hidden">
-        Setup step
-        <select
-          className="mt-2 h-12 w-full border border-white/20 bg-zinc-950 px-3 text-white"
-          value={step}
-          onChange={(event) => select(Number(event.target.value))}
-        >
-          {steps.map((label, index) => (
-            <option key={label} value={index}>
-              {index + 1} / 9 · {label}
-              {checks[index] ? " ✓" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <nav
-          className="hidden border border-white/10 p-3 lg:block"
-          aria-label="Setup steps"
-        >
-          {steps.map((label, index) => (
-            <button
-              key={label}
-              className={`flex min-h-12 w-full items-center gap-3 border-l-2 px-3 py-3 text-left text-sm focus-visible:outline-white ${step === index ? "border-white bg-white/10 text-white" : "border-transparent text-zinc-400"}`}
-              onClick={() => select(index)}
-              aria-current={step === index ? "step" : undefined}
-            >
-              <span
-                className={checks[index] ? "text-emerald-400" : "text-zinc-500"}
+    <div className="broadcast-setup">
+      <header className="setup-header">
+        <div>
+          <p className="setup-eyebrow">Esportra Air · Broadcast setup</p>
+          <h1>Prepare your match.</h1>
+          <p>{show.tournamentName || show.title}</p>
+        </div>
+        <div className="setup-header-actions">
+          {show.tournamentSlug && (
+            <CommandButton asChild variant="ghost">
+              <Link
+                to={`/organizer/tournament/${encodeURIComponent(show.tournamentSlug)}?tab=broadcast`}
               >
-                {checks[index] ? "✓" : String(index + 1).padStart(2, "0")}
-              </span>
-              {label}
-            </button>
-          ))}
-        </nav>
-        <CommandSection>
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold text-white">{steps[step]}</h2>
-            <span className="font-mono text-xs text-zinc-500">
-              {step + 1} / 9{optional ? " · OPTIONAL" : ""}
+                Back to tournament
+              </Link>
+            </CommandButton>
+          )}
+          <CommandButton variant="ghost" onClick={() => setSettings(true)}>
+            Show settings
+          </CommandButton>
+        </div>
+      </header>
+      <div className="setup-workspace">
+        <SetupSidebar
+          step={step}
+          checks={checks}
+          attention={[
+            prepared.nodes.isError,
+            !!params.get("match") && !match,
+            false,
+            prepared.segments.isError,
+            prepared.sponsors.isError ||
+              !!prepared.sponsors.data?.some(
+                (item) => item.isActive && !item.logoUrl,
+              ),
+            prepared.talent.isError,
+            prepared.crew.isError,
+            prepared.push.isError,
+          ]}
+          onSelect={select}
+        />
+        <main className="setup-main">
+          <div
+            className="setup-match-context"
+            aria-label="Selected broadcast match"
+          >
+            <span className="setup-eyebrow">Selected match</span>
+            <strong>
+              {match
+                ? match.matchTitle || `${match.teamA} vs ${match.teamB}`
+                : "Choose a match to begin"}
+            </strong>
+            <span>
+              {show.tournamentName}{" "}
+              {match ? `· ${matchTime(match.scheduledAt)}` : ""}
             </span>
+          </div>
+          <div className="setup-step-heading">
+            <div>
+              <p className="setup-eyebrow">
+                Step {step + 1} of 8{optional ? " · Optional" : ""}
+              </p>
+              <h2>{SETUP_STEPS[step]}</h2>
+            </div>
+            {online > 0 && (
+              <span className="setup-connection">Desktop connected</span>
+            )}
           </div>
           <PreparationStepContent
             step={step}
             show={show}
             prepared={prepared}
+            match={match}
+            onSelect={(id) => select(1, id)}
             onEdit={() => setSettings(true)}
             onPair={() => setPairing(true)}
           />
-          <div className="mt-10 flex justify-between border-t border-white/10 pt-5">
+          <footer className="setup-footer">
             <CommandButton
               variant="ghost"
               disabled={step === 0}
@@ -130,17 +166,21 @@ export function ShowPreparation({
             >
               Back
             </CommandButton>
-            {step < 8 ? (
-              <CommandButton onClick={() => select(step + 1)}>
-                {optional && !checks[step] ? "Skip this step" : "Continue"}
-              </CommandButton>
-            ) : (
-              <CommandButton asChild variant="ghost">
-                <Link to={base}>Open show plan</Link>
+            {step < 7 && (
+              <CommandButton
+                disabled={!canContinue}
+                onClick={() => {
+                  if (step === 2 && match) setPreviewed(match.matchId);
+                  select(step + 1);
+                }}
+              >
+                {optional && !checks[step]
+                  ? "Skip for now"
+                  : `Continue to ${SETUP_STEPS[step + 1].toLowerCase()}`}
               </CommandButton>
             )}
-          </div>
-        </CommandSection>
+          </footer>
+        </main>
       </div>
       <ShowSettingsDialog
         show={show}
@@ -153,6 +193,6 @@ export function ShowPreparation({
         open={pairing}
         onOpenChange={setPairing}
       />
-    </>
+    </div>
   );
 }

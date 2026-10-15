@@ -178,7 +178,7 @@ export default function BroadcastVodChaptersPage() {
           <CommandEmptyState
             icon={<Film className="h-6 w-6" />}
             title="No chapters recorded"
-            description="Chapter markers are written when segment takes are logged during a live show. Start a show and press Take in the rundown."
+            description="Chapter markers are written when segment takes are logged during a live show. Start a show and press Take in the broadcast screens."
           />
         )}
 

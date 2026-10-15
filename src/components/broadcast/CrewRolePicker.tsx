@@ -1,5 +1,5 @@
 const roles = [
-  ["producer", "Producer", "Coordinates the show and cues the rundown."],
+  ["producer", "Producer", "Coordinates the show and cues the broadcast screens."],
   [
     "technical_director",
     "Technical director",

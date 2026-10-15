@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { z } from 'zod';
 import type { BroadcastShowDetail, BroadcastShowStatus } from '@/types/broadcast';
 
 export const broadcastShowQueryKey = (showId: string) =>
@@ -12,6 +13,7 @@ export function useBroadcastShow(showId: string | undefined) {
       apiClient.get<BroadcastShowDetail>(`/api/broadcast/shows/${showId}`),
     enabled: !!showId,
     staleTime: 30_000,
+    refetchInterval: 5000,
   });
 }
 
@@ -26,6 +28,7 @@ export function useUpdateShowStatus(showId: string) {
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: broadcastShowQueryKey(showId) });
+      void qc.invalidateQueries({ queryKey: ['broadcast-publication', showId] });
       const show = qc.getQueryData<BroadcastShowDetail>(broadcastShowQueryKey(showId));
       if (show?.orgId) {
         void qc.invalidateQueries({ queryKey: ['broadcast-shows', show.orgId] });
@@ -38,12 +41,12 @@ export function useUpdateShowStatus(showId: string) {
 export function usePushShowConfig(showId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      apiClient.post<{ success: true }>(
-        `/api/broadcast/shows/${showId}/push-config`,
-      ),
+    mutationFn: (matchId: string | void) => matchId
+      ? apiClient.post<{ success: true }>(`/api/broadcast/shows/${showId}/push-config`, { matchId: z.string().uuid().parse(matchId) })
+      : apiClient.post<{ success: true }>(`/api/broadcast/shows/${showId}/push-config`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: broadcastShowQueryKey(showId) });
+      void qc.invalidateQueries({ queryKey: ['broadcast-publication', showId] });
     },
   });
 }

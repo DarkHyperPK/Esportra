@@ -10,6 +10,7 @@ import type { BroadcastSponsor } from '@/types/broadcast';
 export interface SponsorCardProps {
   sponsor: BroadcastSponsor;
   onEdit: () => void;
+  onRemove?: () => void;
   onToggleActive: (active: boolean) => void;
   isTogglePending?: boolean;
   index?: number;
@@ -19,6 +20,7 @@ export interface SponsorCardProps {
 export function SponsorCard({
   sponsor,
   onEdit,
+  onRemove,
   onToggleActive,
   isTogglePending = false,
   index,
@@ -40,6 +42,7 @@ export function SponsorCard({
       )}
     >
       {/* Drag handle + edit */}
+      {onRemove && <button type="button" className="text-xs text-zinc-400 hover:text-white" onClick={onRemove} aria-label={`Remove ${sponsor.name}`}>Remove</button>}
       <div className="flex items-center justify-between">
         <button
           type="button"

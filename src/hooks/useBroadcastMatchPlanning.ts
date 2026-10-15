@@ -2,13 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiClient } from "@/lib/apiClient";
 import { broadcastShowQueryKey } from "./useBroadcastShow";
+export interface AvailableBroadcastMatch { id: string; teamA: string; teamB: string; status: string; scheduledAt: string | null; tournamentName: string; }
 
 export function useAvailableBroadcastMatches(showId: string) {
   return useQuery({
     queryKey: ["broadcast-available-matches", showId],
     enabled: !!showId,
+    refetchInterval: 5000,
     queryFn: () =>
-      apiClient.get<{ id: string; teamA: string; teamB: string }[]>(
+      apiClient.get<AvailableBroadcastMatch[]>(
         `/api/broadcast/shows/${showId}/available-matches`,
       ),
   });

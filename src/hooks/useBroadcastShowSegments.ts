@@ -11,6 +11,7 @@ import { addSegmentSchema, updateSegmentSchema } from '@/schemas/broadcastSchema
 import { parseRundownDuration, formatRundownDuration } from '@/services/broadcast/rundownDuration';
 import type { Json } from '@/integrations/supabase/types';
 import { apiClient } from '@/lib/apiClient';
+import { readRundownPlan } from '@/schemas/rundownPlanSchema';
 
 function segmentNotes(config: Json | null): string | null {
   return config && typeof config === 'object' && !Array.isArray(config) && typeof config.notes === 'string' ? config.notes : null;
@@ -42,6 +43,9 @@ export function useBroadcastShowSegments(showId: string | undefined) {
           status: (row.status as ShowSegment['status']) ?? 'pending',
           displayOrder: row.display_order as number,
           notes: segmentNotes(row.config),
+          overlay: row.config && typeof row.config === 'object' && !Array.isArray(row.config) && typeof row.config.overlay === 'string' ? row.config.overlay : null,
+          matchId: row.config && typeof row.config === 'object' && !Array.isArray(row.config) && typeof row.config.matchId === 'string' ? row.config.matchId : null,
+          plan: readRundownPlan(row.config && typeof row.config === 'object' && !Array.isArray(row.config) ? row.config.plan : null),
         }),
       );
     },
@@ -96,11 +100,16 @@ export function useUpdateSegment(showId: string) {
       if (parsed.title !== undefined) patch.title = parsed.title;
       if (parsed.estimatedDuration !== undefined)
         patch.duration_seconds = parseRundownDuration(parsed.estimatedDuration);
-      if (parsed.notes !== undefined) {
+      if (parsed.notes !== undefined || parsed.type !== undefined) {
         const { data: existing, error: readError } = await supabase.from('rundown_segments').select('config').eq('id', parsed.id).eq('show_id', showId).single();
         if (readError) throw readError;
         const previous = existing.config && typeof existing.config === 'object' && !Array.isArray(existing.config) ? existing.config : {};
-        patch.config = { ...previous, notes: parsed.notes || '' };
+        // A manual type change deliberately switches to the existing type-based scene layout.
+        // Keep notes and match ownership; discard the previously selected screen override.
+        patch.config = { ...previous,
+          ...(parsed.notes !== undefined ? { notes: parsed.notes || '' } : {}),
+          ...(parsed.type !== undefined ? { overlay: null, plan: null } : {}),
+        };
       }
 
       const { error } = await supabase

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ShowPreparation } from "../ShowPreparation";
@@ -7,57 +13,128 @@ import { apiClient } from "@/lib/apiClient";
 import type { BroadcastShowDetail } from "@/types/broadcast";
 
 vi.mock("@/lib/apiClient", () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
   getApiErrorMessage: (_error: unknown, fallback: string) => fallback,
+}));
+vi.mock("@/hooks/useHudPreviewFonts", () => ({
+  useHudPreviewFonts: () => ({ data: undefined, isError: false }),
+}));
+const fixtures = vi.hoisted(() => ({
+  rows: [] as Record<string, unknown>[],
+  update: vi.fn(),
 }));
 vi.mock("@/lib/supabase", () => ({
   supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          order: () => ({ limit: async () => ({ data: [], error: null }) }),
-        }),
-      }),
-    }),
+    from: () => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        order: () => query,
+        limit: async () => ({ data: fixtures.rows, error: null }),
+        update: (patch: unknown) => {
+          fixtures.update(patch);
+          return { eq: () => ({ eq: async () => ({ error: null }) }) };
+        },
+      };
+      return query;
+    },
   },
 }));
-const id = "5e182c34-49f8-40d3-bf6c-88b576c20c45",
-  matchId = "cf507ae4-9468-4f40-96aa-5a5ff01459c5";
-const show: BroadcastShowDetail = {
-  id,
-  orgId: id,
-  title: "Final Show",
-  status: "draft",
-  tournamentId: id,
-  tournamentName: "Invitational",
-  scheduledAt: null,
-  startedAt: null,
-  endedAt: null,
-  createdAt: "2026-10-13T10:00:00Z",
-  nodeCount: 1,
-  matchSlotCount: 0,
-  matchSlotsWithCode: 0,
-  talentCount: 0,
-  sponsorCount: 0,
-  crewCount: 0,
-  matchSlots: [],
-  lastSyncedAt: null,
-};
+const id = "5e182c34-49f8-40d3-bf6c-88b576c20c45";
+const matchId = "cf507ae4-9468-4f40-96aa-5a5ff01459c5";
+const nextMatch = "7197a7d3-90fc-41af-859f-45a7c00173c0";
+let current: BroadcastShowDetail;
+let online: boolean;
 beforeEach(() => {
   vi.clearAllMocks();
+  online = true;
+  current = {
+    id,
+    orgId: id,
+    title: "Final Show",
+    status: "draft",
+    tournamentId: id,
+    tournamentName: "Invitational",
+    scheduledAt: null,
+    startedAt: null,
+    endedAt: null,
+    createdAt: "2026-10-13T10:00:00Z",
+    nodeCount: 1,
+    matchSlotCount: 1,
+    matchSlotsWithCode: 1,
+    talentCount: 0,
+    sponsorCount: 0,
+    crewCount: 0,
+    lastSyncedAt: null,
+    matchSlots: [
+      {
+        id,
+        showId: id,
+        matchId,
+        matchCode: "FINAL",
+        displayOrder: 0,
+        matchTitle: "North vs South",
+        teamA: "North",
+        teamB: "South",
+        bestOf: 3,
+        matchStatus: "pending",
+      },
+    ],
+  };
+  fixtures.rows = [
+    {
+      id,
+      show_id: id,
+      type: "pre_show",
+      title: "Opening",
+      duration_seconds: 60,
+      status: "pending",
+      display_order: 0,
+      config: { overlay: "starting-soon", matchId },
+    },
+  ];
   vi.mocked(apiClient.get).mockImplementation(
     async <T,>(path: string): Promise<T> => {
+      if (path.endsWith('/appearance')) return {} as T;
+      if (path.endsWith('/enrollment')) return { enabled: false, stageIds: [], revision: 0, checkedAt: null, atCapacity: false, stages: [{ id, name: 'Finals' }] } as T;
       if (path.endsWith("/available-matches"))
-        return [{ id: matchId, teamA: "A", teamB: "B" }] as T;
-      if (path.endsWith("/configuration")) return { showId: id, title: show.title, matches: [], rundown: [] } as T;
-      if (path.includes("/nodes?"))
         return [
-          { id, name: "Desk", lastSeenAt: new Date().toISOString() },
+          {
+            id: nextMatch,
+            teamA: "Aurora",
+            teamB: "Falcons",
+            status: "scheduled",
+            scheduledAt: "2026-11-20T12:00:00Z",
+            tournamentName: "Invitational",
+          },
+          {
+            id,
+            teamA: "Played team",
+            teamB: "Finished opponent",
+            status: "completed",
+          },
         ] as T;
+      if (path.includes("/nodes?"))
+        return (
+          online
+            ? [
+                {
+                  id,
+                  name: "Desk",
+                  isActive: true,
+                  lastSeenAt: new Date().toISOString(),
+                },
+              ]
+            : []
+        ) as T;
       if (path.endsWith("/crew")) return { crew: [], pendingInvites: [] } as T;
-      if (path.endsWith("/talent") || path.endsWith("/sponsors"))
+      if (
+        path.endsWith("/talent") ||
+        path.endsWith("/sponsors") ||
+        path === "/api/sponsors/active"
+      )
         return [] as T;
-      return show as T;
+      return current as T;
     },
   );
   vi.mocked(apiClient.post).mockResolvedValue({ success: true });
@@ -69,67 +146,149 @@ function mount(step = 0) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter
-        initialEntries={[`/broadcast/get-started?showId=${id}&step=${step}`]}
+        initialEntries={[
+          "/broadcast/get-started?showId=" + id + "&step=" + step,
+        ]}
       >
-        <ShowPreparation showId={id} orgId={id} />
+        <ShowPreparation showId={id} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
-describe("real preparation controls", () => {
-  it("shows all nine steps and treats crew as optional", async () => {
-    mount(4);
-    await screen.findByRole("heading", { name: "Crew" });
+describe("focused eight-step setup", () => {
+  it("shows eight steps, clear pairing state and persistent selected match", async () => {
+    mount();
+    await screen.findByText("Air is connected.");
     expect(
-      screen
-        .getByRole("navigation", { name: "Setup steps" })
-        .querySelectorAll("button"),
-    ).toHaveLength(9);
+      within(
+        screen.getByRole("navigation", { name: "Setup steps" }),
+      ).getAllByRole("button"),
+    ).toHaveLength(8);
     expect(
-      screen.getByRole("button", { name: "Skip this step" }),
+      screen.getByRole("region", { name: "Desktop connection" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/solo producer can skip/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected broadcast match")).toHaveTextContent(
+      "North vs South",
+    );
   });
-  it("adds a real bracket match with its selected code", async () => {
-    mount(2);
-    await screen.findByRole("option", { name: "A vs B" });
-    fireEvent.change(screen.getByLabelText("Bracket match"), {
-      target: { value: matchId },
-    });
-    fireEvent.change(screen.getByLabelText("Match code"), {
-      target: { value: "gf1" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Add match" }));
+  it("selects an eligible system match without asking for tournament details or codes", async () => {
+    mount(1);
+    await screen.findByRole("button", { name: /Aurora vs Falcons/ });
+    expect(
+      screen.queryByText("Played team vs Finished opponent"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Match code")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Aurora vs Falcons/ }));
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith(
-        `/api/broadcast/shows/${id}/matches`,
-        { matchId, matchCode: "GF1", displayOrder: 0 },
+        "/api/broadcast/shows/" + id + "/matches",
+        {
+          matchId: nextMatch,
+          matchCode: "M_7197A7D390FC41AF",
+          displayOrder: 1,
+        },
       ),
     );
   });
-  it("submits on-air talent instead of leaving the add button inert", async () => {
+  it("changes demo preview locally, without publishing match data", async () => {
+    mount(2);
+    const iframe = await screen.findByTitle("HUD preview · ingame");
+    const post = vi.spyOn(
+      (iframe as HTMLIFrameElement).contentWindow!,
+      "postMessage",
+    );
+    fireEvent.load(iframe);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Demo preview" }));
+    expect(
+      screen.getByText("Layout preview · No sample match data"),
+    ).toBeInTheDocument();
+    expect(post).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "esportra-preview",
+        demo: false,
+        teams: ["North", "South"],
+      }),
+      "*",
+    );
+    expect(apiClient.post).not.toHaveBeenCalled();
+    expect(iframe).toHaveAttribute("sandbox", "allow-scripts");
+  });
+  it("separates templates and screens, and imports an ordered set", async () => {
+    mount(3);
+    await screen.findByRole("heading", { name: "Templates" });
+    expect(
+      screen.getByRole("heading", { name: "Individual screens" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Import set" })[0]);
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/api/broadcast/shows/" + id + "/screens/import",
+        {
+          matchId,
+          screens: [
+            { overlay: "starting-soon", title: "Opening" },
+            { overlay: "match-intro", title: "Match Introduction" },
+            { overlay: "ingame", title: "Map" },
+            { overlay: "brb", title: "Break" },
+            { overlay: "map-result", title: "Results" },
+          ],
+        },
+      ),
+    );
+  });
+  it("shows sponsor step as optional and offers saved or uploaded assets", async () => {
+    mount(4);
+    await screen.findByRole("heading", { name: "Add sponsors" });
+    expect(
+      screen.getByRole("button", { name: "Skip for now" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Esportra sponsor list" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add a new sponsor" }));
+    expect(screen.getByLabelText("Sponsor name")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sponsor logo/)).toHaveAttribute(
+      "accept",
+      "image/png,image/jpeg,image/webp",
+    );
+  });
+  it("saves on-air talent through the existing roster API", async () => {
     mount(5);
-    await screen.findByRole("heading", { name: "On-air talent" });
+    await screen.findByLabelText("Display name");
     fireEvent.change(screen.getByLabelText("Display name"), {
-      target: { value: "Caster One" },
+      target: { value: "Commentator One" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Add talent" }));
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith(
-        `/api/broadcast/shows/${id}/talent`,
-        { name: "Caster One", role: "caster" },
+        "/api/broadcast/shows/" + id + "/talent",
+        { name: "Commentator One", role: "caster" },
       ),
     );
   });
-  it("sends the configuration and distinguishes delivery from local readiness", async () => {
-    mount(8);
-    await screen.findByRole("button", { name: "Send configuration" });
-    fireEvent.click(screen.getByRole("button", { name: "Send configuration" }));
+  it("blocks incomplete review and distinguishes delivery from local readiness", async () => {
+    online = false;
+    mount(7);
+    const button = await screen.findByRole("button", {
+      name: "Send match to Air",
+    });
+    await screen.findByText("Connect a desktop to receive the setup.");
+    expect(button).toBeDisabled();
+    expect(apiClient.post).not.toHaveBeenCalled();
+  });
+  it("sends complete setup and gives the next desktop action", async () => {
+    mount(7);
+    const button = await screen.findByRole("button", {
+      name: "Send match to Air",
+    });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
     await screen.findByText(
-      "Configuration sent. Verify receipt and readiness in the desktop app.",
+      /Match setup sent. Open Air/,
     );
     expect(apiClient.post).toHaveBeenCalledWith(
-      `/api/broadcast/shows/${id}/push-config`,
+      "/api/broadcast/shows/" + id + "/push-config",
+      { matchId },
     );
   });
 });

@@ -10,6 +10,7 @@ import {
 import { InlineNotice } from "@/components/ui/kit/InlineNotice";
 import { useBroadcastActivity } from "@/hooks/useBroadcastActivity";
 import { useBroadcastShow } from "@/hooks/useBroadcastShow";
+import { ProductionHistory } from "@/components/broadcast/ProductionHistory";
 
 export default function BroadcastActivityPage() {
   const { showId = "" } = useParams<{ showId: string }>();
@@ -28,7 +29,7 @@ export default function BroadcastActivityPage() {
         <CommandHeader
           eyebrow="ESPORTRA AIR · RECORDS"
           title="Recorded activity"
-          description="Acknowledged platform records, newest first. Offline records may arrive later. Verify current OBS and rundown state on desktop."
+          description="Acknowledged platform records, newest first. Offline records may arrive later. Verify current OBS and broadcast screen state on desktop."
           actions={
             <CommandButton
               variant="ghost"
@@ -39,6 +40,7 @@ export default function BroadcastActivityPage() {
             </CommandButton>
           }
         />
+        <ProductionHistory showId={showId} />
         {activity.isLoading && (
           <p role="status" className="text-zinc-400">
             Loading recorded activity…

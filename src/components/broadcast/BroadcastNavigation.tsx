@@ -7,6 +7,7 @@ export function BroadcastNavigation() {
     >
       {[
         ["/broadcast/home", "Home"],
+        ["/air", "Independent projects"],
         ["/broadcast/shows", "Shows"],
         ["/broadcast/get-started", "Get started"],
         ["/broadcast/crew/shows", "My crew shows"],

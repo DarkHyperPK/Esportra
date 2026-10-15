@@ -20,6 +20,7 @@ import {
   relativeLastSeen,
 } from "@/services/broadcast/broadcastNodeRules";
 import { getApiErrorMessage } from "@/lib/apiClient";
+import { nodeRuntimeHealth } from "@/services/broadcast/nodeRuntimeHealth";
 
 export function NodeCard({
   node,
@@ -31,6 +32,7 @@ export function NodeCard({
   onDeactivate: () => Promise<unknown>;
 }) {
   const health = classifyNodeHealth(node.lastSeenAt, now);
+  const runtime = nodeRuntimeHealth(node, now);
   const [confirming, setConfirming] = useState(false),
     [pending, setPending] = useState(false),
     [error, setError] = useState<string | null>(null);
@@ -73,6 +75,13 @@ export function NodeCard({
       <p className="my-4 text-xs text-zinc-500">
         Check capture, OBS and browser outputs on this workstation.
       </p>
+      {runtime && <div className="my-4 space-y-2 text-xs text-zinc-400" aria-label="Reported production health">
+        <p>{runtime.mode === "capture-only" ? "Capture node" : "Production node"} · Local HUD {runtime.hudOnline ? "online" : "offline"} · OBS {runtime.obsConnected ? "connected" : "disconnected"}</p>
+        <p>Game feed: {runtime.feedState} · {runtime.timeoutPaused ? "Team timeout" : runtime.automationPaused ? "Technical pause" : runtime.obsConnected ? "OBS ready" : "OBS connection required"}</p>
+        {runtime.plan && <p>Reported broadcast screens v{runtime.plan.version}{runtime.plan.pendingVersion ? ` · v${runtime.plan.pendingVersion} waiting for a segment boundary` : ''}</p>}
+        {runtime.feedState === "stale" && <InlineNotice tone="critical">Game feed paused on this node. On-air values are last received; check the observer connection.</InlineNotice>}
+        {runtime.mode === "production" && !runtime.obsConnected && <InlineNotice tone="warning">OBS disconnected. Automatic takes stay paused until the node reconnects.</InlineNotice>}
+      </div>}
       <CommandButton
         variant="danger"
         size="sm"
@@ -83,6 +92,7 @@ export function NodeCard({
       >
         Revoke node access
       </CommandButton>
+      {!!runtime?.outputs?.length && <details className="my-4 text-xs text-zinc-400"><summary>Browser output health · {runtime.outputs.length} sources</summary><ul className="mt-3 space-y-2">{runtime.outputs.map(output => <li key={output.id}><strong className="text-zinc-200">{output.name}</strong> · {output.connectionCount} connected · {output.lastFrameAt ? `Last rendered ${relativeLastSeen(output.lastFrameAt, now)}` : 'Waiting for render'}</li>)}</ul></details>}
       <AlertDialog
         open={confirming}
         onOpenChange={(value) => {
@@ -94,8 +104,10 @@ export function NodeCard({
             <AlertDialogTitle>Revoke {node.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               Stops this node's platform access. It must pair with a new code to
-              regain access. Local capture, OBS and the rundown must be stopped
-              on the workstation separately.
+              regain access. Updated Air apps stop capture and pause automatic
+              production after detecting revocation. OBS keeps its current program;
+              stop the stream in OBS if needed. Older apps require local capture
+              and broadcast screens controls to be stopped separately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error && <InlineNotice tone="critical">{error}</InlineNotice>}

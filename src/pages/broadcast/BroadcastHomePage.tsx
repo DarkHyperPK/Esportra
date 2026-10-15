@@ -81,7 +81,7 @@ export default function BroadcastHomePage() {
               </div>
               {home.data.shows.length === 0 ? (
                 <p className="text-zinc-400">
-                  Create a show to start planning matches and your rundown.
+                  Create a show to start planning matches and your broadcast screens.
                 </p>
               ) : (
                 home.data.shows.map((show) => (

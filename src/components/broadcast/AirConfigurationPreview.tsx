@@ -1,6 +1,7 @@
 import { useBroadcastConfiguration } from "@/hooks/useBroadcastConfiguration";
 import { CommandButton } from "@/components/management/CommandSurface";
 import { InlineNotice } from "@/components/ui/kit/InlineNotice";
+import { RundownPublication } from './RundownPublication';
 
 export function AirConfigurationPreview({ showId }: { showId: string }) {
   const configuration = useBroadcastConfiguration(showId);
@@ -17,6 +18,7 @@ export function AirConfigurationPreview({ showId }: { showId: string }) {
           Refresh plan
         </CommandButton>
       </div>
+      <RundownPublication showId={showId} />
       {configuration.isLoading && (
         <p role="status" className="mt-3 text-zinc-400">
           Loading tournament data…
@@ -32,7 +34,7 @@ export function AirConfigurationPreview({ showId }: { showId: string }) {
           <p className="mt-3 text-sm text-zinc-400">
             {configuration.data.eventLabel || configuration.data.title} ·{" "}
             {configuration.data.game || "Game not linked"} ·{" "}
-            {configuration.data.rundown?.length ?? 0} rundown segments
+            {configuration.data.rundown?.length ?? 0} broadcast screens
           </p>
           {configuration.data.matches.map((match) => (
             <div

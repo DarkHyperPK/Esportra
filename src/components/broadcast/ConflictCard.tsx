@@ -23,7 +23,7 @@ export interface ConflictCardProps {
 }
 
 /**
- * T35 Conflict card — appears above the rundown when a ResultConflict SignalR
+ * T35 Conflict card — appears above the broadcast screens when a ResultConflict SignalR
  * event arrives. Operator must choose between submitted and GEP scores.
  * No dismiss without a choice.
  */

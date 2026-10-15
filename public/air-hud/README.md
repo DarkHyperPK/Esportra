@@ -1,0 +1,1 @@
+These are browser assets from Esportra-Air/esportra-valorant-hud. Refresh with node tools/sync-hud-preview.cjs in Air after HUD changes. They are production preview assets, not an alternative UI design reference. Preview mode is isolated from game rooms, local storage and GEP.

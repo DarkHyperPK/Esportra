@@ -1,0 +1,143 @@
+/* Three full width variants. Original Broadcast rules stay in hud.css. */
+.bn.compact,.pause.compact{
+  --bn-surface:radial-gradient(ellipse at 50% 0,color-mix(in srgb,var(--c) 17%,#11141c),#101218 64%);
+  --bn-title:var(--bone);
+  --bn-rule:color-mix(in srgb,var(--c) 38%,#29323d);
+}
+.bn.compact{left:0;top:265px;width:1920px;height:340px;isolation:isolate;transition:opacity .18s var(--ease)}
+.bn.compact.out{opacity:0}
+.bn.compact .band{left:0;top:0;width:1920px;height:340px;background:var(--bn-surface);border-top:1px solid var(--bn-rule);border-bottom:3px solid var(--c);clip-path:none;overflow:hidden;opacity:0;transform:translateY(12px) scaleY(.98);animation:none;transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .band::after{background:linear-gradient(120deg,transparent 24%,#ffffff04 24.1%,transparent 24.3%,transparent 75%,#ffffff04 75.1%,transparent 75.3%)}
+.bn.compact .bn-watermark{display:block;position:absolute;right:80px;top:-28px;width:380px;height:380px;object-fit:contain;opacity:.035}
+.bn.compact .bn-frame{display:block;position:absolute;inset:16px 32px;z-index:3;pointer-events:none;border-top:1px solid #ffffff0d;border-bottom:1px solid #ffffff0d;opacity:0;transform:scaleX(.96);transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .bn-wing{display:block;position:absolute;top:0;width:560px;height:340px;z-index:1;opacity:0;transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .bn-wing.l{left:0;transform:translateX(-40px)}
+.bn.compact .bn-wing.r{right:0;transform:translateX(40px) scaleX(-1)}
+.bn.compact .bn-crest{display:flex;position:absolute;left:calc(50% - 68px);top:14px;width:136px;height:136px;align-items:center;justify-content:center;z-index:4;opacity:0;transform:translateY(10px) scale(.96);transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .bn-emblem{display:block;width:112px;height:112px;object-fit:contain;filter:drop-shadow(0 2px 5px #0004)}
+.bn.compact .bn-kicker{display:block;position:absolute;left:260px;right:260px;top:162px;text-align:center;font:10px JB,monospace;letter-spacing:.28em;color:color-mix(in srgb,var(--c) 55%,#fff);z-index:4;opacity:0;transform:translateY(6px);transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .t1{left:260px;right:260px;top:184px;font-size:88px;line-height:1;letter-spacing:-.025em;color:var(--bn-title);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:4;opacity:0;transform:translateY(10px);animation:none;transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact .t1.long{font-size:72px;top:192px}
+.bn.compact .t2,.bn.compact .por,.bn.compact .lgw{display:none}
+.bn.compact .bn-footer{display:flex;position:absolute;left:calc(50% - 440px);right:calc(50% - 440px);top:284px;height:38px;align-items:center;justify-content:center;gap:14px;padding:0 18px;color:var(--bone);z-index:4;opacity:0;transform:translateY(6px);transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn-footer .bn-side{font:600 11px JB,monospace;letter-spacing:.12em;padding:4px 7px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--ink-solid));flex:none}
+.bn-footer .bn-team-logo{display:flex;align-items:center;justify-content:center;flex:none}
+.bn-footer .bn-team-logo .lg{position:static;width:28px;height:28px;opacity:1;animation:none;object-fit:contain}
+.bn-footer .bn-team-logo .mono-logo{border:0;background:transparent}
+.bn-footer .bn-team-name{font:24px PXB,sans-serif;letter-spacing:-.015em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bn-footer .bn-actor{max-width:220px;border-left:1px solid #ffffff26;padding-left:14px;font:16px PSB,sans-serif;color:#c4c8d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bn-footer .bn-actor:empty,.bn-footer .bn-side:empty{display:none}
+.bn.compact.on:not(.out) .band,.bn.compact.on:not(.out) .bn-frame{opacity:1;transform:none;transition-duration:.24s}
+.bn.compact.on:not(.out) .bn-wing{opacity:1;transition-duration:.24s}
+.bn.compact.on:not(.out) .bn-wing.l{transform:none}
+.bn.compact.on:not(.out) .bn-wing.r{transform:scaleX(-1)}
+.bn.compact.on:not(.out) .bn-crest{opacity:1;transform:none;transition-duration:.22s;transition-delay:.04s}
+.bn.compact.on:not(.out) .t1,.bn.compact.on:not(.out) .bn-kicker{opacity:1;transform:none;transition-duration:.2s;transition-delay:.08s}
+.bn.compact.on:not(.out) .bn-footer{opacity:1;transform:none;transition-duration:.18s;transition-delay:.12s}
+
+/* Monument: a sculpted roster panorama, open icon, and architectural rails. */
+.bn.compact.monument,.pause.compact.monument{--bn-surface:linear-gradient(180deg,#30313a 0,#191a23 18%,#101019 65%,#21212b);--bn-rule:#ffffff38}
+.bn.compact.monument .band{border-bottom:1px solid #ffffff48}
+.bn.compact.monument .bn-wing,.pause.compact.monument .pause-wing{width:620px;background:repeating-linear-gradient(90deg,#ffffff02 0 1px,transparent 1px 26px),linear-gradient(90deg,color-mix(in srgb,var(--c) 8%,#20202a),transparent);clip-path:none}
+.bn.compact.monument .bn-wing::after,.pause.compact.monument .pause-wing::after{display:none}
+.bn.compact.monument .bn-frame{inset:14px 30px;border-color:#ffffff2a}
+.bn.compact.monument .bn-emblem{width:112px;height:112px}
+.bn.compact.monument .t1{font-family:PXB;letter-spacing:.045em;font-size:84px}
+.bn.compact.monument .t1.long{font-size:68px}
+.bn.compact.monument .bn-kicker{color:#babac4;letter-spacing:.4em}
+.bn.compact.monument .bn-watermark{right:120px;opacity:.02}
+
+/* Impact: a saturated colour field and oversized geometric brand texture. */
+.bn.compact.impact,.pause.compact.impact{--bn-surface:linear-gradient(110deg,color-mix(in srgb,var(--c) 35%,#121521),color-mix(in srgb,var(--c) 15%,#121521) 38%,color-mix(in srgb,var(--c) 45%,#121521));--bn-rule:#ffffff35}
+.bn.compact.impact .band{border-bottom:5px solid var(--c);transform:scaleY(.95)}
+.bn.compact.impact .band::after{background:repeating-linear-gradient(125deg,transparent 0 140px,#ffffff08 140px 143px)}
+.bn.compact.impact .bn-wing,.pause.compact.impact .pause-wing{display:none}
+.bn.compact.impact .bn-watermark{right:-30px;top:-230px;width:800px;height:800px;opacity:.12}
+.bn.compact.impact .bn-frame{inset:0;border-top:4px solid #ffffff60;border-bottom:0}
+.bn.compact.impact .bn-kicker{color:#e6e8ed;letter-spacing:.18em}
+.bn.compact.impact .t1{font-size:96px;letter-spacing:-.04em;top:179px}
+.bn.compact.impact .t1.long{font-size:76px;top:189px}
+.bn.compact.impact .bn-footer{left:calc(50% - 400px);right:calc(50% - 400px);background:#10121bbb;border-radius:4px}
+
+/* Valorant artwork is clipped to the panel; it never crowds the headline. */
+.bn-scene{display:none}
+.bn.compact .bn-scene{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2;opacity:0;transform:translateY(12px);transition:opacity .14s var(--ease),transform .18s var(--ease)}
+.bn.compact.on:not(.out) .bn-scene{opacity:1;transform:none;transition-duration:.24s}
+.bn-scene .bn-agent{position:absolute;overflow:hidden;width:230px;height:340px}
+.bn-agent img{position:absolute;width:510px;height:510px;max-width:none;left:-140px;top:-28px;object-fit:contain}
+.bn-context,.bn-round-label{position:absolute;font:11px JB,monospace;letter-spacing:.18em;text-transform:uppercase;color:#c0c7d1;z-index:3}
+.bn-context{left:42px;bottom:22px}.bn-round-label{right:42px;bottom:22px}
+.bn-abilities,.bn-team-ghost,.bn-sigil{display:none}
+.bn-abilities img{width:38px;height:38px;object-fit:contain}
+.bn.neutral .bn-context{display:none}
+
+/* Velocity: an open stage, soft team light, and fine angled accents. */
+.bn.compact.velocity,.pause.compact.velocity{--bn-surface:linear-gradient(100deg,color-mix(in srgb,var(--c) 15%,#10131a),#10131a 36%,#10131a 64%,color-mix(in srgb,var(--c) 15%,#10131a));--bn-rule:color-mix(in srgb,var(--c) 35%,#29313d)}
+.bn.compact.velocity .band{border-bottom:2px solid var(--c)}
+.bn.compact.velocity .band::after{background:radial-gradient(ellipse at 50% -30%,color-mix(in srgb,var(--c) 14%,transparent),transparent 65%)}
+.bn.compact.velocity .bn-wing,.pause.compact.velocity .pause-wing{width:575px;background:linear-gradient(112deg,transparent 65%,color-mix(in srgb,var(--c) 8%,transparent) 65.2%,transparent 88%);clip-path:none}
+.bn.compact.velocity .bn-wing::after,.pause.compact.velocity .pause-wing::after{content:'';position:absolute;top:38px;right:28px;width:78px;height:262px;border-right:2px solid color-mix(in srgb,var(--c) 60%,transparent);transform:skewX(-20deg)}
+.bn.compact.velocity .bn-frame{inset:20px 32px;border-color:#ffffff12}
+.bn.compact.velocity .bn-watermark{right:90px;top:-50px;width:440px;height:440px;opacity:.022}
+.bn.compact.velocity .bn-sigil{display:flex;position:absolute;left:175px;top:108px;width:150px;height:120px;align-items:center;justify-content:center}
+.bn.compact .bn-sigil .lg{position:static;object-fit:contain;opacity:1;animation:none}
+.bn-sigil .mono-logo{background:none;border:0;color:var(--c);font:64px PXB,sans-serif!important;letter-spacing:-.05em}
+.bn.compact.velocity .bn-scene .bn-agent{left:calc(1425px + var(--i) * 83px);top:130px;width:76px;height:96px;opacity:.8}
+.bn.compact.velocity .bn-agent img{left:0;top:0;width:76px;height:76px;filter:saturate(.8);mask-image:linear-gradient(#000 70%,transparent)}
+.bn.compact.velocity.personal .bn-agent:first-child{left:1410px;top:0;width:390px;height:340px;opacity:.75}
+.bn.compact.velocity.personal .bn-agent img{left:-95px;top:-45px;width:570px;height:570px;filter:saturate(.8);mask-image:linear-gradient(#000 55%,transparent 86%)}
+.bn.compact.velocity .bn-context,.bn.compact.velocity .bn-round-label{bottom:35px;font-size:12px;color:#abb8c5}
+.bn.compact.velocity .bn-context{left:82px}.bn.compact.velocity .bn-round-label{right:82px}
+.bn.compact.velocity .bn-kicker{font-size:12px;letter-spacing:.24em;color:color-mix(in srgb,var(--c) 60%,#fff)}
+.bn.compact.velocity .t1{font-size:92px;letter-spacing:-.04em}
+.bn.compact.velocity .t1.long{font-size:72px}
+
+/* Monument / collective: all five agents form a quiet sculptural frieze. */
+.bn.compact.monument .bn-lineup{position:absolute;inset:0;mask-image:linear-gradient(90deg,#000 18%,transparent 31%,transparent 69%,#000 82%)}
+.bn.compact.monument .bn-scene .bn-agent{left:calc(65px + var(--i) * 180px);width:260px;opacity:.32;filter:grayscale(1) contrast(1.15)}
+.bn.compact.monument .bn-agent:nth-child(4){left:1395px}.bn.compact.monument .bn-agent:nth-child(5){left:1605px}
+.bn.compact.monument .bn-agent img{left:-155px;top:-35px;width:570px;height:570px}
+.bn.compact.monument .bn-scene::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#11111d 0%,transparent 56%)}
+.bn.compact.monument .bn-wing{height:1px;top:320px;width:560px;background:linear-gradient(90deg,transparent,var(--c));z-index:3}
+.bn.compact.monument .bn-frame{inset:22px 36px 10px;border-top:1px solid #ffffff38;border-bottom:1px solid #ffffff38}
+.bn.compact.monument .bn-frame::before,.bn.compact.monument .bn-frame::after{content:'';position:absolute;top:132px;width:9px;height:9px;background:var(--c);transform:rotate(45deg)}
+.bn.compact.monument .bn-frame::before{left:0}.bn.compact.monument .bn-frame::after{right:0}
+.bn.compact.monument .bn-context,.bn.compact.monument .bn-round-label{bottom:38px;font-size:10px;letter-spacing:.3em;color:#babac4}
+.bn.compact.monument.personal .bn-agent:first-child{left:80px;width:480px;opacity:.5}
+.bn.compact.monument.personal .bn-agent img{left:-55px;top:-95px;width:670px;height:670px}
+.bn.compact.monument .bn-team-ghost{display:none}
+
+/* Impact / spotlight: asymmetrical hero art and oversized team lettering. */
+.bn.compact.impact .bn-scene .bn-agent{left:calc(20px + var(--i) * 110px);top:34px;width:150px;height:306px;opacity:.6;filter:saturate(.8);clip-path:polygon(28% 0,100% 0,72% 100%,0 100%)}
+.bn.compact.impact .bn-agent img{top:-45px;width:570px;height:570px;left:-210px}
+.bn.compact.impact .bn-scene::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 15%,color-mix(in srgb,var(--c) 15%,#121521) 32%,color-mix(in srgb,var(--c) 15%,#121521) 68%,transparent 89%)}
+.bn.compact.impact .bn-team-ghost{display:block;position:absolute;right:55px;top:82px;max-width:440px;overflow:hidden;font:180px PBk,sans-serif;line-height:1;letter-spacing:-.08em;color:#ffffff14;-webkit-text-stroke:1px #ffffff60;z-index:2}
+.bn.compact.impact.personal .bn-agent:first-child{left:20px;top:0;width:650px;height:340px;opacity:.9;filter:none;clip-path:none}
+.bn.compact.impact.personal .bn-agent img{left:-140px;top:-95px;width:830px;height:830px}
+.bn.compact.impact.personal .bn-abilities{display:flex;position:absolute;right:90px;top:250px;gap:24px;opacity:.6;z-index:3}
+.bn.compact.impact .bn-context{top:26px;bottom:auto;color:#ffffffaa}
+.bn.compact.impact .bn-round-label{top:26px;bottom:auto;color:#ffffffaa}
+.bn.compact.impact .bn-footer{background:none;border-radius:0;border-top:1px solid #ffffff2a}
+
+/* Pauses reuse the selected material and icon treatment. */
+.pause.compact{left:0;top:265px;width:1920px;height:340px;padding:0;background:none;border:0;overflow:hidden;transform:translateY(12px);transition:opacity .18s var(--ease),transform .24s var(--ease)}
+.pause.compact::before{content:'';position:absolute;inset:0;background:var(--bn-surface);border-top:1px solid var(--bn-rule);border-bottom:3px solid var(--c)}
+.pause.compact::after{content:'';position:absolute;right:80px;top:-28px;width:380px;height:380px;background:url(brand/mark-512.png) center/contain no-repeat;opacity:.035}
+.pause.compact .pause-crest{position:absolute;left:calc(50% - 68px);top:14px;width:136px;height:136px;display:flex;align-items:center;justify-content:center;z-index:4}
+.pause.compact .pause-symbol{display:block;position:relative;width:112px;height:112px;object-fit:contain}
+.pause.compact .pause-wing{display:block;position:absolute;top:0;width:560px;height:340px;z-index:1}
+.pause.compact .pause-wing.l{left:0}.pause.compact .pause-wing.r{right:0;transform:scaleX(-1)}
+.pause.compact .a{position:absolute;left:260px;right:260px;top:184px;font-size:72px;line-height:1;z-index:4;color:var(--bn-title)}
+.pause.compact .b{position:absolute;left:260px;right:260px;top:282px;margin:0;color:#c4c8d0;font-size:14px;letter-spacing:.18em;z-index:4}
+.pause.compact.on{transform:none}
+.pause.compact.monument .a{font-family:PXB;letter-spacing:.04em}
+.pause.compact.impact::after{right:-30px;top:-230px;width:800px;height:800px;opacity:.12}
+
+/* Snapshots reveal immediately; repeated triggers retarget the transitions. */
+.bn.compact.restored,.bn.compact.restored *{transition:none!important}
+@media(prefers-reduced-motion:reduce){
+  .bn.compact.impact .band{transform:none;transition-property:opacity}
+  .bn.compact .band,.bn.compact .bn-frame,.bn.compact .bn-wing,.bn.compact .bn-scene,.bn.compact .bn-crest,.bn.compact .bn-kicker,.bn.compact .t1,.bn.compact .bn-footer,.pause.compact{transform:none;transition-property:opacity;transition-duration:.14s;transition-delay:0s!important}
+  .bn.compact.on:not(.out) .band,.bn.compact.on:not(.out) .bn-frame,.bn.compact.on:not(.out) .bn-crest,.bn.compact.on:not(.out) .t1,.bn.compact.on:not(.out) .bn-kicker,.bn.compact.on:not(.out) .bn-footer{transition-duration:.14s}
+  .bn.compact .bn-wing.r,.bn.compact.on:not(.out) .bn-wing.r{transform:scaleX(-1)}
+}

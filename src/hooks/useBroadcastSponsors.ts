@@ -144,7 +144,10 @@ export async function uploadSponsorLogo(
   showId: string,
   sponsorId: string,
 ): Promise<string> {
-  const ext = file.name.split('.').pop() ?? 'png';
+  const types: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+  const ext = types[file.type];
+  if (!ext || file.size <= 0 || file.size > 5 * 1024 * 1024 || !/\.(png|jpe?g|webp)$/i.test(file.name)) throw new Error('Choose a PNG, JPG or WebP logo up to 5 MB.');
+  if (!/^[0-9a-f-]{36}$/i.test(showId) || !/^(?:[0-9a-f-]{36}|temp-\d+)$/i.test(sponsorId)) throw new Error('Invalid sponsor upload destination.');
   const path = `${showId}/${sponsorId}.${ext}`;
 
   const { error } = await supabase.storage

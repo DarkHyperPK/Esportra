@@ -179,6 +179,7 @@ export default function BroadcastSponsorsPage() {
                   index={i}
                   reduceMotion={reduceMotion}
                   onEdit={() => openEdit(sponsor)}
+                  onRemove={() => setDeleteTarget(sponsor)}
                   onToggleActive={(active) =>
                     void toggleSponsor.mutateAsync({ sponsorId: sponsor.id, isActive: active })
                   }
@@ -237,7 +238,7 @@ export default function BroadcastSponsorsPage() {
               <input
                 id="sp-logo"
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 className="block w-full text-sm text-zinc-400 file:mr-3 file:border-0 file:bg-white/[0.05] file:px-3 file:py-1.5 file:text-xs file:font-mono file:uppercase file:text-white"
                 onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
                 disabled={isPending}

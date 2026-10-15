@@ -12,12 +12,13 @@ import {
   useBroadcastCrewWorkspace,
 } from "@/hooks/useBroadcastCrewWorkspace";
 import { formatRundownDuration } from "@/services/broadcast/rundownDuration";
+import { BroadcastResultReview } from '@/components/broadcast/BroadcastResultReview';
 
 const briefs: Record<string, string> = {
   owner:
-    "Prepare the show on the web. Confirm local readiness before starting the desktop rundown.",
+    "Prepare the show on the web. Confirm local readiness before starting the desktop broadcast screens.",
   producer:
-    "Coordinate cues and run the rundown on the production desk. Ask the organizer for a node pairing code.",
+    "Coordinate cues and run the broadcast screens on the production desk. Ask the organizer for a node pairing code.",
   technical_director:
     "Connect OBS on the production desk, prepare sources and verify preview/program before switching.",
   observer:
@@ -34,6 +35,7 @@ export default function BroadcastCrewWorkspacePage() {
   return (
     <CommandShell>
       <CommandPageGrid>
+        <CommandButton variant="ghost" className="w-fit" asChild><Link to="/broadcast/invitations">Your invitations</Link></CommandButton>
         <CommandButton variant="ghost" className="w-fit" asChild>
           <Link to="/broadcast/crew/shows">My crew shows</Link>
         </CommandButton>
@@ -125,7 +127,7 @@ export default function BroadcastCrewWorkspacePage() {
                 </CommandSection>
                 <CommandSection>
                   <h2 className="text-xl font-semibold text-white">
-                    Planned rundown
+                    Planned broadcast screens
                   </h2>
                   <p className="mt-2 text-sm text-zinc-500">
                     Desktop live progression is verified on the production desk.
@@ -151,6 +153,7 @@ export default function BroadcastCrewWorkspacePage() {
                     </p>
                   )}
                 </CommandSection>
+                <BroadcastResultReview showId={showId} />
               </>
             )}
           </>

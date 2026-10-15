@@ -36,10 +36,10 @@ export function TournamentBroadcastShows({
           </div>
           <div className="flex flex-wrap gap-2">
             <CommandButton asChild variant="ghost" size="sm">
-              <Link to={`/broadcast/shows/${show.id}/setup`}>Prepare show</Link>
+              <Link to={`/broadcast/shows/${show.id}/setup`}>Prepare broadcast</Link>
             </CommandButton>
             <CommandButton asChild variant="ghost" size="sm">
-              <Link to={`/broadcast/shows/${show.id}`}>Rundown</Link>
+              <Link to={`/broadcast/shows/${show.id}`}>Show flow</Link>
             </CommandButton>
             <CommandButton asChild variant="ghost" size="sm">
               <Link to={`/broadcast/shows/${show.id}/activity`}>

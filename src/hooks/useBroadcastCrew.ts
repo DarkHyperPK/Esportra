@@ -32,11 +32,18 @@ export function useCreateCrewInvite(showId: string) {
      * The caller MUST store this in local state and NOT pass it through
      * TanStack Query cache — the token should be shown once and forgotten.
      */
-    mutationFn: (role: string) =>
-      apiClient.post<CrewInviteResult>(
+    mutationFn: async (input: string | { role: string; email?: string }) => {
+      const result = await apiClient.post<CrewInviteResult>(
         `/api/broadcast/shows/${showId}/crew/invites`,
-        { role },
-      ),
+        typeof input === 'string' ? { role: input } : input,
+      );
+      if (typeof input !== 'string' && input.email?.trim() && result.recipientBound !== true) {
+        try { await apiClient.delete(`/api/broadcast/shows/${showId}/crew/invites/${result.inviteId}`); }
+        catch { throw new Error('The backend does not support account-bound email invites yet. Revoke the newly created pending invite before trying again.'); }
+        throw new Error('The backend does not support email invitations yet. The unbound invitation was cancelled. Use a link invite or update the backend.');
+      }
+      return result;
+    },
     onSuccess: () => {
       // Refresh pending invites list (does NOT cache the raw token).
       void qc.invalidateQueries({ queryKey: crewQueryKey(showId) });

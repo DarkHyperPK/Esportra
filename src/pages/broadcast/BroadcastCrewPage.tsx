@@ -35,6 +35,7 @@ const INVITE_BASE = `${window.location.origin}/broadcast/join`;
 export default function BroadcastCrewPage() {
   const { showId = '' } = useParams<{ showId: string }>();
   const reduceMotion = useReducedMotion();
+  const [inviteEmail, setInviteEmail] = useState('');
 
   const { data: show } = useBroadcastShow(showId);
   const { data: crewData, isLoading } = useBroadcastCrew(showId);
@@ -58,7 +59,7 @@ export default function BroadcastCrewPage() {
 
   async function handleGenerateInvite() {
     try {
-      const result = await createInvite.mutateAsync(inviteRole);
+      const result = await createInvite.mutateAsync({ role: inviteRole, ...(inviteEmail.trim() ? { email: inviteEmail.trim() } : {}) });
       setPendingInviteResult(result);
       createInvite.reset();
       setInviteModalOpen(true);
@@ -110,7 +111,7 @@ export default function BroadcastCrewPage() {
 
   const generateButton = (
     <CommandButton variant="primary" slide onClick={() => void handleGenerateInvite()} disabled={createInvite.isPending}>
-      Generate invite link
+      {inviteEmail.trim() ? 'Send invitation' : 'Generate invite link'}
     </CommandButton>
   );
 
@@ -134,6 +135,7 @@ export default function BroadcastCrewPage() {
         <CommandSection>
           <p className={EYEBROW_CLASS}>INVITE</p>
           <CrewRolePicker value={inviteRole} onChange={setInviteRole} disabled={createInvite.isPending} />
+          <label className="mt-4 block text-sm text-zinc-300" htmlFor="crew-invite-email">Email (optional)<input id="crew-invite-email" type="email" maxLength={254} value={inviteEmail} disabled={createInvite.isPending} onChange={event => setInviteEmail(event.target.value)} placeholder="crew@example.com" className="mt-2 block w-full max-w-md border border-white/15 bg-black/30 px-3 py-2 text-white" /><span className="mt-2 block text-xs text-zinc-500">Email invitations are bound to the recipient’s account and appear in their invitation inbox.</span></label>
           <div className="mt-3">
             {pendingInvites.length > 0 ? (
               <InlineNotice tone="warning">
@@ -189,7 +191,8 @@ export default function BroadcastCrewPage() {
               {pendingInvites.map((invite) => (
                 <div key={invite.id} className="flex items-center justify-between border-b border-white/[0.05] px-5 py-3">
                   <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-semibold text-zinc-400">Pending invite</p>
+                    <p className="text-sm font-semibold text-zinc-400">{invite.recipientEmail || 'Link invitation'}</p>
+                    {invite.emailStatus && invite.emailStatus !== 'not_requested' && <span className="text-xs text-zinc-500">Email {invite.emailStatus === 'submitted' ? 'submitted' : 'not submitted'}</span>}
                     <p className="font-mono text-[11px] text-amber-300">
                       Expires in {formatDistanceToNow(new Date(invite.expiresAt))}
                     </p>
@@ -211,6 +214,8 @@ export default function BroadcastCrewPage() {
             <DialogTitle className="normal-case tracking-normal">Invite link</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {pendingInviteResult?.emailStatus === 'submitted' && <InlineNotice tone="neutral">Email submitted. The invitation is also available in the recipient’s Esportra inbox.</InlineNotice>}
+            {pendingInviteResult?.emailStatus === 'failed' && <InlineNotice tone="warning">The email could not be submitted. Copy this link and share it with the invited person. Their in-app invitation remains available.</InlineNotice>}
             <InlineNotice tone="warning">
               This link can be used once. Copy it and share with your crew.
             </InlineNotice>

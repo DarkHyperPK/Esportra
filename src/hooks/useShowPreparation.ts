@@ -23,7 +23,7 @@ export function useShowPreparation(showId: string) {
     now = useNow(5000);
   const online =
     nodes.data?.filter(
-      (node) => node.lastSeenAt && now - Date.parse(node.lastSeenAt) < 30000,
+      (node) => !nodes.isError && node.isActive && node.lastSeenAt && now - Date.parse(node.lastSeenAt) >= -5000 && now - Date.parse(node.lastSeenAt) < 30000,
     ).length ?? 0;
   const [segmentTitle, setSegmentTitle] = useState("");
   const checks = [

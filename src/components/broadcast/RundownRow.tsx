@@ -9,6 +9,7 @@ import { CommandIconButton } from '@/components/management/CommandSurface';
 import { StatusPill } from '@/components/ui/kit/StatusPill';
 import { CONTROL_CLASS } from '@/components/ui/kit/tone';
 import type { ShowSegment, SegmentType } from '@/types/broadcast';
+import { RundownPlanEditor } from './RundownPlanEditor';
 
 const SEGMENT_ICONS: Record<SegmentType, React.ReactNode> = {
   match:        <Swords className="h-4 w-4 text-zinc-400" />,
@@ -72,7 +73,7 @@ export function RundownRow({
         isExpanded && !isLive && 'border-l-2 border-l-rose-500 bg-white/[0.025]',
         locked && 'opacity-80',
       )}
-      aria-label={`Rundown segment: ${segment.title}`}
+      aria-label={`Broadcast screens screen: ${segment.title}`}
     >
       {/* Row */}
       <div className={cn(
@@ -83,7 +84,7 @@ export function RundownRow({
           type="button"
           aria-label="Drag to reorder"
           disabled={locked}
-          title={locked ? 'Show is live — rundown is locked' : 'Drag to reorder'}
+          title={locked ? 'Show is live — screen order is locked' : 'Drag to reorder'}
           className="shrink-0 text-zinc-600 disabled:cursor-not-allowed"
         >
           <GripVertical className="h-4 w-4" />
@@ -105,7 +106,7 @@ export function RundownRow({
           variant="ghost"
           label={`Edit ${segment.title}`}
           disabled={locked}
-          title={locked ? 'Show is live — rundown is locked' : `Edit ${segment.title}`}
+          title={locked ? 'Show is live — screen order is locked' : `Edit ${segment.title}`}
           onClick={isExpanded ? onCollapse : onExpand}
         >
           <Edit3 />
@@ -115,7 +116,7 @@ export function RundownRow({
           variant="ghost"
           label={`Remove ${segment.title}`}
           disabled={locked}
-          title={locked ? 'Show is live — rundown is locked' : `Remove ${segment.title}`}
+          title={locked ? 'Show is live — screen order is locked' : `Remove ${segment.title}`}
           onClick={onRemove}
         >
           <Trash2 />
@@ -133,7 +134,7 @@ export function RundownRow({
             transition={reduceMotion ? { duration: 0 } : { duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="grid max-h-[120px] grid-cols-2 gap-3 overflow-y-auto px-4 pb-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 px-4 pb-3 pt-1">
               <div>
                 <label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-zinc-500">
                   Title
@@ -142,7 +143,7 @@ export function RundownRow({
                   className={cn(CONTROL_CLASS, 'h-9 w-full px-2 text-sm')}
                   value={segment.title}
                   onChange={(e) => onChange({ title: e.target.value })}
-                  aria-label="Segment title"
+                  aria-label="Screen name"
                 />
               </div>
               <div>
@@ -185,6 +186,7 @@ export function RundownRow({
                 />
               </div>
             </div>
+            <RundownPlanEditor key={segment.id + JSON.stringify(segment.plan)} segment={segment} />
             <div className="flex justify-end px-4 pb-3">
               <button
                 type="button"

@@ -197,6 +197,8 @@ const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallba
 // Broadcast production management (T27–T32, T34 crew join)
 const BroadcastCrewJoinPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewJoinPage"));
 const BroadcastShowsPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowsPage"));
+const AirWorkspacePage = lazyWithRetry(() => import("./pages/air/AirWorkspacePage"));
+const AirAdminPage = lazyWithRetry(() => import("./pages/admin/AirAdminPage"));
 const BroadcastHomePage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastHomePage"));
 const BroadcastGetStartedPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastGetStartedPage"));
 const BroadcastShowDetailPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowDetailPage"));
@@ -204,6 +206,7 @@ const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/B
 const BroadcastActivityPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastActivityPage"));
 const BroadcastCrewPage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewPage"));
 const BroadcastCrewWorkspacePage = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewWorkspacePage"));
+const BroadcastInvitationsPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastInvitationsPage"));
 const BroadcastSponsorsPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorsPage"));
 const BroadcastSetupPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastSetupPage"));
 const BroadcastSponsorProofPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorProofPage"));
@@ -375,6 +378,7 @@ const AppContent = React.memo(() => {
                   <Route index element={<Navigate to="dashboard" replace />} />
 
                   {/* Dashboard */}
+                  <Route path="air" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AirAdminPage /></AdminRouteGuard>} />
                   <Route path="dashboard" element={<AdminRouteGuard requiredPermission="dashboard:view"><CommandCentre /></AdminRouteGuard>} />
 
                   {/* Tools */}
@@ -589,7 +593,9 @@ const AppContent = React.memo(() => {
 
                 {/* Broadcast production management (T27–T32) */}
                 <Route path="/broadcast/crew/shows" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
+                <Route path="/broadcast/invitations" element={<ProtectedRoute><BroadcastInvitationsPage /></ProtectedRoute>} />
                 <Route path="/broadcast/crew/shows/:showId" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
+                <Route path="/air" element={<ProtectedRoute><AirWorkspacePage /></ProtectedRoute>} />
                 <Route path="/broadcast/home" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastHomePage /></ProtectedRoute>} />
                 <Route path="/broadcast/get-started" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastGetStartedPage /></ProtectedRoute>} />
                 <Route path="/broadcast/shows" element={

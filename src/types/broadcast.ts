@@ -1,5 +1,6 @@
 // Broadcast domain types — mirroring the backend DTOs.
 // All fields are camelCase per the frontend convention.
+import type { RundownPlan } from '@/schemas/rundownPlanSchema';
 
 export type BroadcastShowStatus = 'draft' | 'scheduled' | 'live' | 'ended' | 'cancelled';
 export type SegmentType = 'match' | 'break' | 'pre_show' | 'post_show' | 'sponsor_slot' | 'custom';
@@ -43,6 +44,9 @@ export interface ShowSegment {
   status: SegmentStatus;
   displayOrder: number;
   notes: string | null;
+  overlay?: string | null;
+  matchId?: string | null;
+  plan?: RundownPlan | null;
 }
 
 /** Node registered via the Air desktop app */
@@ -53,6 +57,8 @@ export interface BroadcastNode {
   isActive: boolean;
   /** ISO timestamp of the last heartbeat received by the backend */
   lastSeenAt: string | null;
+  runtimeStatus?: string | null;
+  runtimeSeenAt?: string | null;
 }
 
 export interface ShowMatchSlot {
@@ -68,6 +74,8 @@ export interface ShowMatchSlot {
   teamB?: string;
   bestOf?: number;
   status?: string;
+  matchStatus?: string;
+  scheduledAt?: string | null;
 }
 
 export interface BroadcastCrewMember {
@@ -86,6 +94,8 @@ export interface BroadcastPendingInvite {
   role: CrewRole;
   expiresAt: string;
   createdAt: string;
+  recipientEmail?: string | null;
+  emailStatus?: string | null;
 }
 
 /** Returned once by the createInvite mutation — token is NOT cached in TanStack Query */
@@ -93,6 +103,8 @@ export interface CrewInviteResult {
   inviteId: string;
   token: string;
   expiresAt: string;
+  emailStatus?: 'submitted' | 'failed' | 'not_requested';
+  recipientBound?: boolean;
 }
 
 export interface BroadcastSponsor {
