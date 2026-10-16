@@ -1,3 +1,4 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -5,7 +6,7 @@ import { AnimatePresence, Reorder } from 'framer-motion';
 import { Plus, PanelLeft, PanelRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  CommandShell, CommandSection, CommandButton, CommandIconButton,
+  CommandSection, CommandButton, CommandIconButton,
   CommandEmptyState, CommandTabButton, CommandShowHeader,
 } from '@/components/management/CommandSurface';
 import { StatusPill } from '@/components/ui/kit/StatusPill';
@@ -211,7 +212,7 @@ export default function BroadcastShowDetailPage() {
 
   if (isLoading) {
     return (
-      <CommandShell>
+      <BroadcastShell>
         <div className="h-[52px] animate-pulse bg-white/[0.03]" />
         <div className="grid grid-cols-1 gap-0 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_280px]">
           <div className="hidden space-y-3 border-r border-white/10 p-4 md:block">
@@ -221,13 +222,13 @@ export default function BroadcastShowDetailPage() {
             {[1, 2, 3, 4, 5].map((n) => <div key={n} className="h-14 animate-pulse bg-white/[0.03]" />)}
           </div>
         </div>
-      </CommandShell>
+      </BroadcastShell>
     );
   }
 
   if (isError || !show) {
     return (
-      <CommandShell>
+      <BroadcastShell>
         <CommandSection>
           <CommandEmptyState
             title="Couldn't load show"
@@ -235,7 +236,7 @@ export default function BroadcastShowDetailPage() {
             action={<CommandButton variant="ghost" onClick={() => navigate('/broadcast/shows')}>Back to shows</CommandButton>}
           />
         </CommandSection>
-      </CommandShell>
+      </BroadcastShell>
     );
   }
 
@@ -283,7 +284,7 @@ export default function BroadcastShowDetailPage() {
       <CommandSection>
         {show.tournamentSlug && <CommandButton variant="ghost" size="sm" className="mb-2 w-full" asChild><Link to={`/organizer/tournament/${encodeURIComponent(show.tournamentSlug)}?tab=broadcast`}>Tournament broadcast →</Link></CommandButton>}
         <CommandButton variant="ghost" size="sm" className="w-full" asChild>
-          <Link to={`/broadcast/shows/${showId}/setup`}>Prepare & settings →</Link>
+          <Link to={`/broadcast/shows/${showId}/setup`}>Return to setup →</Link>
         </CommandButton>
         <CommandButton variant="ghost" size="sm" className="mt-2 w-full" asChild><Link to={`/broadcast/shows/${showId}/activity`}>Recorded activity →</Link></CommandButton>
       </CommandSection>
@@ -366,7 +367,7 @@ export default function BroadcastShowDetailPage() {
   );
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={show.title}
         showStatus={show.status}
@@ -374,6 +375,7 @@ export default function BroadcastShowDetailPage() {
         actions={headerActions}
       />
 
+      <p className="broadcast-footnote">Advanced screen planning. Prepare the match in setup; OBS and streaming are controlled in Air on the production PC.</p>
       {/* Mobile sheet triggers */}
       <div className="flex items-center gap-2 border-b border-white/10 bg-[#0a0a0c]/92 px-3 py-2 md:hidden">
         <CommandIconButton variant="ghost" label="Show info" onClick={() => setLeftSheetOpen(true)}>
@@ -384,7 +386,7 @@ export default function BroadcastShowDetailPage() {
         </CommandIconButton>
       </div>
 
-      <div className="grid grid-cols-1 gap-0 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_280px]" style={{ height: 'calc(100vh - 52px)' }}>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_280px]" style={{ minHeight: '65vh' }}>
         {/* Left panel */}
         <aside className="hidden overflow-y-auto border-r border-white/10 md:block">
           {leftContent}
@@ -396,7 +398,7 @@ export default function BroadcastShowDetailPage() {
             <p className="font-heading text-base font-bold text-white">Broadcast screens</p>
             <div className="flex items-center gap-2">
               {show.nodeCount === 0 && !isLive && (
-                <span className="hidden text-[11px] text-amber-400 md:inline">No nodes paired</span>
+                <span className="hidden text-[11px] text-amber-400 md:inline">No desktop paired</span>
               )}
               <CommandButton variant="ghost" size="sm" onClick={() => void handleAddSegment()} disabled={locked || addSegment.isPending}>
                 {addSegment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
@@ -407,8 +409,8 @@ export default function BroadcastShowDetailPage() {
 
           {show.nodeCount === 0 && !isLive && (
             <InlineNotice tone="warning" className="mx-4 mt-3">
-              No nodes paired. Pair a node before going live.{' '}
-              <Link to={`/broadcast/shows/${showId}/nodes`} className="underline">Node monitor →</Link>
+              No desktop paired. Connect a desktop before publishing.{' '}
+              <Link to={`/broadcast/shows/${showId}/nodes`} className="underline">Desktop connections →</Link>
             </InlineNotice>
           )}
 
@@ -538,6 +540,6 @@ export default function BroadcastShowDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

@@ -1,6 +1,6 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { Link, useParams } from "react-router-dom";
 import {
-  CommandShell,
   CommandPageGrid,
   CommandHeader,
   CommandSection,
@@ -33,7 +33,7 @@ export default function BroadcastCrewWorkspacePage() {
     assignments = useBroadcastCrewAssignments(),
     workspace = useBroadcastCrewWorkspace(showId);
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandPageGrid>
         <CommandButton variant="ghost" className="w-fit" asChild><Link to="/broadcast/invitations">Your invitations</Link></CommandButton>
         <CommandButton variant="ghost" className="w-fit" asChild>
@@ -159,6 +159,6 @@ export default function BroadcastCrewWorkspacePage() {
           </>
         )}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

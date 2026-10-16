@@ -1,6 +1,6 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useParams } from "react-router-dom";
 import {
-  CommandShell,
   CommandPageGrid,
   CommandHeader,
   CommandSection,
@@ -18,7 +18,7 @@ export default function BroadcastActivityPage() {
     activity = useBroadcastActivity(showId);
   const items = activity.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={show.data?.title || "Show"}
         showStatus={show.data?.status ?? "draft"}
@@ -100,6 +100,6 @@ export default function BroadcastActivityPage() {
           </CommandButton>
         )}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

@@ -64,7 +64,7 @@ describe("tournament dashboard broadcast integration", () => {
   it("creates through the tournament-bound endpoint and opens guided setup", async () => {
     mount();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Create show & prepare" }),
+      await screen.findByRole("button", { name: "Prepare broadcast" }),
     );
     await waitFor(() =>
       expect(apiClient.post).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe("tournament dashboard broadcast integration", () => {
     );
     await waitFor(() =>
       expect(screen.getByLabelText("Route")).toHaveTextContent(
-        `/broadcast/get-started?showId=${tournamentId}`,
+        `/broadcast/shows/${tournamentId}/setup`,
       ),
     );
   });
@@ -104,7 +104,7 @@ describe("tournament dashboard broadcast integration", () => {
       organizations: [{ id: orgId, name: "Owned club" }],
     });
     const create = await screen.findByRole("button", {
-      name: "Link organization & create show",
+      name: "Link organization & prepare",
     });
     expect(create).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Organization you own"), {
@@ -128,7 +128,7 @@ describe("tournament dashboard broadcast integration", () => {
       /Broadcast administration belongs to the organization owner/,
     );
     expect(
-      screen.queryByRole("button", { name: "Create show & prepare" }),
+      screen.queryByRole("button", { name: "Prepare broadcast" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Pair production desk" }),

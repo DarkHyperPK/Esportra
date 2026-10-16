@@ -247,11 +247,14 @@ async function main() {
       const group = name[0];
       const relative = 'screens/' + group + '/' + name + '.png';
       fs.mkdirSync(path.dirname(path.join(artifacts,relative)),{recursive:true});
-      await page.screenshot({path:path.join(artifacts,relative),fullPage:true});
+      const footer = page.locator('.setup-footer-actions button').last();
+      const footerVisible = await footer.count() ? await footer.evaluate(element => { const bounds=element.getBoundingClientRect(); return bounds.top >= 0 && bounds.bottom <= innerHeight && bounds.left >= 0 && bounds.right <= innerWidth; }) : null;
+      await page.screenshot({path:path.join(artifacts,relative),fullPage:true,animations:"disabled"});
       screenshotCount++;
       records.push({id:name,group,title,component,route:await page.evaluate(()=>window.airRenderedRoute||location.pathname+location.search),
         surface:new URL(page.url()).pathname==='/desktop'?'desktop renderer':page.viewportSize().width<600?'phone web':'web',
         file:relative,viewport:page.viewportSize(),notes,verification:'real component / synthetic data and IPC',liveServices:false,
+        primaryActionInViewport:footerVisible,
         horizontalOverflow:await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)});
       assert.deepEqual(errors,[],name+': renderer errors');
     };
@@ -291,24 +294,26 @@ async function main() {
     await go('/broadcast/get-started');
     await take('C01-get-started','Create or select a show','BroadcastGetStartedPage');
     await go('/broadcast/shows');
-    await page.getByRole('button',{name:/New show|Create show/i}).first().click();
+    await page.getByRole('button',{name:/Create broadcast|New show|Create show/i}).first().click();
     await take('C02-create-show','Create show form','BroadcastShowsPage');
-    await go('/broadcast/get-started?showId='+id+'&step=0');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=0');
     await page.getByRole('button',{name:'Show settings',exact:true}).click();
     await take('D01-show-settings','Identity, tournament and planned start','ShowSettingsDialog');
     await page.getByRole('button',{name:'Close',exact:true}).first().click();
     for(let step=0;step<8;step++){
-      await go('/broadcast/get-started?showId='+id+'&step='+step);
+      await go('/broadcast/get-started?match='+id+'&showId='+id+'&step='+step);
       await take('E0'+(step+1)+'-preparation', ['Connect desktop app','Choose a match','Preview the HUD','Choose broadcast screens','Add sponsors','Assign talent','Assign crew','Review broadcast setup'][step], 'ShowPreparation / PreparationStepContent');
     }
-    await go('/broadcast/get-started?showId='+id+'&step=1');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=1');
+    assert.equal(await page.locator('.broadcast-masthead').count(), 0, 'No top navigation bar');
+    assert.equal(await page.getByRole('navigation', { name: 'Setup steps' }).count(), 1, 'One workflow sidebar');
     assert.equal(await page.getByRole('button',{name:/Played team/}).count(),0,'Played matches stay hidden');
     await take('E13-eligible-matches','Unplayed match choices with teams, time and status','SetupMatchPicker');
     await page.getByText('Follow bracket stages', { exact: true }).click();
     await page.getByLabel('Automatically include upcoming matches', { exact: true }).check();
     await page.getByLabel('Playoffs', { exact: true }).check();
     await take('E21-follow-stages','Optional stage following includes future eligible matches without taking Program or creating tournament data','FollowBracketSettings');
-    await go('/broadcast/get-started?showId='+id+'&step=2');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=2');
     const hud=page.frameLocator('iframe');
     await hud.locator('.preview-label').getByText('DEMO PREVIEW · SAMPLE DATA',{exact:true}).waitFor();
     assert.ok(await hud.locator('body').textContent().then(text=>text.includes('Team North')),'Preview has selected teams');
@@ -327,37 +332,37 @@ async function main() {
     await take('E20-hud-appearance','Saved match display names, team colors, theme, event bug and sponsor rotation preview','HudAppearanceSetup / HudAppearanceFields');
     await page.getByRole('button', { name: 'Save appearance', exact: true }).click();
     await page.getByText('Appearance saved. Send match to Air.', { exact: true }).waitFor();
-    await go('/broadcast/get-started?showId='+id+'&step=4');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=4');
     await page.getByText('Sponsor logo rotation', { exact: true }).click();
     await page.getByRole('button', { name: 'Save sponsor rotation', exact: true }).waitFor();
     await page.getByLabel('Seconds per sponsor', { exact: true }).fill('12');
     await take('E22-sponsor-rotation','Optional sponsor setup includes logo rotation and an explicit separation from manual sponsor reads','SponsorRotationSettings');
-    await go('/broadcast/get-started?showId='+id+'&step=3');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=3');
     await page.getByRole('button',{name:'Preview Match Introduction',exact:true}).click();
     await page.frameLocator('iframe').getByText('DEMO PREVIEW · SAMPLE DATA',{exact:true}).waitFor();
     await take('E16-preview-screen','Preview an individual match introduction before adding it','SetupScreenLibrary');
-    await go('/broadcast/get-started?showId='+id+'&step=4');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=4');
     await page.getByRole('button',{name:'Add a new sponsor',exact:true}).click();
     await take('I04-sponsor-upload','Optional sponsor name and validated logo upload','SetupSponsors');
-    await go('/broadcast/get-started?showId='+id+'&step=6');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=6');
     await take('J05-inline-crew','Crew responsibilities inside broadcast setup','SetupCrew');
-    await go('/broadcast/get-started?showId='+id+'&step=1','no-eligible');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=1','no-eligible');
     await page.getByText(/No eligible matches. Publish the bracket/).waitFor();
     await take('E17-no-eligible-matches','No eligible unplayed matches with recovery guidance','SetupMatchPicker');
     await go('/broadcast/shows/'+tournamentShowId+'/setup');
     await take('E11-tournament-setup','Tournament-linked guided setup and return link','BroadcastSetupPage');
-    await go('/broadcast/get-started?showId='+id+'&step=7');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=7');
     await page.getByRole('button',{name:'Send match to Air',exact:true}).click();
-    await page.getByText(/Match setup sent. Open Air/).waitFor();
+    await page.getByText(/Setup published for Air/).waitFor();
     await take('E12-config-sent','Configuration sent with desktop verification notice','ShowPreparation');
     await go('/broadcast/home');
-    await page.getByRole('button',{name:'Pair desktop node',exact:true}).click();
+    await page.getByRole('button',{name:/Pair desktop app|Pair another desktop/,exact:true}).click();
     await take('F01-pair-dialog','Generate a temporary pairing code','PairNodeDialog');
     await page.getByRole('button',{name:'Generate code',exact:true}).click();
     await page.getByText('TEST 061A',{exact:true}).waitFor();
     await take('F02-pair-code','Pairing code and countdown','PairNodeDialog');
     await go('/broadcast/home','expired');
-    await page.getByRole('button',{name:'Pair desktop node',exact:true}).click();
+    await page.getByRole('button',{name:/Pair desktop app|Pair another desktop/,exact:true}).click();
     await page.getByRole('button',{name:'Generate code',exact:true}).click();
     await page.getByText('Code expired',{exact:true}).waitFor();
     await take('F03-pair-expired','Expired code recovery','PairNodeDialog');
@@ -367,7 +372,7 @@ async function main() {
     await take('G02-revoke-node','Confirm node access revocation','NodeCard');
     await go('/broadcast/shows/'+id+'/nodes','empty');
     await take('G03-no-nodes','No paired nodes','BroadcastNodeMonitorPage');
-    await go('/broadcast/get-started?showId='+id+'&step=5');
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=5');
     await take('H01-talent','On-air talent roster and add form','TalentRoster');
     await go('/broadcast/shows/'+id+'/sponsors');
     await take('I01-sponsors','Show sponsor directory','BroadcastSponsorsPage');
@@ -661,10 +666,23 @@ async function main() {
     for(const [name,route,title] of [
       ['A04-tournament-phone','/organizer/tournament/spring-invitational?tab=broadcast','Tournament Broadcast on a phone'],
       ['B03-home-phone','/broadcast/home','Broadcast home on a phone'],
-      ['E10-preparation-phone','/broadcast/get-started?showId='+id+'&step=3','Preparation step selector on a phone'],
+      ['E10-preparation-phone','/broadcast/get-started?match='+id+'&showId='+id+'&step=3','Preparation step selector on a phone'],
       ['M03-rundown-phone','/broadcast/shows/'+id,'Rundown on a phone'],
       ['O03-report-phone','/broadcast/shows/'+id+'/report','Post-show report on a phone'],
     ]){await go(route);await take(name,title,'Current web page at phone viewport');}
+    await go('/broadcast/get-started?match='+id+'&showId='+id+'&step=1');
+    await page.getByRole('button', {name:'Open broadcast navigation',exact:true}).click();
+    const navigationDialog = page.getByRole('dialog', {name:'Broadcast navigation',exact:true});
+    await navigationDialog.waitFor();
+    assert.equal(await navigationDialog.getByRole('navigation',{name:'Setup steps'}).getByRole('button').count(),8);
+    await take('E18-sidebar-phone','Mobile preparation in a left navigation drawer','BroadcastShell / SetupSidebar');
+    await page.keyboard.press('Escape');
+    await navigationDialog.waitFor({state:'hidden'});
+    assert.equal(await page.getByRole('button',{name:'Open broadcast navigation',exact:true}).evaluate(el=>el===document.activeElement),true,'Drawer restores keyboard focus');
+    await page.setViewportSize({width:1440,height:900});
+    await page.evaluate(id=>{sessionStorage.removeItem('air-web-setup:'+id+':match');},id);
+    await go('/broadcast/get-started?showId='+id+'&step=1');
+    await take('E09-explicit-match-choice','No silent match selection; clear blocked action and recovery','ShowPreparation');
     assert.deepEqual(errors,[]);
     const report={date:'2026-10-16',screenshots:screenshotCount,groups:[...new Set(records.map(r=>r.group))].sort(),liveServices:false,records};
     assert.equal(report.groups.length,26,'Every A–Z journey group must have an actual screen');

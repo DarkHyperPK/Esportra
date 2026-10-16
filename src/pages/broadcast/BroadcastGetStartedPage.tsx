@@ -1,8 +1,7 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { Link, useSearchParams } from "react-router-dom";
-import { BroadcastNavigation } from "@/components/broadcast/BroadcastNavigation";
 import { ShowPreparation } from "@/components/broadcast/ShowPreparation";
 import {
-  CommandShell,
   CommandPageGrid,
   CommandHeader,
   CommandButton,
@@ -16,13 +15,12 @@ export default function BroadcastGetStartedPage() {
     [params, setParams] = useSearchParams(),
     shows = useBroadcastShows(params.get("showId") ? null : orgId);
   const showId = params.get("showId");
+  if (showId) return <ShowPreparation key={showId} showId={showId} />;
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandPageGrid>
-        <BroadcastNavigation />
-        {showId ? (
-          <ShowPreparation showId={showId} />
-        ) : !orgId ? (
+
+        {!orgId ? (
           <InlineNotice tone="warning">
             Choose an organizer organization to prepare broadcasts.
           </InlineNotice>
@@ -30,11 +28,11 @@ export default function BroadcastGetStartedPage() {
           <>
             <CommandHeader
               eyebrow="ESPORTRA AIR · GET STARTED"
-              title="Start with a show."
+              title="Choose a broadcast to prepare."
               description="Choose a production to prepare, or create a new one."
               actions={
                 <CommandButton asChild>
-                  <Link to="/broadcast/shows">Create show</Link>
+                  <Link to="/broadcast/shows?create=1">Create broadcast</Link>
                 </CommandButton>
               }
             />
@@ -76,6 +74,6 @@ export default function BroadcastGetStartedPage() {
           </>
         )}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

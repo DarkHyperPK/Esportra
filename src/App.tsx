@@ -1,3 +1,4 @@
+import { usesBroadcastWorkspaceNavigation } from '@/services/broadcast/navigation';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -276,7 +277,7 @@ const AppContent = React.memo(() => {
       <AvatarFeatureAnnouncement />
       {!isChromelessRoute && !isAdminRoute && (
         <>
-          <Navbar />
+          {!usesBroadcastWorkspaceNavigation(location.pathname, location.search) && <Navbar />}
           <BetaNoticeBanner />
           <EmailVerificationBanner />
         </>

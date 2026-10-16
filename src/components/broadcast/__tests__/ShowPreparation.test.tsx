@@ -10,6 +10,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ShowPreparation } from "../ShowPreparation";
 import { apiClient } from "@/lib/apiClient";
+import { DEFAULT_APPEARANCE } from '@/schemas/broadcastAppearanceSchema';
 import type { BroadcastShowDetail } from "@/types/broadcast";
 
 vi.mock("@/lib/apiClient", () => ({
@@ -47,6 +48,7 @@ let current: BroadcastShowDetail;
 let online: boolean;
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   online = true;
   current = {
     id,
@@ -139,7 +141,7 @@ beforeEach(() => {
   );
   vi.mocked(apiClient.post).mockResolvedValue({ success: true });
 });
-function mount(step = 0) {
+function mount(step = 0, selected = true) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -147,7 +149,7 @@ function mount(step = 0) {
     <QueryClientProvider client={client}>
       <MemoryRouter
         initialEntries={[
-          "/broadcast/get-started?showId=" + id + "&step=" + step,
+          "/broadcast/get-started?showId=" + id + "&step=" + step + (selected ? "&match=" + matchId : ""),
         ]}
       >
         <ShowPreparation showId={id} />
@@ -156,6 +158,53 @@ function mount(step = 0) {
   );
 }
 describe("focused eight-step setup", () => {
+  it("requires an explicit match choice and explains a blocked next action", async () => {
+    mount(1, false);
+    await screen.findByRole("button", { name: /Aurora vs Falcons/ });
+    expect(screen.getByLabelText("Selected broadcast match")).toHaveTextContent("No match selected.");
+    expect(screen.getByRole("button", { name: "Preview the HUD" })).toBeDisabled();
+    expect(screen.getByText("Choose an eligible match before continuing.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /North vs South/ }));
+    expect(screen.getByRole("button", { name: "Preview the HUD" })).not.toBeDisabled();
+    expect(sessionStorage.getItem("air-web-setup:" + id + ":match")).toBe(matchId);
+  });
+  it("offers pairing as the primary recovery instead of a disabled Continue", async () => {
+    online = false;
+    mount(0, false);
+    await screen.findByRole("heading", { name: "Connect your production desk." });
+    expect(screen.getByRole("button", { name: "Generate pairing code" })).not.toBeDisabled();
+  });
+
+  it("restores an explicit match selection when returning to the preview", async () => {
+    const view = mount(1, false);
+    fireEvent.click(await screen.findByRole("button", { name: /North vs South/ }));
+    view.unmount();
+    mount(2, false);
+    expect(await screen.findByTitle("HUD preview · ingame")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selected broadcast match")).toHaveTextContent("North vs South");
+  });
+  it("does not resume a played match and offers another selection", async () => {
+    current.matchSlots[0] = { ...current.matchSlots[0], matchStatus: "completed" };
+    mount(1);
+    await screen.findByText(/The previous match is no longer available/);
+    expect(screen.getByRole("button", { name: "Choose another match" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview the HUD" })).toBeDisabled();
+  });
+  it("keeps unsaved HUD changes in the current step and saves from the next-action footer", async () => {
+    vi.mocked(apiClient.put).mockResolvedValue({ ...DEFAULT_APPEARANCE, bannerTheme: "compact" });
+    mount(2);
+    const theme = await screen.findByLabelText("Banner theme");
+    await waitFor(() => expect(theme).not.toBeDisabled());
+    fireEvent.change(theme, { target: { value: "compact" } });
+    await screen.findByRole("button", { name: "Save HUD changes" });
+    fireEvent.click(screen.getByRole("button", { name: /4\. Choose broadcast screens/ }));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Keep your HUD changes?");
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByLabelText("Banner theme")).toHaveValue("compact");
+    fireEvent.click(screen.getByRole("button", { name: "Save HUD changes" }));
+    await waitFor(() => expect(apiClient.put).toHaveBeenCalledWith(`/api/broadcast/shows/${id}/appearance`, expect.objectContaining({ bannerTheme: "compact" })));
+    await screen.findByRole("button", { name: "Choose broadcast screens" });
+  });
   it("shows eight steps, clear pairing state and persistent selected match", async () => {
     mount();
     await screen.findByText("Air is connected.");
@@ -284,8 +333,11 @@ describe("focused eight-step setup", () => {
     await waitFor(() => expect(button).not.toBeDisabled());
     fireEvent.click(button);
     await screen.findByText(
-      /Match setup sent. Open Air/,
+      /Setup published for Air/,
     );
+    expect(screen.getByRole("heading", { name: "Continue in Esportra Air" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send match to Air" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send setup again" })).toBeInTheDocument();
     expect(apiClient.post).toHaveBeenCalledWith(
       "/api/broadcast/shows/" + id + "/push-config",
       { matchId },

@@ -58,10 +58,6 @@ export function SetupMatchPicker({
   }
   return (
     <section className="setup-match-picker" aria-label="Eligible matches">
-      <p className="setup-hint">
-        Choose an unplayed match from your tournament. Teams and match details
-        are already filled in.
-      </p>
       {!show.tournamentId && (
         <InlineNotice tone="warning">
           This show has no linked tournament.{" "}
@@ -78,7 +74,6 @@ export function SetupMatchPicker({
           placeholder="Search team names"
         />
       </label>
-      {show.tournamentId && <FollowBracketSettings key={show.id} showId={show.id} locked={locked} />}
       {slots
         .filter((slot) =>
           `${slot.teamA} ${slot.teamB} ${slot.matchTitle}`
@@ -90,6 +85,8 @@ export function SetupMatchPicker({
             className={`setup-match-row ${selectedId === slot.matchId ? "is-selected" : ""}`}
             key={slot.id}
             aria-pressed={selectedId === slot.matchId}
+            disabled={locked}
+            title={locked ? "This broadcast is locked for editing." : undefined}
             onClick={() => onSelect(slot.matchId)}
           >
             <span>
@@ -102,7 +99,7 @@ export function SetupMatchPicker({
             </span>
             <span>
               {selectedId === slot.matchId
-                ? "Selected"
+                ? "Selected · Preview next"
                 : (slot.matchStatus ?? slot.status)?.replace(/_/g, " ")}
             </span>
           </button>
@@ -155,6 +152,7 @@ export function SetupMatchPicker({
               : "No eligible matches. Publish the bracket and confirm both teams. Played, cancelled and unresolved matches are hidden."}
           </p>
         )}
+      {show.tournamentId && <FollowBracketSettings key={show.id} showId={show.id} locked={locked} />}
     </section>
   );
 }

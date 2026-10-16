@@ -2,8 +2,6 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { TournamentBroadcastShows } from "./TournamentBroadcastShows";
 import {
-  CommandHeader,
-  CommandSection,
   CommandButton,
 } from "@/components/management/CommandSurface";
 import { InlineNotice } from "@/components/ui/kit/InlineNotice";
@@ -12,6 +10,8 @@ import {
   useTournamentBroadcast,
   useCreateTournamentBroadcastShow,
 } from "@/hooks/useTournamentBroadcast";
+import { BroadcastJourney } from '@/components/broadcast/BroadcastJourney';
+import '@/components/broadcast/broadcast-workspace.css';
 import { getApiErrorMessage } from "@/lib/apiClient";
 
 export function BroadcastPanel({
@@ -28,7 +28,8 @@ export function BroadcastPanel({
       `${tournamentName.slice(0, 180)} · Broadcast`,
     ),
     [orgId, setOrgId] = useState(""),
-    [pairing, setPairing] = useState(false);
+    [pairing, setPairing] = useState(false),
+    [creating, setCreating] = useState(false);
   const data = workspace.data,
     needsOrganization = data?.access === "organization_required";
   const canCreate =
@@ -40,25 +41,15 @@ export function BroadcastPanel({
         title,
         ...(needsOrganization ? { orgId } : {}),
       });
-      navigate(`/broadcast/get-started?showId=${result.showId}`);
+      navigate(`/broadcast/shows/${result.showId}/setup`);
     } catch {
       /* Preserve input and show the mutation error. */
     }
   }
   return (
-    <>
-      <CommandHeader
-        eyebrow="TOURNAMENT OPS · ESPORTRA AIR"
-        title="Broadcast this tournament."
-        description="Build a show from this tournament's bracket matches. Pair the production desk, prepare the rundown and send the plan to Air."
-        actions={
-          data?.canManage && (
-            <CommandButton variant="ghost" onClick={() => setPairing(true)}>
-              Pair production desk
-            </CommandButton>
-          )
-        }
-      />
+    <div className="broadcast-tournament">
+      <header className="broadcast-tournament-intro"><span className="broadcast-caption">Esportra Air · Tournament broadcast</span><h1>{tournamentName}</h1><p>Choose a match, prepare its screens and send the setup to Air on your production PC.</p></header>
+      <BroadcastJourney />
       {workspace.isLoading && (
         <p role="status" className="text-zinc-400">
           Loading tournament broadcast workspace…
@@ -86,21 +77,21 @@ export function BroadcastPanel({
           organization.
         </InlineNotice>
       )}
-      {data && data.access !== "organization_owner_required" && (
-        <CommandSection>
+      {data?.canManage && data.shows.length > 0 && <TournamentBroadcastShows shows={data.shows} />}
+      {data && data.access !== "organization_owner_required" && (creating || data.shows.length === 0) && (
+        <section className="broadcast-tournament-create">
           <h2 className="text-xl font-bold text-white">
-            Create a tournament show
+            Prepare a tournament broadcast
           </h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Tournament identity and organization are checked by the server.
-            Choose the matches and match codes in guided setup.
+            Use the name below or rename this broadcast. Choose an existing match in the next step.
           </p>
           <form
             className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]"
             onSubmit={(event) => void submit(event)}
           >
             <label className="text-sm text-zinc-300">
-              Show title
+              Broadcast name
               <input
                 value={title}
                 maxLength={200}
@@ -135,8 +126,8 @@ export function BroadcastPanel({
               {create.isPending
                 ? "Creating…"
                 : needsOrganization
-                  ? "Link organization & create show"
-                  : "Create show & prepare"}
+                  ? "Link organization & prepare"
+                  : "Prepare broadcast"}
             </CommandButton>
           </form>
           {needsOrganization && data.organizations.length === 0 && (
@@ -159,18 +150,13 @@ export function BroadcastPanel({
               )}
             </InlineNotice>
           )}
-        </CommandSection>
+        </section>
       )}
-      {data?.canManage && <TournamentBroadcastShows shows={data.shows} />}
-      {data && (
-        <p className="text-sm text-zinc-500">
-          Tournament teams, logos, best-of, series scores and map veto travel
-          with the sent configuration. Tournament edits require sending an
-          updated plan; Air defers applying it while production is active.
-          Game-event capture currently supports Valorant. OBS switching stays on
-          the production PC.
-        </p>
-      )}
+      {data?.canManage && <div className="broadcast-tournament-tools">
+        {data.shows.length > 0 && !creating && <button className="broadcast-text-link" onClick={() => setCreating(true)}>Create another broadcast</button>}
+        <button className="broadcast-text-link" onClick={() => setPairing(true)}>Pair production desk</button>
+        <span>OBS and live production are controlled in the Air desktop app.</span>
+      </div>}
       {data?.canManage && data.tournament.organizationId && (
         <PairNodeDialog
           orgId={data.tournament.organizationId}
@@ -178,6 +164,6 @@ export function BroadcastPanel({
           onOpenChange={setPairing}
         />
       )}
-    </>
+    </div>
   );
 }

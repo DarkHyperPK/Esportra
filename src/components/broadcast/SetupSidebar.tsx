@@ -11,7 +11,8 @@ export function SetupSidebar({
   onSelect: (index: number) => void;
 }) {
   return (
-    <aside className="setup-sidebar">
+    <div className="setup-sidebar">
+      <p className="setup-task-label">Prepare your broadcast</p>
       <nav aria-label="Setup steps">
         {SETUP_STEPS.map((label, index) => {
           const state = attention[index]
@@ -25,6 +26,7 @@ export function SetupSidebar({
                   : "Not completed";
           return (
             <button
+              data-group={index < 4 ? "required" : index < 7 ? "optional" : "review"}
               key={label}
               className={step === index ? "is-current" : ""}
               onClick={() => onSelect(index)}
@@ -59,6 +61,6 @@ export function SetupSidebar({
         <br />
         Run the show on Air desktop.
       </p>
-    </aside>
+    </div>
   );
 }

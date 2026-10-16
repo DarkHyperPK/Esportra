@@ -27,12 +27,24 @@ export function SetupReview({
     online === 0 && "Connect a desktop to receive the setup.",
     failed && "Reload the setup details before sending.",
   ].filter(Boolean);
+  const published = push.isSuccess && push.variables === match?.matchId;
   return (
     <section className="setup-review" aria-label="Broadcast setup review">
-      <p className="setup-hint">
+      {published && (
+        <section className="setup-handoff" aria-label="Continue on the production PC" role="status">
+          <h3>Setup published for Air.</h3>
+          <p className="setup-hint">The configuration was published. Confirm it is loaded in Air before going on air.</p>
+          <ol>
+            <li><div><strong>Open Esportra Air</strong><small>Check that this match and its teams are loaded on your production PC.</small></div></li>
+            <li><div><strong>Preview your broadcast screens</strong><small>Open Broadcast screens, customize the layout and check the HUD.</small></div></li>
+            <li><div><strong>Send to OBS</strong><small>Air creates the scenes and browser sources. Open OBS controls to prepare your first screen; start streaming in OBS Studio.</small></div></li>
+          </ol>
+        </section>
+      )}
+      {!published && <p className="setup-hint">
         Confirm this match and broadcast screens. Air receives the saved configuration;
         local OBS and game-feed checks happen on the production desk.
-      </p>
+      </p>}
       {loading && <p role="status">Loading setup details…</p>}
       <dl>
         <div>
@@ -43,7 +55,7 @@ export function SetupReview({
           </dd>
         </div>
         <div>
-          <dt>Screens · take order</dt>
+          <dt>Broadcast screens · order</dt>
           <dd>
             {screens.length ? (
               <ol>
@@ -114,26 +126,10 @@ export function SetupReview({
           Retry setup details
         </CommandButton>
       )}
-      <CommandButton
-        disabled={
-          loading ||
-          !!missing.length ||
-          push.isPending ||
-          ["ended", "cancelled"].includes(show.status)
-        }
-        onClick={() =>
-          void push.mutateAsync(match?.matchId).catch(() => undefined)
-        }
-      >
-        {push.isPending ? "Sending setup…" : "Send match to Air"}
-      </CommandButton>
-      {push.isSuccess && (
-        <InlineNotice tone="success">
-          Match setup sent. Open Air, choose Customize broadcast, preview your
-          screens, then select Send to OBS. Air creates the scenes and browser
-          sources for you. Start streaming in OBS when ready.
-        </InlineNotice>
-      )}
+      <form id={`air-publish-${show.id}`} onSubmit={event => {
+        event.preventDefault();
+        if (!loading && !missing.length && !push.isPending && !['ended','cancelled'].includes(show.status)) void push.mutateAsync(match?.matchId).catch(() => undefined);
+      }} />
       {push.isError && (
         <InlineNotice tone="critical">
           {getApiErrorMessage(
@@ -143,7 +139,7 @@ export function SetupReview({
         </InlineNotice>
       )}
       <CommandButton asChild variant="ghost">
-        <Link to={`/broadcast/shows/${show.id}`}>Open full show plan</Link>
+        <Link to={`/broadcast/shows/${show.id}`}>Advanced screen plan</Link>
       </CommandButton>
     </section>
   );

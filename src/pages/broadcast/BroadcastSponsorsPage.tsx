@@ -1,10 +1,11 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Reorder } from 'framer-motion';
 import { ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandButton, CommandEmptyState, CommandShowHeader,
 } from '@/components/management/CommandSurface';
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
@@ -127,7 +128,7 @@ export default function BroadcastSponsorsPage() {
   const isPending = addSponsor.isPending || editSponsor.isPending || logoUploading;
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={showTitle}
         showStatus={showStatus as 'draft' | 'live' | 'ended'}
@@ -278,6 +279,6 @@ export default function BroadcastSponsorsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

@@ -1,7 +1,8 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandShowHeader,
 } from '@/components/management/CommandSurface';
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
@@ -155,7 +156,7 @@ export default function BroadcastPostShowReportPage() {
   const showStatus = show?.status === 'live' ? 'live' : show?.status === 'ended' ? 'ended' : 'draft';
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={showTitle}
         showStatus={showStatus}
@@ -418,7 +419,7 @@ export default function BroadcastPostShowReportPage() {
           );
         })()}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }
 

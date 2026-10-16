@@ -1,3 +1,4 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import AirAccountOverview from "@/components/air/AirAccountOverview";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -26,7 +27,7 @@ export default function AirWorkspacePage() {
     actions.create.error ||
     actions.workspace.error;
   return (
-    <main className="air-web">
+    <BroadcastShell><main className="air-web">
       <header>
         <div>
           <small>ESPORTRA AIR · INDEPENDENT BROADCASTS</small>
@@ -160,6 +161,6 @@ export default function AirWorkspacePage() {
           </section>
         </>
       )}
-    </main>
+    </main></BroadcastShell>
   );
 }

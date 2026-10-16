@@ -6,12 +6,13 @@ import { CommandButton } from '@/components/management/CommandSurface';
 import type { BroadcastShowDetail, ShowMatchSlot } from '@/types/broadcast';
 import { HudSetupPreview } from './HudSetupPreview';
 import { HudAppearanceFields } from './HudAppearanceFields';
-export function HudAppearanceSetup({ show, match, locked }: { show: BroadcastShowDetail; match?: ShowMatchSlot; locked: boolean }) {
+export function HudAppearanceSetup({ show, match, locked, onStatusChange }: { show: BroadcastShowDetail; match?: ShowMatchSlot; locked: boolean; onStatusChange?: (status: { dirty: boolean; saving: boolean }) => void }) {
   const { query, save } = useBroadcastAppearance(show.id);
   const [value, setValue] = useState<BroadcastAppearance>(DEFAULT_APPEARANCE), [error, setError] = useState('');
   const loaded = useRef(false);
   useEffect(() => { if (query.data && !loaded.current) { loaded.current = true; setValue(query.data); } }, [query.data]);
   const disabled = locked || !query.data || save.isPending;
+  useEffect(() => { onStatusChange?.({ dirty: !!query.data && JSON.stringify(value) !== JSON.stringify(query.data), saving: save.isPending }); }, [value, query.data, save.isPending, onStatusChange]);
   const teams = value.matches?.[match?.matchId || ''] || [{}, {}];
   function updateTeam(index: number, patch: { color?: string; displayName?: string }) {
     if (!match) return;
@@ -19,13 +20,14 @@ export function HudAppearanceSetup({ show, match, locked }: { show: BroadcastSho
     setValue({ ...value, matches: { ...value.matches, [match.matchId]: next } }); setError(''); save.reset();
   }
   function submit() {
+    if (disabled) return;
     const parsed = broadcastAppearanceSchema.safeParse(value);
     if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
     void save.mutateAsync(parsed.data).then(setValue).catch(failure => setError(getApiErrorMessage(failure, 'Could not save appearance.')));
   }
-  return <section aria-label="HUD appearance">
+  return <section aria-label="HUD appearance" className="setup-hud-studio">
     <HudSetupPreview show={show} match={match} appearance={value} />
-    <details className="setup-help"><summary>HUD appearance &amp; sponsor rotation</summary>
+    <form className="setup-hud-controls" id={`air-hud-appearance-${show.id}`} onSubmit={event => { event.preventDefault(); submit(); }}><h3>HUD appearance &amp; sponsor rotation</h3>
       {query.isLoading && <p role="status">Loading saved appearance…</p>}
       {query.isError && <p role="alert">Could not load appearance. <CommandButton onClick={() => void query.refetch()}>Retry</CommandButton></p>}
       <HudAppearanceFields value={value} disabled={disabled} onChange={next => { setValue(next); setError(''); save.reset(); }} />
@@ -34,9 +36,9 @@ export function HudAppearanceSetup({ show, match, locked }: { show: BroadcastSho
         <label className="setup-field">Team color<input type="color" disabled={disabled || !value.teamColors} value={team.color || (index === 0 ? '#ef4444' : '#3b82f6')} onChange={event => updateTeam(index, { color: event.target.value })} /></label>
       </div>)}
       <p className="setup-hint">Display names apply only to this show's selected match. Blank uses the tournament name. Tournament records stay unchanged. Save, then send the setup to Air; the selected show's identity data is checked every five seconds. This preview includes unsaved choices.</p>
-      <CommandButton disabled={disabled} onClick={submit}>Save appearance</CommandButton>
+      <CommandButton variant="secondary" type="submit" disabled={disabled}>Save appearance</CommandButton>
       {save.isSuccess && <p role="status">Appearance saved. Send match to Air.</p>}
       {!!error && <p role="alert">{error} <CommandButton onClick={() => void query.refetch().then(result => { if (result.data) setValue(result.data); setError(''); })}>Reload saved appearance</CommandButton></p>}
-    </details>
+    </form>
   </section>;
 }

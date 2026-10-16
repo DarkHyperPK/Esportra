@@ -1,8 +1,9 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandButton, CommandEmptyState, CommandShowHeader, CommandMetric,
 } from '@/components/management/CommandSurface';
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
@@ -146,7 +147,7 @@ export default function BroadcastSponsorProofPage() {
 
   return (
     <>
-      <CommandShell>
+      <BroadcastShell>
         <CommandShowHeader
           showTitle={showTitle}
           showStatus={showStatus}
@@ -269,7 +270,7 @@ export default function BroadcastSponsorProofPage() {
             );
           })}
         </CommandPageGrid>
-      </CommandShell>
+      </BroadcastShell>
 
       {/* Print portal — aria-hidden so screen readers skip it on screen */}
       <div id="sponsor-print-portal" aria-hidden style={{ display: 'none' }}>

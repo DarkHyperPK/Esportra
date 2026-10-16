@@ -1,7 +1,7 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  CommandShell,
   CommandPageGrid,
   CommandHeader,
   CommandSection,
@@ -27,7 +27,7 @@ export default function BroadcastNodeMonitorPage() {
   const [pairing, setPairing] = useState(false);
   const deactivate = useDeactivateBroadcastNode(orgId);
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={show.data?.title || "Show"}
         showStatus={show.data?.status ?? "draft"}
@@ -37,29 +37,29 @@ export default function BroadcastNodeMonitorPage() {
       <CommandPageGrid>
         <CommandHeader
           eyebrow="ESPORTRA AIR · CONNECTIONS"
-          title="Node monitor"
-          description="Organization nodes and their last backend heartbeat. Check OBS, game feed and source health locally in Air."
+          title="Desktop connections"
+          description="Production computers paired to your organization. Check OBS and game capture in Air on that PC."
           actions={
             <CommandButton disabled={!orgId} onClick={() => setPairing(true)}>
-              Pair node
+              Pair desktop
             </CommandButton>
           }
         />
         {nodes.isLoading && (
           <p role="status" className="text-zinc-400">
-            Loading nodes…
+            Loading desktop connections…
           </p>
         )}
         {nodes.isError && (
           <InlineNotice tone="critical">
-            Could not load nodes.{" "}
+            Could not load desktop connections.{" "}
             <button onClick={() => void nodes.refetch()}>Retry</button>
           </InlineNotice>
         )}
         {nodes.data?.length === 0 && (
           <CommandSection>
             <p className="text-zinc-400">
-              No nodes paired. Generate a code and enter it in the desktop app.
+              No desktop paired. Generate a code and enter it in the desktop app.
             </p>
           </CommandSection>
         )}
@@ -81,6 +81,6 @@ export default function BroadcastNodeMonitorPage() {
           />
         )}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }

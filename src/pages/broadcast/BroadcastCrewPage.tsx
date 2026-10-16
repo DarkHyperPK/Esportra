@@ -1,3 +1,4 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -5,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, Copy, Check, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandButton, CommandIconButton, CommandEmptyState, CommandShowHeader,
 } from '@/components/management/CommandSurface';
 import { StatusPill } from '@/components/ui/kit/StatusPill';
@@ -116,7 +117,7 @@ export default function BroadcastCrewPage() {
   );
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={showTitle}
         showStatus={showStatus as 'draft' | 'live' | 'ended'}
@@ -286,7 +287,7 @@ export default function BroadcastCrewPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </CommandShell>
+    </BroadcastShell>
   );
 }
 

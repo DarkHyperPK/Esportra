@@ -18,6 +18,7 @@ export function PreparationStepContent({
   onSelect,
   onEdit,
   onPair,
+  onAppearanceStatus,
 }: {
   step: number;
   show: BroadcastShowDetail;
@@ -26,6 +27,7 @@ export function PreparationStepContent({
   onSelect: (id: string) => void;
   onEdit: () => void;
   onPair: () => void;
+  onAppearanceStatus?: (status: { dirty: boolean; saving: boolean }) => void;
 }) {
   const { nodes, online, segments } = prepared;
   const locked = ["live", "ended", "cancelled"].includes(show.status);
@@ -38,12 +40,12 @@ export function PreparationStepContent({
           <span aria-hidden="true">{online > 0 ? "✓" : "○"}</span>
           <div>
             <h3>
-              {online > 0
+              {nodes.isLoading ? "Checking desktop connection…" : nodes.isError ? "Connection status unavailable" : online > 0
                 ? "Air is connected."
                 : "Connect your production desk."}
             </h3>
             <p>
-              {online > 0
+              {nodes.isLoading ? "Getting the latest desktop heartbeat." : nodes.isError ? "Retry the connection check before continuing." : online > 0
                 ? `${online} workstation${online === 1 ? "" : "s"} reported in the last 30 seconds.`
                 : "Open Esportra Air on your broadcast PC. Generate a pairing code here and enter it in the app."}
             </p>
@@ -61,9 +63,7 @@ export function PreparationStepContent({
           </div>
         ))}
         <div className="setup-header-actions">
-          <CommandButton onClick={onPair}>
-            {online > 0 ? "Pair another desktop" : "Generate pairing code"}
-          </CommandButton>
+          {online > 0 && <CommandButton variant="ghost" onClick={onPair}>Pair another desktop</CommandButton>}
           <CommandButton variant="ghost" onClick={() => void nodes.refetch()}>
             Check connection
           </CommandButton>
@@ -94,7 +94,7 @@ export function PreparationStepContent({
         onSettings={onEdit}
       />
     );
-  if (step === 2) return <HudAppearanceSetup key={show.id} show={show} match={match} locked={locked} />;
+  if (step === 2) return <HudAppearanceSetup key={show.id} show={show} match={match} locked={locked} onStatusChange={onAppearanceStatus} />;
   if (step === 3)
     return (
       <>

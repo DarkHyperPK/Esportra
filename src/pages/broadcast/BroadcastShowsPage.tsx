@@ -1,11 +1,11 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useState } from 'react';
-import { BroadcastNavigation } from '@/components/broadcast/BroadcastNavigation';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Radio, Inbox, Copy, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandButton, CommandIconButton, CommandEmptyState, CommandTabs,
 } from '@/components/management/CommandSurface';
 import { StatusPill } from '@/components/ui/kit/StatusPill';
@@ -62,7 +62,8 @@ export default function BroadcastShowsPage() {
   const deleteMutation = useDeleteBroadcastShow(orgId ?? '');
 
   const [tab, setTab] = useState<TabValue>('all');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [params] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(params.get('create') === '1');
   const [createTitle, setCreateTitle] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BroadcastShow | null>(null);
@@ -80,7 +81,7 @@ export default function BroadcastShowsPage() {
       const result = await createMutation.mutateAsync({ title: parsed.data.title });
       setCreateOpen(false);
       setCreateTitle('');
-      navigate(`/broadcast/get-started?showId=${result.showId}`);
+      navigate(`/broadcast/shows/${result.showId}/setup`);
     } catch (err) {
       setCreateError(getApiErrorMessage(err, 'Could not create the show. Try again.'));
     }
@@ -90,7 +91,7 @@ export default function BroadcastShowsPage() {
     try {
       const result = await duplicateMutation.mutateAsync(show.id);
       toast.success('Planning copied to a new draft. Crew and broadcast history are not copied.');
-      navigate(`/broadcast/get-started?showId=${result.showId}`);
+      navigate(`/broadcast/shows/${result.showId}/setup`);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Could not duplicate. Try again.'));
     }
@@ -108,15 +109,15 @@ export default function BroadcastShowsPage() {
 
   const newShowButton = (
     <CommandButton variant="primary" slide onClick={() => setCreateOpen(true)}>
-      New show
+      Create broadcast
     </CommandButton>
   );
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandPageGrid>
-        <BroadcastNavigation />
-        <CommandHeader eyebrow="BROADCAST" title="Shows" actions={newShowButton} />
+
+        <CommandHeader eyebrow="BROADCAST" title="Your broadcasts" actions={newShowButton} />
 
         <CommandTabs
           tabs={TABS}
@@ -139,8 +140,8 @@ export default function BroadcastShowsPage() {
             tab === 'all' ? (
               <CommandEmptyState
                 icon={<Radio className="h-6 w-6" />}
-                title="No shows yet"
-                description="Create your first broadcast show to start building your production."
+                title="Your first broadcast starts here"
+                description="Create a broadcast, choose an existing tournament match and prepare it for Air."
                 action={newShowButton}
               />
             ) : (
@@ -159,7 +160,7 @@ export default function BroadcastShowsPage() {
                   index={i}
                   reduceMotion={reduceMotion}
                   duplicatePending={duplicateMutation.isPending && duplicateMutation.variables === show.id}
-                  onOpen={() => navigate(`/broadcast/shows/${show.id}`)}
+                  onOpen={() => navigate(`/broadcast/shows/${show.id}${['ended','cancelled','live'].includes(show.status) ? '/activity' : '/setup'}`)}
                   onDuplicate={() => void handleDuplicate(show)}
                   onDelete={() => setDeleteTarget(show)}
                 />
@@ -173,13 +174,13 @@ export default function BroadcastShowsPage() {
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateTitle(''); setCreateError(null); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="normal-case tracking-normal">New show</DialogTitle>
+            <DialogTitle className="normal-case tracking-normal">Create broadcast</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {createError && <InlineNotice tone="critical">{createError}</InlineNotice>}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-zinc-200" htmlFor="show-title">
-                Show title
+                Broadcast name
               </label>
               <Input
                 id="show-title"
@@ -228,7 +229,7 @@ export default function BroadcastShowsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </CommandShell>
+    </BroadcastShell>
   );
 }
 
@@ -278,7 +279,7 @@ function ShowRow({ show, index, reduceMotion, duplicatePending, onOpen, onDuplic
       {/* Actions: full set on desktop, condensed on mobile */}
       <div className="flex shrink-0 items-center gap-1.5">
         <CommandButton variant="ghost" size="sm" onClick={onOpen} className="hidden sm:inline-flex">
-          Open
+          {['ended','cancelled','live'].includes(show.status) ? 'View activity' : 'Continue setup'}
         </CommandButton>
         <CommandIconButton variant="ghost" label={`Duplicate ${show.title}`} onClick={onDuplicate} className="hidden sm:inline-flex">
           {duplicatePending ? <Loader2 className="animate-spin" /> : <Copy />}
@@ -289,7 +290,7 @@ function ShowRow({ show, index, reduceMotion, duplicatePending, onOpen, onDuplic
 
         {/* Mobile: Open + three-dot menu */}
         <CommandButton variant="ghost" size="sm" onClick={onOpen} className="sm:hidden">
-          Open
+          {['ended','cancelled','live'].includes(show.status) ? 'View activity' : 'Continue setup'}
         </CommandButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="sm:hidden">

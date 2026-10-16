@@ -1,9 +1,10 @@
+import { BroadcastShell } from '@/components/broadcast/BroadcastShell';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Film, Clipboard, Check } from 'lucide-react';
 import {
-  CommandShell, CommandPageGrid, CommandHeader, CommandSection,
+  CommandPageGrid, CommandHeader, CommandSection,
   CommandIconButton, CommandEmptyState, CommandShowHeader,
 } from '@/components/management/CommandSurface';
 import { InlineNotice } from '@/components/ui/kit/InlineNotice';
@@ -131,7 +132,7 @@ export default function BroadcastVodChaptersPage() {
   const showNotEnded = data?.showNotEnded ?? false;
 
   return (
-    <CommandShell>
+    <BroadcastShell>
       <CommandShowHeader
         showTitle={showTitle}
         showStatus={showStatus}
@@ -218,6 +219,6 @@ export default function BroadcastVodChaptersPage() {
           </CommandSection>
         )}
       </CommandPageGrid>
-    </CommandShell>
+    </BroadcastShell>
   );
 }
