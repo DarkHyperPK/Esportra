@@ -1160,7 +1160,7 @@ const TournamentDashboard = () => {
     </Card>
   );
 
-  const TAB_LABELS: Record<string, string> = { bans: 'disqualifications' };
+  const TAB_LABELS: Record<string, string> = { bans: 'Disqualifications' };
 
   const renderTabLabel = (tab: string) => {
     const label = TAB_LABELS[tab] ?? tab;
@@ -1592,7 +1592,7 @@ const TournamentDashboard = () => {
                   </AlertDialogContent>
                 </AlertDialog>
 
-                {canActAsOwner && tournament.status === 'completed' && (
+                {canActAsOwner && (tournament.status === 'completed' || tournament.status === 'cancelled') && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <CommandButton variant="secondary" size="sm">

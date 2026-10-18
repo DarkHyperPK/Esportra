@@ -45,6 +45,7 @@ const TournamentDetails = () => {
       const response = await apiClient.get<any>(`/api/tournaments/${id}`);
       const data = response?.tournament || response;
       setTournament(data);
+      setParticipants(response?.participants || data?.participants || []);
       setEditForm({
         name: data.name || '',
         prizePool: data.prize_pool?.toString() || '0',
@@ -285,7 +286,7 @@ const TournamentDetails = () => {
                   <tr key={p.id} className={cn('h-11 text-sm', p.status === 'disqualified' && 'opacity-50')}>
                     <td className="px-4 text-white font-medium">{p.team_name ?? p.gamer_tag ?? p.user?.username ?? '—'}</td>
                     <td className="px-4">{statusPill(p.status)}</td>
-                    <td className="px-4 text-zinc-400 text-xs">{p.registration_date ? new Date(p.registration_date).toLocaleDateString() : '—'}</td>
+                    <td className="px-4 text-zinc-400 text-xs">{p.registered_at ? new Date(p.registered_at).toLocaleDateString() : '—'}</td>
                     <td className="px-4">
                       {restorableStatuses.includes(p.status) && (
                         <CommandButton variant="secondary" size="sm" onClick={() => handleRestoreParticipant(p.id)}>
