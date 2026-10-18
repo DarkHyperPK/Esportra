@@ -323,7 +323,7 @@ const TournamentDetails = () => {
         image_url: t.banner_url || null,
         check_in_required: !!t.check_in_required,
         check_in_deadline: t.check_in_deadline,
-        auto_remove_unchecked: t.auto_remove_unchecked ?? true,
+        auto_remove_unchecked: t.auto_remove_unchecked ?? false,
         end_date: t.end_date ? formatDate(t.end_date) : undefined,
         organization: {
           slug: t.organization_slug,

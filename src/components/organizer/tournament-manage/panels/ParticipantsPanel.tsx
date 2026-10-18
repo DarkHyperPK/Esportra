@@ -27,6 +27,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Users, Search, LayoutGrid, List, Settings2 } from 'lucide-react';
 import { CONTROL_CLASS, EYEBROW_CLASS, StatusPill } from '@/components/ui/kit';
@@ -69,6 +79,11 @@ export function ParticipantsPanel({
   const [managedParticipant, setManagedParticipant] = useState<DashboardParticipant | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banReason, setBanReason] = useState('');
+  const [banTarget, setBanTarget] = useState<{ id: string; userId: string } | null>(null);
+  const [banning, setBanning] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const { toast } = useToast();
 
   const activeParticipants = useMemo(
@@ -129,6 +144,9 @@ export function ParticipantsPanel({
   };
 
   const renderStatusBadge = (participant: DashboardParticipant) => {
+    if (participant.status === 'disqualified') {
+      return <div className="flex flex-wrap gap-1"><StatusPill label="Disqualified" tone="critical" /></div>;
+    }
     const checkIn = checkInPill(participant);
     const payment = paymentPill(participant);
     if (!checkIn && !payment) return null;
@@ -161,6 +179,43 @@ export function ParticipantsPanel({
       onUpdate?.();
     } finally {
       setBulkCheckingIn(false);
+    }
+  };
+
+  const handleBan = async () => {
+    if (!banTarget || !banReason.trim()) return;
+    setBanning(true);
+    try {
+      await apiClient.post(`/api/tournaments/${tournament.id}/ban-participant`, {
+        participantId: banTarget.id,
+        userId: banTarget.userId,
+        banReason: banReason.trim(),
+      });
+      toast({ title: 'Disqualified', description: 'Participant has been disqualified from this tournament.' });
+      setBanDialogOpen(false);
+      setBanReason('');
+      setBanTarget(null);
+      setManagedParticipant(null);
+      onUpdate?.();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to disqualify participant.', variant: 'destructive' });
+    } finally {
+      setBanning(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!managedParticipant) return;
+    setRestoring(true);
+    try {
+      await apiClient.patch(`/api/tournaments/${tournament.id}/participants/${managedParticipant.id}/restore`, {});
+      toast({ title: 'Restored', description: 'Participant has been re-admitted to the tournament.' });
+      setManagedParticipant(null);
+      onUpdate?.();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to restore participant.', variant: 'destructive' });
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -323,12 +378,13 @@ export function ParticipantsPanel({
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {pagedParticipants.map((participant) => (
-                  <OrganizerTeamCard
-                    key={participant.id}
-                    participant={participant}
-                    onManage={(p) => setManagedParticipant(p)}
-                    renderStatusBadge={renderStatusBadge}
-                  />
+                  <div key={participant.id} className={participant.status === 'disqualified' ? 'opacity-50' : ''}>
+                    <OrganizerTeamCard
+                      participant={participant}
+                      onManage={(p) => setManagedParticipant(p)}
+                      renderStatusBadge={renderStatusBadge}
+                    />
+                  </div>
                 ))}
               </div>
             ) : (
@@ -348,7 +404,7 @@ export function ParticipantsPanel({
                   </thead>
                   <tbody className="divide-y divide-white/[0.04]">
                     {pagedParticipants.map((p) => (
-                      <tr key={p.id} className="h-12 text-sm">
+                      <tr key={p.id} className={cn('h-12 text-sm', p.status === 'disqualified' && 'opacity-50')}>
                         <td className="px-4">
                           <div className="flex items-center gap-2">
                             {p.team_logo ?? p.teams?.logo_url ? (
@@ -366,7 +422,7 @@ export function ParticipantsPanel({
                           </div>
                         </td>
                         <td className="px-4 text-zinc-400">{getMemberCount(p)}</td>
-                        <td className="px-4">{checkInPill(p) ?? <span className="text-zinc-600">—</span>}</td>
+                        <td className="px-4">{p.status === 'disqualified' ? <StatusPill label="Disqualified" tone="critical" /> : (checkInPill(p) ?? <span className="text-zinc-600">—</span>)}</td>
                         {hasFee && <td className="px-4">{paymentPill(p) ?? <span className="text-zinc-600">—</span>}</td>}
                         <td className="px-4 text-zinc-400">
                           {new Date(p.registered_at).toLocaleDateString()}
@@ -479,10 +535,67 @@ export function ParticipantsPanel({
                   </CommandButton>
                 </div>
               )}
+
+              {/* Restore (for disqualified/rejected/cancelled) */}
+              {canActAsOwner && (managedParticipant.status === 'disqualified' || managedParticipant.status === 'rejected' || managedParticipant.status === 'cancelled') && (
+                <div className="border-t border-white/[0.07] pt-4">
+                  <CommandButton variant="success" size="sm" className="w-full" onClick={handleRestore} disabled={restoring}>
+                    {restoring ? 'Restoring…' : 'Re-admit participant'}
+                  </CommandButton>
+                </div>
+              )}
+
+              {/* Disqualify (for active participants) */}
+              {canActAsOwner && managedParticipant.status !== 'disqualified' && managedParticipant.status !== 'rejected' && managedParticipant.status !== 'cancelled' && (
+                <div className="border-t border-white/[0.07] pt-4">
+                  <CommandButton
+                    variant="danger"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setBanTarget({ id: managedParticipant.id, userId: managedParticipant.user_id });
+                      setBanDialogOpen(true);
+                    }}
+                  >
+                    Disqualify
+                  </CommandButton>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Disqualify confirmation dialog */}
+      <AlertDialog open={banDialogOpen} onOpenChange={(open) => { if (!open) { setBanDialogOpen(false); setBanReason(''); setBanTarget(null); } }}>
+        <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Disqualify participant</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70">
+              This removes them from the bracket, forfeits their pending matches and prevents re-registration.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            <label className="block mb-2 text-sm font-medium text-white">Reason (required)</label>
+            <Input
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              placeholder="e.g. No-show, cheating, wrong roster…"
+              className={cn(CONTROL_CLASS, 'text-sm')}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!banReason.trim() || banning}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleBan}
+            >
+              {banning ? 'Disqualifying…' : 'Disqualify'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

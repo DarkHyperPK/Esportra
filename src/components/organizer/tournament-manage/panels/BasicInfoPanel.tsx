@@ -212,9 +212,20 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
             )}
           </Field>
 
-          <Field label="Game" lockedReason={isFieldLocked("game") ? "The game is locked once a tournament is created." : undefined}>
+          <Field label="Game" lockedReason="The game is locked once a tournament is created.">
             <p className="text-sm text-zinc-200">{tournament.game || 'Not set'}</p>
           </Field>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            {tournament.game_mode && (
+              <Field label="Game mode" lockedReason="Locked after creation. Create a new tournament to change the mode.">
+                <p className="text-sm text-zinc-200">{tournament.game_mode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
+              </Field>
+            )}
+            <Field label="Team size" lockedReason="Locked after publish.">
+              <p className="text-sm text-zinc-200">{tournament.team_size === 1 ? 'Solo (1)' : `${tournament.team_size} players`}</p>
+            </Field>
+          </div>
         </div>
       </CommandSection>
 

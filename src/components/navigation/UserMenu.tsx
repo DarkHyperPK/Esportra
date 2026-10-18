@@ -236,6 +236,7 @@ const UserMenu = ({
 
             <JackMenuItem to="/user/raise-dispute">Raise a Dispute</JackMenuItem>
             <JackMenuItem to="/user/my-disputes">My Disputes</JackMenuItem>
+            <JackMenuItem to="/user/my-bans">My Bans</JackMenuItem>
 
             {admin.isAdmin && (
               <>

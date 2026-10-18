@@ -1065,11 +1065,11 @@ const TournamentDashboard = () => {
         // Ban was inserted, but deletion failed - log error but don't fail completely
         toast({
           title: 'Warning',
-          description: 'Participant was banned but registration removal failed. Please refresh.',
+          description: 'Participant was disqualified but cleanup failed. Please refresh.',
           variant: 'destructive'
         });
       } else {
-        toast({ title: 'Banned', description: 'Participant has been banned from this tournament.' });
+        toast({ title: 'Disqualified', description: 'Participant has been disqualified from this tournament.' });
       }
 
       setBanDialogOpen(false);
@@ -1082,7 +1082,7 @@ const TournamentDashboard = () => {
       console.error('Error banning participant:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to ban participant.',
+        description: error.message || 'Failed to disqualify participant.',
         variant: 'destructive'
       });
     }
@@ -1160,13 +1160,16 @@ const TournamentDashboard = () => {
     </Card>
   );
 
+  const TAB_LABELS: Record<string, string> = { bans: 'disqualifications' };
+
   const renderTabLabel = (tab: string) => {
+    const label = TAB_LABELS[tab] ?? tab;
     if (tab !== 'disputes' || disputeBadgeCount <= 0) {
-      return tab;
+      return label;
     }
     return (
       <span className="inline-flex items-center gap-1.5">
-        {tab}
+        {label}
         <span
           className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-black"
           title={`${disputeBadgeCount} pending dispute${disputeBadgeCount === 1 ? '' : 's'}`}
@@ -1308,6 +1311,18 @@ const TournamentDashboard = () => {
 
 
 
+  const handleCancelTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'cancelled' });
+      refetchDashboard();
+      toast({ title: 'Tournament Cancelled', description: 'The tournament has been cancelled. You can reopen it later if needed.' });
+    } catch (error) {
+      console.error('Error cancelling tournament:', error);
+      toast({ title: 'Error', description: 'Failed to cancel tournament.', variant: 'destructive' });
+    }
+  };
+
   const handleCompleteTournament = async () => {
     if (!tournament) return;
 
@@ -1332,9 +1347,9 @@ const TournamentDashboard = () => {
   const handleReopenTournament = async () => {
     if (!tournament) return;
     try {
-      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'ongoing' });
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open' });
       refetchDashboard();
-      toast({ title: 'Tournament Reopened', description: 'The tournament has been reopened for editing.' });
+      toast({ title: 'Tournament Reopened', description: 'The tournament is open again. Stages have been unlocked.' });
     } catch (error) {
       console.error('Error reopening tournament:', error);
       toast({ title: 'Error', description: 'Failed to reopen tournament.', variant: 'destructive' });
@@ -1577,7 +1592,7 @@ const TournamentDashboard = () => {
                   </AlertDialogContent>
                 </AlertDialog>
 
-                {isSuperAdmin && tournament.status === 'completed' && (
+                {canActAsOwner && tournament.status === 'completed' && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <CommandButton variant="secondary" size="sm">
@@ -1652,6 +1667,42 @@ const TournamentDashboard = () => {
                   </AlertDialog>
                 )}
 
+
+                {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'cancelled' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <CommandButton variant="danger" size="sm">
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel Tournament
+                      </CommandButton>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-red-400" />
+                          Cancel Tournament
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                          This will cancel the tournament for all participants. Registered players will be notified. You can reopen later if needed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <CommandButton variant="secondary" size="sm">Go Back</CommandButton>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <CommandButton
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); handleCancelTournament(); }}
+                          >
+                            Cancel Tournament
+                          </CommandButton>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
 
                 {canActAsOwner && (
                   <CommandButton
@@ -2945,7 +2996,7 @@ const TournamentDashboard = () => {
                     }}
                     className="bg-red-500 hover:bg-red-600 text-white h-10 px-6 rounded-lg font-bold shadow-lg shadow-red-900/20 transition-all hover:scale-105"
                   >
-                    Ban Team
+                    Disqualify
                   </button>
                 </div>
               </DialogContent>
@@ -2960,18 +3011,18 @@ const TournamentDashboard = () => {
           <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
             <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">Ban Participant</AlertDialogTitle>
+                <AlertDialogTitle className="text-white">Disqualify Participant</AlertDialogTitle>
                 <AlertDialogDescription className="text-white/70">
-                  Are you sure you want to ban this participant? This will remove their registration and prevent them from joining this tournament again.
+                  This removes them from the bracket, forfeits their pending matches and prevents re-registration.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <div className="my-4">
-                <label className="block mb-2 font-semibold text-white">Ban Reason (required)</label>
+                <label className="block mb-2 font-semibold text-white">Reason (required)</label>
                 <input
                   className="w-full p-2.5 rounded-lg border border-white/20 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50"
                   value={banReason}
                   onChange={e => setBanReason(e.target.value)}
-                  placeholder="Enter reason for ban..."
+                  placeholder="e.g. No-show, cheating, wrong roster…"
                 />
               </div>
               <AlertDialogFooter>
@@ -2981,7 +3032,7 @@ const TournamentDashboard = () => {
                   className="bg-red-600 hover:bg-red-700 text-white"
                   onClick={() => banTarget && handleBan(banTarget.id, banTarget.userId)}
                 >
-                  Ban
+                  Disqualify
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

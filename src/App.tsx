@@ -67,6 +67,7 @@ const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
 const StaffInvitesPage = lazyWithRetry(() => import("./pages/user/StaffInvites"));
 const RaiseDispute = lazyWithRetry(() => import("./pages/user/RaiseDispute"));
 const MyDisputes = lazyWithRetry(() => import("./pages/user/MyDisputes"));
+const MyBans = lazyWithRetry(() => import("./pages/user/MyBans"));
 const StaffDashboard = lazyWithRetry(() => import("./pages/staff/StaffDashboard"));
 const TeamsPage = lazyWithRetry(() => import("./pages/player/Teams"));
 const RedeemInvitePage = lazyWithRetry(() => import("./pages/invitations/RedeemInvite"));
@@ -338,6 +339,11 @@ const AppContent = React.memo(() => {
                 <Route path="/user/my-disputes" element={
                   <ProtectedRoute>
                     <MyDisputes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/user/my-bans" element={
+                  <ProtectedRoute>
+                    <MyBans />
                   </ProtectedRoute>
                 } />
                 <Route path="/staff" element={

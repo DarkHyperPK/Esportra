@@ -229,6 +229,14 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
             </FormSection>
           )}
 
+          <FormSection title="Server">
+            <Field label="Server region" htmlFor="st-server-region" optional hint="Which server region games should be played on.">
+              <Input id="st-server-region" value={form.serverRegion} placeholder="e.g. eu-west, na-east"
+                onChange={(e) => setForm((s) => ({ ...s, serverRegion: e.target.value }))}
+                className={cn(CONTROL_CLASS, 'max-w-xs')} />
+            </Field>
+          </FormSection>
+
           <FormSection title="Account requirements">
             <Field label="Discord accounts required per team" htmlFor="st-discord" hint="0 means Discord isn't required. 1 is the captain only."
               lockedReason={isFieldLocked('discord_link_count') ? lockNote : undefined}>

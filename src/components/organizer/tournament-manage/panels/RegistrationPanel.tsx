@@ -171,7 +171,7 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
             <ChoiceGroup label="Check-in" columns={2}>
               {CHECK_IN_OPTIONS.map((opt) => (
                 <ChoiceCard key={opt.value} selected={form.checkInLevel === opt.value} disabled={isFieldLocked('check_in_required')}
-                  onSelect={() => setForm((s) => ({ ...s, checkInLevel: opt.value }))} title={opt.label} description={opt.description} />
+                  onSelect={() => setForm((s) => ({ ...s, checkInLevel: opt.value, ...(opt.value === 'none' ? { autoRemoveUnchecked: false } : {}) }))} title={opt.label} description={opt.description} />
               ))}
             </ChoiceGroup>
             <InlineNotice tone="neutral">
