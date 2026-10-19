@@ -80,7 +80,6 @@ function buildRunGroup(ctx: DashboardNavContext): DashboardNavItem[] {
     ctx.isBR ? tab('games', 'Games') : null,
     ctx.canEditBracket ? tab('schedule', 'Schedule') : null,
     ctx.canActAsOwner ? tab('standings', 'Standings') : null,
-    ctx.canActAsOwner ? tab('broadcast', 'Broadcast') : null,
   ]);
 }
 

@@ -13,7 +13,6 @@ import {
 
 // Operations panels (already extracted)
 import { OverviewPanel } from './panels/OverviewPanel';
-import { BroadcastPanel } from './panels/BroadcastPanel';
 import { ParticipantsPanel } from './panels/ParticipantsPanel';
 import { SchedulePanel } from './panels/SchedulePanel';
 import { InvitationsPanel } from './panels/InvitationsPanel';
@@ -107,10 +106,6 @@ export function PanelRouter({
   );
 
   // ── OPERATIONS ────────────────────────────────────────────────────────────
-
-  if (activeTab === 'broadcast' && permissions.canActAsOwner) {
-    return <BroadcastPanel key={tournament.id} tournamentId={tournament.id} tournamentName={tournament.name} />;
-  }
 
   if (activeTab === 'overview') {
     return (

@@ -6,7 +6,6 @@ import type { FeatureKey } from '@/hooks/usePlatformFeatures';
  */
 export const NAV_FEATURES: Record<string, FeatureKey> = {
   // href suffix -> feature
-  '/admin/operations/broadcasts': 'broadcasts',
   '/admin/security/ghost': 'ghost-mode',
 };
 

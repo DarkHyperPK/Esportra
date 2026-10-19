@@ -2,6 +2,10 @@
 
 React 18 + TypeScript + Vite + Supabase esports tournament management and venue booking platform.
 
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
 ## Architecture
 
 ```

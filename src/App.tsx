@@ -1,4 +1,3 @@
-import { usesBroadcastWorkspaceNavigation } from '@/services/broadcast/navigation';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -110,7 +109,6 @@ const AvatarPoolManagement = lazyWithRetry(() => import("./pages/admin/tools/Ava
 
 // New admin pages
 const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
-const Broadcasts = lazyWithRetry(() => import("./pages/admin/operations/Broadcasts"));
 const GhostMode = lazyWithRetry(() => import("./pages/admin/security/GhostMode"));
 const CommandCentre = lazyWithRetry(() => import("./pages/admin/CommandCentre"));
 
@@ -196,25 +194,6 @@ const ScoreboardOcrDebug = lazyWithRetry(() => import("./pages/debug/ScoreboardO
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
-// Broadcast production management (T27–T32, T34 crew join)
-const BroadcastCrewJoinPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewJoinPage"));
-const BroadcastShowsPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowsPage"));
-const AirWorkspacePage = lazyWithRetry(() => import("./pages/air/AirWorkspacePage"));
-const AirAdminPage = lazyWithRetry(() => import("./pages/admin/AirAdminPage"));
-const BroadcastHomePage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastHomePage"));
-const BroadcastGetStartedPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastGetStartedPage"));
-const BroadcastShowDetailPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastShowDetailPage"));
-const BroadcastNodeMonitorPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastNodeMonitorPage"));
-const BroadcastActivityPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastActivityPage"));
-const BroadcastCrewPage        = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewPage"));
-const BroadcastCrewWorkspacePage = lazyWithRetry(() => import("./pages/broadcast/BroadcastCrewWorkspacePage"));
-const BroadcastInvitationsPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastInvitationsPage"));
-const BroadcastSponsorsPage    = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorsPage"));
-const BroadcastSetupPage       = lazyWithRetry(() => import("./pages/broadcast/BroadcastSetupPage"));
-const BroadcastSponsorProofPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastSponsorProofPage"));
-const BroadcastVodChaptersPage  = lazyWithRetry(() => import("./pages/broadcast/BroadcastVodChaptersPage"));
-const BroadcastPostShowReportPage = lazyWithRetry(() => import("./pages/broadcast/BroadcastPostShowReportPage"));
-
 const isChromelessPath = (pathname: string) =>
   pathname.endsWith('/brackets/fullscreen')
   || pathname.startsWith('/tools/brackets/embed/')
@@ -278,7 +257,7 @@ const AppContent = React.memo(() => {
       <AvatarFeatureAnnouncement />
       {!isChromelessRoute && !isAdminRoute && (
         <>
-          {!usesBroadcastWorkspaceNavigation(location.pathname, location.search) && <Navbar />}
+          <Navbar />
           <BetaNoticeBanner />
           <EmailVerificationBanner />
         </>
@@ -385,7 +364,6 @@ const AppContent = React.memo(() => {
                   <Route index element={<Navigate to="dashboard" replace />} />
 
                   {/* Dashboard */}
-                  <Route path="air" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AirAdminPage /></AdminRouteGuard>} />
                   <Route path="dashboard" element={<AdminRouteGuard requiredPermission="dashboard:view"><CommandCentre /></AdminRouteGuard>} />
 
                   {/* Tools */}
@@ -420,9 +398,6 @@ const AppContent = React.memo(() => {
 
                   {/* System */}
                   <Route path="system/feature-flags" element={<AdminRouteGuard requiredPermission="feature_flags:view"><FeatureFlags /></AdminRouteGuard>} />
-
-                  {/* Operations */}
-                  <Route path="operations/broadcasts" element={<AdminRouteGuard requiredPermission="broadcasts:view"><Broadcasts /></AdminRouteGuard>} />
 
                   {/* Security */}
                   <Route path="security/ghost" element={<AdminRouteGuard requiredPermission="users:impersonate" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GhostMode /></AdminRouteGuard>} />
@@ -590,67 +565,6 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
-
-                {/* Broadcast crew invite accept — any authenticated user (T34) */}
-                <Route path="/broadcast/join" element={
-                  <ProtectedRoute>
-                    <BroadcastCrewJoinPage />
-                  </ProtectedRoute>
-                } />
-
-                {/* Broadcast production management (T27–T32) */}
-                <Route path="/broadcast/crew/shows" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
-                <Route path="/broadcast/invitations" element={<ProtectedRoute><BroadcastInvitationsPage /></ProtectedRoute>} />
-                <Route path="/broadcast/crew/shows/:showId" element={<ProtectedRoute><BroadcastCrewWorkspacePage /></ProtectedRoute>} />
-                <Route path="/air" element={<ProtectedRoute><AirWorkspacePage /></ProtectedRoute>} />
-                <Route path="/broadcast/home" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastHomePage /></ProtectedRoute>} />
-                <Route path="/broadcast/get-started" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastGetStartedPage /></ProtectedRoute>} />
-                <Route path="/broadcast/shows" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastShowsPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastShowDetailPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/nodes" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastNodeMonitorPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/activity" element={<ProtectedRoute allowedRoles={['organizer']}><BroadcastActivityPage /></ProtectedRoute>} />
-                <Route path="/broadcast/shows/:showId/crew" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastCrewPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/sponsors" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastSponsorsPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/setup" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastSetupPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/sponsor-proof" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastSponsorProofPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/vod-chapters" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastVodChaptersPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/broadcast/shows/:showId/report" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <BroadcastPostShowReportPage />
-                  </ProtectedRoute>
-                } />
 
                 {/* Public Tools */}
                 <Route path="/tools/brackets" element={<Navigate to="/tools/map-veto" replace />} />

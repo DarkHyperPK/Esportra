@@ -31,17 +31,17 @@ const scoreStaff: DashboardNavContext = {
 };
 
 describe('buildDashboardNav', () => {
-  it('opens Broadcast from owner dashboard and excludes unassigned staff', () => {
-    expect(listVisibleSections(buildDashboardNav(owner))).toContain('broadcast');
+  it('retires Broadcast navigation for owners and staff', () => {
+    expect(listVisibleSections(buildDashboardNav(owner))).not.toContain('broadcast');
     expect(listVisibleSections(buildDashboardNav(scoreStaff))).not.toContain('broadcast');
-    expect(resolveActiveSection('broadcast', listVisibleSections(buildDashboardNav(owner)))).toBe('broadcast');
+    expect(resolveActiveSection('broadcast', listVisibleSections(buildDashboardNav(owner)))).toBe('overview');
     expect(resolveActiveSection('broadcast', listVisibleSections(buildDashboardNav(scoreStaff)))).toBe('overview');
   });
   it('groups an owner nav into run, community and configure', () => {
     const groups = buildDashboardNav(owner);
     expect(groups.map((g) => g.id)).toEqual(['run', 'community', 'configure']);
     expect(listVisibleSections(groups)).toEqual([
-      'overview', 'participants', 'payments', 'format-stages', 'schedule', 'standings', 'broadcast',
+      'overview', 'participants', 'payments', 'format-stages', 'schedule', 'standings',
       'invitations', 'announcements', 'bans',
       'basic-info', 'branding', 'prize-payouts', 'registration', 'staff', 'settings',
     ]);
