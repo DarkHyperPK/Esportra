@@ -45,6 +45,7 @@ import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { isParticipantCheckedIn } from '@/utils/brCheckIn';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import type { DashboardTournament, DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const PAGE_SIZE = 24;
@@ -85,6 +86,7 @@ export function ParticipantsPanel({
   const [banning, setBanning] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const activeParticipants = useMemo(
     () =>
@@ -196,6 +198,8 @@ export function ParticipantsPanel({
       setBanReason('');
       setBanTarget(null);
       setManagedParticipant(null);
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['bracket-versions'] });
       onUpdate?.();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to disqualify participant.', variant: 'destructive' });
