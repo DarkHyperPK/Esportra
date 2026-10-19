@@ -284,7 +284,7 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = React.memo(({
                         <span>Swap Teams</span>
                     </DropdownMenuItem>
 
-                    {matchStatus === 'completed' && (
+                    {['completed', 'in_progress', 'disputed'].includes(matchStatus) && (
                         <DropdownMenuItem
                             onClick={() => handleAction('reset')}
                             className="flex items-center gap-2 cursor-pointer hover:bg-zinc-800"
