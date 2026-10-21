@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CtaButton } from '@/components/ui/app-buttons';
 import { useVetoSettings } from '@/hooks/useVetoSettings';
+import { useEventLicenseQuota } from '@/hooks/useEventLicenseQuota';
+import { OrganizerProLock } from '@/components/ui/OrganizerProLock';
 import { VetoStepRow } from './VetoStepRow';
 import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
 
@@ -40,6 +42,8 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
     saveErrorMessage,
     dismissExternalUpdateWarning,
   } = useVetoSettings({ matchId, vetoStatus, enabled: true });
+
+  const { isOrganizerPro } = useEventLicenseQuota();
 
   const lastPickSideIdx = localSteps.reduce<number>(
     (acc, s, i) => (s.action === 'pick_side' ? i : acc),
@@ -90,10 +94,14 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
               )}
 
               {!isLoading && !fetchError && (
-                <Tabs
-                  value={localMode}
-                  onValueChange={(v) => setLocalMode(v as 'default' | 'custom')}
-                >
+                <>
+                  {!isOrganizerPro && (
+                    <OrganizerProLock feature="Custom veto sequences" className="mb-3" />
+                  )}
+                  <Tabs
+                    value={localMode}
+                    onValueChange={(v) => setLocalMode(v as 'default' | 'custom')}
+                  >
                   <TabsList className="w-full grid grid-cols-2 mb-3">
                     <TabsTrigger
                       value="default"
@@ -103,7 +111,8 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                     </TabsTrigger>
                     <TabsTrigger
                       value="custom"
-                      disabled={saveStatus === 'saving'}
+                      disabled={saveStatus === 'saving' || !isOrganizerPro}
+                      className={cn(!isOrganizerPro && 'cursor-not-allowed opacity-50 pointer-events-none')}
                     >
                       Custom
                     </TabsTrigger>
@@ -250,6 +259,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                     </div>
                   </TabsContent>
                 </Tabs>
+                </>
               )}
             </div>
           </motion.div>

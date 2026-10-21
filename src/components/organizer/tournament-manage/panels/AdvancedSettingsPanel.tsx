@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
+import { useEventLicenseQuota } from '@/hooks/useEventLicenseQuota';
+import { OrganizerProLock } from '@/components/ui/OrganizerProLock';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import TournamentMapPoolSelector, { type TournamentMapOption } from '@/components/tournament/wizard/TournamentMapPoolSelector';
 
@@ -37,6 +39,7 @@ const SCORE_OPTIONS: { value: ScoreReportedBy; label: string; description: strin
 export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: AdvancedSettingsPanelProps) {
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
+  const { isOrganizerPro } = useEventLicenseQuota();
   const [saving, setSaving] = useState(false);
   const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
   const savedMapIdsRef = useRef<string[]>([]);
@@ -238,11 +241,15 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
           </FormSection>
 
           <FormSection title="Account requirements">
+            {!isOrganizerPro && (
+              <OrganizerProLock feature="Discord DMs to teams" className="mb-4" />
+            )}
             <Field label="Discord accounts required per team" htmlFor="st-discord" hint="0 means Discord isn't required. 1 is the captain only."
               lockedReason={isFieldLocked('discord_link_count') ? lockNote : undefined}>
               <Input id="st-discord" type="number" min={0} max={4} value={form.discordLinkCount}
                 onChange={(e) => setForm((s) => ({ ...s, discordLinkCount: parseInt(e.target.value, 10) || 0 }))}
-                disabled={isFieldLocked('discord_link_count')} className={cn(CONTROL_CLASS, 'w-28')} />
+                disabled={isFieldLocked('discord_link_count') || !isOrganizerPro}
+                className={cn(CONTROL_CLASS, 'w-28', !isOrganizerPro && 'pointer-events-none opacity-50')} />
             </Field>
           </FormSection>
         </div>

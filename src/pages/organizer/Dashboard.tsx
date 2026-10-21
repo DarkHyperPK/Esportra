@@ -21,6 +21,8 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/apiClient";
 import { useOrganizerStats } from "@/hooks/useOrganizerStats";
+import { useEventLicenseQuota } from "@/hooks/useEventLicenseQuota";
+import { QuotaIndicator } from "@/components/organizer/QuotaIndicator";
 import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
@@ -131,6 +133,7 @@ const OrganizerDashboard = () => {
   const [activeTab, setActiveTabState] = useState(defaultTab);
   const [orgSection, setOrgSection] = useState<OrgSettingsSection>("profile");
   const { data: stats, isLoading: statsLoading } = useOrganizerStats();
+  const { quota, isLoading: quotaLoading } = useEventLicenseQuota();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState("");
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
@@ -325,6 +328,19 @@ const OrganizerDashboard = () => {
               <CommandMetric key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
             ))}
           </div>
+        )}
+
+        {!staffOnlyView && activeTab !== "organization" && (
+          quotaLoading ? (
+            <div className="w-52 h-3 bg-white/[0.05] animate-pulse mt-2" role="status" aria-label="Loading quota" />
+          ) : (
+            <QuotaIndicator
+              used={quota.usedThisMonth}
+              limit={quota.monthlyLimit}
+              resetsAt={quota.resetsAt}
+              isOrganizerPro={quota.isOrganizerPro}
+            />
+          )
         )}
 
         {activeTab === "tournaments" && <TournamentsList />}

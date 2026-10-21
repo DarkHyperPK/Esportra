@@ -163,6 +163,12 @@ const DesktopNav = ({
           </FramerDropdownContent>
         </FramerDropdownRoot>
 
+        {/* Pricing */}
+        <Link to="/pricing" className={linkClass(isActive(["/pricing"]))}>
+          Pricing
+          {activeBar(isActive(["/pricing"]))}
+        </Link>
+
         {/* Partners */}
         <Link to="/partners" className={linkClass(isActive(["/partners"]))}>
           <Handshake className="h-4 w-4" />

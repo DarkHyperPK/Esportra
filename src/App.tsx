@@ -165,6 +165,7 @@ const BeAPartner = lazyWithRetry(() => import("./pages/BeAPartner"));
 const Brand = lazyWithRetry(() => import("./pages/Brand"));
 const OrganizerLicenseTerms = lazyWithRetry(() => import("./pages/OrganizerLicenseTerms"));
 const RefundPolicyPage = lazyWithRetry(() => import("./pages/RefundPolicy"));
+const PricingPage = lazyWithRetry(() => import("./pages/Pricing"));
 
 // Guides
 const HelpCenter = lazyWithRetry(() => import("./pages/guides/HelpCenter"));
@@ -585,6 +586,7 @@ const AppContent = React.memo(() => {
                 <Route path="/guides/player" element={<Navigate to="/help" replace />} />
                 <Route path="/help" element={<HelpCenter />} />
                 <Route path="/contact" element={<ContactStandalone />} />
+                <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/partners" element={<Partners />} />
                 <Route path="/be-a-partner" element={<BeAPartner />} />
                 <Route path="/brand" element={<Brand />} />

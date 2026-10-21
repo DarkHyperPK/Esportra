@@ -25,8 +25,9 @@ import {
 } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
-import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage, ApiError } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
+import { EventLicenseGateScreen, type GateReason } from './EventLicenseGateScreen';
 import { cn } from '@/lib/utils';
 import { getDefaultTeamSize, getGameByName, getGameModeGroups, getGameModes } from '@/utils/gameFeatures';
 import type { TournamentTemplateDto } from '@/types/tournamentTemplate';
@@ -62,6 +63,8 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
   const [venueAddress, setVenueAddress] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gateReason, setGateReason] = useState<GateReason | null>(null);
+  const [gateResetsAt, setGateResetsAt] = useState<string | undefined>(undefined);
 
   const effectiveNumTeams = chipSelected ?? (freeTeams !== '' ? parseInt(freeTeams, 10) || 0 : 0);
   const teamSize = getDefaultTeamSize(template.gameName, selectedMode);
@@ -130,6 +133,15 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
       });
       navigate(`/organizer/tournament/${result.slug}`);
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 402) {
+        const body = err.body as { error?: string; resetAt?: string } | null;
+        const reason = body?.error;
+        if (reason === 'quota_exhausted' || reason === 'bracket_upgrade_required') {
+          setGateReason(reason);
+          setGateResetsAt(body?.resetAt);
+          return;
+        }
+      }
       toast({
         title: "Couldn't create the tournament",
         description: getApiErrorMessage(err, { context: 'generic' }),
@@ -142,6 +154,10 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
     name, startDate, startTime, effectiveNumTeams, teamNoun, selectedMode,
     isOnline, venueAddress, template, teamSize, isBR, navigate, toast,
   ]);
+
+  if (gateReason) {
+    return <EventLicenseGateScreen reason={gateReason} resetsAt={gateResetsAt} />;
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-8 pt-8 sm:px-6 md:pt-12">
