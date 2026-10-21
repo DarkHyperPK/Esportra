@@ -23,11 +23,12 @@ import Footer from '@/components/Footer';
 /* ─── content ────────────────────────────────────────────────────────── */
 
 const BRACKET_ROWS = [
-  { size: 'Up to 32 teams',  regular: null,         promo: null,         isFree: true  },
-  { size: 'Up to 64 teams',  regular: 'PKR 20,000', promo: 'PKR 12,000', isFree: false },
-  { size: 'Up to 128 teams', regular: 'PKR 33,000', promo: 'PKR 25,000', isFree: false },
-  { size: 'Up to 256 teams', regular: 'PKR 55,000', promo: 'PKR 45,000', isFree: false },
-  { size: 'Up to 512 teams', regular: 'PKR 90,000', promo: 'PKR 80,000', isFree: false },
+  { size: 'Up to 32 teams',  regular: null,         promo: null,         isFree: true,   isCustom: false },
+  { size: 'Up to 64 teams',  regular: 'PKR 20,000', promo: 'PKR 12,000', isFree: false,  isCustom: false },
+  { size: 'Up to 128 teams', regular: 'PKR 33,000', promo: 'PKR 25,000', isFree: false,  isCustom: false },
+  { size: 'Up to 256 teams', regular: 'PKR 55,000', promo: 'PKR 45,000', isFree: false,  isCustom: false },
+  { size: 'Up to 512 teams', regular: 'PKR 90,000', promo: 'PKR 80,000', isFree: false,  isCustom: false },
+  { size: '512+ teams',      regular: null,         promo: null,         isFree: false,  isCustom: true  },
 ];
 
 interface FeatureRow { label: string; free: string | boolean; pro: string | boolean; }
@@ -41,7 +42,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
       { label: 'Swiss format',                 free: true,         pro: true        },
       { label: 'Battle royale (leaderboard)',  free: true,         pro: true        },
       { label: 'Multi-stage formats',          free: true,         pro: true        },
-      { label: 'Max bracket size',             free: '32 teams',   pro: '512 teams' },
+      { label: 'Max bracket size',             free: '32 teams',   pro: '512+ custom' },
     ],
   },
   {
@@ -273,7 +274,7 @@ export default function Pricing() {
             <StatTile label="START FREE"    value="PKR 0"  unit="/ month" />
             <StatTile label="FREE MAX SIZE" value="32"     unit="teams"   />
             <StatTile label="FREE EVENTS"   value="2"      unit="/ month" />
-            <StatTile label="PRO MAX SIZE"  value="512"    unit="teams"   />
+            <StatTile label="PRO MAX SIZE"  value="512+"   unit="teams"   />
           </motion.div>
 
         </div>
@@ -391,7 +392,7 @@ export default function Pricing() {
               <ul className="mt-8 space-y-2.5 flex-1" role="list">
                 {[
                   { label: 'Everything in Free',                       highlight: false },
-                  { label: 'Up to 512 teams per event',                highlight: false },
+                  { label: '512+ teams · custom above 512',             highlight: false },
                   { label: 'Custom veto sequences',                    highlight: true  },
                   { label: 'Match room veto overlay',                  highlight: true  },
                   { label: 'OBS stream overlay',                       highlight: true  },
@@ -618,7 +619,7 @@ export default function Pricing() {
         </motion.div>
 
         {/* Scoreboard tile grid */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-px bg-white/[0.06] border border-white/[0.06]">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-px bg-white/[0.06] border border-white/[0.06]">
           {BRACKET_ROWS.map((row, i) => (
             <motion.div
               key={row.size}
@@ -638,6 +639,16 @@ export default function Pricing() {
                     Free
                   </p>
                   <p className="text-[11px] text-zinc-700">included in all plans</p>
+                </>
+              ) : row.isCustom ? (
+                <>
+                  <p
+                    className="font-heading font-black text-zinc-400 leading-none"
+                    style={{ fontSize: '1.75rem' }}
+                  >
+                    Custom
+                  </p>
+                  <p className="text-[11px] text-zinc-700">Talk to us</p>
                 </>
               ) : (
                 <>
