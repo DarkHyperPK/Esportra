@@ -35,15 +35,26 @@ interface FeatureGroup { heading: string; rows: FeatureRow[]; }
 
 const FEATURE_GROUPS: FeatureGroup[] = [
   {
+    heading: 'Formats & brackets',
+    rows: [
+      { label: 'Single & double elimination',  free: true,         pro: true        },
+      { label: 'Swiss format',                 free: true,         pro: true        },
+      { label: 'Battle royale (leaderboard)',  free: true,         pro: true        },
+      { label: 'Multi-stage formats',          free: true,         pro: true        },
+      { label: 'Max bracket size',             free: '32 teams',   pro: '512 teams' },
+    ],
+  },
+  {
     heading: 'Tournament operations',
     rows: [
-      { label: 'Bracket management',        free: true,         pro: true        },
-      { label: 'Max bracket size',           free: '32 teams',   pro: '512 teams' },
-      { label: 'Events per month',           free: '2 events',   pro: 'Talk to us'},
-      { label: 'Multi-stage formats',        free: true,         pro: true        },
-      { label: 'Match check-in',             free: true,         pro: true        },
-      { label: 'Live standings',             free: true,         pro: true        },
-      { label: 'Custom prize distribution',  free: true,         pro: true        },
+      { label: 'Match scheduling & time slots', free: true,        pro: true        },
+      { label: 'Team & player registration',    free: true,        pro: true        },
+      { label: 'Match rooms with check-in',     free: true,        pro: true        },
+      { label: 'Score reporting & results',     free: true,        pro: true        },
+      { label: 'Live standings & leaderboards', free: true,        pro: true        },
+      { label: 'Custom prize distribution',     free: true,        pro: true        },
+      { label: 'Dispute centre',                free: true,        pro: true        },
+      { label: 'Events per month',              free: '2 events',  pro: 'Talk to us'},
     ],
   },
   {
@@ -75,10 +86,6 @@ const FAQ_ITEMS = [
   {
     q: 'How do I get Organizer Pro?',
     a: "Talk to us. We'll enable Organizer Pro for your tournament after confirming payment. No self-serve checkout yet.",
-  },
-  {
-    q: 'Are existing tournaments affected?',
-    a: 'No. All tournaments created before this system launched are fully grandfathered and unaffected.',
   },
   {
     q: 'Can I draft unlimited events?',
@@ -303,18 +310,23 @@ export default function Pricing() {
               </p>
             </div>
 
-            <ul className="mt-8 space-y-3 flex-1" role="list">
+            <ul className="mt-8 space-y-2.5 flex-1" role="list">
               {[
-                'Full bracket management',
-                'Multi-stage formats',
-                'Match check-in',
-                'Live standings',
-                'Custom prize distribution',
-                '2 events per month · Up to 32 teams',
-              ].map(f => (
-                <li key={f} className="flex items-start gap-3 text-[13px] text-zinc-500">
+                { label: 'Single-elim, double-elim, Swiss, BR', group: 'Formats' },
+                { label: 'Multi-stage tournament formats',       group: 'Formats' },
+                { label: 'Match scheduling & time slots',        group: 'Scheduling' },
+                { label: 'Team & player registration',           group: 'Registration' },
+                { label: 'Match rooms with check-in',            group: 'Matches' },
+                { label: 'Score reporting & results',            group: 'Matches' },
+                { label: 'Live standings & leaderboards',        group: 'Matches' },
+                { label: 'Standard map veto',                    group: 'Veto' },
+                { label: 'Custom prize distribution',            group: 'Prizes' },
+                { label: 'Dispute centre',                       group: 'Support' },
+                { label: '2 events/month · Up to 32 teams',     group: 'Limit' },
+              ].map(({ label }) => (
+                <li key={label} className="flex items-start gap-3 text-[13px] text-zinc-500">
                   <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-600" aria-hidden="true" />
-                  {f}
+                  {label}
                 </li>
               ))}
             </ul>
@@ -336,17 +348,24 @@ export default function Pricing() {
           <motion.div
             {...arriveProps(reduced, 0.12)}
             className="relative flex flex-col overflow-hidden"
-            style={{ background: 'linear-gradient(155deg, #110709 0%, #0d0608 45%, #09090b 100%)' }}
+            style={{ background: 'linear-gradient(155deg, #160509 0%, #100507 40%, #09090b 100%)' }}
           >
             {/* Rose cue — 2 px left border */}
             <div aria-hidden="true" className="absolute left-0 inset-y-0 w-0.5 bg-rose-500" />
 
             <DotGrid id="dot-pro" />
 
+            {/* Primary glow — top-left */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-16 -left-8 h-72 w-72 opacity-[0.11]"
-              style={{ background: 'radial-gradient(circle, #f43f5e 0%, transparent 65%)' }}
+              className="pointer-events-none absolute -top-20 -left-10 h-80 w-80 opacity-[0.18]"
+              style={{ background: 'radial-gradient(circle, #f43f5e 0%, transparent 60%)' }}
+            />
+            {/* Secondary glow — bottom-right */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-16 -right-10 h-64 w-64 opacity-[0.10]"
+              style={{ background: 'radial-gradient(circle, #f43f5e 0%, transparent 60%)' }}
             />
 
             <div className="relative p-8 lg:p-10 flex flex-col flex-1">
@@ -369,18 +388,23 @@ export default function Pricing() {
                 </p>
               </div>
 
-              <ul className="mt-8 space-y-3 flex-1" role="list">
+              <ul className="mt-8 space-y-2.5 flex-1" role="list">
                 {[
-                  'Everything in Free',
-                  'Up to 512 teams per event',
-                  'Custom veto sequences',
-                  'Match room veto overlay',
-                  'OBS stream overlay',
-                  'Discord DMs to teams',
-                ].map(f => (
-                  <li key={f} className="flex items-start gap-3 text-[13px] text-zinc-300">
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true" />
-                    {f}
+                  { label: 'Everything in Free',                       highlight: false },
+                  { label: 'Up to 512 teams per event',                highlight: false },
+                  { label: 'Custom veto sequences',                    highlight: true  },
+                  { label: 'Match room veto overlay',                  highlight: true  },
+                  { label: 'OBS stream overlay',                       highlight: true  },
+                  { label: 'Discord DMs to teams',                     highlight: true  },
+                ].map(({ label, highlight }) => (
+                  <li key={label} className="flex items-start gap-3 text-[13px]">
+                    <Check
+                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${highlight ? 'text-rose-400/70' : 'text-zinc-400'}`}
+                      aria-hidden="true"
+                    />
+                    <span className={highlight ? 'text-zinc-200 font-medium' : 'text-zinc-400'}>
+                      {label}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -619,7 +643,7 @@ export default function Pricing() {
                 <>
                   <p
                     className="font-heading font-black text-white leading-none"
-                    style={{ fontSize: '1.5rem' }}
+                    style={{ fontSize: '1.9rem' }}
                   >
                     {row.promo}
                   </p>
