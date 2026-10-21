@@ -1,37 +1,64 @@
 /**
  * Public pricing page — /pricing
- * Marketing surface: max-w-5xl mx-auto (intentional, not CommandPageGrid).
+ * Marketing surface — full viewport width, not CommandPageGrid.
  */
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { CommandButton } from '@/components/management/CommandSurface';
-import { StatusPill, EYEBROW_CLASS } from '@/components/ui/kit';
+import { EYEBROW_CLASS } from '@/components/ui/kit';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import Footer from '@/components/Footer';
 
-interface PricingRow {
+/* ─── data ─────────────────────────────────────────────────────────── */
+
+interface BracketRow {
   bracket: string;
   regular: string | null;
   promo: string | null;
   isFree: boolean;
 }
 
-const PRICING_ROWS: PricingRow[] = [
+const BRACKET_ROWS: BracketRow[] = [
   { bracket: 'Up to 32 teams', regular: null, promo: null, isFree: true },
-  { bracket: 'Up to 64 teams', regular: 'PKR 20,000', promo: 'PKR 12,000', isFree: false },
+  { bracket: 'Up to 64 teams',  regular: 'PKR 20,000', promo: 'PKR 12,000', isFree: false },
   { bracket: 'Up to 128 teams', regular: 'PKR 33,000', promo: 'PKR 25,000', isFree: false },
   { bracket: 'Up to 256 teams', regular: 'PKR 55,000', promo: 'PKR 45,000', isFree: false },
   { bracket: 'Up to 512 teams', regular: 'PKR 90,000', promo: 'PKR 80,000', isFree: false },
 ];
 
-const PRO_FEATURES = [
-  'Custom veto sequences',
-  'Match room veto overlay',
-  'Public OBS stream overlay',
-  'Discord DMs to teams',
-  'Desktop broadcast sessions',
+interface FeatureRow {
+  label: string;
+  free: string | boolean;
+  pro: string | boolean;
+  note?: string;
+}
+
+const FEATURE_ROWS: FeatureRow[] = [
+  { label: 'Bracket management',          free: true,              pro: true },
+  { label: 'Bracket size',                free: 'Up to 32 teams',  pro: 'Up to 512 teams' },
+  { label: 'Events per month',            free: '2 events',        pro: 'Contact us' },
+  { label: 'Match check-in',              free: true,              pro: true },
+  { label: 'Live standings',              free: true,              pro: true },
+  { label: 'Multi-stage formats',         free: true,              pro: true },
+  { label: 'Custom prize distribution',   free: true,              pro: true },
+  { label: 'Standard map veto',           free: true,              pro: true },
+  { label: 'Custom veto sequences',       free: false,             pro: true },
+  { label: 'Match room veto overlay',     free: false,             pro: true },
+  { label: 'OBS stream overlay',          free: false,             pro: true },
+  { label: 'Discord DMs to teams',        free: false,             pro: true },
+  { label: 'Desktop broadcast sessions',  free: false,             pro: true },
 ];
+
+/* ─── helpers ───────────────────────────────────────────────────────── */
+
+function FeatureCell({ value }: { value: string | boolean }) {
+  if (value === true)  return <Check className="h-4 w-4 text-zinc-300" aria-label="Included" />;
+  if (value === false) return <Minus className="h-4 w-4 text-zinc-700" aria-label="Not included" />;
+  return <span className="text-sm text-zinc-300">{value}</span>;
+}
+
+/* ─── component ─────────────────────────────────────────────────────── */
 
 export default function Pricing() {
   const { user } = useAuth();
@@ -39,87 +66,141 @@ export default function Pricing() {
 
   const motionProps = reducedMotion
     ? {}
-    : {
-        initial: { opacity: 0, y: 12 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.2 },
-      };
+    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } };
 
   return (
     <div className="min-h-screen">
-      <motion.div
-        className="max-w-5xl mx-auto px-6 py-16"
-        {...motionProps}
-      >
-        {/* Hero */}
-        <header>
+      <motion.div className="w-full px-8 py-16" {...motionProps}>
+
+        {/* ── Hero ─────────────────────────────────────────────────── */}
+        <header className="max-w-2xl">
           <p className={EYEBROW_CLASS}>PRICING</p>
           <h1 className="mt-3 font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
             Run your tournament on Esportra
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-zinc-400 max-w-2xl">
-            Free for small events. Per-event pricing for brackets above 32 teams.
-            Organizer Pro unlocks broadcast tools.
+          <p className="mt-4 text-[15px] leading-relaxed text-zinc-400">
+            Free for events up to 32 teams. Per-event pricing for larger brackets.
+            Organizer Pro unlocks advanced broadcast tools.
           </p>
         </header>
 
-        {/* Free tier band */}
-        <div className="mt-10 flex items-center justify-between border border-white/10 bg-white/[0.03] px-5 py-4 sm:flex-row flex-col sm:gap-0 gap-3 sm:items-center items-start">
-          <div>
-            <p className={EYEBROW_CLASS}>FREE TIER</p>
-            <p className="mt-1 text-sm text-zinc-300">
-              Up to 32 teams · 2 events per month · No credit card required
-            </p>
-          </div>
-          {user && (
-            <div className="hidden sm:block">
-              <StatusPill label="ACTIVE" tone="success" />
-            </div>
-          )}
-        </div>
+        {/* ── Feature comparison table ─────────────────────────────── */}
+        <section className="mt-14" aria-labelledby="compare-heading">
+          <p className={EYEBROW_CLASS} id="compare-heading">PLAN COMPARISON</p>
 
-        {/* Per-event pricing table */}
-        <section className="mt-12" aria-labelledby="pricing-table-heading">
-          <div className="flex items-baseline justify-between mb-4">
-            <p className={EYEBROW_CLASS} id="pricing-table-heading">PER-EVENT PRICING</p>
-            <p className="text-xs text-zinc-500">Promo pricing active</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm" role="table">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th scope="col" className="py-3 pr-8 text-left text-xs text-zinc-500 font-medium w-1/2">
+                    Feature
+                  </th>
+                  <th scope="col" className="py-3 pr-8 text-left text-xs text-zinc-500 font-medium w-[22%]">
+                    Free
+                  </th>
+                  <th scope="col" className="py-3 text-left text-xs text-zinc-500 font-medium w-[22%]">
+                    Organizer Pro
+                  </th>
+                </tr>
+                {/* Tier labels row */}
+                <tr className="border-b border-white/10 bg-white/[0.02]">
+                  <td className="py-3 pr-8 text-xs text-zinc-600 italic">
+                    No payment required
+                  </td>
+                  <td className="py-3 pr-8">
+                    <span className="font-heading text-base font-black text-white">Free</span>
+                  </td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading text-base font-black text-white">Pro</span>
+                      <a
+                        href="/contact"
+                        className="text-xs text-rose-400 hover:text-rose-300 transition-colors underline underline-offset-2"
+                      >
+                        Contact us
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              </thead>
+              <tbody>
+                {FEATURE_ROWS.map((row, i) => (
+                  <tr
+                    key={row.label}
+                    className={`border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors ${
+                      i >= 8 ? 'bg-white/[0.01]' : ''
+                    }`}
+                  >
+                    <td className={`py-3.5 pr-8 font-medium ${i >= 8 ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                      {row.label}
+                      {i === 8 && (
+                        <span className="ml-2 font-mono text-[9px] font-semibold uppercase tracking-widest text-rose-500/70">
+                          PRO
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 pr-8">
+                      <FeatureCell value={row.free} />
+                    </td>
+                    <td className="py-3.5">
+                      <FeatureCell value={row.pro} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* ── Per-event bracket pricing ─────────────────────────────── */}
+        <section className="mt-16 border-t border-white/10 pt-12" aria-labelledby="bracket-heading">
+          <div className="flex items-baseline gap-4 mb-5">
+            <p className={EYEBROW_CLASS} id="bracket-heading">PER-EVENT PRICING</p>
+            <span className="text-xs text-zinc-600">Promo active — regular price crossed out</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm" role="table">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th scope="col" className="py-3 pr-6 text-left text-xs text-zinc-500 font-medium">
+                  <th scope="col" className="py-3 pr-8 text-left text-xs text-zinc-500 font-medium">
                     Bracket size
                   </th>
-                  <th scope="col" className="py-3 pr-6 text-right text-xs text-zinc-500 font-medium">
-                    Regular
+                  <th scope="col" className="py-3 pr-8 text-left text-xs text-zinc-500 font-medium">
+                    Regular price
                   </th>
-                  <th scope="col" className="py-3 text-right text-xs text-zinc-500 font-medium">
-                    Promo
+                  <th scope="col" className="py-3 text-left text-xs text-zinc-500 font-medium">
+                    Promo price
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {PRICING_ROWS.map((row) => (
+                {BRACKET_ROWS.map((row) => (
                   <tr
                     key={row.bracket}
-                    className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors"
+                    className="hover:bg-white/[0.02] transition-colors"
                   >
-                    <td className="py-4 pr-6 text-sm text-zinc-200 font-medium">{row.bracket}</td>
+                    <td className="py-4 pr-8 text-sm font-medium text-zinc-200">
+                      {row.bracket}
+                    </td>
                     {row.isFree ? (
                       <>
-                        <td className="py-4 pr-6 text-right" />
-                        <td className="py-4 text-right text-sm text-zinc-500 italic">
-                          Included in free tier
+                        <td className="py-4 pr-8 text-sm text-zinc-600">—</td>
+                        <td className="py-4 text-sm text-zinc-500 italic">
+                          Free tier
+                          {user && (
+                            <span className="ml-2 font-mono text-[9px] font-semibold uppercase tracking-widest text-emerald-500">
+                              ACTIVE
+                            </span>
+                          )}
                         </td>
                       </>
                     ) : (
                       <>
-                        <td className="py-4 pr-6 text-right text-sm text-zinc-600 line-through">
+                        <td className="py-4 pr-8 text-sm text-zinc-600 line-through decoration-zinc-700">
                           {row.regular}
                         </td>
-                        <td className="py-4 text-right text-sm font-semibold text-rose-400">
+                        <td className="py-4 text-sm font-semibold text-rose-400">
                           {row.promo}
                         </td>
                       </>
@@ -129,40 +210,28 @@ export default function Pricing() {
               </tbody>
             </table>
           </div>
+
+          <p className="mt-4 text-xs text-zinc-600">
+            Payment via bank transfer. Contact us to proceed.
+          </p>
         </section>
 
-        {/* Organizer Pro section */}
-        <section className="mt-16 border-t border-white/10 pt-12" aria-labelledby="pro-heading">
-          <div className="grid md:grid-cols-2 gap-10">
-            <div>
-              <p className={EYEBROW_CLASS}>ORGANIZER PRO</p>
-              <h2 id="pro-heading" className="mt-3 font-heading text-2xl font-black text-white">
-                Advanced tools for broadcast-quality events
-              </h2>
-              <p className="mt-3 text-[14px] leading-relaxed text-zinc-400">
-                Organizer Pro is included with paid events above 32 teams, or available as a standalone
-                upgrade. Contact us to discuss what works for your events.
-              </p>
-            </div>
-            <ul className="space-y-3 pt-1" aria-label="Organizer Pro features">
-              {PRO_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-zinc-300">
-                  <Check className="mt-0.5 h-4 w-4 text-zinc-500 shrink-0" aria-hidden />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="mt-10">
+        {/* ── CTA ──────────────────────────────────────────────────── */}
+        <section className="mt-16 border-t border-white/10 pt-12">
+          <p className={EYEBROW_CLASS}>GET STARTED</p>
+          <h2 className="mt-3 font-heading text-2xl font-black text-white max-w-lg">
+            Ready to run a bigger event or unlock Pro features?
+          </h2>
+          <p className="mt-3 text-sm text-zinc-400 max-w-md">
+            Contact us to unlock Organizer Pro or arrange payment for a large bracket.
+          </p>
+          <div className="mt-6">
             <CommandButton variant="primary" size="md" slide asChild>
-              <a href="/contact">Contact us to unlock</a>
+              <a href="/contact">Contact us</a>
             </CommandButton>
-            <p className="mt-3 text-xs text-zinc-600">
-              No subscription. We'll discuss what works for your events.
-            </p>
           </div>
         </section>
+
       </motion.div>
 
       <Footer />
