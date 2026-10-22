@@ -520,19 +520,27 @@ const TournamentDetails = () => {
   const handleWithdraw = async () => {
     if (!user?.id || !tournament) return;
 
+    const isPaidWithdrawal =
+      !!(tournament.entry_fee) &&
+      parseFloat(String(tournament.entry_fee || '0')) > 0;
+
     try {
       await apiClient.delete(`/api/tournaments/${tournament.id}/register`);
-
-      setIsRegistered(false);
-      setRegistrationDetails(null);
       setShowWithdrawDialog(false);
-
+      await checkRegistration(true);
       await fetchTournamentData();
 
-      toast({
-        title: "Withdrawal Successful",
-        description: "You have been withdrawn from the tournament",
-      });
+      if (isPaidWithdrawal) {
+        toast({
+          title: 'Withdrawal Requested',
+          description: 'Your request has been submitted. The organizer will process your refund and notify you.',
+        });
+      } else {
+        toast({
+          title: 'Withdrawal Successful',
+          description: 'You have been withdrawn from the tournament.',
+        });
+      }
     } catch (error: any) {
       console.error('Error withdrawing from tournament:', error);
       toast({
@@ -1027,9 +1035,22 @@ const TournamentDetails = () => {
       <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
         <AlertDialogContent className="bg-[#0a0a0c] border border-white/10">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white font-heading tracking-wide">CONFIRM WITHDRAWAL</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-400">
-              Are you sure you want to abort your registration? This action is irreversible.
+            <AlertDialogTitle className="text-white font-heading tracking-wide">
+              {tournament?.entry_fee && parseFloat(String(tournament.entry_fee)) > 0
+                ? 'REQUEST WITHDRAWAL'
+                : 'CONFIRM WITHDRAWAL'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400 space-y-2">
+              {tournament?.entry_fee && parseFloat(String(tournament.entry_fee)) > 0 ? (
+                <>
+                  <span>You paid an entry fee for this tournament. Withdrawing will submit a refund request to the organizer.</span>
+                  <span className="block mt-2 text-amber-400/80 text-xs border border-amber-500/20 bg-amber-500/5 rounded p-2">
+                    Your registration will remain active until the organizer processes the refund. You will be notified once complete. Esportra is not a party to organizer-collected fees.
+                  </span>
+                </>
+              ) : (
+                <>Are you sure you want to abort your registration? This action is irreversible.</>
+              )}
               {registrationDetails?.registration_type === 'team' && isCaptain && (
                 <p className="mt-4 font-bold text-red-500 border border-red-500/30 bg-red-500/10 p-2 text-center rounded">
                   WARNING: TEAM DISBANDMENT IMMINENT
@@ -1043,7 +1064,9 @@ const TournamentDetails = () => {
               onClick={handleWithdraw}
               className="bg-red-600 hover:bg-red-700 text-white font-mono tracking-widest"
             >
-              CONFIRM_ABORT
+              {tournament?.entry_fee && parseFloat(String(tournament.entry_fee)) > 0
+                ? 'REQUEST_WITHDRAWAL'
+                : 'CONFIRM_ABORT'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

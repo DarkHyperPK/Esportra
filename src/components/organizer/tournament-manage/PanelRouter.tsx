@@ -243,6 +243,7 @@ export function PanelRouter({
         <PaymentManagement
           tournamentId={tournament.id}
           participants={participants}
+          currency={tournament.currency || 'USD'}
           onRefresh={onUpdate}
         />
       </>

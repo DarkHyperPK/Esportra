@@ -72,7 +72,7 @@ export interface DashboardParticipant {
     id: string;
     user_id: string;
     tournament_id: string;
-    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending' | 'approved' | 'rejected' | 'cancelled' | 'disqualified';
+    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending' | 'approved' | 'rejected' | 'cancelled' | 'disqualified' | 'withdrawal_pending';
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;
@@ -89,6 +89,8 @@ export interface DashboardParticipant {
     entry_fee_paid?: boolean | null;
     entry_fee_amount?: number | null;
     currency?: string | null;
+    withdrawal_requested_at?: string | null;
+    withdrawal_reason?: string | null;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -195,6 +197,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 entry_fee_paid:           p.entry_fee_paid ?? null,
                 entry_fee_amount:         p.entry_fee_amount ?? null,
                 currency:                 p.currency ?? null,
+                withdrawal_requested_at:  p.withdrawal_requested_at ?? null,
+                withdrawal_reason:        p.withdrawal_reason ?? null,
                 user:             p.username ? { username: p.username, avatar_url: (p as any).user_avatar_url ?? null, full_name: (p as any).user_full_name ?? null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));

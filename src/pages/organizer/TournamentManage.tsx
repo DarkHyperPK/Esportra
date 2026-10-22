@@ -2517,6 +2517,7 @@ const TournamentDashboard = () => {
                       <PaymentManagement
                         tournamentId={tournament.id}
                         participants={participants as DashboardParticipant[]}
+                        currency={tournament.currency || 'USD'}
                         onRefresh={refetchDashboard}
                       />
                     )}

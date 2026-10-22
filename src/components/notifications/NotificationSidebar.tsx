@@ -24,7 +24,10 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
 
   const { priority, items } = useMemo(() => {
     const visible = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
-    return { priority: visible.filter(isPriorityNotification), items: visible.filter((n) => !isPriorityNotification(n)) };
+    const p = visible.filter(isPriorityNotification).sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return { priority: p, items: visible.filter((n) => !isPriorityNotification(n)) };
   }, [filter, notifications]);
   const badge = unreadCount > 99 ? '99+' : String(unreadCount);
 

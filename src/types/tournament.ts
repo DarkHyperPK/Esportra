@@ -8,7 +8,8 @@ export type RegistrationStatus =
     | 'disqualified'
     | 'eliminated'
     | 'waitlist'
-    | 'winner';
+    | 'winner'
+    | 'withdrawal_pending';
 export type RegistrationType = 'solo' | 'team';
 
 export interface TournamentCardBadge {

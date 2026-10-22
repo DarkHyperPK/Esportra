@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle, ChevronLeft, ChevronRight, Upload, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { CommandButton } from '@/components/management/CommandSurface';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
 interface PaymentManagementProps {
   tournamentId: string;
   participants: DashboardParticipant[];
+  currency: string;
   onRefresh: () => void;
 }
 
@@ -29,7 +30,7 @@ const PAYMENT_PAGE_SIZE = 20;
 
 const imgFetchPriority = { fetchpriority: 'low' } as const;
 
-const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, participants, onRefresh }) => {
+const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, participants, currency, onRefresh }) => {
   const { toast } = useToast();
   const [filter, setFilter] = useState<PaymentFilter>('pending');
   const [page, setPage] = useState(1);
@@ -37,46 +38,70 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<DashboardParticipant | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
-  const [receiptMimeType, setReceiptMimeType] = useState<string | null>(null);
-  const [receiptLoading, setReceiptLoading] = useState(false);
+
+  const [withdrawalProcessing, setWithdrawalProcessing] = useState<Set<string>>(new Set());
+  const [proofFiles, setProofFiles] = useState<Map<string, File>>(new Map());
+  const [refundNotes, setRefundNotes] = useState<Map<string, string>>(new Map());
+  const [denyTarget, setDenyTarget] = useState<DashboardParticipant | null>(null);
+  const [denyReason, setDenyReason] = useState('');
+  const proofInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptParticipant, setReceiptParticipant] = useState<DashboardParticipant | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const receiptBlobUrlRef = React.useRef<string | null>(null);
-  const receiptFallbackAttemptedRef = React.useRef(false);
-
-  const closeReceiptDialog = () => {
-    if (receiptBlobUrlRef.current) {
-      URL.revokeObjectURL(receiptBlobUrlRef.current);
-      receiptBlobUrlRef.current = null;
-    }
-    setReceiptViewUrl(null);
-    setReceiptMimeType(null);
-    setReceiptLoading(false);
-    setReceiptParticipant(null);
-    receiptFallbackAttemptedRef.current = false;
-  };
-
-  const loadReceiptViaApi = async (participant: DashboardParticipant) => {
-    try {
-      const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
-      if (receiptBlobUrlRef.current) {
-        URL.revokeObjectURL(receiptBlobUrlRef.current);
-      }
-      const objectUrl = URL.createObjectURL(blob);
-      receiptBlobUrlRef.current = objectUrl;
-      setReceiptMimeType(blob.type || null);
-      setReceiptViewUrl(objectUrl);
-    } catch {
-      toast({ title: 'Could not load receipt', variant: 'destructive' });
-    } finally {
-      setReceiptLoading(false);
-    }
-  };
+  const receiptCacheRef = React.useRef<Map<string, string>>(new Map());
 
   const paidParticipants = useMemo(
-    () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required'),
+    () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required' && p.status !== 'withdrawal_pending'),
     [participants]
   );
+
+  const withdrawalParticipants = useMemo(
+    () => participants.filter(p => p.status === 'withdrawal_pending'),
+    [participants]
+  );
+
+  const handleProcessRefund = async (participant: DashboardParticipant) => {
+    const file = proofFiles.get(participant.id);
+    if (!file) {
+      toast({ title: 'Upload refund proof first', variant: 'destructive' });
+      return;
+    }
+    setWithdrawalProcessing(prev => new Set(prev).add(participant.id));
+    try {
+      const fd = new FormData();
+      fd.append('proof', file);
+      const notes = refundNotes.get(participant.id) || '';
+      if (notes) fd.append('notes', notes);
+      await apiClient.upload(`/api/tournaments/${tournamentId}/participants/${participant.id}/process-refund`, fd);
+      toast({ title: 'Refund Processed', description: `${participant.team_name || participant.gamer_tag || 'Participant'} registration cancelled and proof recorded.` });
+      setProofFiles(prev => { const m = new Map(prev); m.delete(participant.id); return m; });
+      setRefundNotes(prev => { const m = new Map(prev); m.delete(participant.id); return m; });
+      onRefresh();
+    } catch (err: any) {
+      toast({ title: 'Failed to process refund', description: err.message || 'Try again.', variant: 'destructive' });
+    } finally {
+      setWithdrawalProcessing(prev => { const s = new Set(prev); s.delete(participant.id); return s; });
+    }
+  };
+
+  const handleDenyWithdrawal = async () => {
+    if (!denyTarget) return;
+    setWithdrawalProcessing(prev => new Set(prev).add(denyTarget.id));
+    try {
+      await apiClient.post(`/api/tournaments/${tournamentId}/participants/${denyTarget.id}/deny-withdrawal`, { reason: denyReason || undefined });
+      toast({ title: 'Withdrawal Denied', description: `${denyTarget.team_name || denyTarget.gamer_tag || 'Participant'} restored to approved.` });
+      setDenyTarget(null);
+      setDenyReason('');
+      onRefresh();
+    } catch (err: any) {
+      toast({ title: 'Failed to deny withdrawal', description: err.message || 'Try again.', variant: 'destructive' });
+    } finally {
+      setWithdrawalProcessing(prev => { const s = new Set(prev); s.delete(denyTarget.id); return s; });
+    }
+  };
 
   const filtered = useMemo(() => {
     if (filter === 'all') return paidParticipants;
@@ -95,6 +120,87 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     approved: paidParticipants.filter(p => p.payment_status === 'approved').length,
     rejected: paidParticipants.filter(p => p.payment_status === 'rejected').length,
   }), [paidParticipants]);
+
+  const pendingWithReceipts = useMemo(
+    () => paidParticipants.filter(p => p.payment_status === 'pending' && p.payment_receipt_url),
+    [paidParticipants]
+  );
+
+  const openReceipt = async (participant: DashboardParticipant) => {
+    if (!participant.payment_receipt_url) {
+      toast({ title: 'No receipt available', variant: 'destructive' });
+      return;
+    }
+    const cached = receiptCacheRef.current.get(participant.id);
+    if (cached) {
+      setReceiptParticipant(participant);
+      setReceiptUrl(cached);
+      receiptBlobUrlRef.current = cached;
+      return;
+    }
+    setReceiptLoadingId(participant.id);
+    setReceiptParticipant(participant);
+    setReceiptLoading(true);
+    setReceiptUrl(null);
+    try {
+      const blob = await apiClient.getBlob(
+        `/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`
+      );
+      const url = URL.createObjectURL(blob);
+      receiptCacheRef.current.set(participant.id, url);
+      receiptBlobUrlRef.current = url;
+      setReceiptUrl(url);
+    } catch {
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+      setReceiptParticipant(null);
+    } finally {
+      setReceiptLoading(false);
+      setReceiptLoadingId(null);
+    }
+  };
+
+  const closeReceipt = () => {
+    receiptBlobUrlRef.current = null;
+    setReceiptUrl(null);
+    setReceiptParticipant(null);
+    setReceiptLoading(false);
+  };
+
+  const navigateReceipt = (direction: -1 | 1) => {
+    if (!receiptParticipant) return;
+    const idx = pendingWithReceipts.findIndex(p => p.id === receiptParticipant.id);
+    if (idx === -1) return;
+    const next = pendingWithReceipts[idx + direction];
+    if (next) openReceipt(next);
+  };
+
+  const handleApproveFromDialog = async () => {
+    if (!receiptParticipant) return;
+    setProcessingId(receiptParticipant.id);
+    try {
+      await apiClient.post(`/api/tournaments/${tournamentId}/participants/${receiptParticipant.id}/approve-payment`);
+      toast({ title: 'Payment Approved', description: `${receiptParticipant.team_name || receiptParticipant.gamer_tag || 'Participant'} registered.` });
+      const idx = pendingWithReceipts.findIndex(p => p.id === receiptParticipant.id);
+      const next = pendingWithReceipts[idx + 1] ?? pendingWithReceipts[idx - 1];
+      onRefresh();
+      if (next && next.id !== receiptParticipant.id) {
+        openReceipt(next);
+      } else {
+        closeReceipt();
+      }
+    } catch (err: any) {
+      toast({ title: 'Approval Failed', description: err.message || 'Try again.', variant: 'destructive' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectFromDialog = () => {
+    if (!receiptParticipant) return;
+    setRejectTarget(receiptParticipant);
+    setRejectReason('');
+    setRejectDialogOpen(true);
+  };
 
   const handleApprove = async (participant: DashboardParticipant) => {
     setProcessingId(participant.id);
@@ -122,8 +228,18 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       await apiClient.post(`/api/tournaments/${tournamentId}/participants/${rejectTarget.id}/reject-payment`, { reason: rejectReason || 'Payment not verified.' });
       toast({ title: 'Payment Rejected', description: `${rejectTarget.team_name || rejectTarget.gamer_tag || 'Participant'} has been notified.` });
       setRejectDialogOpen(false);
+      const wasFromReceiptDialog = receiptParticipant?.id === rejectTarget.id;
       setRejectTarget(null);
       onRefresh();
+      if (wasFromReceiptDialog) {
+        const idx = pendingWithReceipts.findIndex(p => p.id === receiptParticipant?.id);
+        const next = pendingWithReceipts[idx + 1] ?? pendingWithReceipts[idx - 1];
+        if (next && next.id !== receiptParticipant?.id) {
+          openReceipt(next);
+        } else {
+          closeReceipt();
+        }
+      }
     } catch (err: any) {
       toast({ title: 'Rejection Failed', description: err.message || 'Try again.', variant: 'destructive' });
     } finally {
@@ -140,33 +256,6 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     }
   };
 
-  const viewReceipt = (participant: DashboardParticipant) => {
-    if (!participant.payment_receipt_url) {
-      toast({ title: 'No receipt available', variant: 'destructive' });
-      return;
-    }
-    if (receiptBlobUrlRef.current) {
-      URL.revokeObjectURL(receiptBlobUrlRef.current);
-      receiptBlobUrlRef.current = null;
-    }
-    receiptFallbackAttemptedRef.current = true;
-    setReceiptParticipant(participant);
-    setReceiptLoading(true);
-    setReceiptViewUrl(null);
-    void loadReceiptViaApi(participant);
-  };
-
-  // Kept for img/iframe onError wiring — no-ops now that viewReceipt goes direct to API proxy
-  const handleReceiptLoadError = () => {
-    if (receiptFallbackAttemptedRef.current || !receiptParticipant) {
-      setReceiptLoading(false);
-      toast({ title: 'Could not load receipt', variant: 'destructive' });
-      return;
-    }
-    receiptFallbackAttemptedRef.current = true;
-    void loadReceiptViaApi(receiptParticipant);
-  };
-
   React.useEffect(() => {
     setPage(1);
   }, [filter, filtered.length]);
@@ -175,7 +264,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     setPage((current) => Math.min(current, totalPages));
   }, [totalPages]);
 
-  if (paidParticipants.length === 0) {
+  const receiptIdx = receiptParticipant ? pendingWithReceipts.findIndex(p => p.id === receiptParticipant.id) : -1;
+  const hasPrev = receiptIdx > 0;
+  const hasNext = receiptIdx >= 0 && receiptIdx < pendingWithReceipts.length - 1;
+
+  if (paidParticipants.length === 0 && withdrawalParticipants.length === 0) {
     return (
       <div className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden p-6 mb-6">
         <div className="flex flex-col items-center gap-2 py-8">
@@ -202,7 +295,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
               {(['pending', 'approved', 'rejected', 'all'] as PaymentFilter[]).map(f => (
                 <CommandButton
                   key={f}
-                  variant={filter === f ? 'default' : 'outline'}
+                  variant={filter === f ? 'primary' : 'secondary'}
                   size="sm"
                   onClick={() => setFilter(f)}
                   className={filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white'}
@@ -248,7 +341,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                       <div className="min-w-0">
                         <p className="text-white font-semibold text-sm truncate">{p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}</p>
                         <p className="text-zinc-500 text-xs">
-                          {p.entry_fee_amount ? formatCurrency(p.entry_fee_amount, p.currency || 'USD') : 'Paid'} · {new Date(p.registered_at).toLocaleDateString()}
+                          {p.entry_fee_amount ? formatCurrency(p.entry_fee_amount, currency) : 'Paid'} · {new Date(p.registered_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -261,8 +354,17 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <CommandButton variant="outline" size="sm" onClick={() => viewReceipt(p)} className="gap-1">
-                          <Eye className="w-3.5 h-3.5" /> Receipt
+                        <CommandButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openReceipt(p)}
+                          disabled={receiptLoadingId === p.id}
+                          className="gap-1"
+                        >
+                          {receiptLoadingId === p.id
+                            ? <Clock className="w-3.5 h-3.5 animate-pulse" />
+                            : <Eye className="w-3.5 h-3.5" />}
+                          Receipt
                         </CommandButton>
                       )}
                       {!p.payment_receipt_url && p.payment_status === 'pending' && (
@@ -270,11 +372,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                       )}
                       {p.payment_status === 'pending' && (
                         <>
-                          <CommandButton variant="default" size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
+                          <CommandButton variant="success" size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
                           </CommandButton>
                           <CommandButton
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => openRejectDialog(p)}
                             disabled={processingId === p.id}
@@ -343,39 +445,84 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
         </div>
       </div>
 
-      {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) closeReceiptDialog(); }}>
+      {/* Receipt Review Dialog — inline preview + approve/reject */}
+      <Dialog open={!!(receiptUrl || receiptLoading)} onOpenChange={(open) => { if (!open) closeReceipt(); }}>
         <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-white">Payment Receipt</DialogTitle>
-          </DialogHeader>
-          {receiptViewUrl && (
-            <div className="relative flex items-center justify-center max-h-[70vh] overflow-auto min-h-[200px]">
-              {receiptLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Clock className="w-8 h-8 text-zinc-400 animate-pulse" />
-                </div>
-              )}
-              {receiptMimeType === 'application/pdf' ? (
-                <iframe
-                  src={receiptViewUrl}
-                  title="Payment Receipt"
-                  className="w-full h-[65vh] rounded-lg border border-white/10"
-                  onLoad={() => setReceiptLoading(false)}
-                  onError={handleReceiptLoadError}
-                />
-              ) : (
-                <img
-                  src={receiptViewUrl}
-                  alt="Payment Receipt"
-                  loading="eager"
-                  decoding="async"
-                  className="max-w-full max-h-[65vh] object-contain rounded-lg"
-                  onLoad={() => setReceiptLoading(false)}
-                  onError={handleReceiptLoadError}
-                />
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-white">
+                {receiptParticipant?.team_name || receiptParticipant?.gamer_tag || 'Receipt'}
+                {receiptParticipant?.entry_fee_amount
+                  ? ` · ${formatCurrency(receiptParticipant.entry_fee_amount, currency)}`
+                  : ''}
+              </DialogTitle>
+              {receiptIdx >= 0 && (
+                <span className="text-xs text-zinc-500 mr-8">{receiptIdx + 1} / {pendingWithReceipts.length}</span>
               )}
             </div>
+          </DialogHeader>
+
+          <div className="relative flex items-center justify-center max-h-[60vh] min-h-[200px] overflow-auto">
+            {receiptLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Clock className="w-8 h-8 text-zinc-400 animate-pulse" />
+              </div>
+            )}
+            {receiptUrl && (
+              <img
+                src={receiptUrl}
+                alt="Payment Receipt"
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                onError={() => {
+                  toast({ title: 'Could not display receipt image', variant: 'destructive' });
+                }}
+              />
+            )}
+          </div>
+
+          {receiptParticipant?.payment_status === 'pending' && (
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <div className="flex items-center gap-2">
+                <CommandButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateReceipt(-1)}
+                  disabled={!hasPrev || receiptLoading}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev
+                </CommandButton>
+                <CommandButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateReceipt(1)}
+                  disabled={!hasNext || receiptLoading}
+                  className="gap-1"
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </CommandButton>
+              </div>
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <CommandButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRejectFromDialog}
+                  disabled={processingId === receiptParticipant.id}
+                  className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Reject
+                </CommandButton>
+                <CommandButton
+                  variant="success"
+                  size="sm"
+                  onClick={handleApproveFromDialog}
+                  disabled={processingId === receiptParticipant.id}
+                  className="gap-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Approve
+                </CommandButton>
+              </div>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
@@ -399,12 +546,138 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
           />
           <DialogFooter>
             <CommandButton variant="ghost" type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</CommandButton>
-            <CommandButton variant="destructive" onClick={handleReject} disabled={processingId === rejectTarget?.id}>
+            <CommandButton variant="danger" onClick={handleReject} disabled={processingId === rejectTarget?.id}>
               Reject Payment
             </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Deny Withdrawal Dialog */}
+      <Dialog open={!!denyTarget} onOpenChange={(open) => { if (!open) { setDenyTarget(null); setDenyReason(''); } }}>
+        <DialogContent className="bg-[#0a0a0c] border border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">Deny Withdrawal Request</DialogTitle>
+          </DialogHeader>
+          <p className="text-zinc-400 text-sm">
+            <span className="text-white font-semibold">{denyTarget?.team_name || denyTarget?.gamer_tag || 'This participant'}</span> will be restored to approved status and remain in the tournament.
+          </p>
+          <Textarea
+            placeholder="Reason for denial (optional)..."
+            value={denyReason}
+            onChange={e => setDenyReason(e.target.value)}
+            className="bg-zinc-900 border-zinc-700 text-white"
+            rows={2}
+          />
+          <DialogFooter>
+            <CommandButton variant="ghost" type="button" onClick={() => { setDenyTarget(null); setDenyReason(''); }}>Cancel</CommandButton>
+            <CommandButton variant="primary" onClick={handleDenyWithdrawal} disabled={withdrawalProcessing.has(denyTarget?.id ?? '')}>
+              Deny Request
+            </CommandButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdrawal Queue */}
+      {withdrawalParticipants.length > 0 && (
+        <div className="relative bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-lg overflow-hidden p-6 sm:p-8 mb-6">
+          <div className="border-b border-white/5 pb-4 mb-6">
+            <p className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
+              <RefreshCw className="w-5 h-5 text-amber-400" />
+              Withdrawal Requests
+              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 ml-2">{withdrawalParticipants.length}</Badge>
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">Upload refund proof and process each withdrawal, or deny to keep the participant registered.</p>
+          </div>
+
+          <div className="space-y-4">
+            {withdrawalParticipants.map(p => {
+              const proofFile = proofFiles.get(p.id);
+              const notes = refundNotes.get(p.id) ?? '';
+              const isProcessing = withdrawalProcessing.has(p.id);
+              return (
+                <div key={p.id} className="bg-zinc-900/50 border border-amber-500/10 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    {p.team_logo ? (
+                      <img src={p.team_logo} alt="" loading="lazy" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-bold">
+                        {(p.team_name || p.gamer_tag || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold text-sm truncate">{p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}</p>
+                      <p className="text-zinc-500 text-xs">
+                        {p.entry_fee_amount ? formatCurrency(p.entry_fee_amount, currency) : 'Paid'} · Requested {p.withdrawal_requested_at ? new Date(p.withdrawal_requested_at).toLocaleDateString() : 'recently'}
+                      </p>
+                    </div>
+                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-xs">Pending Refund</Badge>
+                  </div>
+
+                  {p.withdrawal_reason && (
+                    <p className="text-xs text-zinc-400 bg-zinc-800/50 rounded p-2">
+                      <span className="text-zinc-500">Reason: </span>{p.withdrawal_reason}
+                    </p>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1">
+                      <input
+                        ref={el => { if (el) proofInputRefs.current.set(p.id, el); }}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f) setProofFiles(prev => new Map(prev).set(p.id, f));
+                        }}
+                      />
+                      <CommandButton
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => proofInputRefs.current.get(p.id)?.click()}
+                        className="w-full gap-1.5 justify-start"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {proofFile ? proofFile.name : 'Upload Refund Proof'}
+                      </CommandButton>
+                    </div>
+                    <div className="flex gap-2">
+                      <CommandButton
+                        variant="success"
+                        size="sm"
+                        onClick={() => handleProcessRefund(p)}
+                        disabled={isProcessing || !proofFile}
+                        className="gap-1"
+                      >
+                        {isProcessing ? <Clock className="w-3.5 h-3.5 animate-pulse" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                        Process Refund
+                      </CommandButton>
+                      <CommandButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setDenyTarget(p); setDenyReason(''); }}
+                        disabled={isProcessing}
+                        className="border-red-500/40 text-red-400 hover:bg-red-500/10 gap-1"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Deny
+                      </CommandButton>
+                    </div>
+                  </div>
+
+                  <Textarea
+                    placeholder="Refund notes (optional — recorded with proof)..."
+                    value={notes}
+                    onChange={e => setRefundNotes(prev => new Map(prev).set(p.id, e.target.value))}
+                    className="bg-zinc-900 border-zinc-700 text-white text-xs resize-none"
+                    rows={2}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </>
   );
 };

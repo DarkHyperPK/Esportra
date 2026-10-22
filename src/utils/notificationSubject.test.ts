@@ -8,7 +8,7 @@ import {
 } from './notificationSubject';
 
 const n = (over: Partial<Notification>): Notification => ({
-  id: 'n', user_id: 'u', type: 'general', title: 'T', message: '', is_read: false, created_at: '2026-10-04T12:00:00Z', ...over,
+  id: 'n', user_id: 'u', type: 'general', title: 'T', message: '', is_read: false, created_at: new Date().toISOString(), ...over,
 });
 
 describe('parseVersus', () => {
@@ -51,6 +51,10 @@ describe('helpers', () => {
     expect(isPriorityNotification(n({ type: 'veto_your_turn' }))).toBe(true);
     expect(isPriorityNotification(n({ type: 'veto_your_turn', is_read: true }))).toBe(false);
     expect(isPriorityNotification(n({ type: 'result_accepted' }))).toBe(false);
+  });
+  it('expires priority items after 24h', () => {
+    const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    expect(isPriorityNotification(n({ type: 'match_ready', created_at: old }))).toBe(false);
   });
   it('labels the main action', () => {
     expect(priorityActionLabel('match_ready')).toBe('Open match room');

@@ -57,9 +57,14 @@ export function initials(name: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-/** Unread items that need the user to do something now. */
+const PRIORITY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** Unread items that need the user to do something now (expires after 24h). */
 export function isPriorityNotification(n: Notification): boolean {
-  return !n.is_read && getNotificationKind(n.type).tone === 'accent';
+  if (n.is_read) return false;
+  if (getNotificationKind(n.type).tone !== 'accent') return false;
+  const age = Date.now() - new Date(n.created_at).getTime();
+  return age < PRIORITY_MAX_AGE_MS;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -67,6 +72,7 @@ const ACTION_LABELS: Record<string, string> = {
   match_ready: 'Open match room',
   team_invite: 'Review invite',
   tournament_invite: 'Redeem invite',
+  payment_rejected: 'Re-upload receipt',
 };
 
 export function priorityActionLabel(type: string): string {
