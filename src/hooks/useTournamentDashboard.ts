@@ -91,6 +91,8 @@ export interface DashboardParticipant {
     currency?: string | null;
     withdrawal_requested_at?: string | null;
     withdrawal_reason?: string | null;
+    refund_proof_url?: string | null;
+    refund_processed_at?: string | null;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -199,6 +201,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 currency:                 p.currency ?? null,
                 withdrawal_requested_at:  p.withdrawal_requested_at ?? null,
                 withdrawal_reason:        p.withdrawal_reason ?? null,
+                refund_proof_url:         p.refund_proof_url ?? null,
+                refund_processed_at:      p.refund_processed_at ?? null,
                 user:             p.username ? { username: p.username, avatar_url: (p as any).user_avatar_url ?? null, full_name: (p as any).user_full_name ?? null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));

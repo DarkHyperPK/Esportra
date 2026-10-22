@@ -134,6 +134,7 @@ const TournamentDetails = () => {
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
+  const pendingWithdrawal = registrationStatus === 'withdrawal_pending';
   const isCaptainOrSelf = registrationDetails?.registration_type === 'team' ? isCaptain : true;
   const now = typeof window !== 'undefined' ? new Date() : null;
   const hasMissedCheckIn =
@@ -692,6 +693,7 @@ const TournamentDetails = () => {
         isLoading={registrationLoading}
         checkInStartTime={requiresCheckIn ? checkInStartTime : null}
         awaitingApproval={awaitingApproval}
+        pendingWithdrawal={pendingWithdrawal}
         maxTeams={tournamentMaxTeams || undefined}
       />
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle, ChevronLeft, ChevronRight, Upload, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle, ChevronLeft, ChevronRight, Upload, RefreshCw, FileCheck } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { CommandButton } from '@/components/management/CommandSurface';
 import { Badge } from '@/components/ui/badge';
@@ -53,13 +53,29 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const receiptBlobUrlRef = React.useRef<string | null>(null);
   const receiptCacheRef = React.useRef<Map<string, string>>(new Map());
 
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofParticipant, setProofParticipant] = useState<DashboardParticipant | null>(null);
+  const [proofLoading, setProofLoading] = useState(false);
+  const [proofLoadingId, setProofLoadingId] = useState<string | null>(null);
+  const proofCacheRef = React.useRef<Map<string, string>>(new Map());
+
   const paidParticipants = useMemo(
-    () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required' && p.status !== 'withdrawal_pending'),
+    () => participants.filter(p =>
+      p.payment_status &&
+      p.payment_status !== 'not_required' &&
+      p.status !== 'withdrawal_pending' &&
+      !(p.status === 'cancelled' && p.refund_processed_at)
+    ),
     [participants]
   );
 
   const withdrawalParticipants = useMemo(
     () => participants.filter(p => p.status === 'withdrawal_pending'),
+    [participants]
+  );
+
+  const processedRefunds = useMemo(
+    () => participants.filter(p => p.status === 'cancelled' && !!p.refund_processed_at),
     [participants]
   );
 
@@ -166,6 +182,39 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     setReceiptLoading(false);
   };
 
+  const openProof = async (participant: DashboardParticipant) => {
+    const cached = proofCacheRef.current.get(participant.id);
+    if (cached) {
+      setProofParticipant(participant);
+      setProofUrl(cached);
+      return;
+    }
+    setProofLoadingId(participant.id);
+    setProofParticipant(participant);
+    setProofLoading(true);
+    setProofUrl(null);
+    try {
+      const blob = await apiClient.getBlob(
+        `/api/tournaments/${tournamentId}/participants/${participant.id}/refund-proof`
+      );
+      const url = URL.createObjectURL(blob);
+      proofCacheRef.current.set(participant.id, url);
+      setProofUrl(url);
+    } catch {
+      toast({ title: 'Could not load refund proof', variant: 'destructive' });
+      setProofParticipant(null);
+    } finally {
+      setProofLoading(false);
+      setProofLoadingId(null);
+    }
+  };
+
+  const closeProof = () => {
+    setProofUrl(null);
+    setProofParticipant(null);
+    setProofLoading(false);
+  };
+
   const navigateReceipt = (direction: -1 | 1) => {
     if (!receiptParticipant) return;
     const idx = pendingWithReceipts.findIndex(p => p.id === receiptParticipant.id);
@@ -268,7 +317,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const hasPrev = receiptIdx > 0;
   const hasNext = receiptIdx >= 0 && receiptIdx < pendingWithReceipts.length - 1;
 
-  if (paidParticipants.length === 0 && withdrawalParticipants.length === 0) {
+  if (paidParticipants.length === 0 && withdrawalParticipants.length === 0 && processedRefunds.length === 0) {
     return (
       <div className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden p-6 mb-6">
         <div className="flex flex-col items-center gap-2 py-8">
@@ -577,6 +626,79 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Refund Proof Viewer Dialog */}
+      <Dialog open={!!(proofUrl || proofLoading)} onOpenChange={(open) => { if (!open) closeProof(); }}>
+        <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Refund Proof — {proofParticipant?.team_name || proofParticipant?.gamer_tag || 'Participant'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative flex items-center justify-center max-h-[60vh] min-h-[200px] overflow-auto">
+            {proofLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Clock className="w-8 h-8 text-zinc-400 animate-pulse" />
+              </div>
+            )}
+            {proofUrl && (
+              <img
+                src={proofUrl}
+                alt="Refund Proof"
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                onError={() => toast({ title: 'Could not display proof image', variant: 'destructive' })}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Processed Refunds */}
+      {processedRefunds.length > 0 && (
+        <div className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden p-6 sm:p-8 mb-6">
+          <div className="border-b border-white/5 pb-4 mb-6">
+            <p className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
+              <FileCheck className="w-5 h-5 text-green-400" />
+              Processed Refunds
+              <Badge className="bg-green-500/20 text-green-300 border-green-500/40 ml-2">{processedRefunds.length}</Badge>
+            </p>
+          </div>
+          <div className="space-y-3">
+            {processedRefunds.map(p => (
+              <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-zinc-900/50 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {p.team_logo ? (
+                    <img src={p.team_logo} alt="" loading="lazy" decoding="async" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-bold">
+                      {(p.team_name || p.gamer_tag || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}</p>
+                    <p className="text-zinc-500 text-xs">
+                      {p.entry_fee_amount ? formatCurrency(p.entry_fee_amount, currency) : 'Paid'} · Refunded {p.refund_processed_at ? new Date(p.refund_processed_at).toLocaleDateString() : ''}
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-green-500/20 text-green-300 border-green-500/40 text-xs shrink-0">Refunded</Badge>
+                {p.refund_proof_url && (
+                  <CommandButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openProof(p)}
+                    disabled={proofLoadingId === p.id}
+                    className="gap-1 shrink-0"
+                  >
+                    {proofLoadingId === p.id ? <Clock className="w-3.5 h-3.5 animate-pulse" /> : <Eye className="w-3.5 h-3.5" />}
+                    View Proof
+                  </CommandButton>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Withdrawal Queue */}
       {withdrawalParticipants.length > 0 && (

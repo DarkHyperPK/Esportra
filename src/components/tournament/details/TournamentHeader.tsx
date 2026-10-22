@@ -35,6 +35,7 @@ interface TournamentHeaderProps {
     isLoading?: boolean; // New prop
     checkInStartTime?: Date | null;
     awaitingApproval?: boolean;
+    pendingWithdrawal?: boolean;
     maxTeams?: number;
 }
 
@@ -55,6 +56,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     isLoading = false, // Default to false
     checkInStartTime,
     awaitingApproval = false,
+    pendingWithdrawal = false,
     maxTeams
 }) => {
     const navigate = useNavigate();
@@ -259,7 +261,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 )}
                                             </div>
                                         )}
-                                        {isRegistered && awaitingApproval && (
+                                        {isRegistered && pendingWithdrawal && (
+                                            <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
+                                                <Clock className="w-5 h-5 animate-pulse" />
+                                                PENDING WITHDRAWAL
+                                            </div>
+                                        )}
+                                        {isRegistered && awaitingApproval && !pendingWithdrawal && (
                                             <div className="flex gap-4">
                                                 <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
                                                     <Clock className="w-5 h-5 animate-pulse" />
@@ -272,7 +280,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 )}
                                             </div>
                                         )}
-                                        {isRegistered && !awaitingApproval && isCaptain && (
+                                        {isRegistered && !awaitingApproval && !pendingWithdrawal && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
                                                     <SuccessButton onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} size="hero" className="active:scale-[0.98] transition-transform">
@@ -297,7 +305,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                             </SuccessButton>
                                         )}
                                         {/* Countdown for Check-in */}
-                                        {!canSelfCheckIn && !awaitingApproval && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
+                                        {!canSelfCheckIn && !awaitingApproval && !pendingWithdrawal && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
                                             <div className="ml-4 h-14 md:h-16 px-8 flex flex-col justify-center items-center bg-gray-900/80 border border-white/10 text-white rounded-none backdrop-blur-md">
                                                 <span className="text-[10px] text-gray-400 uppercase tracking-widest leading-none mb-1">Check-in Opens In</span>
                                                 <div className="text-xl font-mono text-emerald-400 leading-none">
