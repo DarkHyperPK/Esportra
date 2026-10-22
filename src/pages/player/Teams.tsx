@@ -102,6 +102,57 @@ function buildTeamMemberOrderPayload(
   ];
 }
 
+// Roster types and pure helpers — module-scope so they're stable references (no useCallback needed)
+type RosterLineupRole = 'starter' | 'substitute' | 'coach';
+type RosterMember = {
+  user_id: string;
+  username?: string;
+  avatar_url?: string | null;
+  card_image_url?: string | null;
+  is_starter?: boolean;
+  roster_role?: RosterLineupRole;
+};
+type Roster = {
+  id: string;
+  name: string;
+  game: string;
+  format: string | null;
+  team_size: number;
+  member_count?: number;
+  members?: RosterMember[];
+};
+type RosterRemoveTarget = { roster: Roster; userId: string; username: string };
+
+function resolveMemberRosterRole(member: RosterMember): RosterLineupRole {
+  if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
+    return member.roster_role;
+  }
+  return member.is_starter === false ? 'substitute' : 'starter';
+}
+
+function getRosterCapacity(roster: Pick<Roster, 'game' | 'format' | 'team_size'>) {
+  return getRosterLimits(roster.game, roster.format, roster.team_size);
+}
+
+function countRosterRoles(
+  memberIds: string[],
+  roles: Record<string, RosterLineupRole>,
+  rosterMembers?: RosterMember[],
+  excludeUserId?: string,
+) {
+  const counts = { starter: 0, substitute: 0, coach: 0 };
+  memberIds.forEach((uid) => {
+    if (excludeUserId && uid === excludeUserId) return;
+    let role = roles[uid];
+    if (!role && rosterMembers) {
+      const member = rosterMembers.find((m) => m.user_id === uid);
+      if (member) role = resolveMemberRosterRole(member);
+    }
+    counts[role ?? 'starter'] += 1;
+  });
+  return counts;
+}
+
 const TeamsPage = () => {
   useGameCatalog();
   const catalogGames = listCatalogGames();
@@ -161,24 +212,6 @@ const TeamsPage = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([]);
 
   // Rosters
-  type RosterLineupRole = 'starter' | 'substitute' | 'coach';
-  type RosterMember = {
-    user_id: string;
-    username?: string;
-    avatar_url?: string | null;
-    card_image_url?: string | null;
-    is_starter?: boolean;
-    roster_role?: RosterLineupRole;
-  };
-  type Roster = {
-    id: string;
-    name: string;
-    game: string;
-    format: string | null;
-    team_size: number;
-    member_count?: number;
-    members?: RosterMember[];
-  };
   const [rosters, setRosters] = useState<Roster[]>([]);
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
   const [newRosterName, setNewRosterName] = useState('');
@@ -201,38 +234,8 @@ const TeamsPage = () => {
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
-  type RosterRemoveTarget = { roster: Roster; userId: string; username: string };
   const [rosterRemoveTarget, setRosterRemoveTarget] = useState<RosterRemoveTarget | null>(null);
   const [rosterRemoving, setRosterRemoving] = useState(false);
-
-  const resolveMemberRosterRole = (member: RosterMember): RosterLineupRole => {
-    if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
-      return member.roster_role;
-    }
-    return member.is_starter === false ? 'substitute' : 'starter';
-  };
-
-  const getRosterCapacity = (roster: Pick<Roster, 'game' | 'format' | 'team_size'>) =>
-    getRosterLimits(roster.game, roster.format, roster.team_size);
-
-  const countRosterRoles = (
-    memberIds: string[],
-    roles: Record<string, RosterLineupRole>,
-    rosterMembers?: RosterMember[],
-    excludeUserId?: string,
-  ) => {
-    const counts = { starter: 0, substitute: 0, coach: 0 };
-    memberIds.forEach((uid) => {
-      if (excludeUserId && uid === excludeUserId) return;
-      let role = roles[uid];
-      if (!role && rosterMembers) {
-        const member = rosterMembers.find((m) => m.user_id === uid);
-        if (member) role = resolveMemberRosterRole(member);
-      }
-      counts[role ?? 'starter'] += 1;
-    });
-    return counts;
-  };
 
   const getGameLogo = useCallback((gameName: string): string => {
     if (!gameName) return '';
@@ -290,11 +293,11 @@ const TeamsPage = () => {
   // Memoized to avoid repeated computation on every keystroke/state change inside the manage roster modal
   const modalLimits = React.useMemo(
     () => manageRoster ? getRosterCapacity(manageRoster) : null,
-    [manageRoster, getRosterCapacity]
+    [manageRoster]
   );
   const modalCounts = React.useMemo(
     () => manageRoster ? countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members) : null,
-    [manageMembers, manageMemberRoles, manageRoster, countRosterRoles]
+    [manageMembers, manageMemberRoles, manageRoster]
   );
   const membersNotInRoster = React.useMemo(
     () => teamMembers.filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id),
