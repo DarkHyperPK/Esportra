@@ -49,7 +49,7 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   // Tournaments
   tournament_announcement: kind(Megaphone, 'neutral', 'tournaments', 'Announcement'),
   tournament_invite: kind(Ticket, 'accent', 'tournaments', 'Invite'),
-  payment_rejected: kind(XCircle, 'accent', 'tournaments', 'Payment'),
+  payment_rejected: kind(XCircle, 'warning', 'tournaments', 'Payment'),
   ban: kind(ShieldAlert, 'critical', 'tournaments', 'Banned'),
   kick: kind(ShieldAlert, 'warning', 'tournaments', 'Removed'),
   // Staff
