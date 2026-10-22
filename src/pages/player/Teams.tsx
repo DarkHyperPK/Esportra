@@ -201,6 +201,10 @@ const TeamsPage = () => {
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
+  type RosterRemoveTarget = { roster: Roster; userId: string; username: string };
+  const [rosterRemoveTarget, setRosterRemoveTarget] = useState<RosterRemoveTarget | null>(null);
+  const [rosterRemoving, setRosterRemoving] = useState(false);
+
   const resolveMemberRosterRole = (member: RosterMember): RosterLineupRole => {
     if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
       return member.roster_role;
@@ -571,6 +575,23 @@ const TeamsPage = () => {
         description: error.message || "Failed to remove member",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleConfirmRosterRemove = async () => {
+    if (!rosterRemoveTarget || !currentTeam) return;
+    setRosterRemoving(true);
+    try {
+      await apiClient.delete(`/api/teams/${currentTeam.id}/rosters/${rosterRemoveTarget.roster.id}/members/${rosterRemoveTarget.userId}`);
+      setRosters(prev => prev.map(r => r.id === rosterRemoveTarget.roster.id
+        ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1), members: (r.members || []).filter(m => m.user_id !== rosterRemoveTarget.userId) }
+        : r));
+      toast({ title: 'Removed from roster', description: `${rosterRemoveTarget.username} removed from ${rosterRemoveTarget.roster.name}. They remain on the team.` });
+      setRosterRemoveTarget(null);
+    } catch (e: any) {
+      toast({ title: 'Removal failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setRosterRemoving(false);
     }
   };
 
@@ -1456,16 +1477,42 @@ const TeamsPage = () => {
         )}
 
         {/* Core Roster Cards Section */}
-        {rosters.length > 0 && (
+        <div className="mb-4 flex items-center justify-between">
+          <div />
+          {isCaptain && rosters.length < 3 && (
+            <OutlineButton onClick={openCreateRoster} className="rounded-full px-6">
+              <Plus className="w-4 h-4 mr-2" />
+              CREATE ROSTER
+            </OutlineButton>
+          )}
+        </div>
+        {rosters.length === 0 ? (
+          <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-12 mb-8 text-center">
+            <Gamepad2 className="w-10 h-10 text-white/20 mx-auto mb-4" />
+            <p className="text-white/40 font-light tracking-wide uppercase text-sm">No rosters yet</p>
+            {isCaptain && <p className="text-white/20 text-xs mt-2">Create a roster to organize your lineup by game.</p>}
+          </div>
+        ) : (
           <div className="space-y-12 mb-12">
             {rosters.map((r) => (
               <div key={`core-${r.id}`} className="w-full">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   <h2 className="text-sm font-heading font-bold uppercase tracking-[0.3em] text-white/40 whitespace-nowrap bg-white/5 px-6 py-2 rounded-full border border-white/5 backdrop-blur-sm">
-                    CORE ROSTER ( <span className="text-rose-400">{r.name}</span> : <span className="text-white/60">{r.game}</span> )
+                    <span className="text-rose-400">{r.name}</span> <span className="text-white/20">·</span> <span className="text-white/60">{r.game}</span>
+                    <span className="text-white/20 ml-3 text-[10px]">{r.member_count || 0}/{getRosterCapacity(r).totalSlots}</span>
                   </h2>
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  {isCaptain && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <GhostButton size="sm" className="h-8 px-3 text-xs rounded-full" onClick={() => openManageRoster(r)}>
+                        <Edit className="w-3.5 h-3.5 mr-1.5" />Manage
+                      </GhostButton>
+                      <DangerButton size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full" onClick={() => deleteRoster(r)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </DangerButton>
+                    </div>
+                  )}
                 </div>
 
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, r)}>
@@ -1494,14 +1541,7 @@ const TeamsPage = () => {
                               isCurrentUser={member.user_id === user?.id}
                               onRemove={
                                 isCaptain && member.user_id !== currentTeam?.owner_id
-                                  ? () => {
-                                      setMemberToRemove({
-                                        id: member.user_id,
-                                        user_id: member.user_id,
-                                        username: member.username || 'Unknown User',
-                                      } as TeamMember);
-                                      setShowRemoveMember(true);
-                                    }
+                                  ? () => setRosterRemoveTarget({ roster: r, userId: member.user_id, username: member.username || 'Unknown' })
                                   : undefined
                               }
                               className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
@@ -1543,64 +1583,78 @@ const TeamsPage = () => {
           </div>
         )}
 
-        {/* Rosters */}
+        {/* Team Members */}
         <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white flex items-center gap-3">
-              <Gamepad2 className="w-5 h-5 text-white/60" />
-              Active Rosters
+              <Users className="w-5 h-5 text-white/60" />
+              Team Members
+              <span className="text-white/20 font-mono text-sm ml-2">{teamMembers.length}</span>
             </h2>
-            {isCaptain && (
-              <OutlineButton onClick={openCreateRoster} className="rounded-full px-6">
-                <Plus className="w-4 h-4 mr-2" />
-                CREATE ROSTER
-              </OutlineButton>
-            )}
           </div>
 
-          {rosters.length === 0 ? (
+          {teamMembers.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
-              <div className="text-white/40 font-light tracking-wide">NO ACTIVE ROSTERS FOUND</div>
+              <div className="text-white/40 font-light tracking-wide">NO MEMBERS</div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rosters.map((r) => (
-                <div key={r.id} className="group relative bg-[#0a0a0a]/40 backdrop-blur-sm border border-white/10 hover:border-white/20 rounded-xl p-6 transition-all duration-300">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="font-heading font-medium text-white tracking-wide">{r.name}</div>
-                    <Badge variant="secondary" className="bg-white/5 text-white/60 border-0 font-mono text-xs">
-                      {r.member_count || 0}/{getRosterCapacity(r).totalSlots}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-white/50 text-sm font-light mb-6">
-                    {getGameLogo(r.game) && (
-                      <img
-                        src={getGameLogo(r.game)}
-                        alt={`${r.game} logo`}
-                        className="w-4 h-4 object-contain grayscale opacity-60"
-                      />
+            <div className="divide-y divide-white/5">
+              {teamMembers.map((member) => {
+                const isOwner = member.user_id === currentTeam?.owner_id;
+                const isSelf = member.user_id === user?.id;
+                return (
+                  <div key={member.user_id} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
+                    <Avatar className="w-10 h-10 shrink-0 ring-1 ring-white/10">
+                      <AvatarImage src={member.avatar_url} />
+                      <AvatarFallback className="bg-white/5 text-white/60 text-xs font-heading">
+                        {(member.username || '?').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium text-sm truncate">{member.username}</span>
+                        {isSelf && <span className="text-[10px] text-white/30 uppercase tracking-widest">(you)</span>}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {isOwner ? (
+                          <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">Captain</Badge>
+                        ) : (
+                          <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-white/5 text-white/30 border border-white/10">{member.role || 'Member'}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {isCaptain && !isOwner && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <GhostButton
+                          size="sm"
+                          className="h-8 px-3 text-xs rounded-full text-white/40 hover:text-white"
+                          onClick={() => { setMemberToRemove(member); setShowTransferCaptaincy(true); }}
+                        >
+                          <Crown className="w-3.5 h-3.5 mr-1.5" />Transfer
+                        </GhostButton>
+                        <DangerButton
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 text-xs rounded-full"
+                          onClick={() => { setMemberToRemove(member); setShowRemoveMember(true); }}
+                        >
+                          <UserMinus className="w-3.5 h-3.5 mr-1.5" />Remove
+                        </DangerButton>
+                      </div>
                     )}
-                    <span className="uppercase tracking-wider">{r.game}</span>
-                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                    <span>{r.format || 'Standard'}</span>
-                  </div>
-
-                  {isCaptain && (
-                    <div className="flex gap-2 pt-4 border-t border-white/5">
-                      <GhostButton size="sm" className="h-9 flex-1 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</GhostButton>
+                    {!isCaptain && isSelf && !isOwner && (
                       <DangerButton
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0"
-                        onClick={() => deleteRoster(r)}
+                        className="h-8 px-3 text-xs rounded-full shrink-0"
+                        onClick={() => { setMemberToRemove(member); setShowRemoveMember(true); }}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <UserMinus className="w-3.5 h-3.5 mr-1.5" />Leave
                       </DangerButton>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -2386,6 +2440,29 @@ const TeamsPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Roster Remove Confirmation */}
+      <AlertDialog open={!!rosterRemoveTarget} onOpenChange={(open) => { if (!open) setRosterRemoveTarget(null); }}>
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100]" data-lenis-prevent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Remove from Roster</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
+              Remove <span className="text-orange-400 font-medium">{rosterRemoveTarget?.username}</span> from the <span className="text-rose-400 font-medium">{rosterRemoveTarget?.roster.name}</span> roster?
+              <br /><span className="text-white/30 text-xs mt-2 block">They will remain on the team and can be re-added to any roster.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRosterRemove}
+              disabled={rosterRemoving}
+              className="bg-orange-600/80 hover:bg-orange-600 text-white h-11 rounded-xl px-6 font-heading tracking-widest text-xs transition-all hover:scale-105"
+            >
+              {rosterRemoving ? 'REMOVING...' : 'REMOVE FROM ROSTER'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
