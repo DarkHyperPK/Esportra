@@ -290,11 +290,11 @@ const TeamsPage = () => {
   // Memoized to avoid repeated computation on every keystroke/state change inside the manage roster modal
   const modalLimits = React.useMemo(
     () => manageRoster ? getRosterCapacity(manageRoster) : null,
-    [manageRoster]
+    [manageRoster, getRosterCapacity]
   );
   const modalCounts = React.useMemo(
     () => manageRoster ? countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members) : null,
-    [manageMembers, manageMemberRoles, manageRoster]
+    [manageMembers, manageMemberRoles, manageRoster, countRosterRoles]
   );
   const membersNotInRoster = React.useMemo(
     () => teamMembers.filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id),
