@@ -287,6 +287,20 @@ const TeamsPage = () => {
   const currentTeam = userTeams?.[0];
   const isCaptain = currentTeam?.owner_id === user?.id;
 
+  // Memoized to avoid repeated computation on every keystroke/state change inside the manage roster modal
+  const modalLimits = React.useMemo(
+    () => manageRoster ? getRosterCapacity(manageRoster) : null,
+    [manageRoster]
+  );
+  const modalCounts = React.useMemo(
+    () => manageRoster ? countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members) : null,
+    [manageMembers, manageMemberRoles, manageRoster]
+  );
+  const membersNotInRoster = React.useMemo(
+    () => teamMembers.filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id),
+    [teamMembers, manageMembers, currentTeam?.owner_id]
+  );
+
   const fetchTeamStats = useCallback(async () => {
     if (!currentTeam?.id) return;
     try {
@@ -2168,10 +2182,7 @@ const TeamsPage = () => {
                     <div className="flex flex-col">
                       <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Size</span>
                       <span className="text-xs font-medium text-white/80 leading-none">
-                        {(() => {
-                          const limits = getRosterCapacity(manageRoster);
-                          return `${limits.starters} starters · ${limits.maxSubstitutes} subs${limits.allowsCoaches ? ` · ${limits.maxCoaches} coaches` : ''}`;
-                        })()}
+                        {modalLimits ? `${modalLimits.starters} starters · ${modalLimits.maxSubstitutes} subs${modalLimits.allowsCoaches ? ` · ${modalLimits.maxCoaches} coaches` : ''}` : ''}
                       </span>
                     </div>
                   </div>
@@ -2186,11 +2197,7 @@ const TeamsPage = () => {
                     <h3 className="text-xl font-heading font-light text-white tracking-tight">Active Roster</h3>
                   </div>
                   <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
-                    {(() => {
-                      const limits = getRosterCapacity(manageRoster);
-                      const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
-                      return `${counts.starter + counts.substitute + counts.coach} / ${limits.totalSlots}`;
-                    })()}
+                    {modalCounts && modalLimits ? `${modalCounts.starter + modalCounts.substitute + modalCounts.coach} / ${modalLimits.totalSlots}` : '—'}
                   </Badge>
                 </div>
 
@@ -2236,11 +2243,9 @@ const TeamsPage = () => {
                         const member = teamMembers.find(m => m.user_id === uid);
                         if (!member) return null;
                         return (
-                          <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
+                          <div
                             key={uid}
-                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-all group relative overflow-hidden"
+                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-colors group relative overflow-hidden"
                           >
                             <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="flex items-center gap-4 relative z-10">
@@ -2280,23 +2285,19 @@ const TeamsPage = () => {
                                 <X className="w-4 h-4" />
                               </DangerButton>
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       })
                   )}
                 </div>
 
                 {/* Team Members NOT in this roster */}
-                {isCaptain && teamMembers.some(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id) && (
+                {isCaptain && membersNotInRoster.length > 0 && (
                   <div className="space-y-3 mt-6">
                     <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">Add Team Members</Label>
                     <div className="grid grid-cols-1 gap-2">
-                      {teamMembers
-                        .filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id)
-                        .map(member => {
-                          const addLimits = getRosterCapacity(manageRoster);
-                          const addCounts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
-                          const playerBucketFull = (addCounts.starter + addCounts.substitute) >= addLimits.maxRoster;
+                      {membersNotInRoster.map(member => {
+                          const playerBucketFull = modalCounts && modalLimits ? (modalCounts.starter + modalCounts.substitute) >= modalLimits.maxRoster : false;
                           return (
                           <div key={`add-${member.user_id}`} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] transition-all">
                             <div className="flex items-center gap-3">
@@ -2311,7 +2312,7 @@ const TeamsPage = () => {
                               variant="ghost"
                               className="h-8 px-3 text-[10px] uppercase tracking-widest"
                               disabled={playerBucketFull}
-                              title={playerBucketFull ? `Player limit reached (max ${addLimits.maxRoster})` : undefined}
+                              title={playerBucketFull ? `Player limit reached (max ${modalLimits?.maxRoster ?? '?'})` : undefined}
                               onClick={() => handleAddMemberToRoster(member.user_id)}
                             >
                               Add to Lineup
@@ -2371,9 +2372,7 @@ const TeamsPage = () => {
                 {selectedInvitees.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {selectedInvitees.map(p => (
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
+                      <div
                         key={p.id}
                         className="pl-3 pr-2 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-full text-xs text-rose-300 flex items-center gap-2 group hover:bg-rose-500/20 transition-colors"
                       >
@@ -2381,7 +2380,7 @@ const TeamsPage = () => {
                         <button onClick={() => setSelectedInvitees(prev => prev.filter(x => x.id !== p.id))} className="text-rose-400 hover:text-white transition-colors">
                           <X className="w-3.5 h-3.5" />
                         </button>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -2389,10 +2388,7 @@ const TeamsPage = () => {
                 <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-4 rounded-xl">
                   <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium">
                     Lineup Capacity: <span className="text-rose-400">
-                      {(() => {
-                        const limits = getRosterCapacity(manageRoster);
-                        return `${limits.starters} starters, ${limits.maxSubstitutes} subs${limits.allowsCoaches ? `, ${limits.maxCoaches} coaches` : ''}`;
-                      })()}
+                      {modalLimits ? `${modalLimits.starters} starters, ${modalLimits.maxSubstitutes} subs${modalLimits.allowsCoaches ? `, ${modalLimits.maxCoaches} coaches` : ''}` : ''}
                     </span>
                   </p>
                   <CtaButton
