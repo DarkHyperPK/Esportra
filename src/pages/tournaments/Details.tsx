@@ -135,6 +135,7 @@ const TournamentDetails = () => {
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
   const pendingWithdrawal = registrationStatus === 'withdrawal_pending';
+  const refundProcessed = registrationStatus === 'cancelled' && !!registrationDetails?.refund_processed_at;
   const isCaptainOrSelf = registrationDetails?.registration_type === 'team' ? isCaptain : true;
   const now = typeof window !== 'undefined' ? new Date() : null;
   const hasMissedCheckIn =
@@ -431,6 +432,7 @@ const TournamentDetails = () => {
           registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
           created_at: r.created_at || r.createdAt,
           updated_at: r.updated_at || r.updatedAt || r.created_at || r.createdAt,
+          refund_processed_at: r.refund_processed_at || r.refundProcessedAt || null,
           team_id: r.team_id || r.teamId || undefined,
           team_captain_id: r.team_captain_id || r.teamCaptainId || undefined
         };
@@ -694,6 +696,8 @@ const TournamentDetails = () => {
         checkInStartTime={requiresCheckIn ? checkInStartTime : null}
         awaitingApproval={awaitingApproval}
         pendingWithdrawal={pendingWithdrawal}
+        refundProcessed={refundProcessed}
+        tournamentId={tournament?.id}
         maxTeams={tournamentMaxTeams || undefined}
       />
 

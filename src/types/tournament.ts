@@ -118,6 +118,7 @@ export interface RegistrationDetails {
     registered_at: string;
     created_at: string;
     updated_at: string;
+    refund_processed_at?: string | null;
 }
 
 export interface TournamentRegistration extends RegistrationDetails {
