@@ -104,7 +104,7 @@ export function NotificationItem({
         <Checkbox
           checked={selected}
           onCheckedChange={(v) => onSelectedChange?.(v === true)}
-          aria-label={`Select “${n.title}”`}
+          aria-label={`Select "${n.title}"`}
           className="mt-2.5 rounded-none border-white/25 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-matte-black"
         />
       )}
@@ -151,7 +151,7 @@ export function NotificationItem({
                 </CommandButton>
                 {expanded && isRefundProof && (
                   <CommandButton variant="secondary" size="sm" slide disabled={proofLoading} onClick={() => void openProof()}>
-                    {proofLoading ? 'Loading…' : 'View Proof'}
+                    {proofLoading ? 'Loading...' : 'View Proof'}
                   </CommandButton>
                 )}
                 {expanded && n.link && !isRefundProof && (
@@ -178,10 +178,10 @@ export function NotificationItem({
       {selectable && !onDelete && <span aria-hidden className="w-9 shrink-0" />}
       {onDelete && (
         <CommandIconButton
-          label={`Delete “${n.title}”`}
-          variant=”ghost”
+          label={`Delete "${n.title}"`}
+          variant="ghost"
           onClick={() => onDelete(n)}
-          className=”shrink-0 self-start border-transparent bg-transparent text-zinc-500 hover:text-white lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100”
+          className="shrink-0 self-start border-transparent bg-transparent text-zinc-500 hover:text-white lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
         >
           <Trash2 aria-hidden />
         </CommandIconButton>
@@ -189,24 +189,24 @@ export function NotificationItem({
 
       {proofOpen && proofUrl && (
         <div
-          className=”fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4”
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setProofOpen(false)}
         >
           <div
-            className=”relative max-w-lg w-full bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl”
+            className="relative max-w-lg w-full bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className=”flex items-center justify-between px-5 py-4 border-b border-white/10”>
-              <div className=”flex items-center gap-2 text-emerald-400”>
-                <CheckCircle className=”w-4 h-4” aria-hidden />
-                <span className=”text-sm font-bold uppercase tracking-widest”>Refund Proof</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle className="w-4 h-4" aria-hidden />
+                <span className="text-sm font-bold uppercase tracking-widest">Refund Proof</span>
               </div>
-              <button type=”button” onClick={() => setProofOpen(false)} className=”text-white/40 hover:text-white transition-colors text-xl leading-none”>×</button>
+              <button type="button" onClick={() => setProofOpen(false)} className="text-white/40 hover:text-white transition-colors text-xl leading-none">{'×'}</button>
             </div>
-            <div className=”p-4”>
-              <img src={proofUrl} alt=”Refund proof” className=”w-full object-contain max-h-[60vh]” />
+            <div className="p-4">
+              <img src={proofUrl} alt="Refund proof" className="w-full object-contain max-h-[60vh]" />
             </div>
-            <p className=”px-5 pb-4 text-xs text-white/30 text-center”>Uploaded by the organizer as confirmation of your refund.</p>
+            <p className="px-5 pb-4 text-xs text-white/30 text-center">Uploaded by the organizer as confirmation of your refund.</p>
           </div>
         </div>
       )}
