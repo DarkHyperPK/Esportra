@@ -1,0 +1,195 @@
+/* Story scenes and the visual rhythm after the event passes. */
+.pricing-hosting-stage,.pricing-hosting-preview { min-height: 520px; }
+.pricing-hosting-scramble { grid-template-columns: .8fr 1.35fr; gap: 4%; }
+.pricing-scramble-copy h3 { font-size: clamp(28px,3vw,42px); margin-top: 22px; }
+.pricing-noise-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; min-height: 46px; padding: 13px 17px; background: #fafafa; color: #09090b; font-size: 11px; margin-top: 24px; }
+.pricing-chat-collage { position: relative; min-width: 0; height: 440px; }
+.pricing-coordination-window { position: absolute; border: 1px solid #4a4b52; box-shadow: 0 25px 45px #0008; overflow: hidden; }
+.pricing-discord-window { width: 79%; top: 6px; left: 0; z-index: 1; background: #26272d; transform: rotate(-2deg); }
+.pricing-coordination-window header { display: flex; align-items: center; gap: 10px; }
+.pricing-discord-window > header { padding: 13px 15px; border-bottom: 1px solid #ffffff12; background: #202126; }
+.pricing-discord-label { color: #bec4ff; font-size: 11px; font-weight: 600; }
+.pricing-discord-window header > span:nth-child(2) { display: flex; align-items: center; gap: 5px; color: #c7c7ce; font-size: 9px; }
+.pricing-discord-window header > svg { margin-left: auto; color: #a1a1aa; }
+.pricing-discord-body { display: flex; }
+.pricing-chat-rail { display: flex; flex-direction: column; gap: 16px; flex: 0 0 98px; padding: 18px 11px; background: #202126; font-size: 8px; color: #999ba6; }
+.pricing-chat-rail > i { font-style: normal; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: #e4e4e7; background: #444652; font-size: 9px; }
+.pricing-chat-rail > strong { color: #fafafa; font-weight: 500; }
+.pricing-discord-thread { flex: 1; min-width: 0; padding: 20px 14px 13px; }
+.pricing-discord-thread > div { display: flex; gap: 8px; margin-bottom: 19px; }
+.pricing-chat-avatar { flex-shrink: 0; display: grid; place-items: center; width: 23px; height: 23px; border-radius: 50%; background: #535166; font: normal 9px var(--font-body); }
+.pricing-chat-avatar-host { background: #425d60; }
+.pricing-discord-thread p { font-size: 10px; line-height: 1.65; color: #e4e4e7; }
+.pricing-discord-thread strong { display: block; font-size: 9px; font-weight: 500; color: #c2b9e0; margin-bottom: 4px; }
+.pricing-discord-thread time { font-size: 7px; color: #999ba6; margin-left: 8px; font-weight: 400; }
+.pricing-discord-thread em { font-style: normal; background: #5865f240; color: #d2d5ff; padding-inline: 3px; }
+.pricing-chat-input { display: block; padding: 10px; background: #37383f; color: #999ba6; font-size: 8px; }
+.pricing-whatsapp-window { width: 258px; right: 0; top: 134px; z-index: 3; background: #14221f; transform: rotate(4deg); }
+.pricing-whatsapp-window > header { padding: 13px; background: #23312c; border-bottom: 1px solid #ffffff0d; }
+.pricing-whatsapp-window header > svg:first-child { color: #98d1b8; }
+.pricing-whatsapp-window header > svg:last-child { margin-left: auto; color: #a1a1aa; }
+.pricing-whatsapp-window header strong { font: 500 9px var(--font-body); display: block; }
+.pricing-whatsapp-window header small { display: block; color: #a8bfb3; font-size: 8px; margin-top: 4px; }
+.pricing-whatsapp-thread { padding: 13px; }
+.pricing-whatsapp-thread > p { margin-right: 20px; padding: 9px 11px; border-radius: 0 8px 8px; background: #293b34; font-size: 10px; line-height: 1.65; margin-bottom: 8px; }
+.pricing-whatsapp-thread > p > span { display: block; color: #a4d2bd; font-size: 8px; margin-bottom: 3px; }
+.pricing-whatsapp-thread small { display: flex; gap: 5px; align-items: center; justify-content: end; color: #9db4a8; font-size: 7px; margin-top: 3px; }
+.pricing-whatsapp-thread > .pricing-whatsapp-outgoing { margin-left: 28px; margin-right: 0; background: #345446; }
+.pricing-sheet-window { z-index: 2; left: 18px; bottom: 0; width: 228px; transform: rotate(-4deg); background: #e6e7e9; color: #161619; }
+.pricing-sheet-window > header { padding: 12px; border-bottom: 1px solid #11111420; font-size: 8px; }
+.pricing-sheet-window header > svg { color: #3b6a51; flex-shrink: 0; }
+.pricing-sheet-window > div { padding: 16px 12px 9px; display: flex; gap: 13px; align-items: baseline; }
+.pricing-sheet-window > div > span { font: 7px ui-monospace,monospace; color: #62636d; }
+.pricing-sheet-window s { font-size: 11px; color: #777780; }
+.pricing-sheet-window strong { font-size: 15px; font-weight: 600; }
+.pricing-sheet-window > p { font-size: 8px; color: #62636d; padding: 0 12px 14px; }
+.pricing-experience { padding-top: 12px; }
+.pricing-experience-caption { margin-bottom: 22px; }
+.pricing-moment { position: relative; isolation: isolate; height: 610px; overflow: hidden; background: #151518; border: 1px solid #ffffff26; }
+.pricing-moment-photo { position: absolute; inset: 0; z-index: -3; width: 100%; height: 100%; object-fit: cover; object-position: center 54%; filter: saturate(.45); }
+.pricing-moment-shade { position: absolute; inset: 0; z-index: -2; background: linear-gradient(0deg,#09090bf5,transparent 72%),linear-gradient(90deg,#09090b90,transparent 80%); }
+.pricing-moment-topline { display: flex; justify-content: space-between; gap: 20px; padding: 30px 36px; font: 8px ui-monospace,monospace; letter-spacing: .14em; color: #d4d4d8; }
+.pricing-moment-copy { position: absolute; left: 36px; right: 36px; bottom: 88px; display: flex; align-items: end; gap: 40px; justify-content: space-between; }
+.pricing-moment h2 { font-size: clamp(44px,5.3vw,80px); font-weight: 600; line-height: 1; letter-spacing: -.065em; }
+.pricing-moment-copy > p { color: #c7c7ce; font-size: 12px; line-height: 1.9; padding-bottom: 5px; }
+.pricing-moment figcaption { position: absolute; right: 28px; bottom: 51px; font-size: 8px; color: #a1a1aa; }
+.pricing-game-gallery { position: relative; z-index: 1; grid-template-columns: repeat(3,1fr); margin: -30px 28px 0; padding: 0; gap: 14px; }
+.pricing-game-window,.pricing-game-window:first-child,.pricing-game-window:last-child { height: 148px; }
+.pricing-game-window figcaption { inset-inline: 16px; bottom: 17px; gap: 12px; }
+.pricing-game-window figcaption > img { height: 29px; width: 29px; }
+.pricing-game-window figcaption > span { font-size: 12px; }
+.pricing-game-window small { font-size: 7px; }
+.pricing-game-valorant .pricing-game-art { object-position: 50% 40%; }
+.pricing-game-tekken .pricing-game-art { object-position: 65% 35%; }
+.pricing-overlay-showcase { display: block; margin-top: 95px; padding: 42px 40px 30px; background: #141417; border: 1px solid #ffffff24; overflow: hidden; }
+.pricing-overlay-copy { display: grid; grid-template-columns: 1fr 1fr; gap: 11%; align-items: end; margin-bottom: 38px; }
+.pricing-overlay-copy h3 { font-size: clamp(36px,4vw,60px); margin: 23px 0 0; }
+.pricing-broadcast-details > p { color: #a1a1aa; font-size: 12px; line-height: 1.9; }
+.pricing-broadcast-details > a { display: inline-flex; align-items: center; gap: 20px; margin-top: 16px; min-height: 44px; border-bottom: 1px solid #a1a1aa; font-size: 12px; }
+.pricing-broadcast-screen { max-width: 1010px; margin-inline: auto; padding: 15px 15px 0; border: 1px solid #ffffff18; background: #09090b; box-shadow: 0 25px 90px #000b; }
+.pricing-overlay-figure { box-shadow: none; }
+.pricing-broadcast-inclusions { display: grid; grid-template-columns: repeat(3,1fr); gap: 30px; padding-top: 30px; margin-inline: 10px; }
+.pricing-broadcast-inclusions li { display: flex; gap: 10px; align-items: start; color: #c7c7ce; font-size: 10px; line-height: 1.7; }
+.pricing-broadcast-inclusions svg { margin-top: 2px; flex-shrink: 0; }
+.pricing-paper { background: #e9e9eb; color: #111114; padding: 44px; margin-block: 10px 90px; border: 0; --pricing-muted: #52525b; --pricing-line: #11111426; }
+.pricing-paper .pricing-section-heading h2 { font-size: clamp(36px,3.7vw,54px); }
+.pricing-paper .pricing-section-heading > p,.pricing-paper .pricing-caption { color: #52525b; }
+.pricing-paper :is(a,button,summary,[tabindex]):focus-visible { outline-color: #111114; }
+.pricing-paper .pricing-compare-details { border-color: #11111435; }
+.pricing-paper .pricing-compare-details > summary { background: #dfdfe2; }
+.pricing-paper .pricing-compare-body { background: #f4f4f5; }
+.pricing-paper .pricing-feature-filter { background: #dfdfe2; }
+.pricing-paper .pricing-feature-filter button { color: #52525b; }
+.pricing-paper .pricing-feature-filter button[aria-pressed=true] { color: #fafafa; }
+.pricing-paper .pricing-filter-indicator { background: #111114; }
+.pricing-paper .pricing-comparison-controls > p { color: #52525b; }
+.pricing-paper .pricing-table thead { background: #e4e4e7; }
+.pricing-paper .pricing-table thead th { border-color: #11111435; }
+.pricing-paper .pricing-table thead th:first-child,.pricing-paper .pricing-table thead small { color: #52525b; }
+.pricing-paper .pricing-table tbody tr:not(.pricing-table-group) { border-color: #11111418; }
+.pricing-paper .pricing-table tbody th,.pricing-paper .pricing-table td { color: #3f3f46; }
+.pricing-paper .pricing-table .pricing-table-group th { color: #111114; }
+.pricing-paper .pricing-rates p { color: #52525b; font-size: 11px; }
+.pricing-paper .pricing-rate-grid > button { border-color: #11111430; background: #f4f4f5; }
+.pricing-paper .pricing-rate-grid > button[aria-pressed=true] { color: #fafafa; background: #111114; border-color: #111114; }
+.pricing-faq { padding-top: 20px; border: 0; grid-template-columns: .8fr 1.2fr; gap: 12%; }
+.pricing-faq > div:first-child { align-self: start; position: sticky; top: 110px; }
+.pricing-faq-trigger { min-height: 80px; gap: 20px; }
+.pricing-faq-trigger > .pricing-faq-question { display: flex; gap: 20px; align-items: start; flex: 1; min-width: 0; }
+.pricing-faq-index { font: 10px/2 ui-monospace,monospace; color: #71717a; flex-shrink: 0; }
+.pricing-faq-trigger > span:last-child { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #404047; }
+.pricing-faq-answer p { padding-left: 36px; }
+.pricing-closing { isolation: isolate; background: #111114; color: #fafafa; border-top: 1px solid #ffffff20; }
+.pricing-closing-photo { position: absolute; inset: 0 0 0 auto; z-index: -3; width: 75%; height: 100%; object-fit: cover; object-position: center 50%; filter: grayscale(.65); opacity: .8; }
+.pricing-closing::before { content: ''; position: absolute; z-index: -2; inset: 0; background: linear-gradient(90deg,#09090b 10%,#09090bea 42%,#09090b55 100%); }
+.pricing-closing > .pricing-caption,.pricing-closing-action > span { color: #a1a1aa; }
+.pricing-closing-action > a { background: #fafafa; color: #111114; }
+.pricing-closing-wordmark { border-color: #ffffff35; color: #a1a1aa; }
+.pricing-closing-credit { position: absolute; right: 6vw; bottom: 28px; color: #a1a1aa; font-size: 8px; }
+@media(hover:hover) and (pointer:fine) { .pricing-paper .pricing-rate-grid > button:not([aria-pressed=true]):hover { background: #d8d8dc; } .pricing-noise-action:hover > svg { transform: translate(2px,-2px); } }
+@media(max-width:1100px) {
+ .pricing-hosting-scramble { grid-template-columns: .75fr 1.4fr; gap: 20px; padding-inline: 25px; }
+ .pricing-chat-rail { display: none; }
+ .pricing-whatsapp-window { width: 220px; }
+ .pricing-sheet-window { width: 190px; left: 0; }
+ .pricing-moment-copy { gap: 25px; }
+ .pricing-moment-copy > p { max-width: 220px; font-size: 11px; }
+ .pricing-game-window figcaption > span { font-size: 10px; }
+ .pricing-game-window figcaption > img { width: 24px; }
+}
+@media(max-width:760px) {
+ .pricing-hosting-stage,.pricing-hosting-preview { min-height: 780px; }
+ .pricing-hosting-scramble { display: block; padding: 25px 17px 15px; }
+ .pricing-scramble-copy h3 { font-size: 29px; line-height: 1.1; margin-top: 16px; }
+ .pricing-scramble-copy > p { margin-top: 16px; }
+ .pricing-noise-action { margin-top: 18px; min-height: 44px; padding: 12px 15px; }
+ .pricing-chat-collage { height: 460px; margin-top: 30px; }
+ .pricing-discord-window { width: 92%; top: 0; }
+ .pricing-discord-window > header { padding: 10px; }
+ .pricing-discord-thread { padding: 13px 11px 10px; }
+ .pricing-discord-thread > div { margin-bottom: 13px; }
+ .pricing-discord-thread p { font-size: 9px; }
+ .pricing-chat-input { font-size: 7px; }
+ .pricing-whatsapp-window { width: 204px; top: 155px; right: 0; }
+ .pricing-whatsapp-window > header { padding: 10px; gap: 7px; }
+ .pricing-whatsapp-window header strong { font-size: 8px; }
+ .pricing-whatsapp-window header small { font-size: 7px; }
+ .pricing-whatsapp-thread { padding: 10px; }
+ .pricing-whatsapp-thread > p { font-size: 9px; padding: 7px 9px; }
+ .pricing-whatsapp-thread > p:last-child { margin-bottom: 0; }
+ .pricing-sheet-window { width: 173px; bottom: 2px; left: 0; }
+ .pricing-sheet-window > header { padding: 9px; font-size: 7px; gap: 6px; }
+ .pricing-sheet-window > div { padding: 12px 10px 6px; gap: 8px; }
+ .pricing-sheet-window > p { font-size: 7px; padding: 0 10px 10px; }
+ .pricing-hosting-calm { padding: 25px 17px; }
+ .pricing-experience-caption { margin-bottom: 18px; }
+ .pricing-moment { height: 500px; }
+ .pricing-moment-photo { object-position: 54% center; }
+ .pricing-moment-topline { padding: 20px; font-size: 7px; }
+ .pricing-moment-topline > span:last-child { display: none; }
+ .pricing-moment-copy { left: 20px; right: 20px; bottom: 74px; display: block; }
+ .pricing-moment h2 { font-size: clamp(34px,10.2vw,60px); }
+ .pricing-moment-copy > p { font-size: 11px; margin-top: 20px; max-width: none; }
+ .pricing-moment figcaption { font-size: 7px; bottom: 39px; right: 15px; }
+ .pricing-game-gallery { grid-template-columns: 1fr; margin: -22px 14px 0; gap: 10px; }
+ .pricing-game-window,.pricing-game-window:first-child,.pricing-game-window:last-child { height: 108px; grid-column: auto; }
+ .pricing-game-window figcaption { display: flex; inset-inline: 15px; bottom: 16px; gap: 12px; }
+ .pricing-game-window figcaption > img { width: 25px; height: 25px; margin: 0; }
+ .pricing-game-window figcaption > span { font-size: 12px; }
+ .pricing-game-window small { font-size: 7px; }
+ .pricing-game-arrow { position: static; width: 15px; }
+ .pricing-overlay-showcase { margin-top: 55px; padding: 27px 17px 23px; }
+ .pricing-overlay-copy { display: block; margin-bottom: 25px; }
+ .pricing-overlay-copy h3 { font-size: 35px; margin-top: 20px; }
+ .pricing-broadcast-details > p { font-size: 11px; margin-top: 20px; }
+ .pricing-broadcast-details > a { font-size: 11px; }
+ .pricing-broadcast-screen { padding: 6px 6px 0; margin-inline: -6px; }
+ .pricing-broadcast-inclusions { grid-template-columns: 1fr; gap: 14px; margin: 0; padding-top: 23px; }
+ .pricing-broadcast-inclusions li { font-size: 10px; }
+ .pricing-paper { padding: 28px 17px; margin-bottom: 60px; }
+ .pricing-paper .pricing-section-heading h2 { font-size: 33px; }
+ .pricing-paper .pricing-section-heading > p { font-size: 11px; }
+ .pricing-paper .pricing-compare-details > summary { padding: 18px 12px; font-size: 11px; }
+ .pricing-paper .pricing-compare-body { padding: 18px 9px; }
+ .pricing-paper .pricing-feature-filter { display: flex; width: 100%; }
+ .pricing-paper .pricing-feature-filter button { flex: 1; padding-inline: 8px; }
+ .pricing-paper .pricing-table thead th { font-size: 9px; padding-inline: 3px; }
+ .pricing-paper .pricing-table tbody th,.pricing-paper .pricing-table td { font-size: 9px; padding-inline: 3px; }
+ .pricing-paper .pricing-table thead small { font-size: 8px; }
+ .pricing-paper .pricing-rates h3 { font-size: 16px; }
+ .pricing-paper .pricing-rates p { font-size: 10px; }
+ .pricing-paper .pricing-rate-grid { gap: 9px; }
+ .pricing-paper .pricing-rate-grid > button { padding: 14px 9px; }
+ .pricing-paper .pricing-rate-grid strong { font-size: 22px; }
+ .pricing-paper .pricing-rate-grid strong > small { font-size: 7px; }
+ .pricing-paper .pricing-rate-grid button > span { font-size: 8px; }
+ .pricing-paper .pricing-rate-grid s { font-size: 9px; }
+ .pricing-faq { grid-template-columns: 1fr; gap: 30px; padding-top: 0; }
+ .pricing-faq > div:first-child { position: static; }
+ .pricing-faq-trigger > .pricing-faq-question { gap: 12px; }
+ .pricing-faq-trigger { font-size: 11px; gap: 12px; }
+ .pricing-faq-answer p { padding-left: 27px; }
+ .pricing-closing-photo { width: 100%; object-position: 60% center; }
+ .pricing-closing::before { background: linear-gradient(90deg,#09090bf5,#09090b90),linear-gradient(0deg,#09090bc0,transparent); }
+ .pricing-closing-credit { position: static; display: block; font-size: 7px; margin-top: 15px; }
+}
