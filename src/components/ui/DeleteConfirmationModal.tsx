@@ -59,7 +59,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         onClose();
     };
 
-    const isConfirmDisabled = requireNameConfirmation && confirmationText !== entityName;
+    const isConfirmDisabled = requireNameConfirmation && confirmationText.trim() !== entityName.trim();
     const hasCascadeWarnings = cascadeWarnings.length > 0;
 
     return (

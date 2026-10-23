@@ -732,7 +732,7 @@ const TournamentList = () => {
           entityName={tournamentToDelete.name}
           isDeleting={deleteLoading}
           cascadeWarnings={cascadeWarnings}
-          requireNameConfirmation={cascadeWarnings.length > 0 || tournamentToDelete.status !== 'upcoming'}
+          requireNameConfirmation={cascadeWarnings.length > 0 || tournamentToDelete.status === 'ongoing' || tournamentToDelete.status === 'completed'}
           customWarning={
             tournamentToDelete.status === 'ongoing'
               ? 'This tournament is currently ongoing. Deleting it will affect all participants.'
