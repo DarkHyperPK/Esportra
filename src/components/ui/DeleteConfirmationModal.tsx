@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, Trash2, X, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Trash2, AlertCircle } from 'lucide-react';
 
 interface CascadeWarning {
     entity: string;
@@ -70,17 +70,12 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-rose-600" />
 
                 <DialogHeader className="p-6 pb-2">
-                    <div className="flex items-center justify-between">
-                        <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white tracking-tight">
-                            <div className="p-2 bg-red-500/10 border border-red-500/20">
-                                <Trash2 className="h-5 w-5 text-red-500" />
-                            </div>
-                            Delete {entityType.charAt(0).toUpperCase() + entityType.slice(1)}
-                        </DialogTitle>
-                        <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/10">
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
+                    <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white tracking-tight">
+                        <div className="p-2 bg-red-500/10 border border-red-500/20">
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                        </div>
+                        Delete {entityType.charAt(0).toUpperCase() + entityType.slice(1)}
+                    </DialogTitle>
                     <DialogDescription className="text-zinc-400 text-sm mt-2">
                         This action will soft delete the <span className="font-medium text-zinc-300">{entityType}</span>. It can be restored within 7 days.
                     </DialogDescription>
