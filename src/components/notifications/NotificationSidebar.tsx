@@ -12,14 +12,15 @@ import { NotificationFilters } from './NotificationFilters';
 import { NotificationPriorityCard } from './NotificationPriorityCard';
 import { isPriorityNotification } from '@/utils/notificationSubject';
 
-/**
- * The bell and its inbox sheet. Opening it no longer marks everything read:
- * items stay highlighted until opened or until "Mark all read".
- */
 export const NotificationSidebar = ({ className }: { className?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const actions = useNotificationActions({ onNavigate: () => setIsOpen(false) });
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && actions.unreadCount > 0) void actions.markAllRead();
+  };
   const { notifications, unreadCount } = actions;
 
   const { priority, items } = useMemo(() => {
@@ -32,7 +33,7 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
   const badge = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -79,7 +80,7 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-lenis-prevent>
           <NotificationList
             items={items}
             density="compact"
