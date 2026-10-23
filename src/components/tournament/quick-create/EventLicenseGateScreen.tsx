@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CommandButton } from '@/components/management/CommandSurface';
 import { EYEBROW_CLASS } from '@/components/ui/kit';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export type GateReason = 'quota_exhausted' | 'bracket_upgrade_required';
 
@@ -22,6 +23,24 @@ function formatResetDate(iso: string): string {
  * Shown when tournament creation returns 402.
  * Follows the CreateGateScreen layout. No toast — this screen is the complete response.
  */
+interface EventLicenseGateModalProps {
+  open: boolean;
+  reason: GateReason | null;
+  resetsAt?: string;
+  onClose: () => void;
+}
+
+export function EventLicenseGateModal({ open, reason, resetsAt, onClose }: EventLicenseGateModalProps) {
+  if (!reason) return null;
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="border-white/10 bg-[#0a0a0c] p-0 sm:max-w-md">
+        <EventLicenseGateScreen reason={reason} resetsAt={resetsAt} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function EventLicenseGateScreen({ reason, resetsAt }: EventLicenseGateScreenProps) {
   const reducedMotion = useReducedMotion();
 

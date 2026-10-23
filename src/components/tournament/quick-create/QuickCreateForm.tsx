@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { apiClient, getApiErrorMessage, ApiError } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
-import { EventLicenseGateScreen, type GateReason } from './EventLicenseGateScreen';
+import { EventLicenseGateModal, type GateReason } from './EventLicenseGateScreen';
 import { cn } from '@/lib/utils';
 import { getDefaultTeamSize, getGameByName, getGameModeGroups, getGameModes } from '@/utils/gameFeatures';
 import type { TournamentTemplateDto } from '@/types/tournamentTemplate';
@@ -155,12 +155,14 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
     isOnline, venueAddress, template, teamSize, isBR, navigate, toast,
   ]);
 
-  if (gateReason) {
-    return <EventLicenseGateScreen reason={gateReason} resetsAt={gateResetsAt} />;
-  }
-
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-8 pt-8 sm:px-6 md:pt-12">
+      <EventLicenseGateModal
+        open={!!gateReason}
+        reason={gateReason}
+        resetsAt={gateResetsAt}
+        onClose={() => { setGateReason(null); setGateResetsAt(undefined); }}
+      />
       <button
         type="button"
         onClick={onBack}

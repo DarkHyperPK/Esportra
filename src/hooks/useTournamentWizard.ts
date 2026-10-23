@@ -428,13 +428,16 @@ export const useTournamentWizard = (
                         return data.stages.map((s, i) => {
                             const stageAny = s as any;
                             const hasOverrides = stageAny.bo_mode === 'per_round' && Object.keys(stageAny.round_bo_overrides ?? {}).length > 0;
+                            // Stage 1 capacity is always maxTeams — the authoritative source.
+                            // Later stages derive capacity from the previous stage's advancement_count.
+                            const capacity = i === 0 ? data.maxTeams : (stageAny.capacity ?? null);
                             return {
                                 name:             s.name,
                                 format:           s.format,
                                 stageOrder:       s.stage_order ?? i + 1,
                                 bestOf:           stageAny.best_of ?? 1,
                                 boMode:           stageAny.bo_mode ?? 'per_stage',
-                                capacity:         stageAny.capacity ?? null,
+                                capacity,
                                 advancementCount: stageAny.advancement_count ?? null,
                                 ...(hasOverrides ? { roundBoOverrides: stageAny.round_bo_overrides } : {}),
                                 ...(stageAny.config ? { config: stageAny.config } : {}),
@@ -480,5 +483,6 @@ export const useTournamentWizard = (
         submitTournament,
         gateReason,
         gateResetsAt,
+        dismissGate: () => { setGateReason(null); setGateResetsAt(undefined); },
     };
 };
