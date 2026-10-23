@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ActionBar, PageIntro } from '@/components/ui/kit';
 import { CommandButton, CommandShell } from '@/components/management/CommandSurface';
+import { EventLicenseGateScreen } from '@/components/tournament/quick-create/EventLicenseGateScreen';
 import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
@@ -63,6 +64,8 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
         goToStep,
         clearDraft,
         submitTournament,
+        gateReason,
+        gateResetsAt,
     } = useTournamentWizard(initialData, tournamentId, { activeInvitationCount });
 
     const isEditing = Boolean(tournamentId);
@@ -99,6 +102,14 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     const primaryLabel = isLastStep
         ? (isEditing ? 'Save changes' : 'Create tournament')
         : `Continue to ${nextTitle?.toLowerCase() ?? 'next step'}`;
+
+    if (gateReason) {
+        return (
+            <CommandShell>
+                <EventLicenseGateScreen reason={gateReason} resetsAt={gateResetsAt} />
+            </CommandShell>
+        );
+    }
 
     return (
         <CommandShell>

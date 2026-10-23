@@ -14,7 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
+import type { GateReason } from '@/components/tournament/quick-create/EventLicenseGateScreen';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
@@ -81,6 +82,8 @@ export const useTournamentWizard = (
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [stepValidation, setStepValidation] = useState<Record<number, boolean>>({});
+    const [gateReason, setGateReason] = useState<GateReason | null>(null);
+    const [gateResetsAt, setGateResetsAt] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         if (typeof window !== 'undefined' && !tournamentId) {
@@ -445,8 +448,18 @@ export const useTournamentWizard = (
                 toast({ title: 'Tournament created', description: 'Finish anything left from the dashboard, then publish when you are ready.' });
                 navigate(`/organizer/tournament/${tournament.slug}`);
             }
-        } catch (err: any) {
-            toast({ title: "Couldn't save the tournament", description: err.message || 'Please try again.', variant: 'destructive' });
+        } catch (err: unknown) {
+            if (err instanceof ApiError && err.status === 402) {
+                const body = err.body as { error?: string; resetsAt?: string } | null;
+                const reason = body?.error;
+                if (reason === 'quota_exhausted' || reason === 'bracket_upgrade_required') {
+                    setGateReason(reason);
+                    setGateResetsAt(body?.resetsAt);
+                    return;
+                }
+            }
+            const msg = err instanceof Error ? err.message : 'Please try again.';
+            toast({ title: "Couldn't save the tournament", description: msg, variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -465,5 +478,7 @@ export const useTournamentWizard = (
         goToStep,
         clearDraft,
         submitTournament,
+        gateReason,
+        gateResetsAt,
     };
 };

@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { meRolesQueryKey } from '@/lib/meRoles';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ const OrganizationWizard: React.FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const requireVerification = useRequireVerification();
 
     const [currentStep, setCurrentStep] = useState(1);
@@ -152,6 +155,9 @@ const OrganizationWizard: React.FC = () => {
 
             // Notify other components that org was created
             window.dispatchEvent(new Event('organizationCreated'));
+
+            // Refetch roles so ProtectedRoute sees the new organizer role before navigation.
+            await queryClient.refetchQueries({ queryKey: meRolesQueryKey });
 
             toast({ title: 'Success!', description: 'Your organization has been created.' });
             navigate('/organizer/tournaments');
