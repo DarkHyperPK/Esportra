@@ -452,6 +452,26 @@ const TournamentDetails = () => {
         setRegistrationDetails(null);
         setIsCaptain(false);
       }
+
+      // Cancelled participants with processed refunds: keep enough detail for the proof banner.
+      const cr = status.cancelledRefund;
+      if (cr?.refund_processed_at) {
+        setRegistrationDetails({
+          id: cr.id,
+          tournament_id: tournament.id,
+          user_id: user?.id ?? '',
+          registration_type: 'solo' as const,
+          riot_tag: null, steam_tag: null, gamer_tag: null,
+          team_name: null, team_logo: null, team_members: null,
+          status: 'cancelled' as const,
+          checked_in_at: null,
+          registered_at: cr.refund_processed_at,
+          created_at: cr.refund_processed_at,
+          updated_at: cr.refund_processed_at,
+          refund_processed_at: cr.refund_processed_at,
+        } as TournamentRegistration);
+      }
+
       setError(null);
     } catch {
       setIsRegistered(false);
