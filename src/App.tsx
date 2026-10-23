@@ -475,7 +475,7 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/setup-organization" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
+                  <ProtectedRoute>
                     <OrganizationWizard />
                   </ProtectedRoute>
                 } />

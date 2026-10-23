@@ -283,6 +283,15 @@ const UserMenu = ({
                 )}
               </>
             )}
+
+            {!admin.isAdmin && userRole !== "organizer" && (
+              <>
+                <JackMenuDivider />
+                <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
+                  Setup Organization
+                </JackMenuItem>
+              </>
+            )}
           </div>
 
           <div className="border-t border-white/10 bg-[#0a0a0c] p-3">
