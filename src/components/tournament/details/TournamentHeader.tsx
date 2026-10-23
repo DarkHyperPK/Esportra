@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail, BookOpen, CheckCircle, FileCheck } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail, BookOpen } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { SuccessButton } from '@/components/ui/app-buttons';
 import { JackButton } from '@/components/ui/JackButton';
@@ -36,8 +36,6 @@ interface TournamentHeaderProps {
     checkInStartTime?: Date | null;
     awaitingApproval?: boolean;
     pendingWithdrawal?: boolean;
-    refundProcessed?: boolean;
-    tournamentId?: string;
     maxTeams?: number;
 }
 
@@ -59,8 +57,6 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     checkInStartTime,
     awaitingApproval = false,
     pendingWithdrawal = false,
-    refundProcessed = false,
-    tournamentId,
     maxTeams
 }) => {
     const navigate = useNavigate();
@@ -80,29 +76,6 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     const isVideoBanner = bannerSrc.includes('youtube.com/embed/');
     const videoId = isVideoBanner ? (bannerSrc.match(/embed\/([^?]+)/)?.[1] ?? null) : null;
     const videoPoster = videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null;
-
-    const [proofDialogOpen, setProofDialogOpen] = useState(false);
-    const [proofUrl, setProofUrl] = useState<string | null>(null);
-    const [proofLoading, setProofLoading] = useState(false);
-    const proofCacheRef = React.useRef<string | null>(null);
-
-    const openProof = async () => {
-        if (proofCacheRef.current) { setProofUrl(proofCacheRef.current); setProofDialogOpen(true); return; }
-        if (!tournamentId) return;
-        setProofLoading(true);
-        try {
-            const { apiClient } = await import('@/lib/apiClient');
-            const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/my-refund-proof`);
-            const url = URL.createObjectURL(blob);
-            proofCacheRef.current = url;
-            setProofUrl(url);
-            setProofDialogOpen(true);
-        } catch {
-            // silently fail — proof may not exist yet
-        } finally {
-            setProofLoading(false);
-        }
-    };
 
     // Defer YouTube iframe until after initial paint (facade pattern — improves LCP from ~9s to <2s)
     const [iframeReady, setIframeReady] = useState(false);
@@ -288,23 +261,6 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 )}
                                             </div>
                                         )}
-                                        {refundProcessed && (
-                                            <div className="flex items-center gap-3 h-14 md:h-16 px-6 md:px-10 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm md:text-base font-bold font-mono tracking-wider rounded-none">
-                                                <CheckCircle className="w-5 h-5 shrink-0" />
-                                                <span>REFUND PROCESSED</span>
-                                                {tournamentId && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={openProof}
-                                                        disabled={proofLoading}
-                                                        className="ml-2 flex items-center gap-1.5 text-xs border border-emerald-500/40 px-3 py-1 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                                                    >
-                                                        <FileCheck className="w-3.5 h-3.5" />
-                                                        {proofLoading ? 'Loading…' : 'View Proof'}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
                                         {isRegistered && pendingWithdrawal && (
                                             <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
                                                 <Clock className="w-5 h-5 animate-pulse" />
@@ -376,42 +332,6 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                 </section>
             </div>
 
-            {/* Refund proof viewer */}
-            {proofDialogOpen && proofUrl && (
-                <div
-                    className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                    onClick={() => setProofDialogOpen(false)}
-                >
-                    <div
-                        className="relative max-w-lg w-full bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-                            <div className="flex items-center gap-2 text-emerald-400">
-                                <CheckCircle className="w-4 h-4" />
-                                <span className="text-sm font-bold uppercase tracking-widest">Refund Proof</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setProofDialogOpen(false)}
-                                className="text-white/40 hover:text-white transition-colors text-xl leading-none"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <img
-                                src={proofUrl}
-                                alt="Refund proof"
-                                className="w-full rounded-xl object-contain max-h-[60vh]"
-                            />
-                        </div>
-                        <div className="px-5 pb-4 text-xs text-white/30 text-center">
-                            Uploaded by the organizer as confirmation of your refund.
-                        </div>
-                    </div>
-                </div>
-            )}
         </>
     );
 };

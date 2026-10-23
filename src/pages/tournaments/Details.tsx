@@ -135,7 +135,6 @@ const TournamentDetails = () => {
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
   const pendingWithdrawal = registrationStatus === 'withdrawal_pending';
-  const refundProcessed = registrationStatus === 'cancelled' && !!registrationDetails?.refund_processed_at;
   const isCaptainOrSelf = registrationDetails?.registration_type === 'team' ? isCaptain : true;
   const now = typeof window !== 'undefined' ? new Date() : null;
   const hasMissedCheckIn =
@@ -432,7 +431,6 @@ const TournamentDetails = () => {
           registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
           created_at: r.created_at || r.createdAt,
           updated_at: r.updated_at || r.updatedAt || r.created_at || r.createdAt,
-          refund_processed_at: r.refund_processed_at || r.refundProcessedAt || null,
           team_id: r.team_id || r.teamId || undefined,
           team_captain_id: r.team_captain_id || r.teamCaptainId || undefined
         };
@@ -451,25 +449,6 @@ const TournamentDetails = () => {
         setIsRegistered(false);
         setRegistrationDetails(null);
         setIsCaptain(false);
-      }
-
-      // Cancelled participants with processed refunds: keep enough detail for the proof banner.
-      const cr = status.cancelledRefund;
-      if (cr?.refund_processed_at) {
-        setRegistrationDetails({
-          id: cr.id,
-          tournament_id: tournament.id,
-          user_id: user?.id ?? '',
-          registration_type: 'solo' as const,
-          riot_tag: null, steam_tag: null, gamer_tag: null,
-          team_name: null, team_logo: null, team_members: null,
-          status: 'cancelled' as const,
-          checked_in_at: null,
-          registered_at: cr.refund_processed_at,
-          created_at: cr.refund_processed_at,
-          updated_at: cr.refund_processed_at,
-          refund_processed_at: cr.refund_processed_at,
-        } as TournamentRegistration);
       }
 
       setError(null);
@@ -716,8 +695,6 @@ const TournamentDetails = () => {
         checkInStartTime={requiresCheckIn ? checkInStartTime : null}
         awaitingApproval={awaitingApproval}
         pendingWithdrawal={pendingWithdrawal}
-        refundProcessed={refundProcessed}
-        tournamentId={tournament?.id}
         maxTeams={tournamentMaxTeams || undefined}
       />
 

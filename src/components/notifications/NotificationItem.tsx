@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { formatDistanceToNow, parseISO, isValid } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CommandButton, CommandIconButton } from '@/components/management/CommandSurface';
 import { StatusPill, TONE_TEXT } from '@/components/ui/kit';
@@ -39,6 +39,29 @@ export function NotificationItem({
   onOpen, onMarkRead, onRespondToStaffInvite, onDelete,
 }: NotificationItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofLoading, setProofLoading] = useState(false);
+  const proofCache = useRef<string | null>(null);
+  const isRefundProof = n.title === 'Refund Processed' && !!n.data?.tournament_id;
+
+  const openProof = async () => {
+    if (proofCache.current) { setProofUrl(proofCache.current); setProofOpen(true); return; }
+    setProofLoading(true);
+    try {
+      const { apiClient } = await import('@/lib/apiClient');
+      const blob = await apiClient.getBlob(`/api/tournaments/${n.data!.tournament_id}/my-refund-proof`);
+      const url = URL.createObjectURL(blob);
+      proofCache.current = url;
+      setProofUrl(url);
+      setProofOpen(true);
+    } catch {
+      // proof not available
+    } finally {
+      setProofLoading(false);
+    }
+  };
+
   const kind = getNotificationKind(n.type);
   const compact = density === 'compact';
   const hasSchedule = Boolean(getDenseScheduleNotificationMeta(n));
@@ -126,7 +149,12 @@ export function NotificationItem({
                 <CommandButton variant="ghost" size="sm" onClick={handleMain} aria-expanded={expanded}>
                   {expanded ? 'Show less' : 'Read more'}
                 </CommandButton>
-                {expanded && n.link && (
+                {expanded && isRefundProof && (
+                  <CommandButton variant="secondary" size="sm" slide disabled={proofLoading} onClick={() => void openProof()}>
+                    {proofLoading ? 'Loading…' : 'View Proof'}
+                  </CommandButton>
+                )}
+                {expanded && n.link && !isRefundProof && (
                   <CommandButton variant="secondary" size="sm" slide onClick={() => onOpen(n)}>View tournament</CommandButton>
                 )}
               </>
@@ -151,12 +179,36 @@ export function NotificationItem({
       {onDelete && (
         <CommandIconButton
           label={`Delete “${n.title}”`}
-          variant="ghost"
+          variant=”ghost”
           onClick={() => onDelete(n)}
-          className="shrink-0 self-start border-transparent bg-transparent text-zinc-500 hover:text-white lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
+          className=”shrink-0 self-start border-transparent bg-transparent text-zinc-500 hover:text-white lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100”
         >
           <Trash2 aria-hidden />
         </CommandIconButton>
+      )}
+
+      {proofOpen && proofUrl && (
+        <div
+          className=”fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4”
+          onClick={() => setProofOpen(false)}
+        >
+          <div
+            className=”relative max-w-lg w-full bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl”
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className=”flex items-center justify-between px-5 py-4 border-b border-white/10”>
+              <div className=”flex items-center gap-2 text-emerald-400”>
+                <CheckCircle className=”w-4 h-4” aria-hidden />
+                <span className=”text-sm font-bold uppercase tracking-widest”>Refund Proof</span>
+              </div>
+              <button type=”button” onClick={() => setProofOpen(false)} className=”text-white/40 hover:text-white transition-colors text-xl leading-none”>×</button>
+            </div>
+            <div className=”p-4”>
+              <img src={proofUrl} alt=”Refund proof” className=”w-full object-contain max-h-[60vh]” />
+            </div>
+            <p className=”px-5 pb-4 text-xs text-white/30 text-center”>Uploaded by the organizer as confirmation of your refund.</p>
+          </div>
+        </div>
       )}
     </li>
   );
