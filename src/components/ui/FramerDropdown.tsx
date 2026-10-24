@@ -32,7 +32,7 @@ export function FramerDropdownRoot({
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const close = () => startTransition(() => setIsOpen(false));
+    const close = () => setIsOpen(false);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -116,8 +116,17 @@ const menuVariants = {
     },
 };
 
-export function FramerDropdownContent({ children, className, width = "100%", align = "start" }: { children: React.ReactNode, className?: string, width?: string | number, align?: "start" | "end" | "center" }) {
+export function FramerDropdownContent({ children, className, width = "100%", align = "start", side = "bottom" }: { children: React.ReactNode, className?: string, width?: string | number, align?: "start" | "end" | "center", side?: "top" | "bottom" }) {
     const { isOpen, config } = useFramerDropdown();
+
+    const positionClass = side === "top"
+        ? `bottom-full mb-2 ${align === 'end' ? 'right-0' : align === "center" ? "left-1/2 -translate-x-1/2" : "left-0"}`
+        : `top-full mt-2 ${align === 'end' ? 'right-0' : align === "center" ? "left-1/2 -translate-x-1/2" : "left-0"}`;
+
+    const variants = side === "top" ? {
+        closed: { opacity: 0, y: 8, scale: 0.98, transition: { duration: 0.15, ease: "easeInOut" }, pointerEvents: "none" as const },
+        open: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: "easeOut" }, pointerEvents: "auto" as const },
+    } : menuVariants;
 
     return (
         <AnimatePresence>
@@ -126,7 +135,7 @@ export function FramerDropdownContent({ children, className, width = "100%", ali
                     initial="closed"
                     animate="open"
                     exit="closed"
-                    variants={menuVariants}
+                    variants={variants}
                     style={{
                         backgroundColor: config.backgroundColor,
                         border: `1px solid ${config.borderColor}`,
@@ -135,10 +144,9 @@ export function FramerDropdownContent({ children, className, width = "100%", ali
                         ...config.font,
                     }}
                     className={cn(
-                        `absolute top-full mt-2 z-[1000] min-w-[200px] overflow-hidden rounded-2xl border border-white/10 bg-[#0f111a]/95 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl ${align === 'end' ? 'right-0' : align === "center" ? "left-1/2 -translate-x-1/2" : "left-0"}`,
+                        `absolute z-[1000] min-w-[200px] overflow-hidden rounded-2xl border border-white/10 bg-[#0f111a]/95 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl ${positionClass}`,
                         className
                     )}
-                // css not standard here, using style instead for width
                 >
                     <div style={{ width: width, minWidth: 200, maxHeight: "80vh", overscrollBehavior: "contain" }}>
                         {children}

@@ -1,8 +1,22 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ProductSidebar } from '@/components/navigation/ProductSidebar';
 import { AppBottomNav } from '@/components/navigation/AppBottomNav';
 import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
 import { useAuth } from '@/hooks/useAuth';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: {
+    opacity: 1, y: 0,
+    transition: { duration: 0.15, ease: [0, 0, 0.2, 1] as const },
+  },
+  exit: {
+    opacity: 0,
+    transition: { duration: 0.12, ease: [0.4, 0, 1, 1] as const },
+  },
+} as const;
 
 function isChromelessPath(pathname: string): boolean {
   return (
@@ -26,7 +40,9 @@ function isChromelessPath(pathname: string): boolean {
 export function AppShell() {
   const { isEnabled } = usePlatformFeatures();
   const { user } = useAuth();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const prefersReducedMotion = useReducedMotion();
 
   const navV2 = isEnabled(FEATURES.navV2);
   const isAdmin = pathname.startsWith('/admin');
@@ -41,7 +57,17 @@ export function AppShell() {
       <div className="flex">
         <ProductSidebar />
         <main className="flex-1 min-w-0">
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={prefersReducedMotion ? undefined : pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       <AppBottomNav />

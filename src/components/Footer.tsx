@@ -96,6 +96,10 @@ const Footer = () => {
             </div>
           </div>
         </div>
+        {/* Trademark attribution — CIO CLEARED_WITH_CONDITIONS, PROJ-073 */}
+        <p className="mt-6 text-[10px] text-white/30 text-center leading-relaxed">
+          Valorant is a trademark of Riot Games, Inc. Counter-Strike 2 is a trademark of Valve Corporation. Esportra is not affiliated with or endorsed by Riot Games or Valve.
+        </p>
       </div>
     </footer>
   );

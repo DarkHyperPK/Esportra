@@ -59,9 +59,15 @@ const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) 
 };
 
 const UserMenu = ({
-  handleSignOut
+  handleSignOut,
+  upward = false,
+  panelWidth = 280,
+  panelAlign = "end",
 }: {
   handleSignOut: () => Promise<void>;
+  upward?: boolean;
+  panelWidth?: number;
+  panelAlign?: "start" | "end" | "center";
 }) => {
   const { user, profile, isEmailVerified } = useAuth();
   const { currentRole: userRole } = useRole();
@@ -178,8 +184,9 @@ const UserMenu = ({
         </FramerDropdownTrigger>
 
         <FramerDropdownContent
-          align="end"
-          width={280}
+          align={panelAlign}
+          side={upward ? "top" : "bottom"}
+          width={panelWidth}
           className="!rounded-none !border-white/10 !bg-matte-black !p-0 !backdrop-blur-0"
         >
           {/* Identity header */}

@@ -32,8 +32,8 @@ export function JackMenuItem({
 
   const handleClick = () => {
     onClick?.();
-    if (to) navigate(to);
     close();
+    if (to) navigate(to);
   };
 
   return (
