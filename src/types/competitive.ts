@@ -257,3 +257,100 @@ export interface CreateRecruitmentOpeningRequest {
   tournamentId?: string;
   expiresAt?: string;
 }
+
+// --- Tryouts ---
+
+export type TryoutSessionStatus = 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type TryoutParticipantStatus = 'invited' | 'confirmed' | 'declined' | 'attended' | 'no_show' | 'removed';
+export type TryoutRecommendation = 'offer' | 'pass' | 'undecided';
+
+export interface TryoutSession {
+  id: string;
+  teamId: string;
+  gameSlug: string | null;
+  title: string;
+  description: string | null;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  maxParticipants: number | null;
+  minRankKey: string | null;
+  maxRankKey: string | null;
+  status: TryoutSessionStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  teamName?: string;
+  teamLogoUrl?: string;
+  participantCount?: number;
+}
+
+export interface TryoutParticipant {
+  id: string;
+  sessionId: string;
+  userId: string;
+  invitedBy: string;
+  status: TryoutParticipantStatus;
+  invitedAt: string;
+  respondedAt: string | null;
+  username?: string;
+  avatarSeed?: string;
+}
+
+export interface TryoutEvaluation {
+  id: string;
+  sessionId: string;
+  evaluateeUserId: string;
+  evaluatorUserId: string;
+  overallScore: number;
+  communication: number;
+  mechanics: number;
+  gameSense: number;
+  attitude: number;
+  teamwork: number;
+  peakPlay: number;
+  consistency: number;
+  notes: string | null;
+  recommendation: TryoutRecommendation;
+  createdAt: string;
+  updatedAt: string;
+  evaluateeUsername?: string;
+  evaluatorUsername?: string;
+}
+
+export interface CreateTryoutSessionRequest {
+  teamId: string;
+  title: string;
+  gameSlug?: string;
+  description?: string;
+  scheduledAt?: string;
+  durationMinutes?: number;
+  maxParticipants?: number;
+  minRankKey?: string;
+  maxRankKey?: string;
+}
+
+export interface SubmitEvaluationRequest {
+  evaluateeUserId: string;
+  overallScore: number;
+  communication: number;
+  mechanics: number;
+  gameSense: number;
+  attitude: number;
+  teamwork: number;
+  peakPlay: number;
+  consistency: number;
+  notes?: string;
+  recommendation?: TryoutRecommendation;
+}
+
+export interface TryoutInviteView {
+  sessionId: string;
+  participantId: string;
+  participantStatus: TryoutParticipantStatus;
+  title: string;
+  gameSlug: string | null;
+  scheduledAt: string | null;
+  teamName: string | null;
+  teamLogoUrl: string | null;
+  sessionStatus: TryoutSessionStatus;
+}

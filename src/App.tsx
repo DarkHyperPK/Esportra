@@ -70,6 +70,9 @@ const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/rec
 const RecruitmentWorkspacePage = lazyWithRetry(() => import("./pages/competitive/recruitment/RecruitmentWorkspacePage"));
 const ApplicationFormPage = lazyWithRetry(() => import("./pages/competitive/recruitment/ApplicationFormPage"));
 const MyApplicationsPage = lazyWithRetry(() => import("./pages/competitive/recruitment/MyApplicationsPage"));
+const TryoutWorkspacePage = lazyWithRetry(() => import("./pages/competitive/tryouts/TryoutWorkspacePage"));
+const TryoutSessionDetailPage = lazyWithRetry(() => import("./pages/competitive/tryouts/TryoutSessionDetailPage"));
+const MyTryoutInvitesPage = lazyWithRetry(() => import("./pages/competitive/tryouts/MyTryoutInvitesPage"));
 
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
@@ -564,6 +567,21 @@ const AppContent = React.memo(() => {
                 <Route path="/competitive/recruitment/:openingId/apply" element={
                   <ProtectedRoute>
                     <ApplicationFormPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/tryouts/workspace" element={
+                  <ProtectedRoute>
+                    <TryoutWorkspacePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/tryouts/sessions/:id" element={
+                  <ProtectedRoute>
+                    <TryoutSessionDetailPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/tryouts/my-invites" element={
+                  <ProtectedRoute>
+                    <MyTryoutInvitesPage />
                   </ProtectedRoute>
                 } />
 
