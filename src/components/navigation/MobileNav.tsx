@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake, Wrench } from "lucide-react";
+import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Swords, Trophy, User, Info, Handshake, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -162,6 +162,43 @@ const MobileNav = ({
                   Leaderboards
                 </span>
               </Link>
+
+              {/* Competitive */}
+              {user && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleMenu("competitive")}
+                    className={linkClass(isActive(["/competitive"]))}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Swords className="h-4 w-4" />
+                      Competitive
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${
+                        expandedMenu === "competitive" ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  <AnimatePresence>
+                    {expandedMenu === "competitive" && (
+                      <motion.div {...accordionMotion} className="overflow-hidden">
+                        <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                          <JackSubItem to="/competitive/discover">Discover Players</JackSubItem>
+                          <JackSubItem to="/competitive/lfg/new">Find Teammates</JackSubItem>
+                          <JackSubItem to="/competitive/profile/edit">My Competitive Profile</JackSubItem>
+                          <JackSubItem to="/competitive/recruitment">Team Recruitment</JackSubItem>
+                          <JackSubItem to="/competitive/recruitment/my-applications">My Applications</JackSubItem>
+                          <JackSubItem to="/competitive/scrims">Scrims</JackSubItem>
+                          <JackSubItem to="/competitive/tryouts/workspace">Tryouts</JackSubItem>
+                          <JackSubItem to="/competitive/scouting">Scouting</JackSubItem>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Tools */}
               <div>

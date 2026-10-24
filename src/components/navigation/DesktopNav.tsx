@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield, Wrench } from "lucide-react";
+import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield, Wrench, Swords } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -127,6 +127,35 @@ const DesktopNav = ({
           Leaderboards
           {activeBar(isActive(["/leaderboards"]))}
         </Link>
+
+        {/* Competitive */}
+        {user && (
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button type="button" className={linkClass(isActive(["/competitive"]))}>
+                <Swords className="h-4 w-4" />
+                Competitive
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/competitive/discover">Discover Players</JackItem>
+                <JackItem to="/competitive/lfg/new">Find Teammates</JackItem>
+                <JackItem to="/competitive/profile/edit">My Competitive Profile</JackItem>
+                <JackDivider />
+                <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>
+                <JackItem to="/competitive/recruitment/workspace">My Openings</JackItem>
+                <JackItem to="/competitive/recruitment/my-applications">My Applications</JackItem>
+                <JackDivider />
+                <JackItem to="/competitive/scrims">Scrims</JackItem>
+                <JackItem to="/competitive/tryouts/workspace">Tryouts</JackItem>
+                <JackDivider />
+                <JackItem to="/competitive/scouting">Scouting</JackItem>
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+        )}
 
         {/* Tools */}
         <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
