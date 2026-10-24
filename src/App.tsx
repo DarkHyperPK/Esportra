@@ -41,6 +41,8 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import SetPassword from "./pages/auth/SetPassword";
 
 import AdminLayout from "@/components/admin/AdminLayout";
+import { ProductLayout } from "@/layouts/ProductLayout";
+import { AppShell } from "@/layouts/AppShell";
 
 /** Legacy `/tournaments/edit/:slug` redirects to the protected organizer edit route. */
 function OrganizerEditLegacyRedirect() {
@@ -285,6 +287,7 @@ const AppContent = React.memo(() => {
         <React.Suspense fallback={isChromelessRoute ? <div className="h-dvh w-dvw bg-transparent" /> : <PremiumLoadingScreen />}>
           <SuspensionGuard>
             <Routes location={location}>
+              <Route element={<AppShell />}>
               <Route element={<TransitionLayout />}>
                 <Route path="/" element={<Index />} />
 
@@ -541,75 +544,77 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
 
-                {/* Competitive Routes */}
-                <Route path="/competitive/discover" element={<DiscoverPage />} />
-                <Route path="/competitive/lfg/new" element={
-                  <ProtectedRoute>
-                    <LfgCreatePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/lfg/:id" element={
-                  <ProtectedRoute>
-                    <LfgManagePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/profile/edit" element={
-                  <ProtectedRoute>
-                    <EditCompetitiveProfilePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/recruitment" element={<OpeningDiscoveryPage />} />
-                <Route path="/competitive/recruitment/workspace" element={
-                  <ProtectedRoute>
-                    <RecruitmentWorkspacePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/recruitment/my-applications" element={
-                  <ProtectedRoute>
-                    <MyApplicationsPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/recruitment/:openingId/apply" element={
-                  <ProtectedRoute>
-                    <ApplicationFormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/tryouts/workspace" element={
-                  <ProtectedRoute>
-                    <TryoutWorkspacePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/tryouts/sessions/:id" element={
-                  <ProtectedRoute>
-                    <TryoutSessionDetailPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/tryouts/my-invites" element={
-                  <ProtectedRoute>
-                    <MyTryoutInvitesPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/scrims" element={
-                  <ProtectedRoute>
-                    <ScrimDiscoveryPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/scrims/workspace" element={
-                  <ProtectedRoute>
-                    <ScrimWorkspacePage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/practice" element={
-                  <ProtectedRoute>
-                    <PracticeCalendarPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/competitive/careers/:userId" element={<CareerTimelinePage />} />
-                <Route path="/competitive/scouting" element={
-                  <ProtectedRoute>
-                    <ScoutingWorkspacePage />
-                  </ProtectedRoute>
-                } />
+                {/* Competitive Routes — wrapped in ProductLayout for nav_v2 app shell */}
+                <Route path="/competitive" element={<ProductLayout />}>
+                  <Route path="discover" element={<DiscoverPage />} />
+                  <Route path="lfg/new" element={
+                    <ProtectedRoute>
+                      <LfgCreatePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="lfg/:id" element={
+                    <ProtectedRoute>
+                      <LfgManagePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="profile/edit" element={
+                    <ProtectedRoute>
+                      <EditCompetitiveProfilePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="recruitment" element={<OpeningDiscoveryPage />} />
+                  <Route path="recruitment/workspace" element={
+                    <ProtectedRoute>
+                      <RecruitmentWorkspacePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="recruitment/my-applications" element={
+                    <ProtectedRoute>
+                      <MyApplicationsPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="recruitment/:openingId/apply" element={
+                    <ProtectedRoute>
+                      <ApplicationFormPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="tryouts/workspace" element={
+                    <ProtectedRoute>
+                      <TryoutWorkspacePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="tryouts/sessions/:id" element={
+                    <ProtectedRoute>
+                      <TryoutSessionDetailPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="tryouts/my-invites" element={
+                    <ProtectedRoute>
+                      <MyTryoutInvitesPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="scrims" element={
+                    <ProtectedRoute>
+                      <ScrimDiscoveryPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="scrims/workspace" element={
+                    <ProtectedRoute>
+                      <ScrimWorkspacePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="practice" element={
+                    <ProtectedRoute>
+                      <PracticeCalendarPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="careers/:userId" element={<CareerTimelinePage />} />
+                  <Route path="scouting" element={
+                    <ProtectedRoute>
+                      <ScoutingWorkspacePage />
+                    </ProtectedRoute>
+                  } />
+                </Route>
 
                 {/* Venues Routes */}
                 <Route path="/venues" element={<VenueSearch />} />
@@ -718,7 +723,8 @@ const AppContent = React.memo(() => {
 
                 {/* Catch-all route */}
                 <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-              </Route >
+              </Route>
+              </Route>
 
               {/* Fullscreen bracket — outside layout to hide navbar/banners */}
               <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />

@@ -10,6 +10,7 @@ import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 import { JackButton } from "@/components/ui/JackButton";
+import { usePlatformFeatures, FEATURES } from "@/hooks/usePlatformFeatures";
 
 import {
   FramerDropdownRoot,
@@ -35,6 +36,11 @@ const DesktopNav = ({
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
     userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
+
+  const { isEnabled } = usePlatformFeatures();
+  // When nav_v2 is on and the user is logged in the sidebar owns navigation;
+  // collapse the topbar to logo + notifications + user menu only.
+  const isAppShell = isEnabled(FEATURES.navV2) && !!user;
 
   const isActive = (paths: string[]) =>
     paths.some(
@@ -64,156 +70,158 @@ const DesktopNav = ({
         />
       </Link>
 
-      {/* Center: Navigation */}
-      <div className="flex items-center gap-6">
-        {/* Venues */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
-          <FramerDropdownTrigger asChild>
-            <button type="button" className={linkClass(isActive(["/venues"]))}>
-              <MapPin className="h-4 w-4" />
-              Venues
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </button>
-          </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-[#0a0a0c]">
-              <JackItem to="/venues/search">Find Venues</JackItem>
-              <JackItem to="/venues/featured">Featured Venues</JackItem>
-              {canManageVenues && (
-                <>
-                  <JackDivider />
-                  <JackItem to="/venues/list-venue">List Your Venue</JackItem>
-                  <JackItem to="/venues/dashboard">Venue Dashboard</JackItem>
-                </>
-              )}
-            </div>
-          </FramerDropdownContent>
-        </FramerDropdownRoot>
-
-        {/* Tournaments */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
-          <FramerDropdownTrigger asChild>
-            <button
-              type="button"
-              className={linkClass(
-                isActive([
-                  "/tournaments",
-                  "/organizer/tournaments",
-                ])
-              )}
-            >
-              <Trophy className="h-4 w-4" />
-              Tournaments
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </button>
-          </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-[#0a0a0c]">
-              <JackItem to="/tournaments">Browse Tournaments</JackItem>
-              {canManageTournaments && (
-                <>
-                  <JackDivider />
-                  <JackItem to="/organizer/tournaments">Manage Tournaments</JackItem>
-                  <JackItem to="/tournaments/create">Create Tournament</JackItem>
-                </>
-              )}
-            </div>
-          </FramerDropdownContent>
-        </FramerDropdownRoot>
-
-        {/* Leaderboards */}
-        <Link to="/leaderboards" className={linkClass(isActive(["/leaderboards"]))}>
-          <Medal className="h-4 w-4" />
-          Leaderboards
-          {activeBar(isActive(["/leaderboards"]))}
-        </Link>
-
-        {/* Competitive */}
-        {user && (
+      {/* Center: Navigation — hidden when nav_v2 app shell is active (sidebar owns navigation) */}
+      {!isAppShell && (
+        <div className="flex items-center gap-6">
+          {/* Venues */}
           <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
             <FramerDropdownTrigger asChild>
-              <button type="button" className={linkClass(isActive(["/competitive"]))}>
-                <Swords className="h-4 w-4" />
-                Competitive
+              <button type="button" className={linkClass(isActive(["/venues"]))}>
+                <MapPin className="h-4 w-4" />
+                Venues
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/venues/search">Find Venues</JackItem>
+                <JackItem to="/venues/featured">Featured Venues</JackItem>
+                {canManageVenues && (
+                  <>
+                    <JackDivider />
+                    <JackItem to="/venues/list-venue">List Your Venue</JackItem>
+                    <JackItem to="/venues/dashboard">Venue Dashboard</JackItem>
+                  </>
+                )}
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+
+          {/* Tournaments */}
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button
+                type="button"
+                className={linkClass(
+                  isActive([
+                    "/tournaments",
+                    "/organizer/tournaments",
+                  ])
+                )}
+              >
+                <Trophy className="h-4 w-4" />
+                Tournaments
                 <ChevronDown className="h-3.5 w-3.5 opacity-50" />
               </button>
             </FramerDropdownTrigger>
             <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
               <div className="space-y-px bg-[#0a0a0c]">
-                <JackItem to="/competitive/discover">Discover Players</JackItem>
-                <JackItem to="/competitive/lfg/new">Find Teammates</JackItem>
-                <JackItem to="/competitive/profile/edit">My Competitive Profile</JackItem>
-                <JackDivider />
-                <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>
-                <JackItem to="/competitive/recruitment/workspace">My Openings</JackItem>
-                <JackItem to="/competitive/recruitment/my-applications">My Applications</JackItem>
-                <JackDivider />
-                <JackItem to="/competitive/scrims">Scrims</JackItem>
-                <JackItem to="/competitive/tryouts/workspace">Tryouts</JackItem>
-                <JackDivider />
-                <JackItem to="/competitive/scouting">Scouting</JackItem>
+                <JackItem to="/tournaments">Browse Tournaments</JackItem>
+                {canManageTournaments && (
+                  <>
+                    <JackDivider />
+                    <JackItem to="/organizer/tournaments">Manage Tournaments</JackItem>
+                    <JackItem to="/tournaments/create">Create Tournament</JackItem>
+                  </>
+                )}
               </div>
             </FramerDropdownContent>
           </FramerDropdownRoot>
-        )}
 
-        {/* Tools */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
-          <FramerDropdownTrigger asChild>
-            <button type="button" className={linkClass(isActive(["/tools"]))}>
-              <Wrench className="h-4 w-4" />
-              Tools
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </button>
-          </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-[#0a0a0c]">
-              <JackItem to="/tools/map-veto">Map Veto</JackItem>
-            </div>
-          </FramerDropdownContent>
-        </FramerDropdownRoot>
-
-        {/* About */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
-          <FramerDropdownTrigger asChild>
-            <button type="button" className={linkClass(isActive(["/about"]))}>
-              <Info className="h-4 w-4" />
-              About
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-            </button>
-          </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[200px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-[#0a0a0c]">
-              <JackItem to="/about/company">About Us</JackItem>
-              <JackItem to="/about/contact">Contact</JackItem>
-              <JackItem to="/about/faq">FAQ</JackItem>
-              <JackItem to="/help">Help Center</JackItem>
-            </div>
-          </FramerDropdownContent>
-        </FramerDropdownRoot>
-
-        {/* Pricing */}
-        <Link to="/pricing" className={linkClass(isActive(["/pricing"]))}>
-          Pricing
-          {activeBar(isActive(["/pricing"]))}
-        </Link>
-
-        {/* Partners */}
-        <Link to="/partners" className={linkClass(isActive(["/partners"]))}>
-          <Handshake className="h-4 w-4" />
-          Partners
-          {activeBar(isActive(["/partners"]))}
-        </Link>
-
-        {/* Admin */}
-        {admin.isAdmin && (
-          <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))}>
-            <Shield className="h-4 w-4" />
-            Admin
-            {activeBar(isActive(["/admin"]))}
+          {/* Leaderboards */}
+          <Link to="/leaderboards" className={linkClass(isActive(["/leaderboards"]))}>
+            <Medal className="h-4 w-4" />
+            Leaderboards
+            {activeBar(isActive(["/leaderboards"]))}
           </Link>
-        )}
-      </div>
+
+          {/* Competitive — only for logged-in users on the marketing shell */}
+          {user && (
+            <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+              <FramerDropdownTrigger asChild>
+                <button type="button" className={linkClass(isActive(["/competitive"]))}>
+                  <Swords className="h-4 w-4" />
+                  Competitive
+                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                </button>
+              </FramerDropdownTrigger>
+              <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+                <div className="space-y-px bg-[#0a0a0c]">
+                  <JackItem to="/competitive/discover">Discover Players</JackItem>
+                  <JackItem to="/competitive/lfg/new">Find Teammates</JackItem>
+                  <JackItem to="/competitive/profile/edit">My Competitive Profile</JackItem>
+                  <JackDivider />
+                  <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>
+                  <JackItem to="/competitive/recruitment/workspace">My Openings</JackItem>
+                  <JackItem to="/competitive/recruitment/my-applications">My Applications</JackItem>
+                  <JackDivider />
+                  <JackItem to="/competitive/scrims">Scrims</JackItem>
+                  <JackItem to="/competitive/tryouts/workspace">Tryouts</JackItem>
+                  <JackDivider />
+                  <JackItem to="/competitive/scouting">Scouting</JackItem>
+                </div>
+              </FramerDropdownContent>
+            </FramerDropdownRoot>
+          )}
+
+          {/* Tools */}
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button type="button" className={linkClass(isActive(["/tools"]))}>
+                <Wrench className="h-4 w-4" />
+                Tools
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/tools/map-veto">Map Veto</JackItem>
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+
+          {/* About */}
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button type="button" className={linkClass(isActive(["/about"]))}>
+                <Info className="h-4 w-4" />
+                About
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[200px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/about/company">About Us</JackItem>
+                <JackItem to="/about/contact">Contact</JackItem>
+                <JackItem to="/about/faq">FAQ</JackItem>
+                <JackItem to="/help">Help Center</JackItem>
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+
+          {/* Pricing */}
+          <Link to="/pricing" className={linkClass(isActive(["/pricing"]))}>
+            Pricing
+            {activeBar(isActive(["/pricing"]))}
+          </Link>
+
+          {/* Partners */}
+          <Link to="/partners" className={linkClass(isActive(["/partners"]))}>
+            <Handshake className="h-4 w-4" />
+            Partners
+            {activeBar(isActive(["/partners"]))}
+          </Link>
+
+          {/* Admin */}
+          {admin.isAdmin && (
+            <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))}>
+              <Shield className="h-4 w-4" />
+              Admin
+              {activeBar(isActive(["/admin"]))}
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Right: Auth */}
       <div className="flex items-center gap-3">

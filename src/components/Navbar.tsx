@@ -9,14 +9,18 @@ import { AnimatePresence } from "framer-motion";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { NotificationSidebar } from "./notifications/NotificationSidebar";
+import { usePlatformFeatures, FEATURES } from "@/hooks/usePlatformFeatures";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { signOut, user } = useAuth();
+  const { isEnabled } = usePlatformFeatures();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const isLandingPage = location.pathname === "/";
+
+  if (isEnabled(FEATURES.navV2) && user) return null;
 
   const handleSignOut = async () => {
     try {

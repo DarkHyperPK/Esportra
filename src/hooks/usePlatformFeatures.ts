@@ -15,6 +15,9 @@ export const FEATURES = {
   sponsorAds: 'sponsor-ads',
   broadcasts: 'broadcasts',
   ghostMode: 'ghost-mode',
+  competitiveProfiles: 'competitive_profiles',
+  lfg: 'lfg',
+  navV2: 'nav_v2',
 } as const;
 
 export type FeatureKey = (typeof FEATURES)[keyof typeof FEATURES];
@@ -36,9 +39,11 @@ export function usePlatformFeatures() {
     (query.data?.features ?? []).filter(f => f.enabled).map(f => f.key),
   );
 
+  const localOverrides: Set<FeatureKey> = new Set();
+
   return {
     features: query.data?.features ?? [],
-    isEnabled: (key: FeatureKey) => enabledKeys.has(key),
+    isEnabled: (key: FeatureKey) => localOverrides.has(key) || enabledKeys.has(key),
     isLoading: query.isLoading,
   };
 }
