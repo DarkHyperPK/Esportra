@@ -76,6 +76,8 @@ const MyTryoutInvitesPage = lazyWithRetry(() => import("./pages/competitive/tryo
 const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDiscoveryPage"));
 const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
 const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/PracticeCalendarPage"));
+const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
+const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
 
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
@@ -600,6 +602,12 @@ const AppContent = React.memo(() => {
                 <Route path="/competitive/practice" element={
                   <ProtectedRoute>
                     <PracticeCalendarPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/careers/:userId" element={<CareerTimelinePage />} />
+                <Route path="/competitive/scouting" element={
+                  <ProtectedRoute>
+                    <ScoutingWorkspacePage />
                   </ProtectedRoute>
                 } />
 

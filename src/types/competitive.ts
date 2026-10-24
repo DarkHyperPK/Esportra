@@ -497,3 +497,46 @@ export interface CompetitiveRecord {
     teamName: string;
   }>;
 }
+
+// --- Scouting ---
+
+export interface ScoutingShortlist {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  description?: string;
+  gameSlug?: string;
+  isPrivate: boolean;
+  createdAt: string;
+  updatedAt: string;
+  entries?: ShortlistEntry[];
+}
+
+export interface ShortlistEntry {
+  id: string;
+  shortlistId: string;
+  playerUserId: string;
+  note?: string;
+  addedAt: string;
+}
+
+export interface ScoutingNote {
+  id: string;
+  scoutUserId: string;
+  subjectUserId: string;
+  gameSlug?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateShortlistRequest {
+  name: string;
+  description?: string;
+  gameSlug?: string;
+}
+
+export interface UpsertScoutingNoteRequest {
+  gameSlug?: string;
+  content: string;
+}
