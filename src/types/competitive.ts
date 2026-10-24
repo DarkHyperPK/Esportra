@@ -443,3 +443,57 @@ export interface PracticeAttendance {
   username?: string | null;
   avatarSeed?: string | null;
 }
+
+// --- Tournament-Competitive Integration ---
+
+export interface TeamEligibilityStatus {
+  participantId: string;
+  teamId: string;
+  teamName: string;
+  eligible: boolean | null;
+  rosterSize: number;
+  playersWithRank: number;
+  gaps: string[];
+  gapCount: number;
+}
+
+export interface CompetitiveRecord {
+  userId: string;
+  memberships: Array<{
+    teamId: string;
+    teamName: string;
+    teamGame: string;
+    teamLogoUrl?: string;
+    role: string;
+    joinedAt: string;
+    leftAt?: string;
+    leftReason?: string;
+  }>;
+  placements: Array<{
+    tournamentId: string;
+    tournamentName: string;
+    tournamentGame: string;
+    teamName?: string;
+    placement: number;
+    status: string;
+  }>;
+  scrims: Array<{
+    id: string;
+    gameSlug: string;
+    scheduledAt: string;
+    status: string;
+    team1Score?: number;
+    team2Score?: number;
+    team1Name: string;
+    team2Name: string;
+    userTeamSide: 1 | 2;
+  }>;
+  tryoutOutcomes: Array<{
+    sessionId: string;
+    recommendation: string;
+    createdAt: string;
+    gameSlug: string;
+    sessionTitle: string;
+    teamName: string;
+  }>;
+}
