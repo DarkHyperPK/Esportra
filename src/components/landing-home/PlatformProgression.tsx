@@ -1,0 +1,7 @@
+import { ArrowUpRight, Fingerprint, Medal, Users } from 'lucide-react';
+
+const STEPS = [{ title: 'Make it yours.', caption: 'YOUR PLAYER IDENTITY', text: 'Build a profile that belongs to you, across the games you play.', action: 'Create your profile', href: '/auth/signup', icon: Fingerprint }, { title: 'Make it a team.', caption: 'YOUR PEOPLE', text: 'Bring your players together. Give the roster an identity of its own.', action: 'Build your team', href: '/auth/signup', icon: Users }, { title: 'Make it count.', caption: 'YOUR COMPETITIVE RECORD', text: 'Follow team rankings and turn the next result into your next step.', action: 'Explore the leaderboards', href: '/leaderboards', icon: Medal }];
+
+export default function PlatformProgression() {
+  return <section id="players" className="platform-progression" aria-labelledby="platform-progression-title"><div className="platform-section-top"><div><p className="platform-kicker">FROM YOUR FIRST TEAM TO YOUR NEXT CHAPTER</p><h2 id="platform-progression-title">A lobby forgets your name.<br />Your scene shouldn’t.</h2></div><p>Give your game an identity.<br />Give your progress a place to show.</p></div><div className="platform-player-path">{STEPS.map(({ title,caption,text,action,href,icon: Icon },index) => <a href={href} key={title}><div><Icon size={26} aria-hidden="true" /><span>0{index+1}</span></div><small>{caption}</small><h3>{title}</h3><p>{text}</p><span className="platform-text-link">{action}<ArrowUpRight size={16} aria-hidden="true" /></span></a>)}</div></section>;
+}
