@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Bookmark } from 'lucide-react';
 import { PageIntro, InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { motion, useReducedMotion } from 'framer-motion';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useMyShortlists,
@@ -180,12 +182,15 @@ export default function ScoutingWorkspacePage() {
   const [selectedId, setSelectedId] = useState<string>('');
   const [showCreate, setShowCreate] = useState(false);
   const deleteShortlist = useDeleteShortlist(selectedId);
+  const reduced = useReducedMotion() ?? false;
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] text-white w-full flex items-center justify-center">
-        <p className="text-[14px] text-white/50">Sign in to use scouting.</p>
-      </div>
+      <CompetitivePageShell>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <p className="text-[14px] text-white/50">Sign in to use scouting.</p>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
@@ -199,7 +204,7 @@ export default function ScoutingWorkspacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8">
         <PageIntro eyebrow="SCOUTING" title="Workspace" />
       </div>
@@ -211,8 +216,8 @@ export default function ScoutingWorkspacePage() {
       )}
 
       <div className="px-4 lg:px-8 pb-12 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-        {/* Left: shortlist list */}
-        <div className="space-y-3">
+        {/* Left: shortlist list — with workspace divider on desktop */}
+        <div className="space-y-3 lg:border-r lg:border-white/[0.06] lg:pr-6">
           <div className="flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.28em] text-white/40 font-mono">
               My Shortlists
@@ -239,11 +244,27 @@ export default function ScoutingWorkspacePage() {
               ))}
             </div>
           ) : shortlists.length === 0 && !showCreate ? (
-            <p className="py-4 text-[13px] text-white/40">
-              Create your first shortlist to start tracking players.
-            </p>
+            <div className="py-10 flex flex-col items-center gap-3 text-center">
+              <Bookmark className="h-8 w-8 text-white/25" />
+              <p className="text-[15px] font-medium text-white/55">You have no shortlists yet</p>
+              <p className="text-[13px] text-white/35 max-w-[200px]">
+                Create a shortlist to start tracking players.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                className="px-4 py-2 text-[13px] font-medium bg-rose-500 hover:bg-rose-600 text-white transition-colors [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+              >
+                Create shortlist
+              </button>
+            </div>
           ) : (
-            <ul aria-label="Shortlists">
+            <motion.ul
+              aria-label="Shortlists"
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+            >
               {shortlists.map((sl) => {
                 const entryCount = sl.entries?.length ?? 0;
                 const isActive = sl.id === selectedId;
@@ -274,7 +295,7 @@ export default function ScoutingWorkspacePage() {
                   </li>
                 );
               })}
-            </ul>
+            </motion.ul>
           )}
         </div>
 
@@ -303,6 +324,6 @@ export default function ScoutingWorkspacePage() {
           )}
         </div>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

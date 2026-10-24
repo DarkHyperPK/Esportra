@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageIntro } from '@/components/ui/kit';
 import { RecordTimeline } from '@/components/competitive/RecordTimeline';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 
 const GAME_OPTIONS = [
   { value: '', label: 'All Games' },
@@ -19,7 +20,7 @@ export default function CareerTimelinePage() {
   const [game, setGame] = useState('');
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-6 pb-2 lg:px-8">
         <Button
           variant="ghost"
@@ -54,6 +55,6 @@ export default function CareerTimelinePage() {
       <div className="px-4 lg:px-8 pb-12">
         <RecordTimeline userId={userId} game={game || undefined} />
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

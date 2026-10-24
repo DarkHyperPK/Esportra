@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { PageIntro } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { useMyApplications, useUpdateApplicationStatus } from '@/hooks/competitive/useRecruitment';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { RecruitmentApplication, RecruitmentApplicationStatus } from '@/types/competitive';
 
 const TERMINAL_STATUSES: RecruitmentApplicationStatus[] = [
@@ -88,7 +89,7 @@ export default function MyApplicationsPage() {
   const applications = appsQuery.data ?? [];
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8">
         <PageIntro eyebrow="YOUR APPLICATIONS" title="My Applications" className="mb-6" />
       </div>
@@ -139,6 +140,6 @@ export default function MyApplicationsPage() {
           </div>
         )}
       </main>
-    </div>
+    </CompetitivePageShell>
   );
 }

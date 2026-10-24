@@ -10,6 +10,7 @@ import { useLfgListing, useLfgInterests, useUpdateLfgStatus, useAcceptInterest, 
 import { LfgInterestCard } from '@/components/competitive/LfgInterestCard';
 import { RoleChip } from '@/components/competitive/RoleChip';
 import { RegionLabel } from '@/components/competitive/RegionLabel';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { LfgStatus } from '@/types/competitive';
 
 const STATUS_TONE: Record<LfgStatus, 'neutral' | 'accent' | 'success' | 'warning' | 'critical'> = {
@@ -58,23 +59,27 @@ export default function LfgManagePage() {
 
   if (listingQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 space-y-4 animate-pulse">
-        <div className="h-8 w-48 bg-white/[0.06]" />
-        <div className="h-6 w-64 bg-white/[0.04]" />
-        <div className="h-4 w-80 bg-white/[0.04]" />
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4 animate-pulse">
+          <div className="h-8 w-48 bg-white/[0.06]" />
+          <div className="h-6 w-64 bg-white/[0.04]" />
+          <div className="h-4 w-80 bg-white/[0.04]" />
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   if (listingQuery.isError || !listingQuery.data) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white space-y-4">
-        <p className="text-[14px] text-white/55">Could not load this listing. Check your connection and try again.</p>
-        <Button variant="outline" onClick={() => listingQuery.refetch()}
-          className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]">
-          Retry
-        </Button>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4">
+          <p className="text-[14px] text-white/55">Could not load this listing. Check your connection and try again.</p>
+          <Button variant="outline" onClick={() => listingQuery.refetch()}
+            className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]">
+            Retry
+          </Button>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
@@ -101,7 +106,7 @@ export default function LfgManagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <CompetitivePageShell>
       <div className="px-4 py-8 max-w-2xl mx-auto lg:mx-0 lg:px-8">
         <Link to="/competitive/lfg" className="text-[13px] text-white/55 hover:text-white mb-6 inline-block">
           ‹ My listings
@@ -262,6 +267,6 @@ export default function LfgManagePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </CompetitivePageShell>
   );
 }

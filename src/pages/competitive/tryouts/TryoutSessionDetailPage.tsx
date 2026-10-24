@@ -14,6 +14,7 @@ import {
   useCancelSession,
 } from '@/hooks/competitive/useTryouts';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type {
   TryoutSessionStatus,
   TryoutParticipantStatus,
@@ -283,31 +284,35 @@ export default function TryoutSessionDetailPage() {
 
   if (sessionQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white animate-pulse space-y-4">
-        <div className="h-6 w-48 bg-white/[0.06]" />
-        <div className="h-10 w-64 bg-white/[0.06]" />
-        <div className="h-4 w-32 bg-white/[0.04]" />
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 animate-pulse space-y-4">
+          <div className="h-6 w-48 bg-white/[0.06]" />
+          <div className="h-10 w-64 bg-white/[0.06]" />
+          <div className="h-4 w-32 bg-white/[0.04]" />
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   if (sessionQuery.isError || !session) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white space-y-4">
-        <InlineNotice tone="critical">Could not load session. It may not exist or you may not have access.</InlineNotice>
-        <Button
-          variant="outline"
-          onClick={() => navigate(-1)}
-          className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
-        >
-          Go back
-        </Button>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4">
+          <InlineNotice tone="critical">Could not load session. It may not exist or you may not have access.</InlineNotice>
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+          >
+            Go back
+          </Button>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8 space-y-4">
         <button
           onClick={() => navigate(-1)}
@@ -402,6 +407,6 @@ export default function TryoutSessionDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

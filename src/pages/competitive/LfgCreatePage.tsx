@@ -9,6 +9,7 @@ import { useRankTiers, useGameRoles, useGameRegions } from '@/hooks/competitive/
 import { getApiErrorMessage, ApiError } from '@/lib/apiClient';
 import type { LfgIntent, CreateLfgListingRequest } from '@/types/competitive';
 import { RoleChip } from '@/components/competitive/RoleChip';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 
 const GAME_SLUG = 'valorant';
 const DESC_MAX = 280;
@@ -122,7 +123,7 @@ export default function LfgCreatePage() {
   const charColor = description.length >= DESC_MAX ? 'text-red-300' : description.length >= DESC_WARN ? 'text-rose-400' : 'text-white/35';
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <CompetitivePageShell>
       <div className="px-4 py-8 max-w-2xl mx-auto lg:mx-0 lg:px-8">
         <Link to="/competitive/lfg" className="text-[13px] text-white/55 hover:text-white mb-6 inline-block">
           ‹ My listings
@@ -340,6 +341,6 @@ export default function LfgCreatePage() {
           />
         </div>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

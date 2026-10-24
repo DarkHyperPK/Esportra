@@ -10,6 +10,7 @@ import {
   useCloseOpening,
 } from '@/hooks/competitive/useRecruitment';
 import { NewOpeningForm } from '@/components/competitive/recruitment/NewOpeningForm';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { RecruitmentOpening, RecruitmentOpeningStatus } from '@/types/competitive';
 
 const STATUS_TONE: Record<
@@ -117,97 +118,135 @@ export default function RecruitmentWorkspacePage() {
 
   if (!teamId) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white">
-        <InlineNotice tone="critical">
-          No team ID provided. Add ?team_id= to the URL.
-        </InlineNotice>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8">
+          <InlineNotice tone="critical">
+            No team ID provided. Add ?team_id= to the URL.
+          </InlineNotice>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
-      <div className="px-4 pt-8 pb-4 lg:px-8 flex items-start justify-between gap-4">
-        <PageIntro eyebrow="RECRUITMENT WORKSPACE" title="Your Openings" />
-        <Button
-          onClick={() => setShowCreateForm((v) => !v)}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
-        >
-          {showCreateForm ? 'Cancel' : 'New Opening'}
-        </Button>
-      </div>
-
-      <div className="px-4 lg:px-8 pb-8 space-y-4">
-        {showCreateForm && (
-          <NewOpeningForm
-            teamId={teamId}
-            onSuccess={() => setShowCreateForm(false)}
-            onCancel={() => setShowCreateForm(false)}
-          />
-        )}
-
-        {openingsQuery.isLoading ? (
-          <div className="space-y-2 animate-pulse">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-16 bg-white/[0.04] border border-white/[0.06]" />
-            ))}
+    <CompetitivePageShell>
+      <div className="flex min-h-[100dvh]">
+        {/* Left panel — desktop workspace divider */}
+        <div className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-6">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+            RECRUITMENT
+          </p>
+          <Button
+            onClick={() => setShowCreateForm((v) => !v)}
+            className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px] w-full [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+          >
+            {showCreateForm ? 'Cancel' : 'New Opening'}
+          </Button>
+          <div className="space-y-2 border-t border-white/[0.06] pt-4">
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Active</span>
+              <span className="text-white/70 tabular-nums">{activeOpenings.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Draft</span>
+              <span className="text-white/70 tabular-nums">{draftOpenings.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Closed</span>
+              <span className="text-white/70 tabular-nums">{closedOpenings.length}</span>
+            </div>
           </div>
-        ) : openingsQuery.isError ? (
-          <div className="space-y-3">
-            <p className="text-[14px] text-white/55">Could not load openings. Try again.</p>
+        </div>
+
+        {/* Main panel */}
+        <div className="flex-1 px-4 lg:px-8 pt-8 pb-8">
+          {/* Mobile header */}
+          <div className="flex items-start justify-between gap-4 mb-6 lg:hidden">
+            <PageIntro eyebrow="RECRUITMENT WORKSPACE" title="Your Openings" />
             <Button
-              variant="outline"
-              onClick={() => openingsQuery.refetch()}
-              className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+              onClick={() => setShowCreateForm((v) => !v)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
             >
-              Retry
+              {showCreateForm ? 'Cancel' : 'New Opening'}
             </Button>
           </div>
-        ) : (
-          <Tabs defaultValue="active">
-            <div className="border-b border-white/[0.08]">
-              <TabsList className="bg-transparent p-0 h-10 gap-6">
-                {(
-                  [
-                    { value: 'active', label: 'Active', count: activeOpenings.length },
-                    { value: 'draft', label: 'Draft', count: draftOpenings.length },
-                    { value: 'closed', label: 'Closed / Expired', count: closedOpenings.length },
-                  ] as const
-                ).map(({ value, label, count }) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="bg-transparent text-[13px] font-medium text-white/55 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-rose-500 rounded-none pb-1 h-full data-[state=active]:bg-transparent"
-                  >
-                    {label}{' '}
-                    <span className="ml-1 text-white/30">{count}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
+          <div className="hidden lg:block mb-6">
+            <PageIntro eyebrow="RECRUITMENT WORKSPACE" title="Your Openings" />
+          </div>
 
-            {(
-              [
-                { value: 'active', items: activeOpenings, empty: 'No active openings.' },
-                { value: 'draft', items: draftOpenings, empty: 'No drafts.' },
-                { value: 'closed', items: closedOpenings, empty: 'No closed or expired openings.' },
-              ] as const
-            ).map(({ value, items, empty }) => (
-              <TabsContent key={value} value={value} className="mt-4 focus-visible:outline-none">
-                {items.length === 0 ? (
-                  <p className="text-[14px] text-white/40 py-6">{empty}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {items.map((o) => (
-                      <OpeningRow key={o.id} opening={o} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
+          {showCreateForm && (
+            <div className="mb-6">
+              <NewOpeningForm
+                teamId={teamId}
+                onSuccess={() => setShowCreateForm(false)}
+                onCancel={() => setShowCreateForm(false)}
+              />
+            </div>
+          )}
+
+          {openingsQuery.isLoading ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-16 bg-white/[0.04] border border-white/[0.06]" />
+              ))}
+            </div>
+          ) : openingsQuery.isError ? (
+            <div className="space-y-3">
+              <p className="text-[14px] text-white/55">Could not load openings. Try again.</p>
+              <Button
+                variant="outline"
+                onClick={() => openingsQuery.refetch()}
+                className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+              >
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <Tabs defaultValue="active">
+              <div className="border-b border-white/[0.08]">
+                <TabsList className="bg-transparent p-0 h-10 gap-6">
+                  {(
+                    [
+                      { value: 'active', label: 'Active', count: activeOpenings.length },
+                      { value: 'draft', label: 'Draft', count: draftOpenings.length },
+                      { value: 'closed', label: 'Closed / Expired', count: closedOpenings.length },
+                    ] as const
+                  ).map(({ value, label, count }) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="bg-transparent text-[13px] font-medium text-white/55 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-rose-500 rounded-none pb-1 h-full data-[state=active]:bg-transparent"
+                    >
+                      {label}{' '}
+                      <span className="ml-1 text-white/30">{count}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              {(
+                [
+                  { value: 'active', items: activeOpenings, empty: 'No active openings.' },
+                  { value: 'draft', items: draftOpenings, empty: 'No drafts.' },
+                  { value: 'closed', items: closedOpenings, empty: 'No closed or expired openings.' },
+                ] as const
+              ).map(({ value, items, empty }) => (
+                <TabsContent key={value} value={value} className="mt-4 focus-visible:outline-none">
+                  {items.length === 0 ? (
+                    <p className="text-[14px] text-white/40 py-6">{empty}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {items.map((o) => (
+                        <OpeningRow key={o.id} opening={o} />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </div>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

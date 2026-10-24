@@ -7,6 +7,7 @@ import { useRankTiers, useGameRoles, useGameRegions } from '@/hooks/competitive/
 import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { CompetitiveProfileEditForm } from '@/components/competitive/CompetitiveProfileEditForm';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { UpsertCompetitiveProfileRequest } from '@/types/competitive';
 
 const GAME_SLUG = 'valorant';
@@ -50,7 +51,7 @@ export default function EditCompetitiveProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <CompetitivePageShell>
       <div className="px-4 py-8">
         <Link
           to={`/profile/${profile.username}`}
@@ -93,7 +94,7 @@ export default function EditCompetitiveProfilePage() {
           />
         )}
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }
 

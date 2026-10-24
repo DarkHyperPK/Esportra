@@ -1,107 +1,77 @@
-import { useNavigate } from 'react-router-dom';
-import { PageIntro, InlineNotice, StatusPill } from '@/components/ui/kit';
+import { Inbox } from 'lucide-react';
+import { PageIntro, InlineNotice } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMyTryoutInvites, useRespondToInvite } from '@/hooks/competitive/useTryouts';
+import { TryoutSessionCard } from '@/components/competitive/TryoutSessionCard';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { useAuth } from '@/hooks/useAuth';
-import type {
-  TryoutInviteView,
-  TryoutParticipantStatus,
-  TryoutSessionStatus,
-} from '@/types/competitive';
+import type { TryoutInviteView, TryoutSession } from '@/types/competitive';
 
-const SESSION_STATUS_TONE: Record<
-  TryoutSessionStatus,
-  'neutral' | 'accent' | 'success' | 'warning' | 'critical'
-> = {
-  draft: 'neutral',
-  scheduled: 'accent',
-  in_progress: 'critical',
-  completed: 'success',
-  cancelled: 'neutral',
-};
+// ─── Adapter: shape a TryoutInviteView as a TryoutSession for the shared card ──
 
-const PARTICIPANT_STATUS_TONE: Record<
-  TryoutParticipantStatus,
-  'neutral' | 'accent' | 'success' | 'warning' | 'critical'
-> = {
-  invited: 'accent',
-  confirmed: 'success',
-  declined: 'neutral',
-  attended: 'success',
-  no_show: 'critical',
-  removed: 'neutral',
-};
-
-function formatScheduled(iso: string | null): string {
-  if (!iso) return 'No date set';
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+function inviteToSession(invite: TryoutInviteView): TryoutSession {
+  return {
+    id: invite.sessionId,
+    teamId: '',
+    gameSlug: invite.gameSlug,
+    title: invite.title,
+    description: null,
+    scheduledAt: invite.scheduledAt,
+    durationMinutes: null,
+    maxParticipants: null,
+    minRankKey: null,
+    maxRankKey: null,
+    status: invite.sessionStatus,
+    createdBy: '',
+    createdAt: '',
+    updatedAt: '',
+    teamName: invite.teamName ?? undefined,
+    teamLogoUrl: invite.teamLogoUrl ?? undefined,
+    participantCount: undefined,
+  };
 }
 
-function InviteCard({ invite, userId }: { invite: TryoutInviteView; userId: string }) {
-  const navigate = useNavigate();
+// ─── Per-invite card wrapper (hooks must live in a component, not a callback) ──
+
+function InviteSessionCard({
+  invite,
+  userId,
+}: {
+  invite: TryoutInviteView;
+  userId: string;
+}) {
   const respondMutation = useRespondToInvite(invite.sessionId, userId);
-  const isPending = respondMutation.isPending;
+
+  function handleAccept(sessionId: string) {
+    respondMutation.mutate('confirmed');
+  }
+
+  function handleDecline(sessionId: string) {
+    respondMutation.mutate('declined');
+  }
 
   return (
-    <div className="border border-white/[0.06] bg-white/[0.03] p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0 space-y-1">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-            {invite.teamName ?? 'TEAM'}
-          </p>
-          <button
-            className="text-[15px] font-semibold text-white hover:text-white/80 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-            onClick={() => navigate(`/competitive/tryouts/sessions/${invite.sessionId}`)}
-          >
-            {invite.title}
-          </button>
-          <div className="flex items-center gap-2 flex-wrap">
-            <StatusPill
-              label={invite.sessionStatus.replace('_', ' ').toUpperCase()}
-              tone={SESSION_STATUS_TONE[invite.sessionStatus]}
-            />
-            <p className="text-[12px] text-white/40">{formatScheduled(invite.scheduledAt)}</p>
-          </div>
-        </div>
-        <StatusPill
-          label={invite.participantStatus.replace('_', ' ').toUpperCase()}
-          tone={PARTICIPANT_STATUS_TONE[invite.participantStatus]}
-        />
-      </div>
-
-      {invite.participantStatus === 'invited' && (
-        <div className="flex gap-2 pt-1">
-          <Button
-            size="sm"
-            onClick={() => respondMutation.mutate('confirmed')}
-            disabled={isPending}
-            className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[12px]"
-          >
-            {isPending ? '…' : 'Confirm'}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => respondMutation.mutate('declined')}
-            disabled={isPending}
-            className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-          >
-            {isPending ? '…' : 'Decline'}
-          </Button>
-        </div>
-      )}
-    </div>
+    <TryoutSessionCard
+      session={inviteToSession(invite)}
+      participantStatus={invite.participantStatus}
+      onAccept={handleAccept}
+      onDecline={handleDecline}
+    />
   );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyTryoutInvitesPage() {
   const { profile } = useAuth();
   const invitesQuery = useMyTryoutInvites();
   const invites = invitesQuery.data ?? [];
   const userId = profile?.id ?? '';
+  const reduced = useReducedMotion() ?? false;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8">
         <PageIntro eyebrow="TRYOUTS" title="My Invites" />
       </div>
@@ -125,15 +95,30 @@ export default function MyTryoutInvitesPage() {
             </Button>
           </div>
         ) : invites.length === 0 ? (
-          <p className="text-[14px] text-white/40 py-6">You have no tryout invites.</p>
-        ) : (
-          <div className="space-y-3">
-            {invites.map((invite) => (
-              <InviteCard key={invite.participantId} invite={invite} userId={userId} />
-            ))}
+          <div className="py-16 flex flex-col items-center gap-4 text-center">
+            <Inbox className="h-8 w-8 text-white/25" />
+            <p className="text-[15px] font-medium text-white/55">No tryout invites</p>
+            <p className="text-[13px] text-white/35 max-w-xs">
+              When a team invites you to a tryout, it appears here.
+            </p>
           </div>
+        ) : (
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="space-y-3"
+          >
+            {invites.map((invite) => (
+              <InviteSessionCard
+                key={invite.participantId}
+                invite={invite}
+                userId={userId}
+              />
+            ))}
+          </motion.div>
         )}
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

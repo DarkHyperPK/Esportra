@@ -12,6 +12,7 @@ import {
   useUpdateOwnAttendance,
 } from '@/hooks/competitive/useScrims';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { PracticeSession, PracticeAttendance } from '@/types/competitive';
 
 const SESSION_TONE = {
@@ -315,14 +316,16 @@ export default function PracticeCalendarPage() {
 
   if (!teamId) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white">
-        <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8">
+          <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8 flex items-start justify-between gap-4">
         <PageIntro eyebrow="PRACTICE" title="Practice Sessions" />
         <Button
@@ -386,6 +389,6 @@ export default function PracticeCalendarPage() {
           </>
         )}
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

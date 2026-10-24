@@ -20,6 +20,7 @@ import {
   useReportScrimResult,
 } from '@/hooks/competitive/useScrims';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { ScrimListing, ScrimOffer, ScrimSession } from '@/types/competitive';
 
 // --- Status tone maps ---
@@ -496,32 +497,67 @@ export default function ScrimWorkspacePage() {
 
   if (!teamId) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white">
-        <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8">
+          <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
-      <div className="px-4 pt-8 pb-4 lg:px-8 flex items-start justify-between gap-4">
-        <PageIntro eyebrow="SCRIM WORKSPACE" title="Scrims" />
-        <Button
-          onClick={() => setShowNewListing((v) => !v)}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
-        >
-          {showNewListing ? 'Cancel' : 'New Listing'}
-        </Button>
-      </div>
+    <CompetitivePageShell>
+      <div className="flex min-h-[100dvh]">
+        {/* Left panel — desktop workspace divider */}
+        <div className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-6">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+            SCRIM WORKSPACE
+          </p>
+          <Button
+            onClick={() => setShowNewListing((v) => !v)}
+            className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px] w-full [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+          >
+            {showNewListing ? 'Cancel' : 'New Listing'}
+          </Button>
+          <div className="space-y-2 border-t border-white/[0.06] pt-4">
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Listings</span>
+              <span className="text-white/70 tabular-nums">{listings.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Offers</span>
+              <span className="text-white/70 tabular-nums">{myOffers.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-white/40">Sessions</span>
+              <span className="text-white/70 tabular-nums">{sessions.length}</span>
+            </div>
+          </div>
+        </div>
 
-      <div className="px-4 lg:px-8 pb-8 space-y-4">
-        {showNewListing && (
-          <NewListingForm
-            teamId={teamId}
-            onSuccess={() => setShowNewListing(false)}
-            onCancel={() => setShowNewListing(false)}
-          />
-        )}
+        {/* Main panel */}
+        <div className="flex-1 px-4 lg:px-8 pt-8 pb-8 space-y-4">
+          {/* Mobile header */}
+          <div className="flex items-start justify-between gap-4 lg:hidden">
+            <PageIntro eyebrow="SCRIM WORKSPACE" title="Scrims" />
+            <Button
+              onClick={() => setShowNewListing((v) => !v)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
+            >
+              {showNewListing ? 'Cancel' : 'New Listing'}
+            </Button>
+          </div>
+          <div className="hidden lg:block">
+            <PageIntro eyebrow="SCRIM WORKSPACE" title="Scrims" />
+          </div>
+
+          {showNewListing && (
+            <NewListingForm
+              teamId={teamId}
+              onSuccess={() => setShowNewListing(false)}
+              onCancel={() => setShowNewListing(false)}
+            />
+          )}
 
         <Tabs defaultValue="listings">
           <div className="border-b border-white/[0.08]">
@@ -616,7 +652,8 @@ export default function ScrimWorkspacePage() {
             )}
           </TabsContent>
         </Tabs>
+        </div>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

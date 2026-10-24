@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useRecruitmentOpening, useApplyToOpening } from '@/hooks/competitive/useRecruitment';
 import { getApiErrorMessage, ApiError } from '@/lib/apiClient';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 
 const COVER_MAX = 1000;
 const COVER_WARN = 900;
@@ -41,35 +42,39 @@ export default function ApplicationFormPage() {
 
   if (openingQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 space-y-4 animate-pulse">
-        <div className="h-6 w-48 bg-white/[0.06]" />
-        <div className="h-4 w-64 bg-white/[0.04]" />
-        <div className="h-4 w-40 bg-white/[0.04]" />
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4 animate-pulse">
+          <div className="h-6 w-48 bg-white/[0.06]" />
+          <div className="h-4 w-64 bg-white/[0.04]" />
+          <div className="h-4 w-40 bg-white/[0.04]" />
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   if (openingQuery.isError || !openingQuery.data) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] px-4 py-8 text-white space-y-4">
-        <p className="text-[14px] text-white/55">
-          Could not load this opening. Check your connection and try again.
-        </p>
-        <Button
-          variant="outline"
-          onClick={() => openingQuery.refetch()}
-          className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
-        >
-          Retry
-        </Button>
-      </div>
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4">
+          <p className="text-[14px] text-white/55">
+            Could not load this opening. Check your connection and try again.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => openingQuery.refetch()}
+            className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+          >
+            Retry
+          </Button>
+        </div>
+      </CompetitivePageShell>
     );
   }
 
   const opening = openingQuery.data;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <CompetitivePageShell>
       <div className="px-4 py-8 max-w-2xl mx-auto lg:mx-0 lg:px-8">
         <Link
           to="/competitive/recruitment"
@@ -150,6 +155,6 @@ export default function ApplicationFormPage() {
           </div>
         </div>
       </div>
-    </div>
+    </CompetitivePageShell>
   );
 }

@@ -1,22 +1,15 @@
 import { useState } from 'react';
-import { PageIntro, InlineNotice, StatusPill, Field } from '@/components/ui/kit';
+import { Crosshair } from 'lucide-react';
+import { PageIntro, InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useDiscoverScrims, useMakeOffer } from '@/hooks/competitive/useScrims';
+import { ScrimListingCard } from '@/components/competitive/ScrimListingCard';
+import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { getApiErrorMessage } from '@/lib/apiClient';
-import type { ScrimListing } from '@/types/competitive';
 
 const GAME_SLUG = 'valorant';
-
-const LISTING_TONE = {
-  open: 'accent',
-  paused: 'neutral',
-  closed: 'neutral',
-} as const;
-
-function formatDays(days: string[] | null): string {
-  if (!days || days.length === 0) return '';
-  return days.map((d) => d.slice(0, 3)).join(', ');
-}
 
 function SkeletonCard() {
   return (
@@ -134,66 +127,14 @@ function MakeOfferForm({ listingId, onClose }: { listingId: string; onClose: () 
   );
 }
 
-function ListingCard({
-  listing,
-  activeOfferId,
-  onToggleOffer,
-}: {
-  listing: ScrimListing;
-  activeOfferId: string | null;
-  onToggleOffer: (id: string | null) => void;
-}) {
-  const isOfferOpen = activeOfferId === listing.id;
-  const days = formatDays(listing.preferredDays);
-
-  return (
-    <div className="border border-white/[0.06] bg-white/[0.03] p-4 space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[15px] font-semibold text-white truncate">
-              {listing.teamName ?? 'Unknown team'}
-              {listing.teamTag ? ` [${listing.teamTag}]` : ''}
-            </p>
-            <StatusPill
-              label={listing.status.toUpperCase()}
-              tone={LISTING_TONE[listing.status]}
-            />
-          </div>
-          <p className="text-[12px] text-white/40 mt-0.5">
-            {[listing.gameSlug, listing.modeKey, listing.regionKey]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          onClick={() => onToggleOffer(isOfferOpen ? null : listing.id)}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 px-4 min-h-[36px] text-[13px]"
-        >
-          {isOfferOpen ? 'Close' : 'Make Offer'}
-        </Button>
-      </div>
-      {days && (
-        <p className="text-[12px] text-white/40">Preferred days: {days}</p>
-      )}
-      {listing.notes && (
-        <p className="text-[13px] text-white/55 line-clamp-2">{listing.notes}</p>
-      )}
-      {isOfferOpen && (
-        <MakeOfferForm listingId={listing.id} onClose={() => onToggleOffer(null)} />
-      )}
-    </div>
-  );
-}
-
 export default function ScrimDiscoveryPage() {
   const discoverQuery = useDiscoverScrims(GAME_SLUG);
   const listings = discoverQuery.data ?? [];
   const [activeOfferId, setActiveOfferId] = useState<string | null>(null);
+  const reduced = useReducedMotion() ?? false;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white w-full">
+    <CompetitivePageShell>
       <div className="px-4 pt-8 pb-4 lg:px-8">
         <PageIntro eyebrow="SCRIMS" title="Find a Scrim" className="mb-6" />
       </div>
@@ -217,28 +158,44 @@ export default function ScrimDiscoveryPage() {
             </Button>
           </div>
         ) : listings.length === 0 ? (
-          <div className="py-12 space-y-3">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-              VALORANT
+          <div className="py-16 flex flex-col items-center gap-4 text-center">
+            <Crosshair className="h-8 w-8 text-white/25" />
+            <p className="text-[15px] font-medium text-white/55">No scrim listings posted yet</p>
+            <p className="text-[13px] text-white/35 max-w-xs">
+              List your team to find practice partners.
             </p>
-            <p className="text-[14px] text-white/55 max-w-md">
-              No scrim listings posted yet. Ask your team to post one from the Scrim Workspace.
-            </p>
+            <Link
+              to="/competitive/scrims/workspace"
+              className="px-4 py-2 text-[13px] font-medium bg-rose-500 hover:bg-rose-600 text-white transition-colors [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+            >
+              List your team
+            </Link>
           </div>
         ) : (
-          <div className="space-y-2" role="list" aria-label="Scrim listings">
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            role="list"
+            aria-label="Scrim listings"
+          >
             {listings.map((listing) => (
-              <div key={listing.id} role="listitem">
-                <ListingCard
+              <div key={listing.id} role="listitem" className="mb-2">
+                <ScrimListingCard
                   listing={listing}
-                  activeOfferId={activeOfferId}
-                  onToggleOffer={setActiveOfferId}
+                  onMakeOffer={(id) => setActiveOfferId(activeOfferId === id ? null : id)}
                 />
+                {activeOfferId === listing.id && (
+                  <MakeOfferForm
+                    listingId={listing.id}
+                    onClose={() => setActiveOfferId(null)}
+                  />
+                )}
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
       </main>
-    </div>
+    </CompetitivePageShell>
   );
 }
