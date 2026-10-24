@@ -61,6 +61,16 @@ const Index = lazyWithRetry(() => import("./pages/Index"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 
+// Competitive
+const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
+const LfgCreatePage = lazyWithRetry(() => import("./pages/competitive/LfgCreatePage"));
+const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
+const EditCompetitiveProfilePage = lazyWithRetry(() => import("./pages/competitive/EditCompetitiveProfilePage"));
+const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
+const RecruitmentWorkspacePage = lazyWithRetry(() => import("./pages/competitive/recruitment/RecruitmentWorkspacePage"));
+const ApplicationFormPage = lazyWithRetry(() => import("./pages/competitive/recruitment/ApplicationFormPage"));
+const MyApplicationsPage = lazyWithRetry(() => import("./pages/competitive/recruitment/MyApplicationsPage"));
+
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
 const StaffInvitesPage = lazyWithRetry(() => import("./pages/user/StaffInvites"));
@@ -522,6 +532,40 @@ const AppContent = React.memo(() => {
                 <Route path="/invitations/redeem" element={<RedeemInvitePage />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
+
+                {/* Competitive Routes */}
+                <Route path="/competitive/discover" element={<DiscoverPage />} />
+                <Route path="/competitive/lfg/new" element={
+                  <ProtectedRoute>
+                    <LfgCreatePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/lfg/:id" element={
+                  <ProtectedRoute>
+                    <LfgManagePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/profile/edit" element={
+                  <ProtectedRoute>
+                    <EditCompetitiveProfilePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/recruitment" element={<OpeningDiscoveryPage />} />
+                <Route path="/competitive/recruitment/workspace" element={
+                  <ProtectedRoute>
+                    <RecruitmentWorkspacePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/recruitment/my-applications" element={
+                  <ProtectedRoute>
+                    <MyApplicationsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/recruitment/:openingId/apply" element={
+                  <ProtectedRoute>
+                    <ApplicationFormPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Venues Routes */}
                 <Route path="/venues" element={<VenueSearch />} />
