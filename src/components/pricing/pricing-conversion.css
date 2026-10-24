@@ -1,0 +1,104 @@
+.pricing-budget { padding-block: 55px 90px; scroll-margin-top: 80px; }
+.pricing-budget-board { display: grid; grid-template-columns: 1fr 1.08fr; border: 1px solid #38383e; background: linear-gradient(130deg,#222228,#111114 70%); }
+.pricing-budget-inputs { padding: clamp(24px,3.3vw,52px); border-right: 1px solid #38383e; display: grid; gap: 27px; align-content: start; }
+.pricing-budget-field label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+.pricing-budget-field label > span,.pricing-budget-field output span { font-size: 10px; color: #a1a1aa; font-weight: 400; }
+.pricing-budget-field output { font-size: 20px; font-variant-numeric: tabular-nums; }
+.pricing-budget :is(select,input[type=number]),.pricing-booking-form input { min-height: 48px; border: 1px solid #45454c; background: #101013; color: #fafafa; width: 100%; padding: 12px; border-radius: 0; font: 13px var(--font-body); color-scheme: dark; }
+.pricing-budget :is(select,input):focus-visible,.pricing-booking-form input:focus-visible { outline: 2px solid #fafafa; outline-offset: 3px; }
+.pricing-budget input[type=range] { width: 100%; min-height: 32px; accent-color: #f43f5e; cursor: pointer; }
+.pricing-budget-field > p { color: #a1a1aa; font-size: 10px; margin-top: 6px; }
+.pricing-budget-team-count { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.pricing-budget .pricing-budget-team-count input { width: 120px; font: 600 28px var(--font-heading); letter-spacing: -.04em; padding: 10px 12px; }
+.pricing-budget-team-count > span { color: #d4d4dc; font-size: 11px; line-height: 1.7; }
+.pricing-budget-range-labels { display: flex; justify-content: space-between; gap: 10px; font-size: 9px; color: #a1a1aa; }
+.pricing-budget-presets { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; margin-top: 17px; }
+.pricing-budget-presets button { min-height: 44px; border: 1px solid #45454c; color: #d4d4dc; font: 11px var(--font-body); transition: background-color .15s,color .15s,border-color .15s; }
+.pricing-budget-presets button[aria-pressed=true] { background: #fafaf8; border-color: #fafaf8; color: #141417; }
+.pricing-budget-presets button:focus-visible { outline: 2px solid #fafafa; outline-offset: 3px; }
+.pricing-budget-assumption { padding-top: 18px; border-top: 1px solid #45454c; color: #bfbfc6; font-size: 10px; line-height: 1.8; }
+.pricing-budget-result-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
+.pricing-budget-result-heading .pricing-caption { color: #55555e; }
+.pricing-budget-result-heading > span { border: 1px solid #a7a7a3; padding: 6px 8px; font: 8px ui-monospace,monospace; letter-spacing: .04em; }
+.pricing-budget-result { padding: clamp(24px,3.3vw,52px); background: linear-gradient(150deg,#fafaf8,#dededb); color: #141417; display: flex; flex-direction: column; }
+.pricing-budget-result > .pricing-caption { color: #55555e; }
+.pricing-budget-total { display: flex; flex-direction: column; gap: 4px; margin: 23px 0 13px; font-variant-numeric: tabular-nums; }
+.pricing-budget-total > span { font-size: 12px; font-weight: 600; }
+.pricing-budget-total strong { font: 700 clamp(32px,4.1vw,66px)/1.08 var(--font-heading); letter-spacing: -.055em; overflow-wrap: anywhere; }
+.pricing-budget-result[data-deficit=true] .pricing-budget-total { color: #a32132; }
+.pricing-budget-result > p:not(.pricing-caption) { font-size: 11px; line-height: 1.8; color: #53535b; }
+.pricing-budget-ledger { margin: 30px 0 20px; border-top: 1px solid #bfbfbd; }
+.pricing-budget-ledger > div { display: flex; justify-content: space-between; gap: 15px; padding: 13px 0; border-bottom: 1px solid #c8c8c5; font-size: 11px; }
+.pricing-budget-ledger dd { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pricing-budget-free-message { margin: 2px 0 22px; }
+.pricing-budget-free-message strong { font: 600 17px/1.5 var(--font-heading); letter-spacing: -.04em; }
+.pricing-budget-free-message p { margin-top: 7px; font-size: 11px; line-height: 1.8; color: #53535b; }
+.pricing-budget-result .pricing-budget-note { font-size: 10px; margin-bottom: 25px; }
+.pricing-budget-result .pricing-button { background: #141417; color: #fafafa; margin-top: auto; gap: 12px; text-align: left; }
+.pricing-budget-result :is(button,a,summary):focus-visible { outline-color: #141417; }
+@media(hover:hover) { .pricing-budget-presets button:not([aria-pressed=true]):hover { border-color: #a1a1aa; background: #303038; color: #fafafa; } }
+@media(prefers-reduced-motion:reduce) { .pricing-budget-presets button { transition: none; } }
+.pricing-booking-backdrop { position: fixed; inset: 0; z-index: 1000; background: #000c; backdrop-filter: blur(8px); }
+.pricing-booking-dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 1001; display: grid; grid-template-columns: .9fr 1.1fr; width: min(940px,calc(100vw - 40px)); max-height: 92dvh; overflow: auto; background: #161619; color: #fafafa; border: 1px solid #4a4a50; font-family: var(--font-body); box-shadow: 0 35px 130px #0009; }
+.pricing-booking-intro { padding: 42px 32px; background: linear-gradient(145deg,#292930,#101013); border-right: 1px solid #3b3b42; }
+.pricing-booking-intro h2 { font: 700 35px/1.1 var(--font-heading); letter-spacing: -.05em; margin: 25px 0 20px; }
+.pricing-booking-intro > p:not(.pricing-caption),.pricing-booking-quote > p:not(.pricing-caption) { font-size: 12px; line-height: 1.8; color: #b0b0ba; }
+.pricing-booking-intro ol { display: grid; gap: 18px; margin: 35px 0; font-size: 11px; }
+.pricing-booking-intro li span { font: 10px ui-monospace,monospace; color: #aaaab4; margin-right: 12px; }
+.pricing-booking-quote { border-top: 1px solid #484850; padding-top: 24px; }
+.pricing-booking-quote strong { display: block; font: 600 25px var(--font-heading); margin: 10px 0; letter-spacing: -.04em; }
+.pricing-booking-body { padding: 44px 32px 30px; }
+.pricing-booking-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 30px; height: 30px; color: #bdbdc7; }
+.pricing-booking-form { display: grid; gap: 20px; }
+.pricing-booking-form-fields { display: grid; gap: 20px; min-width: 0; }
+.pricing-booking-form label { display: grid; gap: 9px; font-size: 11px; color: #d4d4dc; }
+.pricing-booking-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pricing-booking-form input { min-width: 0; font-size: 14px; }
+.pricing-booking-form .pricing-booking-honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.pricing-booking-dialog :is(button,a):focus-visible { outline: 2px solid #fafafa; outline-offset: 4px; }
+.pricing-booking-dialog .pricing-button { width: 100%; gap: 10px; text-align: left; }
+.pricing-booking-form button:disabled { opacity: .55; cursor: wait; }
+.pricing-booking-privacy { font-size: 10px; line-height: 1.7; color: #a1a1aa; }
+.pricing-booking-privacy a { text-decoration: underline; text-underline-offset: 3px; }
+.pricing-booking-error { font-size: 12px; color: #fca5a5; line-height: 1.7; }
+.pricing-booking-receipt { display: grid; gap: 18px; padding-top: 10px; }
+.pricing-booking-receipt > svg { color: #6ee7b7; }
+.pricing-booking-receipt h3 { font: 600 25px/1.2 var(--font-heading); letter-spacing: -.04em; }
+.pricing-booking-receipt p { font-size: 12px; line-height: 1.9; color: #b5b5bf; overflow-wrap: anywhere; }
+.pricing-booking-receipt strong { color: #fafafa; }
+.pricing-booking-receipt code { font: 12px/1.8 ui-monospace,monospace; overflow-wrap: anywhere; user-select: all; }
+.pricing-booking-receipt > button:not(.pricing-button) { display: flex; align-items: center; gap: 9px; font-size: 11px; justify-self: start; }
+.pricing-invoice { display: grid; gap: 15px; min-width: 0; }
+.pricing-invoice h3 { font-size: 20px; }
+.pricing-invoice .pricing-invoice-amount { font: 600 30px var(--font-heading); letter-spacing: -.04em; }
+.pricing-invoice-reference { display: flex; align-items: start; gap: 10px; padding: 12px; background: #08080a; border: 1px solid #414148; }
+.pricing-invoice-reference code { flex: 1; min-width: 0; }
+.pricing-invoice-payee { display: grid; gap: 12px; border-block: 1px solid #414148; padding-block: 18px; }
+.pricing-invoice-payee dt { color: #a1a1aa; font-size: 10px; }
+.pricing-invoice-payee dd { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.pricing-invoice-qr { width: 170px; height: 170px; object-fit: contain; background: white; padding: 8px; }
+.pricing-invoice-download { display: flex; align-items: center; gap: 8px; font-size: 11px; text-decoration: underline; text-underline-offset: 4px; }
+.pricing-invoice-upload { display: grid; gap: 13px; border-top: 1px solid #414148; padding-top: 20px; }
+.pricing-invoice-upload label { display: grid; gap: 12px; font-size: 12px; }
+.pricing-invoice-upload input { width: 100%; min-width: 0; font-size: 11px; }
+.pricing-invoice-proof-saved { border: 1px solid #34d39955; padding: 16px; display: grid; gap: 12px; }
+.pricing-invoice-proof-saved svg { color: #6ee7b7; }
+.pricing-invoice-upload button:disabled { opacity: .5; cursor: not-allowed; }
+.pricing-broadcast-details > button,.pricing-faq > div > button,.pricing-custom > button { display: inline-flex; align-items: center; gap: 15px; font-size: 12px; font-weight: 600; }
+@media(max-width:760px) {
+ .pricing-budget { padding-block: 20px 60px; }
+ .pricing-budget-board { grid-template-columns: 1fr; }
+ .pricing-budget-inputs { border-right: 0; border-bottom: 1px solid #38383e; gap: 24px; }
+ .pricing-budget-total strong { font-size: clamp(36px,10vw,60px); }
+ .pricing-budget input[type=number] { font-size: 16px; }
+ .pricing-booking-dialog { display: block; width: calc(100vw - 24px); max-height: 92dvh; }
+ .pricing-booking-intro { padding: 25px 22px; border-right: 0; border-bottom: 1px solid #3b3b42; }
+ .pricing-booking-intro h2 { font-size: 29px; margin: 15px 0 12px; }
+ .pricing-booking-intro ol { display: none; }
+ .pricing-booking-quote { margin-top: 20px; padding-top: 15px; }
+ .pricing-booking-quote strong { font-size: 22px; }
+ .pricing-booking-body { padding: 25px 20px; }
+ .pricing-booking-form input { font-size: 16px; }
+ .pricing-booking-fields { gap: 10px; }
+ .pricing-booking-fields label { min-width: 0; }
+}

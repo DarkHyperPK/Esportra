@@ -12,7 +12,7 @@ export default function PricingComparison({ selection, onSelectTeams }: { select
   return (
     <section id="compare" className="pricing-comparison pricing-paper" aria-labelledby="comparison-title">
       <div className="pricing-section-heading">
-        <div><p className="pricing-caption">04 / Every detail, out in the open</p><h2 id="comparison-title">No fine-print<br />gymnastics.</h2></div>
+        <div><p className="pricing-caption">05 / Every detail, out in the open</p><h2 id="comparison-title">No fine-print<br />gymnastics.</h2></div>
         <p>What’s free. What’s Pro.<br />Exactly what your event gets.</p>
       </div>
       <details className="pricing-compare-details"><summary>Compare every feature<ChevronDown size={18} aria-hidden="true" /></summary><div className="pricing-compare-body">

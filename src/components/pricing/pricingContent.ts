@@ -1,9 +1,4 @@
-export const EVENT_RATES = [
-  { teams: 64, regular: 20000, price: 12000 },
-  { teams: 128, regular: 33000, price: 25000 },
-  { teams: 256, regular: 55000, price: 45000 },
-  { teams: 512, regular: 90000, price: 80000 },
-] as const;
+export { EVENT_RATES } from '@/services/pricing/eventBudget';
 
 export interface PricingSelection { teams: string; viaPointer: boolean; }
 export type SelectPricingTeams = (teams: string, viaPointer: boolean) => void;
@@ -45,5 +40,5 @@ export const FAQ_ITEMS = [
   { q: 'What happens in months when I don’t host?', a: 'There is no recurring Pro charge to keep paying, and no subscription to cancel. Pro is paid per event. Your two-event Free allowance resets each calendar month.' },
   { q: 'What counts toward my two free events?', a: 'Published events count when registration is open or the event is live. Draft as many events as you like: drafts are free and do not use your allowance. The quota resets on the first day of each calendar month.' },
   { q: 'What if my event outgrows Free?', a: 'Contact us for a bracket above 32 teams or an additional event after your two free events. Brackets up to 512 teams have the published event rates above; larger brackets get a custom quote. We confirm the price with you before arranging payment.' },
-  { q: 'How do I book Pro and pay?', a: 'Send us your event details and team count. We confirm the price, share bank transfer details and activate Pro for that tournament once payment is confirmed. Pro is arranged directly with our team; there is no self-serve checkout yet.' },
+  { q: 'How do I book Pro and pay?', a: 'Choose “Plan my Pro event” and enter your event details. Standard brackets receive a Pro forma invoice with the configured business payment details and a unique reference. Pay using those instructions and upload proof here. Our team verifies the funds before arranging activation. Custom events need an individual quote; submitting proof does not itself activate Pro.' },
 ];

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Check } from 'lucide-react';
 import PricingOverlayPreview from './PricingOverlayPreview';
+import PricingBookingButton from './PricingBookingButton';
 
 const GAMES = [
   { name: 'Valorant', publisher: 'Riot Games', image: 'valorant', logo: 'valorant', className: 'pricing-game-valorant' },
@@ -11,7 +12,7 @@ const GAMES = [
 export default function PricingExperience() {
   return (
     <section id="experience" className="pricing-experience" aria-labelledby="experience-title">
-      <p className="pricing-caption pricing-experience-caption">03 / Be part of the moment</p>
+      <p className="pricing-caption pricing-experience-caption">04 / Be part of the moment</p>
       <figure className="pricing-moment">
         <img className="pricing-moment-photo" src="/pricing/tournament-stem-list-unsplash.jpg" alt="A community gathered around a tournament match" width={2000} height={1125} loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />
         <div className="pricing-moment-shade" aria-hidden="true" />
@@ -32,7 +33,7 @@ export default function PricingExperience() {
       </div>
       <div className="pricing-overlay-showcase">
         <p className="pricing-caption">Organizer Pro / A shared view of the moment</p>
-        <div className="pricing-overlay-copy"><h3>Keep everyone<br />in the moment.</h3><div className="pricing-broadcast-details"><p>Make the pick-and-ban clear for players and viewers. A shared view of what’s happening means fewer questions about what comes next.</p><Link to="/contact">Plan my Pro event <ArrowUpRight size={16} aria-hidden="true" /></Link></div></div>
+        <div className="pricing-overlay-copy"><h3>Keep everyone<br />in the moment.</h3><div className="pricing-broadcast-details"><p>Make the pick-and-ban clear for players and viewers. A shared view of what’s happening means fewer questions about what comes next.</p><PricingBookingButton>Plan my Pro event</PricingBookingButton></div></div>
         <div className="pricing-broadcast-screen"><PricingOverlayPreview /></div>
         <ul className="pricing-broadcast-inclusions">{['Your own pick & ban sequence', 'Veto overlays for players and viewers', 'An OBS overlay for your stream'].map(text => <li key={text}><Check size={15} aria-hidden="true" />{text}</li>)}</ul>
       </div>

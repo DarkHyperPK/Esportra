@@ -35,6 +35,7 @@ const categories: CategoryMeta[] = [
   { key: 'platform', label: 'Platform', icon: Globe, description: 'General platform configuration' },
   { key: 'registration', label: 'Registration', icon: UserPlus, description: 'User registration rules' },
   { key: 'tournaments', label: 'Tournaments', icon: Trophy, description: 'Tournament defaults & limits' },
+  { key: 'pro_event_payments', label: 'Pro Payments', icon: Trophy, description: 'Verified business payee and optional QR image for instant PKR Pro invoices. Enable only after configuring the account details.' },
   { key: 'security', label: 'Security', icon: Shield, description: 'Authentication & access controls' },
   { key: 'storage', label: 'Storage', icon: HardDrive, description: 'File upload settings' },
   { key: 'notifications', label: 'Notifications', icon: Bell, description: 'Notification channels' },
