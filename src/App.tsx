@@ -73,6 +73,9 @@ const MyApplicationsPage = lazyWithRetry(() => import("./pages/competitive/recru
 const TryoutWorkspacePage = lazyWithRetry(() => import("./pages/competitive/tryouts/TryoutWorkspacePage"));
 const TryoutSessionDetailPage = lazyWithRetry(() => import("./pages/competitive/tryouts/TryoutSessionDetailPage"));
 const MyTryoutInvitesPage = lazyWithRetry(() => import("./pages/competitive/tryouts/MyTryoutInvitesPage"));
+const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDiscoveryPage"));
+const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
+const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/PracticeCalendarPage"));
 
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
@@ -582,6 +585,21 @@ const AppContent = React.memo(() => {
                 <Route path="/competitive/tryouts/my-invites" element={
                   <ProtectedRoute>
                     <MyTryoutInvitesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/scrims" element={
+                  <ProtectedRoute>
+                    <ScrimDiscoveryPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/scrims/workspace" element={
+                  <ProtectedRoute>
+                    <ScrimWorkspacePage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/competitive/practice" element={
+                  <ProtectedRoute>
+                    <PracticeCalendarPage />
                   </ProtectedRoute>
                 } />
 

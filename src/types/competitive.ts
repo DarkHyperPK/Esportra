@@ -354,3 +354,92 @@ export interface TryoutInviteView {
   teamLogoUrl: string | null;
   sessionStatus: TryoutSessionStatus;
 }
+
+// --- Scrims & Practice ---
+
+export type ScrimListingStatus = 'open' | 'paused' | 'closed';
+export type ScrimOfferStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'expired';
+export type ScrimSessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+export type PracticeSessionStatus = 'scheduled' | 'completed' | 'cancelled';
+export type PracticeAttendanceStatus = 'invited' | 'confirmed' | 'attended' | 'absent' | 'excused';
+
+export interface ScrimListing {
+  id: string;
+  teamId: string;
+  gameSlug: string | null;
+  modeKey: string | null;
+  regionKey: string | null;
+  minRankKey: string | null;
+  maxRankKey: string | null;
+  preferredDays: string[] | null;
+  preferredTimeStart: string | null;
+  preferredTimeEnd: string | null;
+  timezone: string | null;
+  notes: string | null;
+  status: ScrimListingStatus;
+  createdAt: string;
+  updatedAt: string;
+  teamName?: string | null;
+  teamLogoUrl?: string | null;
+  teamTag?: string | null;
+}
+
+export interface ScrimOffer {
+  id: string;
+  listingId: string;
+  offeringTeamId: string;
+  proposedAt: string | null;
+  proposedDurationMinutes: number | null;
+  notes: string | null;
+  status: ScrimOfferStatus;
+  createdAt: string;
+  updatedAt: string;
+  offeringTeamName?: string | null;
+  listingTeamName?: string | null;
+}
+
+export interface ScrimSession {
+  id: string;
+  team1Id: string;
+  team2Id: string;
+  gameSlug: string | null;
+  modeKey: string | null;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  serverInfo: string | null;
+  lobbyCode: string | null;
+  status: ScrimSessionStatus;
+  resultReportedByTeam1: boolean;
+  resultReportedByTeam2: boolean;
+  team1Score: number | null;
+  team2Score: number | null;
+  createdAt: string;
+  updatedAt: string;
+  team1Name?: string | null;
+  team1Logo?: string | null;
+  team2Name?: string | null;
+  team2Logo?: string | null;
+}
+
+export interface PracticeSession {
+  id: string;
+  teamId: string;
+  gameSlug: string | null;
+  title: string;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  notes: string | null;
+  status: PracticeSessionStatus;
+  createdBy: string;
+  createdAt: string;
+  teamName?: string | null;
+}
+
+export interface PracticeAttendance {
+  id: string;
+  sessionId: string;
+  userId: string;
+  status: PracticeAttendanceStatus;
+  username?: string | null;
+  avatarSeed?: string | null;
+}
