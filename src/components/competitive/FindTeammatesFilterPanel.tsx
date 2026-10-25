@@ -18,6 +18,7 @@ export interface FilterState {
   intents: LfgIntent[];
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const INITIAL_FILTER: FilterState = {
   minRank: undefined,
   maxRank: undefined,
@@ -26,6 +27,7 @@ export const INITIAL_FILTER: FilterState = {
   intents: [],
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function activeFilterCount(filters: FilterState, showIntents: boolean): number {
   let n = 0;
   if (filters.minRank != null) n++;

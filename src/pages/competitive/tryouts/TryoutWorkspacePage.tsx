@@ -12,15 +12,6 @@ import {
 import { TryoutSessionCard } from '@/components/competitive/TryoutSessionCard';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { getApiErrorMessage } from '@/lib/apiClient';
-import type { TryoutSessionStatus } from '@/types/competitive';
-
-function formatScheduled(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
 
 function CreateSessionForm({
   teamId,

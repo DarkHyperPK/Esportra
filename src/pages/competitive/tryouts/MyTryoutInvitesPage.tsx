@@ -43,11 +43,11 @@ function InviteSessionCard({
 }) {
   const respondMutation = useRespondToInvite(invite.sessionId, userId);
 
-  function handleAccept(sessionId: string) {
+  function handleAccept(_sessionId: string) {
     respondMutation.mutate('confirmed');
   }
 
-  function handleDecline(sessionId: string) {
+  function handleDecline(_sessionId: string) {
     respondMutation.mutate('declined');
   }
 
