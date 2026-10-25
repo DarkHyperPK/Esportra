@@ -39,77 +39,77 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface PendingCounts {
   verifications: number;
-  verifications_stale: number;
+  verificationsStale: number;
   disputes: number;
-  disputes_stale: number;
-  ghost_approvals: number;
+  disputesStale: number;
+  ghostApprovals: number;
   alerts: number;
-  alerts_critical: number;
+  alertsCritical: number;
   moderation: number;
-  moderation_today: number;
+  moderationToday: number;
   gdpr: number;
-  gdpr_due_soon: number;
+  gdprDueSoon: number;
 }
 
 interface Stats {
-  users_total: number;
-  users_growth: number;
-  tournaments_total: number;
-  tournaments_growth: number;
-  admins_active_recently: number;
+  usersTotal: number;
+  usersGrowth: number;
+  tournamentsTotal: number;
+  tournamentsGrowth: number;
+  adminsActiveRecently: number;
 }
 
 interface SponsorKpis {
   impressions_30d: number;
   clicks_30d: number;
-  active_sponsors: number;
+  activeSponsors: number;
 }
 
 interface SystemHealth {
-  kill_switches_armed: number;
-  kill_switches_total: number;
-  anomalies_unresolved: number;
-  feature_flags_enabled: number;
+  killSwitchesArmed: number;
+  killSwitchesTotal: number;
+  anomaliesUnresolved: number;
+  featureFlagsEnabled: number;
 }
 
 interface ActivityItem {
   id: string;
-  action_type: string;
-  target_type: string;
-  target_id: string;
-  target_name: string | null;
-  created_at: string;
-  actor_name: string | null;
+  actionType: string;
+  targetType: string;
+  targetId: string;
+  targetName: string | null;
+  createdAt: string;
+  actorName: string | null;
 }
 
 interface PendingVerification {
   id: string;
-  requested_role: string;
+  requestedRole: string;
   status: string;
-  business_name: string | null;
-  first_name: string;
-  last_name: string;
-  created_at: string;
+  businessName: string | null;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
   username: string;
-  avatar_url: string | null;
+  avatarUrl: string | null;
 }
 
 interface CommandCentreCharts {
   signups_14d: { day: string; count: number }[];
   tournaments_14d: { day: string; count: number }[];
   disputes_14d: { day: string; count: number }[];
-  sponsor_daily_14d: { day: string; impressions: number; clicks: number }[];
+  sponsorDaily_14d: { day: string; impressions: number; clicks: number }[];
 }
 
 interface CommandCentreData {
-  pending_counts: PendingCounts;
+  pendingCounts: PendingCounts;
   stats: Stats;
-  sponsor_kpis: SponsorKpis;
-  system_health: SystemHealth;
-  payments_available: boolean;
+  sponsorKpis: SponsorKpis;
+  systemHealth: SystemHealth;
+  paymentsAvailable: boolean;
   signups_7d: { day: string; count: number }[];
-  recent_activity: ActivityItem[];
-  oldest_pending: PendingVerification[];
+  recentActivity: ActivityItem[];
+  oldestPending: PendingVerification[];
   charts?: CommandCentreCharts;
 }
 
@@ -205,7 +205,7 @@ export default function CommandCentre() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.pendingCounts) {
     return (
       <div className="p-6">
         <div className="border border-red-500/25 bg-red-950/20 p-4 font-mono text-xs uppercase tracking-wider text-red-300">
@@ -215,21 +215,21 @@ export default function CommandCentre() {
     );
   }
 
-  const { pending_counts, stats, sponsor_kpis, system_health, payments_available, recent_activity, oldest_pending } = data;
+  const { pendingCounts, stats, sponsorKpis, systemHealth, paymentsAvailable, recentActivity, oldestPending } = data;
   const charts = data.charts;
   const activitySeries = charts ? mergeDailyCounts(charts.signups_14d, charts.tournaments_14d) : [];
 
   const attentionItems = [
-    { title: 'Verifications', count: pending_counts.verifications, staleCount: pending_counts.verifications_stale, staleLabel: 'stale (3+ days)', icon: Shield, href: '/admin/users/verifications', permission: 'verification:view' },
-    { title: 'Disputes', count: pending_counts.disputes, staleCount: pending_counts.disputes_stale, staleLabel: 'open 7+ days', icon: Flag, href: '/admin/operations/disputes', permission: 'disputes:view' },
-    { title: 'Alerts', count: pending_counts.alerts, staleCount: pending_counts.alerts_critical, staleLabel: 'critical', icon: Bell, href: '/admin/operations/alerts', permission: 'alerts:view' },
-    { title: 'Moderation', count: pending_counts.moderation, staleCount: pending_counts.moderation_today, staleLabel: 'today', icon: AlertTriangle, href: '/admin/content/moderation', permission: 'moderation:view' },
-    ...(isSuperAdmin ? [{ title: 'Ghost Approvals', count: pending_counts.ghost_approvals, staleCount: 0, staleLabel: '', icon: Shield, href: '/admin/security/ghost', permission: '' }] : []),
-    ...(isSuperAdmin ? [{ title: 'GDPR', count: pending_counts.gdpr, staleCount: pending_counts.gdpr_due_soon, staleLabel: 'due soon', icon: Database, href: '/admin/security/gdpr', permission: 'gdpr:view' }] : []),
+    { title: 'Verifications', count: pendingCounts.verifications, staleCount: pendingCounts.verificationsStale, staleLabel: 'stale (3+ days)', icon: Shield, href: '/admin/users/verifications', permission: 'verification:view' },
+    { title: 'Disputes', count: pendingCounts.disputes, staleCount: pendingCounts.disputesStale, staleLabel: 'open 7+ days', icon: Flag, href: '/admin/operations/disputes', permission: 'disputes:view' },
+    { title: 'Alerts', count: pendingCounts.alerts, staleCount: pendingCounts.alertsCritical, staleLabel: 'critical', icon: Bell, href: '/admin/operations/alerts', permission: 'alerts:view' },
+    { title: 'Moderation', count: pendingCounts.moderation, staleCount: pendingCounts.moderationToday, staleLabel: 'today', icon: AlertTriangle, href: '/admin/content/moderation', permission: 'moderation:view' },
+    ...(isSuperAdmin ? [{ title: 'Ghost Approvals', count: pendingCounts.ghostApprovals, staleCount: 0, staleLabel: '', icon: Shield, href: '/admin/security/ghost', permission: '' }] : []),
+    ...(isSuperAdmin ? [{ title: 'GDPR', count: pendingCounts.gdpr, staleCount: pendingCounts.gdprDueSoon, staleLabel: 'due soon', icon: Database, href: '/admin/security/gdpr', permission: 'gdpr:view' }] : []),
   ].filter(item => !item.permission || can(item.permission));
 
-  const fleetCtr = sponsor_kpis.impressions_30d > 0
-    ? (sponsor_kpis.clicks_30d / sponsor_kpis.impressions_30d) * 100
+  const fleetCtr = sponsorKpis.impressions_30d > 0
+    ? (sponsorKpis.clicks_30d / sponsorKpis.impressions_30d) * 100
     : 0;
 
   const maxSignup = Math.max(...data.signups_7d.map(x => x.count), 1);
@@ -294,10 +294,10 @@ export default function CommandCentre() {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               <div>
                 <div className="flex items-baseline gap-2">
-                  <p className="font-heading text-2xl font-black text-white">{stats.users_total.toLocaleString()}</p>
-                  {stats.users_growth > 0 && (
+                  <p className="font-heading text-2xl font-black text-white">{stats.usersTotal.toLocaleString()}</p>
+                  {stats.usersGrowth > 0 && (
                     <span className="flex items-center font-mono text-[10px] font-bold uppercase tracking-wider text-rose-300">
-                      <TrendingUp className="h-3 w-3" />+{stats.users_growth}
+                      <TrendingUp className="h-3 w-3" />+{stats.usersGrowth}
                     </span>
                   )}
                 </div>
@@ -305,10 +305,10 @@ export default function CommandCentre() {
               </div>
               <div>
                 <div className="flex items-baseline gap-2">
-                  <p className="font-heading text-2xl font-black text-white">{stats.tournaments_total.toLocaleString()}</p>
-                  {stats.tournaments_growth > 0 && (
+                  <p className="font-heading text-2xl font-black text-white">{stats.tournamentsTotal.toLocaleString()}</p>
+                  {stats.tournamentsGrowth > 0 && (
                     <span className="flex items-center font-mono text-[10px] font-bold uppercase tracking-wider text-rose-300">
-                      <TrendingUp className="h-3 w-3" />+{stats.tournaments_growth}
+                      <TrendingUp className="h-3 w-3" />+{stats.tournamentsGrowth}
                     </span>
                   )}
                 </div>
@@ -317,7 +317,7 @@ export default function CommandCentre() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 bg-rose-500" />
-                  <p className="font-heading text-2xl font-black text-white">{stats.admins_active_recently.toLocaleString()}</p>
+                  <p className="font-heading text-2xl font-black text-white">{stats.adminsActiveRecently.toLocaleString()}</p>
                 </div>
                 <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Admins Active · 15 min</p>
               </div>
@@ -349,18 +349,18 @@ export default function CommandCentre() {
           <CommandSection>
             <SectionLabel>Oldest Pending</SectionLabel>
             <div className="space-y-1">
-              {oldest_pending.length === 0 ? (
+              {oldestPending.length === 0 ? (
                 <p className="py-8 text-center text-sm text-zinc-600">No pending verifications</p>
               ) : (
-                oldest_pending.map(item => (
+                oldestPending.map(item => (
                   <Link
                     key={item.id}
                     to={`/admin/users/verifications?id=${item.id}`}
                     className="-mx-2 flex items-center gap-3 border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.02]"
                   >
                     <div className="h-8 w-8 shrink-0 overflow-hidden border border-white/10 bg-black/40">
-                      {item.avatar_url ? (
-                        <img src={item.avatar_url} alt="" className="h-full w-full object-cover" />
+                      {item.avatarUrl ? (
+                        <img src={item.avatarUrl} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-zinc-400">
                           {item.username[0]?.toUpperCase()}
@@ -371,10 +371,10 @@ export default function CommandCentre() {
                       <p className="truncate text-sm text-white">{item.username}</p>
                       <div className="mt-0.5 flex items-center gap-2">
                         <Badge variant="outline" className="-none border-white/15 px-1.5 py-0 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
-                          {item.requested_role}
+                          {item.requestedRole}
                         </Badge>
                         <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">
-                          {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                         </span>
                       </div>
                     </div>
@@ -392,11 +392,11 @@ export default function CommandCentre() {
           <SectionLabel>Sponsor Fleet · 30 Days</SectionLabel>
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             <div>
-              <p className="font-heading text-2xl font-black text-white">{sponsor_kpis.impressions_30d.toLocaleString()}</p>
+              <p className="font-heading text-2xl font-black text-white">{sponsorKpis.impressions_30d.toLocaleString()}</p>
               <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Impressions</p>
             </div>
             <div>
-              <p className="font-heading text-2xl font-black text-white">{sponsor_kpis.clicks_30d.toLocaleString()}</p>
+              <p className="font-heading text-2xl font-black text-white">{sponsorKpis.clicks_30d.toLocaleString()}</p>
               <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Clicks</p>
             </div>
             <div>
@@ -406,14 +406,14 @@ export default function CommandCentre() {
             <div>
               <p className="flex items-center gap-2 font-heading text-2xl font-black text-white">
                 <span className="h-1.5 w-1.5 bg-rose-500" />
-                {sponsor_kpis.active_sponsors.toLocaleString()}
+                {sponsorKpis.activeSponsors.toLocaleString()}
               </p>
               <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Active Partners</p>
             </div>
           </div>
 
           {/* Revenue placeholder — no payment pipeline exists yet (D3) */}
-          {!payments_available && (
+          {!paymentsAvailable && (
             <p className="mt-6 border-t border-white/5 pt-3 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-600">
               Revenue — no payment system yet
             </p>
@@ -426,19 +426,19 @@ export default function CommandCentre() {
           <div className="space-y-3">
             <Link to="/admin/system/kill-switches" className="group flex items-center justify-between border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.02]">
               <span className="text-xs text-zinc-400">Kill switches armed</span>
-              <span className={`font-heading text-lg font-black ${system_health.kill_switches_armed > 0 ? 'text-red-300' : 'text-white'}`}>
-                {system_health.kill_switches_armed}<span className="text-zinc-600">/{system_health.kill_switches_total}</span>
+              <span className={`font-heading text-lg font-black ${systemHealth.killSwitchesArmed > 0 ? 'text-red-300' : 'text-white'}`}>
+                {systemHealth.killSwitchesArmed}<span className="text-zinc-600">/{systemHealth.killSwitchesTotal}</span>
               </span>
             </Link>
             <Link to="/admin/system/anomalies" className="group flex items-center justify-between border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.02]">
               <span className="text-xs text-zinc-400">Unresolved anomalies</span>
-              <span className={`font-heading text-lg font-black ${system_health.anomalies_unresolved > 0 ? 'text-amber-300' : 'text-white'}`}>
-                {system_health.anomalies_unresolved}
+              <span className={`font-heading text-lg font-black ${systemHealth.anomaliesUnresolved > 0 ? 'text-amber-300' : 'text-white'}`}>
+                {systemHealth.anomaliesUnresolved}
               </span>
             </Link>
             <Link to="/admin/system/feature-flags" className="group flex items-center justify-between border border-transparent p-2 transition-colors hover:border-white/10 hover:bg-white/[0.02]">
               <span className="text-xs text-zinc-400">Feature flags enabled</span>
-              <span className="font-heading text-lg font-black text-white">{system_health.feature_flags_enabled}</span>
+              <span className="font-heading text-lg font-black text-white">{systemHealth.featureFlagsEnabled}</span>
             </Link>
           </div>
         </CommandSection>
@@ -506,7 +506,7 @@ export default function CommandCentre() {
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={charts.sponsor_daily_14d} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <AreaChart data={charts.sponsorDaily_14d} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="ccImpressionsFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.25} />
@@ -533,29 +533,29 @@ export default function CommandCentre() {
           <CommandSection className="lg:col-span-2">
             <SectionLabel>Recent Activity</SectionLabel>
             <div className="divide-y divide-white/5">
-              {recent_activity.length === 0 ? (
+              {recentActivity.length === 0 ? (
                 <p className="py-8 text-center text-sm text-zinc-600">No recent activity</p>
               ) : (
-                recent_activity.map(item => (
+                recentActivity.map(item => (
                   <div key={item.id} className="flex items-center justify-between gap-4 py-2.5 transition-colors hover:bg-white/[0.02]">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-1.5 w-1.5 shrink-0 bg-rose-500/70" />
                       <div className="min-w-0">
                         <p className="truncate text-sm text-white">
-                          {actionTypeLabels[item.action_type] ?? item.action_type}
+                          {actionTypeLabels[item.actionType] ?? item.actionType}
                         </p>
                         <p className="truncate text-xs text-zinc-500">
-                          {item.actor_name ?? 'System'}
-                          {item.target_name && (
+                          {item.actorName ?? 'System'}
+                          {item.targetName && (
                             <>
-                              {' '}<span className="text-zinc-700">on</span> {item.target_name}
+                              {' '}<span className="text-zinc-700">on</span> {item.targetName}
                             </>
                           )}
                         </p>
                       </div>
                     </div>
                     <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-zinc-600">
-                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </span>
                   </div>
                 ))
