@@ -63,7 +63,7 @@ export default function EditCompetitiveProfilePage() {
         <PageIntro
           eyebrow="COMPETITIVE PROFILE"
           title="Edit Competitive Profile"
-          description="Set your Valorant credentials."
+          description="Set your game credentials and competitive rank."
           className="mb-8"
         />
 

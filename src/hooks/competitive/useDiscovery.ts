@@ -5,21 +5,23 @@ import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilt
 function buildPlayerSearchParams(filters: PlayerSearchFilters): string {
   const params = new URLSearchParams({ game: filters.game });
   if (filters.roles?.length) params.set('roles', filters.roles.join(','));
-  if (filters.minRank) params.set('min_rank', filters.minRank);
-  if (filters.maxRank) params.set('max_rank', filters.maxRank);
-  if (filters.region) params.set('region', filters.region);
-  if (filters.lftOnly) params.set('lft', 'true');
-  if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+  if (filters.minRank != null) params.set('min_rank', String(filters.minRank));
+  if (filters.maxRank != null) params.set('max_rank', String(filters.maxRank));
+  if (filters.regionKey) params.set('region_key', filters.regionKey);
+  if (filters.lookingForTeam != null) params.set('looking_for_team', String(filters.lookingForTeam));
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null && filters.offset > 0) params.set('offset', String(filters.offset));
   return params.toString();
 }
 
 function buildLfgSearchParams(filters: LfgSearchFilters): string {
   const params = new URLSearchParams({ game: filters.game });
   if (filters.intent?.length) params.set('intent', filters.intent.join(','));
-  if (filters.minRank) params.set('min_rank', filters.minRank);
-  if (filters.maxRank) params.set('max_rank', filters.maxRank);
-  if (filters.region) params.set('region', filters.region);
-  if (filters.page && filters.page > 1) params.set('page', String(filters.page));
+  if (filters.minRank != null) params.set('min_rank', String(filters.minRank));
+  if (filters.maxRank != null) params.set('max_rank', String(filters.maxRank));
+  if (filters.regionKey) params.set('region_key', filters.regionKey);
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null && filters.offset > 0) params.set('offset', String(filters.offset));
   return params.toString();
 }
 

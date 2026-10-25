@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { readGhostModeSession } from '@/lib/ghostModeSession';
 import { clearUserBrowserStorage } from '@/lib/resetClientSession';
 import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
+import { toSnakeCaseDeep, toCamelCaseDeep } from '@/lib/caseTransform';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -249,17 +250,19 @@ async function fetchWithAuth(
 /**
  * Deduplicated GET fetch — if an identical GET is already in-flight,
  * return the same parsed-JSON promise instead of firing a new request.
+ * Applies toCamelCaseDeep transform on the parsed JSON response.
  */
 function fetchGetDeduped<T>(path: string): Promise<T> {
   const existing = inflightGets.get(path);
-  if (existing) return existing as Promise<T>;
+  if (existing) return existing as unknown as Promise<T>;
 
   const promise = fetchWithAuth(path)
     .then((res) => res.json())
+    .then((data) => toCamelCaseDeep(data))
     .finally(() => inflightGets.delete(path));
 
   inflightGets.set(path, promise);
-  return promise as Promise<T>;
+  return promise as unknown as Promise<T>;
 }
 
 // ── Public client ─────────────────────────────────────────────────────────────
@@ -274,9 +277,10 @@ export const apiClient = {
   async postWithToken<T>(path: string, token: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'POST',
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     }, 0, { overrideToken: token });
-    return res.json() as Promise<T>;
+    const json = await res.json();
+    return toCamelCaseDeep(json) as T;
   },
 
   /** GET /api/{path} → Blob (receipt proxy fallback when public storage URL fails) */
@@ -291,29 +295,32 @@ export const apiClient = {
   async post<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'POST',
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
-    return res.json() as Promise<T>;
+    const json = await res.json();
+    return toCamelCaseDeep(json) as T;
   },
 
   /** PUT /api/{path} with JSON body → parsed JSON (or void for 204) */
   async put<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PUT',
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
-    return res.json() as Promise<T>;
+    const json = await res.json();
+    return toCamelCaseDeep(json) as T;
   },
 
   /** PATCH /api/{path} with JSON body → parsed JSON */
   async patch<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PATCH',
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     });
-    return res.json() as Promise<T>;
+    const json = await res.json();
+    return toCamelCaseDeep(json) as T;
   },
 
   /** DELETE /api/{path} → void */

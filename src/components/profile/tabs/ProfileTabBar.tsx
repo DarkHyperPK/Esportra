@@ -1,19 +1,22 @@
 import React from 'react';
 
-export type ProfileTab = 'overview' | 'history' | 'matches' | 'teams' | 'achievements';
+export type ProfileTab = 'overview' | 'history' | 'matches' | 'teams' | 'achievements' | 'competitive';
 
 interface ProfileTabBarProps {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   accentColor: string;
+  /** Show the Competitive tab. True when own profile, or when profile.profileVisible===true. */
+  showCompetitiveTab?: boolean;
 }
 
-const TABS: { id: ProfileTab; label: string; shortLabel: string }[] = [
+const ALL_TABS: { id: ProfileTab; label: string; shortLabel: string }[] = [
   { id: 'overview', label: 'Overview', shortLabel: 'Overview' },
   { id: 'history', label: 'Tournament History', shortLabel: 'History' },
   { id: 'matches', label: 'Matches', shortLabel: 'Matches' },
   { id: 'teams', label: 'Teams', shortLabel: 'Teams' },
   { id: 'achievements', label: 'Achievements', shortLabel: 'Achievements' },
+  { id: 'competitive', label: 'Competitive', shortLabel: 'Competitive' },
 ];
 
 /**
@@ -21,7 +24,8 @@ const TABS: { id: ProfileTab; label: string; shortLabel: string }[] = [
  * Active tab shows accent-colored underline.
  * Switches tab content via tab-in/tab-out (handled by AnimatePresence in ProfilePage).
  */
-export function ProfileTabBar({ activeTab, onTabChange, accentColor }: ProfileTabBarProps): React.JSX.Element {
+export function ProfileTabBar({ activeTab, onTabChange, accentColor, showCompetitiveTab = false }: ProfileTabBarProps): React.JSX.Element {
+  const TABS = ALL_TABS.filter((t) => t.id !== 'competitive' || showCompetitiveTab);
   return (
     <>
       <style>{`

@@ -1,110 +1,123 @@
+/**
+ * PlayerDiscoveryCard — PROJ-075 rebuild.
+ * Uses canonical PlayerSearchResult fields: avatarSeed, rankDisplayName, rankIconUrl,
+ * preferredRoles, mainRole, regionDisplayName, lookingForTeam.
+ */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RankBadge } from './RankBadge';
-import { RoleChip } from './RoleChip';
-import { RegionLabel } from './RegionLabel';
-import { LftBadge } from './LftBadge';
-import type { PlayerSearchResult } from '@/types/competitive';
+import type { PlayerSearchResult, CatalogGameRole } from '@/types/competitive';
 
-interface PlayerDiscoveryCardProps {
-  player: PlayerSearchResult;
-}
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string | null }) {
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        aria-hidden
-        className="h-10 w-10 shrink-0 object-cover bg-white/[0.07]"
-      />
-    );
-  }
+function SeedAvatar({ seed, username }: { seed: string | null; username: string | null }) {
+  const initials = (seed ?? username ?? '??').slice(0, 2).toUpperCase();
   return (
-    <span
-      className="flex h-10 w-10 shrink-0 items-center justify-center bg-white/[0.07] font-rajdhani text-base font-semibold text-white"
-      aria-hidden
-    >
-      {username.substring(0, 2).toUpperCase()}
+    <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center bg-white/[0.07] font-mono text-[12px] font-semibold text-white/70">
+      {initials}
     </span>
   );
 }
 
-/**
- * Discovery card for a player in the Find Players tab.
- * Card hover: border + background swap only — no lift, no shadow.
- */
-export function PlayerDiscoveryCard({ player }: PlayerDiscoveryCardProps) {
-  const showLft = player.lftStatus === 'open';
-  const displayRoles = player.roles.slice(0, 5);
-  const extraRoles = player.roles.length > 5 ? player.roles.length - 5 : 0;
+function RankImg({ iconUrl, displayName }: { iconUrl: string | null; displayName: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (iconUrl && !failed) {
+    return <img src={iconUrl} alt={displayName ?? 'Rank'} className="h-12 w-12 shrink-0 object-contain" onError={() => setFailed(true)} />;
+  }
+  return (
+    <div className="h-12 w-12 shrink-0 flex items-center justify-center bg-white/[0.06] font-mono text-[11px] text-white/35">
+      {(displayName ?? '?').slice(0, 2)}
+    </div>
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface PlayerDiscoveryCardProps {
+  player: PlayerSearchResult;
+  gameRoles?: CatalogGameRole[];
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function PlayerDiscoveryCard({ player, gameRoles = [] }: PlayerDiscoveryCardProps) {
+  const displayName = player.username ?? 'Unknown';
+  const mainRoleData = player.mainRole ? gameRoles.find(r => r.roleKey === player.mainRole) : null;
+  const otherRoles = player.preferredRoles.filter(rk => rk !== player.mainRole).slice(0, 2);
+
+  const ariaLabel = [
+    displayName,
+    player.rankDisplayName ?? 'unranked',
+    player.mainRole ? `Main: ${player.mainRole}` : '',
+    player.regionDisplayName ?? '',
+  ].filter(Boolean).join(', ');
 
   return (
     <article
-      aria-label={`${player.username}, ${player.rankTierDisplayName ?? 'unranked'}, ${player.roles.join(', ')}`}
-      className="border border-white/[0.08] bg-white/[0.04] p-4 transition-colors duration-[120ms] hover:border-white/20 hover:bg-white/[0.07] cursor-pointer"
+      aria-label={ariaLabel}
+      className="border border-white/[0.06] bg-white/[0.03] p-4 transition-colors duration-[150ms] hover:border-white/20 hover:bg-white/[0.05]"
     >
-      <div className="flex items-start gap-3">
-        <Avatar username={player.username} avatarUrl={player.avatarUrl} />
-
-        <div className="min-w-0 flex-1 space-y-1.5">
-          {/* Username */}
-          <p className="text-[14px] font-medium text-white truncate">{player.username}</p>
-
-          {/* Riot ID */}
-          {player.riotIdVisible && player.riotId && (
-            <p className="text-[12px] text-white/55 truncate">{player.riotId}</p>
-          )}
-
-          {/* Rank badge inline */}
-          {player.rankTierDisplayName && (
-            <RankBadge
-              tierDisplayName={player.rankTierDisplayName}
-              provenance={player.rankProvenance}
-              size="inline"
-            />
-          )}
-
-          {/* Role chips */}
-          {displayRoles.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {displayRoles.map((role) => (
-                <RoleChip
-                  key={role}
-                  role={role}
-                  displayName={role.toUpperCase()}
-                  mode="display"
-                  isMain={role === player.mainRole}
-                />
-              ))}
-              {extraRoles > 0 && (
-                <span className="text-[11px] text-white/35">+{extraRoles} more</span>
-              )}
-            </div>
-          )}
-
-          {/* Region */}
-          <RegionLabel
-            region={player.regionDisplayName}
-            server={player.servers?.[0] ?? null}
-          />
-        </div>
-
-        {/* LFT badge */}
-        {showLft && (
-          <div className="shrink-0">
-            <LftBadge />
-          </div>
+      {/* Row 1: identity */}
+      <div className="flex items-center gap-2 mb-2">
+        <SeedAvatar seed={player.avatarSeed} username={player.username} />
+        <span className="flex-1 min-w-0 text-[14px] font-medium text-white truncate">{displayName}</span>
+        {player.lookingForTeam && (
+          <span className="shrink-0 text-[11px] px-2 py-0.5 border border-emerald-400/20 bg-emerald-500/[0.08] text-emerald-300/80">
+            Looking for team
+          </span>
         )}
       </div>
 
-      {/* View profile link */}
-      <div className="mt-3 flex justify-end">
+      {/* Row 2: rank */}
+      {(player.rankDisplayName || player.rankIconUrl) && (
+        <div className="flex items-center gap-3 mb-2">
+          <RankImg iconUrl={player.rankIconUrl} displayName={player.rankDisplayName} />
+          <span className="text-[16px] font-semibold text-white [font-family:var(--font-heading)]">
+            {player.rankDisplayName ?? 'Unranked'}
+          </span>
+        </div>
+      )}
+
+      {/* Row 3: roles */}
+      {player.preferredRoles.length > 0 && (
+        <div className="mb-2">
+          {player.mainRole && (
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[12px] text-white/35">Main:</span>
+              {mainRoleData?.iconUrl && (
+                <img src={mainRoleData.iconUrl} alt={mainRoleData.displayName} width={16} height={16} className="shrink-0" />
+              )}
+              <span className="text-[12px] text-white">{mainRoleData?.displayName ?? player.mainRole}</span>
+            </div>
+          )}
+          {otherRoles.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] text-white/35">Also:</span>
+              {otherRoles.map(rk => {
+                const r = gameRoles.find(gr => gr.roleKey === rk);
+                return r?.iconUrl
+                  ? <img key={rk} src={r.iconUrl} alt={r.displayName} title={r.displayName} width={16} height={16} className="shrink-0" />
+                  : <span key={rk} className="text-[12px] text-white/55">{r?.displayName ?? rk}</span>;
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Row 4: context */}
+      {(player.regionDisplayName || player.languages[0]) && (
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mb-3 text-[12px] text-white/40">
+          {player.regionDisplayName && <span>{player.regionDisplayName}</span>}
+          {player.languages[0] && <span className="before:content-['·'] before:mr-1 before:text-white/20">{player.languages[0]}</span>}
+        </div>
+      )}
+
+      {/* Row 5: action */}
+      <div className="flex justify-end">
         <Link
-          to={`/profile/${player.username}`}
-          className="text-[13px] text-white/55 hover:text-white transition-colors duration-[120ms]"
+          to={`/profile/${player.username ?? ''}`}
+          className="text-[13px] text-white/55 hover:text-white transition-colors duration-[150ms]"
         >
-          View profile →
+          View Profile →
         </Link>
       </div>
     </article>

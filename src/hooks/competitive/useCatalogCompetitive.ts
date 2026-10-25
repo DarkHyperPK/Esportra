@@ -1,9 +1,23 @@
+/**
+ * useCatalogCompetitive.ts
+ *
+ * @deprecated Legacy catalog hooks returning the old RankTier/GameRole/GameRegion
+ * shapes. These are kept for backward compat with components that will be rewritten
+ * in T11-T13.
+ *
+ * New components should use useCatalogRankTiers, useCatalogGameRoles,
+ * useCatalogRegions from useCatalog.ts which return the canonical CatalogRankTier,
+ * CatalogGameRole, CatalogRegion shapes.
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { RankTier, GameRole, GameRegion } from '@/types/competitive';
 
-const STALE_TIME = 10 * 60 * 1000; // 10 min — catalog is stable
+// Catalog data is stable — cache for 24 hours
+const STALE_TIME = 24 * 60 * 60 * 1_000;
 
+/** @deprecated Use useCatalogRankTiers from useCatalog.ts */
 export function useRankTiers(gameSlug: string) {
   return useQuery({
     queryKey: ['catalog', 'rank-tiers', gameSlug],
@@ -13,6 +27,7 @@ export function useRankTiers(gameSlug: string) {
   });
 }
 
+/** @deprecated Use useCatalogGameRoles from useCatalog.ts */
 export function useGameRoles(gameSlug: string) {
   return useQuery({
     queryKey: ['catalog', 'game-roles', gameSlug],
@@ -22,6 +37,7 @@ export function useGameRoles(gameSlug: string) {
   });
 }
 
+/** @deprecated Use useCatalogRegions from useCatalog.ts */
 export function useGameRegions(gameSlug: string) {
   return useQuery({
     queryKey: ['catalog', 'regions', gameSlug],

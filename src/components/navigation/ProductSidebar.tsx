@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Crosshair, ClipboardList, Trophy, MapPin, BarChart2,
-  ChevronLeft, ChevronDown, Check, User,
+  ChevronLeft, ChevronDown, User,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -32,21 +32,6 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Official game logos — nominative trademark use (CIO CLEARED_WITH_CONDITIONS, PROJ-073)
-function ValorantIcon({ className }: { className?: string }) {
-  return <img src="/games/valorant-logo.png" alt="Valorant" className={className} style={{ objectFit: 'contain' }} />;
-}
-
-function CS2Icon({ className }: { className?: string }) {
-  return <img src="/games/cs2-logo.png" alt="CS2" className={className} style={{ objectFit: 'contain' }} />;
-}
-
-const GAMES = [
-  { id: 'valorant' as const, label: 'Valorant', Icon: ValorantIcon },
-  { id: 'cs2' as const, label: 'CS2', Icon: CS2Icon },
-];
-type GameId = 'valorant' | 'cs2';
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isItemActive(pathname: string, to: string): boolean {
@@ -75,11 +60,8 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
   return [
     {
       id: 'find-teammates', label: 'Find Teammates', icon: Users,
-      items: [
-        { label: 'Discover Players', to: '/competitive/discover' },
-        { label: 'My Profile', to: '/competitive/profile/edit' },
-        { label: 'Looking for Team', to: '/competitive/lfg/new' },
-      ],
+      to: '/competitive/find-teammates',
+      items: [],
     },
     {
       id: 'scrims', label: 'Scrims', icon: Crosshair,
@@ -101,77 +83,13 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
   ];
 }
 
-// ─── Game Selector ────────────────────────────────────────────────────────────
-
-function GameSelector({ collapsed }: { collapsed: boolean }) {
-  const [gameId, setGameId] = useState<GameId>(() => {
-    const s = localStorage.getItem('sidebar_game');
-    return s === 'cs2' ? 'cs2' : 'valorant';
-  });
-  const [open, setOpen] = useState(false);
-  const selected = GAMES.find(g => g.id === gameId) ?? GAMES[0];
-
-  function cycleGame() {
-    const idx = GAMES.findIndex(g => g.id === gameId);
-    const next = GAMES[(idx + 1) % GAMES.length];
-    setGameId(next.id);
-    localStorage.setItem('sidebar_game', next.id);
-  }
-
-  if (collapsed) {
-    return (
-      <div className="flex justify-center px-2 pb-2">
-        <button
-          type="button"
-          onClick={cycleGame}
-          className="flex items-center justify-center p-1.5 hover:opacity-80 transition-opacity"
-          aria-label={`Active game: ${selected.label}. Click to switch`}
-        >
-          <selected.Icon className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative px-3 pb-2">
-      <button
-        type="button"
-        onClick={() => setOpen(p => !p)}
-        className="flex w-full items-center justify-between px-3 py-2 border border-white/10 hover:border-rose-500/40 text-white/70 hover:text-white transition-colors text-[11px] uppercase tracking-widest [font-family:var(--font-heading)] font-medium"
-      >
-        <span className="flex items-center gap-2">
-          <selected.Icon className="h-4 w-4" />
-          {selected.label}
-        </span>
-        <ChevronDown className={cn('h-3 w-3 transition-transform duration-150', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <div className="absolute left-3 right-3 z-50 border border-white/10 bg-[#08080a]">
-          {GAMES.map(g => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => { setGameId(g.id); localStorage.setItem('sidebar_game', g.id); setOpen(false); }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-[11px] uppercase tracking-widest [font-family:var(--font-heading)] font-medium text-white/60 hover:bg-rose-500 hover:text-white transition-colors"
-            >
-              <g.Icon className="h-4 w-4" />
-              {g.label}
-              {g.id === gameId && <Check className="ml-auto h-3 w-3" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Section ──────────────────────────────────────────────────────────────────
 
 function SidebarSection({ section, collapsed }: { section: NavSection; collapsed: boolean }) {
   const { pathname } = useLocation();
   const active = isSectionActive(section, pathname);
   const Icon = section.icon;
+  const [open, setOpen] = useState(active);
 
   if (collapsed) {
     const primaryTo = section.to ?? section.items[0]?.to ?? '/';
@@ -210,13 +128,21 @@ function SidebarSection({ section, collapsed }: { section: NavSection; collapsed
 
   return (
     <div>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-1.5">
-        <Icon className="h-5 w-5 text-white/80" />
-        <span className="text-[11px] uppercase tracking-widest font-medium text-white/80 [font-family:var(--font-heading)]">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className={cn(
+          'flex w-full items-center gap-2 px-4 pt-4 pb-1.5 transition-colors',
+          active ? 'text-white/90' : 'text-white/60 hover:text-white/80',
+        )}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="flex-1 text-left text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]">
           {section.label}
         </span>
-      </div>
-      {section.items.map(item => {
+        <ChevronDown className={cn('h-3 w-3 shrink-0 transition-transform duration-150', open && 'rotate-180')} />
+      </button>
+      {open && section.items.map(item => {
         const itemActive = isItemActive(pathname, item.to);
         return (
           <Link
@@ -361,9 +287,6 @@ export function ProductSidebar() {
           </Link>
         </div>
 
-        {/* Game selector */}
-        <GameSelector collapsed={isCollapsed} />
-
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2" aria-label="Site navigation">
           {sections.map((section, i) => (
@@ -391,7 +314,7 @@ export function ProductSidebar() {
               <CollapsedAvatar />
             ) : (
               <div className="flex-1 min-w-0 [&>div]:w-full">
-                <UserMenu handleSignOut={handleSignOut} upward panelAlign="start" panelWidth={232} />
+                <UserMenu handleSignOut={handleSignOut} upward panelAlign="end" panelWidth={232} />
               </div>
             )}
           </div>
