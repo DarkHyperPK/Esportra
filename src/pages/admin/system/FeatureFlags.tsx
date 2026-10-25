@@ -59,17 +59,17 @@ interface FeatureFlag {
   key: string;
   name: string;
   description: string | null;
-  flag_type: string;
-  default_value: Record<string, unknown> | boolean | string | number | null;
-  is_enabled: boolean;
-  created_at: string;
-  rule_count: number;
-  override_count: number;
+  flagType: string;
+  defaultValue: Record<string, unknown> | boolean | string | number | null;
+  isEnabled: boolean;
+  createdAt: string;
+  ruleCount: number;
+  overrideCount: number;
 }
 
 interface FlagRule {
   id: string;
-  flag_id: string;
+  flagId: string;
   priority: number;
   conditions: Record<string, unknown>;
   value: Record<string, unknown>;
@@ -78,11 +78,11 @@ interface FlagRule {
 
 interface FlagOverride {
   id: string;
-  flag_id: string;
-  user_id: string;
+  flagId: string;
+  userId: string;
   value: Record<string, unknown>;
   reason: string | null;
-  created_at: string;
+  createdAt: string;
   username?: string;
 }
 
@@ -323,7 +323,7 @@ export default function FeatureFlags() {
 
   const parseRuleValue = (): Record<string, unknown> => {
     if (!selectedFlag) return { enabled: true };
-    switch (selectedFlag.flag_type) {
+    switch (selectedFlag.flagType) {
       case 'boolean':
         return { enabled: ruleValue === 'true' };
       case 'percentage':
@@ -408,15 +408,15 @@ export default function FeatureFlags() {
     setFormKey(flag.key);
     setFormName(flag.name);
     setFormDescription(flag.description ?? '');
-    setFormType(flag.flag_type);
+    setFormType(flag.flagType);
     setFormDefaultValue(
-      flag.flag_type === 'boolean'
-        ? String(flag.default_value?.enabled ?? true)
-        : flag.flag_type === 'percentage'
-          ? String(flag.default_value?.percentage ?? 0)
-          : flag.flag_type === 'json'
-            ? JSON.stringify(flag.default_value, null, 2)
-            : String(flag.default_value?.value ?? '')
+      flag.flagType === 'boolean'
+        ? String((flag.defaultValue as Record<string, unknown>)?.enabled ?? true)
+        : flag.flagType === 'percentage'
+          ? String((flag.defaultValue as Record<string, unknown>)?.percentage ?? 0)
+          : flag.flagType === 'json'
+            ? JSON.stringify(flag.defaultValue, null, 2)
+            : String((flag.defaultValue as Record<string, unknown>)?.value ?? '')
     );
   };
 
@@ -582,15 +582,15 @@ export default function FeatureFlags() {
                           <Badge
                             variant="outline"
                             className={
-                              flag.is_enabled
+                              flag.isEnabled
                                 ? '-none border-white/25 text-white'
                                 : '-none border-zinc-700 text-zinc-500'
                             }
                           >
-                            {flag.is_enabled ? 'Enabled' : 'Disabled'}
+                            {flag.isEnabled ? 'Enabled' : 'Disabled'}
                           </Badge>
                           <Badge variant="outline" className="-none text-xs">
-                            {flag.flag_type}
+                            {flag.flagType}
                           </Badge>
                         </div>
                         <h3 className="mt-1 text-sm font-semibold text-white">{flag.name}</h3>
@@ -606,7 +606,7 @@ export default function FeatureFlags() {
                             className="flex items-center gap-1 transition hover:text-white"
                           >
                             <Settings className="w-3 h-3" />
-                            {flag.rule_count} rules
+                            {flag.ruleCount} rules
                           </button>
                           <button
                             onClick={() => {
@@ -616,19 +616,19 @@ export default function FeatureFlags() {
                             className="flex items-center gap-1 transition hover:text-white"
                           >
                             <Users className="w-3 h-3" />
-                            {flag.override_count} overrides
+                            {flag.overrideCount} overrides
                           </button>
-                          {flag.default_value && typeof flag.default_value === 'object' && 'percentage' in flag.default_value && (
+                          {flag.defaultValue && typeof flag.defaultValue === 'object' && 'percentage' in flag.defaultValue && (
                             <span className="flex items-center gap-1">
                               <Percent className="w-3 h-3" />
-                              {String((flag.default_value as Record<string, unknown>).percentage)}% rollout
+                              {String((flag.defaultValue as Record<string, unknown>).percentage)}% rollout
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <Switch
-                          checked={flag.is_enabled}
+                          checked={flag.isEnabled}
                           className="data-[state=checked]:bg-rose-500"
                           onCheckedChange={(checked) =>
                             toggleFlag.mutate({ id: flag.id, isEnabled: checked })
@@ -792,7 +792,7 @@ export default function FeatureFlags() {
                     updateFlag.mutate({
                       name: formName,
                       description: formDescription || null,
-                      default_value: parseDefaultValue(formType, formDefaultValue),
+                      defaultValue: parseDefaultValue(formType, formDefaultValue),
                     });
                   } else {
                     createFlag.mutate();
@@ -953,7 +953,7 @@ export default function FeatureFlags() {
                 <label className="text-sm text-zinc-400 mb-2 block">
                   Value when condition matches
                 </label>
-                {selectedFlag?.flag_type === 'boolean' ? (
+                {selectedFlag?.flagType === 'boolean' ? (
                   <Select value={ruleValue} onValueChange={setRuleValue}>
                     <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                       <SelectValue />
@@ -963,7 +963,7 @@ export default function FeatureFlags() {
                       <SelectItem value="false">Disabled (false)</SelectItem>
                     </SelectContent>
                   </Select>
-                ) : selectedFlag?.flag_type === 'percentage' ? (
+                ) : selectedFlag?.flagType === 'percentage' ? (
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
@@ -975,7 +975,7 @@ export default function FeatureFlags() {
                     />
                     <span className="text-zinc-400">%</span>
                   </div>
-                ) : selectedFlag?.flag_type === 'json' ? (
+                ) : selectedFlag?.flagType === 'json' ? (
                   <Textarea
                     value={ruleValue}
                     onChange={(e) => setRuleValue(e.target.value)}
@@ -1066,7 +1066,7 @@ export default function FeatureFlags() {
                 >
                   <div>
                     <p className="text-white text-sm font-medium">
-                      {override.username ?? override.user_id}
+                      {override.username ?? override.userId}
                     </p>
                     {override.reason && (
                       <p className="text-xs text-zinc-500 mt-0.5">{override.reason}</p>
