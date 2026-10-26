@@ -382,6 +382,7 @@ export default function FindTeammatesPage() {
         ranks={ranks}
         gameRoles={gameRoles}
         regions={regions}
+        initialIntent={activeTab === 'lfteam' ? 'looking_for_team' : 'looking_for_player'}
       />
     </CompetitivePageShell>
   );

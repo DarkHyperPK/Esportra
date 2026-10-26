@@ -58,6 +58,7 @@ interface CreateListingSheetProps {
   ranks: CatalogRankTier[];
   gameRoles: CatalogGameRole[];
   regions: CatalogRegion[];
+  initialIntent?: LfgIntent | null;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ function getErrorCode(err: unknown): string | undefined {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRoles, regions }: CreateListingSheetProps) {
+export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRoles, regions, initialIntent }: CreateListingSheetProps) {
   const { user } = useAuth();
   const reduced = useReducedMotion() ?? false;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
@@ -130,7 +131,7 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
   // Reset on open
   useEffect(() => {
     if (open) {
-      setForm(INITIAL_FORM);
+      setForm({ ...INITIAL_FORM, intent: initialIntent ?? null });
       setPhase('idle');
       setError(null);
       setDraftId(null);

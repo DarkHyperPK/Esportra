@@ -23,20 +23,16 @@ export interface LfgIntentGroup {
 
 export const LFG_INTENT_GROUPS: ReadonlyArray<LfgIntentGroup> = [
   {
-    label: "I'm looking for...",
+    label: "I'm looking for a team",
     intents: [
-      { value: 'duo',              label: 'Duo Partner',   description: 'Find one person to queue with' },
-      { value: 'group',            label: 'Group',          description: 'Get a group together for a session' },
-      { value: 'teammates',        label: 'Teammates',      description: 'Find people for regular play' },
-      { value: 'looking_for_team', label: 'A Team',         description: 'Join an established team' },
-      { value: 'casual',           label: 'Casual Play',    description: 'No pressure, just for fun' },
+      { value: 'looking_for_team', label: 'Find a Team', description: 'Join an established competitive team' },
     ],
   },
   {
-    label: 'My team is looking for...',
+    label: 'My team is looking for',
     intents: [
-      { value: 'looking_for_player', label: 'Players',            description: 'Recruit players for your team' },
-      { value: 'competitive_roster', label: 'Competitive Roster', description: 'Build a roster for tournaments' },
+      { value: 'looking_for_player', label: 'Players',            description: 'Recruit players to fill open spots' },
+      { value: 'competitive_roster', label: 'Competitive Roster', description: 'Build a full roster for tournaments' },
     ],
   },
 ] as const;
