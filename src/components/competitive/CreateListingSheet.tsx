@@ -123,18 +123,32 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
   const [draftId, setDraftId] = useState<string | null>(null);
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Profile completeness check (non-blocking prompt)
+  // Profile for pre-population and completeness check
   const profileQuery = useCompetitiveProfile(user?.id ?? '', 'valorant');
-  const showProfilePrompt = open && !!user?.id && !profileQuery.isLoading && !profileQuery.data;
+  const profile = profileQuery.data ?? null;
+  const showProfilePrompt = open && !!user?.id && !profileQuery.isLoading && !profile;
+  const showPrefilledBanner = open && !!profile;
 
   // Mutations — publish hook requires an ID; draftId populated after create succeeds
   const createMutation = useCreateLfgListing();
   const publishMutation = usePublishLfgListing(draftId ?? '');
 
-  // Reset on open
+  // Reset on open — seed from profile when available
   useEffect(() => {
     if (open) {
-      setForm({ ...INITIAL_FORM, intent: initialIntent ?? null });
+      const seed: FormState = profile
+        ? {
+            ...INITIAL_FORM,
+            intent: initialIntent ?? null,
+            minRankSortOrder: profile.rankSortOrder,
+            maxRankSortOrder: profile.rankSortOrder,
+            preferredRoles: profile.preferredRoles ?? [],
+            regionKey: profile.regionKey,
+            languages: profile.languages ?? [],
+            description: profile.notes ?? '',
+          }
+        : { ...INITIAL_FORM, intent: initialIntent ?? null };
+      setForm(seed);
       setPhase('idle');
       setError(null);
       setDraftId(null);
@@ -142,6 +156,7 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
     return () => {
       if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialIntent]);
 
   // Auto-close after published
@@ -299,14 +314,22 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
             {/* Body — scrollable */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 
-              {/* Profile prompt (non-blocking) */}
+              {/* Pre-filled from profile */}
+              {showPrefilledBanner && (
+                <InlineNotice tone="success">
+                  Pre-filled from your competitive profile.{' '}
+                  <span className="text-white/50">Edit any field below.</span>
+                </InlineNotice>
+              )}
+
+              {/* No profile — prompt to create one (non-blocking) */}
               {showProfilePrompt && (
                 <InlineNotice tone="warning">
-                  Your competitive profile is incomplete.{' '}
+                  No competitive profile found.{' '}
                   <Link to="/competitive/profile/edit" className="underline underline-offset-2 hover:text-white transition-colors">
-                    Set it up
+                    Create your profile
                   </Link>{' '}
-                  to appear in player search.
+                  to appear in player search, or fill in the details below.
                 </InlineNotice>
               )}
 
