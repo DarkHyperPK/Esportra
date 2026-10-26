@@ -15,22 +15,12 @@ const GAME = 'valorant';
 
 function SkeletonCard() {
   return (
-    <div className="rounded-md border border-white/[0.06] bg-white/[0.03] p-4 space-y-3" aria-hidden>
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-md bg-white/[0.06] shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <div className="h-3.5 w-32 bg-white/[0.06] rounded" />
-          <div className="h-3 w-16 bg-white/[0.04] rounded" />
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <div className="h-8 w-8 rounded-md bg-white/[0.06]" />
-        <div className="h-8 w-8 rounded-md bg-white/[0.06]" />
-        <div className="h-4 w-24 bg-white/[0.04] rounded self-center" />
-      </div>
-      <div className="space-y-1.5">
-        <div className="h-3 w-full bg-white/[0.04] rounded" />
-        <div className="h-3 w-2/3 bg-white/[0.04] rounded" />
+    <div className="rounded-md border border-white/[0.06] bg-white/[0.025] px-3 py-3.5" aria-hidden>
+      <div className="flex items-center gap-2.5">
+        <div className="h-8 w-8 rounded bg-white/[0.06] shrink-0" />
+        <div className="flex-1 h-3.5 w-28 bg-white/[0.06] rounded" />
+        <div className="h-3 w-14 bg-white/[0.04] rounded" />
+        <div className="h-3 w-8 bg-white/[0.03] rounded" />
       </div>
     </div>
   );
@@ -155,14 +145,14 @@ export default function LookingForPlayerPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3" role="list">
+            <div className="flex flex-col gap-1.5" role="list">
               {listings.map((listing, i) => (
                 <motion.div
                   key={listing.id}
                   role="listitem"
-                  initial={reduced ? false : { opacity: 0, y: 6 }}
+                  initial={reduced ? false : { opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 5) * 0.03 }}
+                  transition={{ duration: 0.14, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 8) * 0.02 }}
                 >
                   <TeamLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
                 </motion.div>
