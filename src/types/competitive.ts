@@ -432,6 +432,24 @@ export interface TeamDetailedMember {
   tournamentCount: number;
 }
 
+// ── My game stats (LFT create flow) ──────────────────────────────────────────
+
+export interface MyGameStats {
+  riotLinked: boolean;
+  riotGameName: string | null;
+  riotTagLine: string | null;
+  syncStatus: 'pending' | 'syncing' | 'done' | 'error' | null;
+  syncedAt: string | null;
+  competitiveTier: number | null;
+  competitiveTierName: string | null;
+  winCount: number | null;
+  lossCount: number | null;
+  winRate: number | null;
+  kdRatio: number | null;
+  matchesAnalyzed: number | null;
+  popularAgents: PopularAgent[] | null;
+}
+
 // ── Player search ─────────────────────────────────────────────────────────────
 
 /**

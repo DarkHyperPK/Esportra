@@ -12,7 +12,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import type {
   LfgListing,
   LfgInterest,
@@ -20,6 +20,7 @@ import type {
   UpdateLfgListingRequest,
   ExpressInterestRequest,
   TeamDetailedMember,
+  MyGameStats,
 } from '@/types/competitive';
 
 export interface AcceptInterestResponse {
@@ -32,6 +33,14 @@ import { lfgKeys } from './queryKeys';
 export { lfgKeys };
 
 // ── Query hooks ────────────────────────────────────────────────────────────────
+
+export function useMyGameStats(game: string) {
+  return useQuery({
+    queryKey: ['my-game-stats', game],
+    queryFn: () => apiClient.get<MyGameStats>(`/api/competitive/game-stats/me?game=${game}`),
+    staleTime: 60_000,
+  });
+}
 
 export function useMyLfgListings() {
   return useQuery({

@@ -8,7 +8,7 @@ import { ArrowLeft, ChevronDown, Loader2, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/hooks/competitive/useCatalog';
-import { useCreateLfgListing } from '@/hooks/competitive/useLfg';
+import { useCreateLfgListing, useTeamDetailedMembers } from '@/hooks/competitive/useLfg';
 import { apiClient } from '@/lib/apiClient';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { RankSelector } from '@/components/competitive/RankSelector';
@@ -84,6 +84,8 @@ export default function LookingForPlayerCreatePage() {
   }
 
   const createMutation = useCreateLfgListing();
+  const membersQuery = useTeamDetailedMembers(teamId, !!teamId);
+  const members = membersQuery.data ?? [];
   const charsLeft = DESC_MAX - description.length;
 
   function toggleRole(roleKey: string) {
@@ -190,6 +192,36 @@ export default function LookingForPlayerCreatePage() {
                 </div>
               )}
             </div>
+
+            {/* Team roster stats */}
+            {teamId && members.length > 0 && (
+              <div>
+                <Caption>Current roster</Caption>
+                <div className="border border-white/[0.06] divide-y divide-white/[0.04]">
+                  {members.map((m) => (
+                    <div key={m.userId} className="flex items-center justify-between px-3 py-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[13px] text-white/80 truncate">{m.username}</span>
+                        {m.role && (
+                          <span className="text-[10px] font-mono text-white/30 border border-white/[0.06] px-1.5 py-0.5 uppercase">
+                            {m.role}
+                          </span>
+                        )}
+                      </div>
+                      {m.riotGameName ? (
+                        <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-white/40">
+                          {m.kd != null && <span>{m.kd.toFixed(2)} K/D</span>}
+                          {m.winRate != null && <span>{Math.round(m.winRate * 100)}% WR</span>}
+                          {m.tournamentCount > 0 && <span>{m.tournamentCount}T</span>}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-white/25">No Riot account</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Rank range */}
             <div>
