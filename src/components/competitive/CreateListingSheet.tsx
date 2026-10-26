@@ -134,7 +134,6 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
     return () => {
       if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialIntent]);
 
   // Auto-close after published
