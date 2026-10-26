@@ -91,7 +91,7 @@ export function LfgDiscoveryCard({ listing, gameRoles = [], currentUserId }: Lfg
     ? `${listing.minRankDisplayName} — ${listing.maxRankDisplayName}`
     : listing.minRankDisplayName ?? listing.maxRankDisplayName;
 
-  const ariaLabel = [listing.username, rankText ?? 'unranked', listing.preferredRoles.join(', '), listing.regionDisplayName ?? ''].filter(Boolean).join(', ');
+  const ariaLabel = [listing.username, rankText ?? 'unranked', (listing.preferredRoles ?? []).join(', '), listing.regionDisplayName ?? ''].filter(Boolean).join(', ');
 
   return (
     <article
@@ -127,9 +127,9 @@ export function LfgDiscoveryCard({ listing, gameRoles = [], currentUserId }: Lfg
       )}
 
       {/* Row 3: roles + region + language */}
-      {(listing.preferredRoles.length > 0 || listing.regionDisplayName) && (
+      {((listing.preferredRoles ?? []).length > 0 || listing.regionDisplayName) && (
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          {listing.preferredRoles.map((rk) => {
+          {(listing.preferredRoles ?? []).map((rk) => {
             const role = gameRoles.find(r => r.roleKey === rk);
             return (
               <span key={rk} className="flex items-center gap-1">
@@ -140,11 +140,11 @@ export function LfgDiscoveryCard({ listing, gameRoles = [], currentUserId }: Lfg
           })}
           {listing.regionDisplayName && (
             <span className="text-[12px] text-white/40">
-              {listing.preferredRoles.length > 0 && <span aria-hidden className="mr-1 text-white/25">·</span>}
+              {(listing.preferredRoles ?? []).length > 0 && <span aria-hidden className="mr-1 text-white/25">·</span>}
               {listing.regionDisplayName}
             </span>
           )}
-          {listing.languages[0] && (
+          {listing.languages?.[0] && (
             <span className="text-[12px] text-white/40">
               <span aria-hidden className="mr-1 text-white/25">·</span>
               {listing.languages[0]}

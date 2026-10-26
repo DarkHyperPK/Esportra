@@ -42,7 +42,7 @@ interface PlayerDiscoveryCardProps {
 export function PlayerDiscoveryCard({ player, gameRoles = [] }: PlayerDiscoveryCardProps) {
   const displayName = player.username ?? 'Unknown';
   const mainRoleData = player.mainRole ? gameRoles.find(r => r.roleKey === player.mainRole) : null;
-  const otherRoles = player.preferredRoles.filter(rk => rk !== player.mainRole).slice(0, 2);
+  const otherRoles = (player.preferredRoles ?? []).filter(rk => rk !== player.mainRole).slice(0, 2);
 
   const ariaLabel = [
     displayName,
@@ -78,7 +78,7 @@ export function PlayerDiscoveryCard({ player, gameRoles = [] }: PlayerDiscoveryC
       )}
 
       {/* Row 3: roles */}
-      {player.preferredRoles.length > 0 && (
+      {(player.preferredRoles ?? []).length > 0 && (
         <div className="mb-2">
           {player.mainRole && (
             <div className="flex items-center gap-1.5 mb-1">
@@ -104,10 +104,10 @@ export function PlayerDiscoveryCard({ player, gameRoles = [] }: PlayerDiscoveryC
       )}
 
       {/* Row 4: context */}
-      {(player.regionDisplayName || player.languages[0]) && (
+      {(player.regionDisplayName || player.languages?.[0]) && (
         <div className="flex flex-wrap gap-x-2 gap-y-0.5 mb-3 text-[12px] text-white/40">
           {player.regionDisplayName && <span>{player.regionDisplayName}</span>}
-          {player.languages[0] && <span className="before:content-['·'] before:mr-1 before:text-white/20">{player.languages[0]}</span>}
+          {player.languages?.[0] && <span className="before:content-['·'] before:mr-1 before:text-white/20">{player.languages[0]}</span>}
         </div>
       )}
 

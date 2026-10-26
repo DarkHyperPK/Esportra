@@ -74,9 +74,9 @@ export function CompetitiveTabContent({ profile, isOwnProfile, linkedAccounts }:
       {/* Roles section */}
       <section className="mb-6" aria-label="Roles">
         <p className={CAPTION}>ROLES</p>
-        {profile.preferredRoles.length > 0 ? (
+        {(profile.preferredRoles ?? []).length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {profile.preferredRoles.map((roleKey) => {
+            {(profile.preferredRoles ?? []).map((roleKey) => {
               const roleData = roles?.find((r) => r.roleKey === roleKey);
               const isMain = roleKey === profile.mainRole;
               return (
@@ -113,11 +113,11 @@ export function CompetitiveTabContent({ profile, isOwnProfile, linkedAccounts }:
       </section>
 
       {/* Languages section */}
-      {profile.languages.length > 0 && (
+      {(profile.languages ?? []).length > 0 && (
         <section className="mb-6" aria-label="Languages">
           <p className={CAPTION}>LANGUAGES</p>
           <div className="flex flex-wrap gap-2">
-            {profile.languages.map((lang) => (
+            {(profile.languages ?? []).map((lang) => (
               <span key={lang} className="inline-flex px-3 py-1.5 border border-white/[0.08] text-[12px] text-white/60">{lang}</span>
             ))}
           </div>

@@ -129,9 +129,9 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
             {topAgents.map((a) => <AgentIcon key={a.agentId} agent={a} />)}
           </div>
         )}
-        {listing.preferredRoles.length > 0 && (
+        {(listing.preferredRoles ?? []).length > 0 && (
           <div className="flex items-center gap-1">
-            {listing.preferredRoles.slice(0, 3).map((rk) => {
+            {(listing.preferredRoles ?? []).slice(0, 3).map((rk) => {
               const role = gameRoles.find((r) => r.roleKey === rk);
               return role?.iconUrl
                 ? <img key={rk} src={role.iconUrl} alt={role.displayName ?? rk} className="h-5 w-5 opacity-60" />
@@ -141,11 +141,11 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
         )}
       </div>
 
-      {(listing.regionDisplayName || listing.languages[0]) && (
+      {(listing.regionDisplayName || listing.languages?.[0]) && (
         <div className="flex items-center gap-2 mb-2 text-[12px] text-white/40">
           {listing.regionDisplayName && <span>{listing.regionDisplayName}</span>}
-          {listing.regionDisplayName && listing.languages[0] && <span className="text-white/20">·</span>}
-          {listing.languages[0] && <span>{listing.languages[0]}</span>}
+          {listing.regionDisplayName && listing.languages?.[0] && <span className="text-white/20">·</span>}
+          {listing.languages?.[0] && <span>{listing.languages[0]}</span>}
         </div>
       )}
 
