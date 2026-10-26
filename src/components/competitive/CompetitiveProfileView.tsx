@@ -83,9 +83,9 @@ export function CompetitiveProfileView({ profile, isOwnProfile, onEdit }: Compet
       )}
 
       {/* Roles */}
-      {profile.roles.length > 0 && (
+      {(profile.roles ?? []).length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {profile.roles.map((role) => (
+          {(profile.roles ?? []).map((role) => (
             <RoleChip
               key={role}
               role={role}
@@ -101,15 +101,15 @@ export function CompetitiveProfileView({ profile, isOwnProfile, onEdit }: Compet
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <RegionLabel
           region={profile.regionDisplayName}
-          server={profile.servers[0] ?? null}
+          server={profile.servers?.[0] ?? null}
         />
         {showLft(profile) && <LftBadge />}
       </div>
 
       {/* Languages */}
-      {profile.languages.length > 0 && (
+      {(profile.languages ?? []).length > 0 && (
         <p className="text-[13px] text-white/55">
-          {profile.languages.join(' · ')}
+          {(profile.languages ?? []).join(' · ')}
         </p>
       )}
 

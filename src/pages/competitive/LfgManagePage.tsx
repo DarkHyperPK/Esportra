@@ -1,69 +1,76 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { PageIntro, ActionBar, InlineNotice, StatusPill } from '@/components/ui/kit';
-import { Button } from '@/components/ui/button';
+import { Loader2, ArrowLeft, Pencil, Pause, Play, X } from 'lucide-react';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useLfgListing, useLfgInterests, useUpdateLfgStatus, useAcceptInterest, useDeclineInterest } from '@/hooks/competitive/useLfg';
+  useLfgListing, useLfgInterests,
+  usePublishLfgListing, usePauseLfgListing, useCloseLfgListing,
+  useAcceptInterest, useDeclineInterest,
+} from '@/hooks/competitive/useLfg';
+import { useCatalogGameRoles } from '@/hooks/competitive/useCatalog';
+import { useAuth } from '@/hooks/useAuth';
 import { LfgInterestCard } from '@/components/competitive/LfgInterestCard';
-import { RoleChip } from '@/components/competitive/RoleChip';
-import { RegionLabel } from '@/components/competitive/RegionLabel';
+import { PlayerLfgCard } from '@/components/competitive/PlayerLfgCard';
+import { TeamLfgCard } from '@/components/competitive/TeamLfgCard';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { LfgStatus } from '@/types/competitive';
 
-const STATUS_TONE: Record<LfgStatus, 'neutral' | 'accent' | 'success' | 'warning' | 'critical'> = {
-  draft: 'neutral',
-  published: 'accent',
-  paused: 'warning',
-  expired: 'neutral',
-  closed: 'neutral',
-  removed: 'critical',
-};
+const GAME = 'valorant';
 
-function formatDate(iso: string | null) {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function relativeDate(iso: string | null) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function ExpiryLine({ listing }: { listing: { status: LfgStatus; expiresAt: string | null; publishedAt: string | null; closedAt: string | null } }) {
-  const { status, expiresAt, closedAt } = listing;
-  if (status === 'draft') return <p className="text-[14px] text-white/55">Not yet published.</p>;
-  if (status === 'paused') return <p className="text-[14px] text-white/55">Paused. Listing is not visible to others.</p>;
-  if (status === 'expired') return <p className="text-[14px] text-white/55">Expired on {formatDate(expiresAt)}.</p>;
-  if (status === 'closed') return <p className="text-[14px] text-white/55">Closed on {formatDate(closedAt)}.</p>;
-  if (status === 'removed') return null;
-  if (status === 'published' && expiresAt) {
-    const ms = new Date(expiresAt).getTime() - Date.now();
-    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
-    const isToday = ms > 0 && ms < 86_400_000;
-    const colorClass = isToday ? 'text-amber-400' : 'text-white/55';
-    return <p className={`text-[14px] ${colorClass}`}>{isToday ? 'Expires today.' : `Expires in ${days} days.`}</p>;
-  }
-  return null;
+function StatusBadge({ status }: { status: LfgStatus }) {
+  const config: Record<LfgStatus, { label: string; className: string }> = {
+    draft:     { label: 'Draft',    className: 'bg-white/[0.06] text-white/50' },
+    published: { label: 'Live',     className: 'bg-emerald-500/20 text-emerald-400' },
+    paused:    { label: 'Paused',   className: 'bg-amber-500/20 text-amber-400' },
+    expired:   { label: 'Expired',  className: 'bg-white/[0.06] text-white/40' },
+    closed:    { label: 'Closed',   className: 'bg-white/[0.06] text-white/40' },
+    removed:   { label: 'Removed',  className: 'bg-red-500/20 text-red-400' },
+  };
+  const { label, className } = config[status] ?? config.draft;
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${className}`}>
+      {label}
+    </span>
+  );
 }
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LfgManagePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const { user } = useAuth();
+
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [activeInterestId, setActiveInterestId] = useState<string | null>(null);
   const [interestAction, setInterestAction] = useState<'accept' | 'decline' | null>(null);
 
   const listingQuery = useLfgListing(id!);
   const interestsQuery = useLfgInterests(id!);
-  const updateStatus = useUpdateLfgStatus(id!);
+  const rolesQuery = useCatalogGameRoles(GAME);
+  const publishMutation = usePublishLfgListing(id!);
+  const pauseMutation = usePauseLfgListing(id!);
+  const closeMutation = useCloseLfgListing(id!);
   const acceptInterest = useAcceptInterest(id!);
   const declineInterest = useDeclineInterest(id!);
+
+  const gameRoles = rolesQuery.data ?? [];
+  const isStatusPending = publishMutation.isPending || pauseMutation.isPending || closeMutation.isPending;
 
   if (listingQuery.isLoading) {
     return (
       <CompetitivePageShell>
-        <div className="px-4 py-8 space-y-4 animate-pulse">
-          <div className="h-8 w-48 bg-white/[0.06]" />
-          <div className="h-6 w-64 bg-white/[0.04]" />
-          <div className="h-4 w-80 bg-white/[0.04]" />
+        <div className="max-w-xl mx-auto px-4 py-8 space-y-3 animate-pulse">
+          {[32, 24, 48, 48].map((h, i) => (
+            <div key={i} className="rounded bg-white/[0.06]" style={{ height: h }} />
+          ))}
         </div>
       </CompetitivePageShell>
     );
@@ -72,12 +79,12 @@ export default function LfgManagePage() {
   if (listingQuery.isError || !listingQuery.data) {
     return (
       <CompetitivePageShell>
-        <div className="px-4 py-8 space-y-4">
-          <p className="text-[14px] text-white/55">Could not load this listing. Check your connection and try again.</p>
-          <Button variant="outline" onClick={() => listingQuery.refetch()}
-            className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]">
+        <div className="max-w-xl mx-auto px-4 py-8 space-y-4">
+          <p className="text-[14px] text-white/55">Could not load this listing.</p>
+          <button type="button" onClick={() => void listingQuery.refetch()}
+            className="rounded-md border border-white/[0.08] text-white text-[13px] px-4 py-2 hover:bg-white/[0.07]">
             Retry
-          </Button>
+          </button>
         </div>
       </CompetitivePageShell>
     );
@@ -87,191 +94,204 @@ export default function LfgManagePage() {
   const interests = (interestsQuery.data ?? []).filter((i) => i.status !== 'declined');
   const pendingInterests = interests.filter((i) => i.status === 'expressed');
   const acceptedInterests = interests.filter((i) => i.status === 'accepted');
-  const isReadonly = listing.status === 'expired' || listing.status === 'closed' || listing.status === 'removed';
+  const isReadonly = ['expired', 'closed', 'removed'].includes(listing.status);
+  const isTeamListing = ['looking_for_player', 'competitive_roster'].includes(listing.intent ?? '');
 
   async function handleAccept(interestId: string) {
-    setActiveInterestId(interestId);
-    setInterestAction('accept');
+    setActiveInterestId(interestId); setInterestAction('accept');
     try {
       const result = await acceptInterest.mutateAsync(interestId);
-      if (result.conversationId) {
-        navigate(`/inbox/${result.conversationId}`);
-      }
-    } finally {
-      setActiveInterestId(null); setInterestAction(null);
-    }
+      if (result.conversationId) navigate(`/inbox/${result.conversationId}`);
+    } finally { setActiveInterestId(null); setInterestAction(null); }
   }
 
   async function handleDecline(interestId: string) {
-    setActiveInterestId(interestId);
-    setInterestAction('decline');
-    try { await declineInterest.mutateAsync(interestId); } finally {
-      setActiveInterestId(null); setInterestAction(null);
-    }
+    setActiveInterestId(interestId); setInterestAction('decline');
+    try { await declineInterest.mutateAsync(interestId); }
+    finally { setActiveInterestId(null); setInterestAction(null); }
   }
 
   return (
     <CompetitivePageShell>
-      <div className="px-4 py-8 max-w-2xl mx-auto lg:mx-0 lg:px-8">
-        <Link to="/competitive/lfg" className="text-[13px] text-white/55 hover:text-white mb-6 inline-block">
-          ‹ My listings
+      <div className="max-w-xl mx-auto px-4 sm:px-6 pt-6 pb-16">
+
+        {/* Back nav */}
+        <Link to="/competitive/lfg/mine"
+          className="inline-flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors mb-8">
+          <ArrowLeft className="h-4 w-4" />
+          My Listings
         </Link>
 
-        <PageIntro eyebrow="YOUR LFG LISTING — VALORANT" title="LFG Listing" className="mb-6" />
-
-        {/* Status hero */}
-        <div className="space-y-1 mb-6">
-          <div className="flex items-center gap-3">
-            <span
-              className="font-rajdhani text-[24px] font-bold text-white uppercase"
-              aria-label={`Listing status: ${listing.status ?? ''}`}
-            >
-              {listing.status?.toUpperCase() ?? ''}
-            </span>
-            <StatusPill label={listing.status?.toUpperCase() ?? ''} tone={STATUS_TONE[listing.status as LfgStatus] ?? 'neutral'} />
-          </div>
-          <ExpiryLine listing={listing} />
-        </div>
-
-        <div className="border-b border-white/[0.08] mb-6" />
-
-        {/* Listing details */}
-        <div className="space-y-3 mb-6">
-          <p className="text-[13px] text-white/55">
-            Valorant · {listing.intent ? listing.intent.charAt(0).toUpperCase() + listing.intent.slice(1) : ''}
-          </p>
-          {(listing.minRankDisplayName || listing.maxRankDisplayName) && (
-            <p className="font-rajdhani text-[13px] font-semibold text-white">
-              {[listing.minRankDisplayName, listing.maxRankDisplayName].filter(Boolean).join(' — ')}
-            </p>
+        {/* Status row */}
+        <div className="flex items-center gap-3 mb-2">
+          <StatusBadge status={listing.status as LfgStatus} />
+          {listing.status === 'published' && listing.expiresAt && (() => {
+            const ms = new Date(listing.expiresAt).getTime() - Date.now();
+            const days = Math.ceil(ms / 86_400_000);
+            const isToday = ms > 0 && ms < 86_400_000;
+            return (
+              <span className={`text-[12px] ${isToday ? 'text-amber-400' : 'text-white/40'}`}>
+                {isToday ? 'Expires today' : `Expires in ${days}d`}
+              </span>
+            );
+          })()}
+          {listing.status === 'paused' && (
+            <span className="text-[12px] text-white/40">Not visible to others</span>
           )}
-          {(listing.preferredRoles?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {listing.preferredRoles!.map((r) => (
-                <RoleChip key={r} role={r} displayName={r.toUpperCase()} mode="display" />
-              ))}
-            </div>
-          )}
-          <RegionLabel region={listing.regionDisplayName} server={listing.preferredServers?.[0] ?? null} />
-          {listing.description && (
-            <p className="text-[13px] text-white/55">&ldquo;{listing.description}&rdquo;</p>
+          {['expired', 'closed'].includes(listing.status) && listing.expiresAt && (
+            <span className="text-[12px] text-white/40">{relativeDate(listing.expiresAt)}</span>
           )}
         </div>
 
-        {/* Removed notice */}
-        {listing.status === 'removed' && (
-          <InlineNotice tone="critical" className="mb-6">
-            This listing was removed. Contact support if you believe this is wrong.
-          </InlineNotice>
-        )}
+        {/* Card preview */}
+        <div className="mb-6 pointer-events-none select-none">
+          <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/25 mb-2">Preview</p>
+          {isTeamListing
+            ? <TeamLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
+            : <PlayerLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />}
+        </div>
 
         {/* Interests */}
-        {!['draft', 'removed'].includes(listing.status) && (
+        {!['draft', 'removed'].includes(listing.status) && interests.length > 0 && (
           <div className="mb-6 space-y-3">
-            <div className="border-b border-white/[0.08]" />
-            {pendingInterests.length > 0 || acceptedInterests.length > 0 ? (
-              <>
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-                  INTERESTS ({interests.length})
-                </p>
-                {[...pendingInterests, ...acceptedInterests].map((interest) => (
-                  <LfgInterestCard
-                    key={interest.id}
-                    interest={interest}
-                    onAccept={handleAccept}
-                    onDecline={handleDecline}
-                    isAccepting={activeInterestId === interest.id && interestAction === 'accept'}
-                    isDeclining={activeInterestId === interest.id && interestAction === 'decline'}
-                    readonly={isReadonly}
-                  />
-                ))}
-              </>
-            ) : (
-              listing.status === 'published' || listing.status === 'paused' ? (
-                <InlineNotice tone="neutral">No interests yet. Listing is active.</InlineNotice>
-              ) : null
-            )}
+            <div className="border-t border-white/[0.06] pt-4">
+              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/25 mb-3">
+                Interests ({interests.length})
+              </p>
+              {[...pendingInterests, ...acceptedInterests].map((interest) => (
+                <LfgInterestCard
+                  key={interest.id}
+                  interest={interest}
+                  onAccept={handleAccept}
+                  onDecline={handleDecline}
+                  isAccepting={activeInterestId === interest.id && interestAction === 'accept'}
+                  isDeclining={activeInterestId === interest.id && interestAction === 'decline'}
+                  readonly={isReadonly}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {listing.status === 'published' && interests.length === 0 && (
+          <p className="text-[13px] text-white/35 mb-6">No interests yet. Your listing is live.</p>
+        )}
+
+        {listing.status === 'removed' && (
+          <div className="mb-6 rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3">
+            <p className="text-[13px] text-red-400">This listing was removed. Contact support if you believe this is wrong.</p>
           </div>
         )}
 
         {/* Actions */}
         {listing.status !== 'removed' && (
-          <ActionBar
-            start={
-              !isReadonly ? (
-                <Button variant="ghost" onClick={() => setShowCloseDialog(true)}
-                  disabled={updateStatus.isPending}
-                  className="text-[13px] text-red-300 hover:text-red-200 rounded-none">
-                  Close listing
-                </Button>
-              ) : undefined
-            }
-            end={
-              <div className="flex gap-2">
+          <div className="border-t border-white/[0.06] pt-6">
+            {!showCloseConfirm ? (
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Edit */}
+                {!isReadonly && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/competitive/lfg/${id}/edit`)}
+                    className="flex items-center gap-1.5 rounded-md border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    Edit
+                  </button>
+                )}
+
+                {/* Pause/Resume */}
                 {listing.status === 'published' && (
-                  <Button variant="outline" onClick={() => updateStatus.mutate('paused')}
-                    disabled={updateStatus.isPending}
-                    className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07] text-[13px]">
-                    {updateStatus.isPending ? '…' : 'Pause'}
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => pauseMutation.mutate()}
+                    disabled={isStatusPending}
+                    className="flex items-center gap-1.5 rounded-md border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
+                  >
+                    {pauseMutation.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Pause className="h-3.5 w-3.5" aria-hidden />}
+                    Pause
+                  </button>
                 )}
                 {listing.status === 'paused' && (
-                  <Button onClick={() => updateStatus.mutate('published')}
-                    disabled={updateStatus.isPending}
-                    className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px]">
-                    {updateStatus.isPending ? '…' : 'Resume'}
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => publishMutation.mutate()}
+                    disabled={isStatusPending}
+                    className="flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
+                  >
+                    {publishMutation.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Play className="h-3.5 w-3.5" aria-hidden />}
+                    Resume
+                  </button>
                 )}
                 {listing.status === 'draft' && (
-                  <Button onClick={() => updateStatus.mutate('published')}
-                    disabled={updateStatus.isPending}
-                    className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px]">
-                    {updateStatus.isPending ? '…' : 'Publish'}
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => publishMutation.mutate()}
+                    disabled={isStatusPending}
+                    className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
+                  >
+                    {publishMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Publish
+                  </button>
                 )}
-                {isReadonly && (
-                  <Button variant="outline" onClick={() => navigate('/competitive/find-teammates')}
-                    className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07] text-[13px]">
+                {(isReadonly) && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/competitive/find-teammates')}
+                    className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
+                  >
                     Create new listing
-                  </Button>
+                  </button>
                 )}
+
+                {/* Close */}
                 {!isReadonly && (
-                  <Button variant="outline" onClick={() => navigate(`/competitive/lfg/${id}/edit`)}
-                    disabled={updateStatus.isPending}
-                    className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07] text-[13px]">
-                    Edit listing
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCloseConfirm(true)}
+                    className="ml-auto text-[13px] text-red-400/70 hover:text-red-400 transition-colors"
+                  >
+                    Close listing
+                  </button>
                 )}
               </div>
-            }
-          />
+            ) : (
+              /* Close confirm inline */
+              <div className="rounded-md border border-red-500/20 bg-red-500/[0.06] p-4 space-y-3">
+                <p className="text-[14px] text-white font-medium">Close this listing?</p>
+                <p className="text-[13px] text-white/55">It will no longer be visible to other players.</p>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => { closeMutation.mutate(); setShowCloseConfirm(false); }}
+                    disabled={closeMutation.isPending}
+                    className="flex items-center gap-2 rounded-md bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
+                  >
+                    {closeMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Close listing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCloseConfirm(false)}
+                    className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(publishMutation.isError || pauseMutation.isError || closeMutation.isError) && (
+              <p className="mt-3 text-[12px] text-red-400">Action failed. Try again.</p>
+            )}
+          </div>
         )}
       </div>
-
-      {/* Close confirm dialog */}
-      <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <AlertDialogContent className="rounded-none bg-[#1a1a1a] border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white normal-case tracking-normal">
-              Close this listing?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-white/55">
-              It will no longer be visible to players.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => { updateStatus.mutate('closed'); setShowCloseDialog(false); }}
-              className="rounded-none bg-transparent text-red-300 hover:bg-red-500/10 border border-red-500/30"
-            >
-              Close listing
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </CompetitivePageShell>
   );
 }

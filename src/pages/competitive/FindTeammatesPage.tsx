@@ -5,24 +5,19 @@
  *           "Looking for Player" (player profiles with lookingForTeam=true)
  * Desktop: 240px filter rail + card grid. Mobile: filter bottom sheet.
  */
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { SlidersHorizontal, X, Users, Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useDiscoverPlayers, useDiscoverLfg } from '@/hooks/competitive/useDiscovery';
+import { useDiscoverLfg } from '@/hooks/competitive/useDiscovery';
 import { useMyLfgListings } from '@/hooks/competitive/useLfg';
 import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/hooks/competitive/useCatalog';
-import { useDiscoverOpenings } from '@/hooks/competitive/useRecruitment';
 import { useAuth } from '@/hooks/useAuth';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
-import { LfgDiscoveryCard } from '@/components/competitive/LfgDiscoveryCard';
-import { PlayerDiscoveryCard } from '@/components/competitive/PlayerDiscoveryCard';
-import { RecruitmentOpeningCard } from '@/components/competitive/RecruitmentOpeningCard';
+import { PlayerLfgCard } from '@/components/competitive/PlayerLfgCard';
+import { TeamLfgCard } from '@/components/competitive/TeamLfgCard';
 import { FindTeammatesFilterPanel, INITIAL_FILTER, activeFilterCount } from '@/components/competitive/FindTeammatesFilterPanel';
-import { CreateListingSheet } from '@/components/competitive/CreateListingSheet';
 import type { FilterState } from '@/components/competitive/FindTeammatesFilterPanel';
-import type { LfgListing } from '@/types/competitive';
-import type { RecruitmentOpening } from '@/types/competitive';
 
 const GAME = 'valorant';
 
@@ -70,65 +65,45 @@ function EmptyState({ icon, heading, sub, action }: { icon: React.ReactNode; hea
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type FeedItem = { type: 'listing'; data: LfgListing } | { type: 'opening'; data: RecruitmentOpening };
-
 export default function FindTeammatesPage() {
   const { user } = useAuth();
   const reduced = useReducedMotion() ?? false;
 
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'lfteam' | 'lfplayer'>('lfteam');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTER);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
   const ranksQuery = useCatalogRankTiers(GAME);
   const rolesQuery = useCatalogGameRoles(GAME);
   const regionsQuery = useCatalogRegions(GAME);
   const myListingsQuery = useMyLfgListings();
 
-  const lfgQuery = useDiscoverLfg({
+  // LFT: players looking for a team
+  const lftQuery = useDiscoverLfg({
     game: GAME,
-    intent: filters.intents.length ? filters.intents : undefined,
+    intent: ['looking_for_team'],
     minRank: filters.minRank,
     maxRank: filters.maxRank,
     regionKey: filters.regionKey,
-    limit: 20,
+    limit: 30,
   });
-  const openingsQuery = useDiscoverOpenings(GAME);
-  const playersQuery = useDiscoverPlayers({
+  // LFP: teams looking for players
+  const lfpQuery = useDiscoverLfg({
     game: GAME,
-    roles: filters.roles.length ? filters.roles : undefined,
+    intent: ['looking_for_player', 'competitive_roster'],
     minRank: filters.minRank,
     maxRank: filters.maxRank,
     regionKey: filters.regionKey,
-    lookingForTeam: true,
-    limit: 20,
+    limit: 30,
   });
 
   const ranks = ranksQuery.data ?? [];
   const gameRoles = rolesQuery.data ?? [];
   const regions = regionsQuery.data ?? [];
   const myListingsCount = myListingsQuery.data?.length ?? 0;
-  const filterCount = activeFilterCount(filters, activeTab === 'lfteam');
-
-  const mixedFeed = useMemo<FeedItem[]>(() => {
-    const listings = (lfgQuery.data ?? []).map<FeedItem>(l => ({ type: 'listing', data: l }));
-    const openings = (openingsQuery.data ?? [])
-      .filter(o => o.status === 'open')
-      .map<FeedItem>(o => ({ type: 'opening', data: o }));
-    let merged = [...listings, ...openings].sort(
-      (a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime(),
-    );
-    if (filters.roles.length) {
-      merged = merged.filter(item =>
-        item.type !== 'listing' || item.data.preferredRoles.some(r => filters.roles.includes(r)),
-      );
-    }
-    return merged;
-  }, [lfgQuery.data, openingsQuery.data, filters.roles]);
-
-  const lfTeamLoading = lfgQuery.isLoading || openingsQuery.isLoading;
-  const lfTeamError = lfgQuery.isError || openingsQuery.isError;
+  const filterCount = activeFilterCount(filters, false);
+  const activeQuery = activeTab === 'lfteam' ? lftQuery : lfpQuery;
 
   return (
     <CompetitivePageShell>
@@ -147,9 +122,10 @@ export default function FindTeammatesPage() {
             )}
             <button
               type="button"
-              onClick={() => setCreateSheetOpen(true)}
-              aria-label="Create Listing"
-              className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
+              onClick={() => navigate(activeTab === 'lfteam'
+                ? '/competitive/looking-for-team/create'
+                : '/competitive/looking-for-player/create')}
+              className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">Create Listing</span>
@@ -226,9 +202,7 @@ export default function FindTeammatesPage() {
 
           {/* Sort disclosure */}
           <p className="text-[11px] font-mono text-white/35 mb-3">
-            {activeTab === 'lfteam'
-              ? 'Sorted by most recent. Results are not AI-ranked.'
-              : 'Sorted by rank (self-reported). Results are not AI-ranked.'}
+            Sorted by most recent.
           </p>
 
           {/* My Listings banner */}
@@ -239,92 +213,45 @@ export default function FindTeammatesPage() {
             </p>
           )}
 
-          {/* LF Team tab */}
-          {activeTab === 'lfteam' && (
-            lfTeamLoading ? (
-              <div className="space-y-2">{[0, 1, 2].map(i => <SkeletonCard key={i} />)}</div>
-            ) : lfTeamError ? (
-              <div className="py-10 space-y-3">
-                <p className="text-[14px] text-white/55">Could not load listings. Check your connection and try again.</p>
-                <button type="button" onClick={() => { void lfgQuery.refetch(); void openingsQuery.refetch(); }}
-                  className="border border-white/[0.08] bg-transparent text-white text-[13px] px-4 py-2 hover:bg-white/[0.07] transition-colors">
-                  Retry
-                </button>
-              </div>
-            ) : mixedFeed.length === 0 ? (
-              filterCount > 0 ? (
-                <EmptyState
-                  icon={<Search className="h-8 w-8 text-white/25" />}
-                  heading="No listings match your filters."
-                  sub="Try adjusting your rank range or region."
-                  action={<button type="button" onClick={() => setFilters(INITIAL_FILTER)} className="text-[13px] text-white/50 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors">Clear filters</button>}
-                />
-              ) : (
-                <EmptyState
-                  icon={<Users className="h-8 w-8 text-white/25" />}
-                  heading="No listings yet. Be the first — post yours and let teammates find you."
-                  action={<button type="button" onClick={() => setCreateSheetOpen(true)} className="bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 py-2 transition-colors">Create Listing</button>}
-                />
-              )
+          {activeQuery.isLoading ? (
+            <div className="flex flex-col gap-1.5">{[0, 1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div>
+          ) : activeQuery.isError ? (
+            <div className="py-10 space-y-3">
+              <p className="text-[14px] text-white/55">Could not load listings.</p>
+              <button type="button" onClick={() => void activeQuery.refetch()}
+                className="rounded-md border border-white/[0.08] bg-transparent text-white text-[13px] px-4 py-2 hover:bg-white/[0.07] transition-colors">
+                Retry
+              </button>
+            </div>
+          ) : (activeQuery.data ?? []).length === 0 ? (
+            filterCount > 0 ? (
+              <EmptyState
+                icon={<Search className="h-8 w-8 text-white/25" />}
+                heading="No listings match your filters."
+                action={<button type="button" onClick={() => setFilters(INITIAL_FILTER)} className="rounded-md text-[13px] text-white/50 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors">Clear filters</button>}
+              />
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3" role="list" aria-label="Team listings and openings">
-                {mixedFeed.map((item, i) => (
-                  <motion.div
-                    key={item.type === 'listing' ? item.data.id : `opening-${item.data.id}`}
-                    role="listitem"
-                    initial={reduced ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 5) * 0.03 }}
-                  >
-                    {item.type === 'listing'
-                      ? <LfgDiscoveryCard listing={item.data} gameRoles={gameRoles} currentUserId={user?.id} />
-                      : <RecruitmentOpeningCard opening={item.data} />}
-                  </motion.div>
-                ))}
-              </div>
+              <EmptyState
+                icon={<Users className="h-8 w-8 text-white/25" />}
+                heading={activeTab === 'lfteam' ? 'No player listings yet.' : 'No team listings yet.'}
+              />
             )
-          )}
-
-          {/* LF Player tab */}
-          {activeTab === 'lfplayer' && (
-            playersQuery.isLoading ? (
-              <div className="space-y-2">{[0, 1, 2].map(i => <SkeletonCard key={i} />)}</div>
-            ) : playersQuery.isError ? (
-              <div className="py-10 space-y-3">
-                <p className="text-[14px] text-white/55">Could not load listings. Check your connection and try again.</p>
-                <button type="button" onClick={() => void playersQuery.refetch()}
-                  className="border border-white/[0.08] bg-transparent text-white text-[13px] px-4 py-2 hover:bg-white/[0.07] transition-colors">
-                  Retry
-                </button>
-              </div>
-            ) : (playersQuery.data ?? []).length === 0 ? (
-              filterCount > 0 ? (
-                <EmptyState
-                  icon={<Search className="h-8 w-8 text-white/25" />}
-                  heading="No players match these filters."
-                  action={<button type="button" onClick={() => setFilters(INITIAL_FILTER)} className="text-[13px] text-white/50 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors">Clear filters</button>}
-                />
-              ) : (
-                <EmptyState
-                  icon={<Users className="h-8 w-8 text-white/25" />}
-                  heading="No players are looking for a team right now."
-                />
-              )
-            ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3" role="list" aria-label="Players looking for team">
-                {(playersQuery.data ?? []).map((player, i) => (
-                  <motion.div
-                    key={player.userId}
-                    role="listitem"
-                    initial={reduced ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 5) * 0.03 }}
-                  >
-                    <PlayerDiscoveryCard player={player} gameRoles={gameRoles} />
-                  </motion.div>
-                ))}
-              </div>
-            )
+          ) : (
+            <div className="flex flex-col gap-1.5" role="list">
+              {(activeQuery.data ?? []).map((listing, i) => (
+                <motion.div
+                  key={listing.id}
+                  role="listitem"
+                  initial={reduced ? false : { opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.14, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 8) * 0.02 }}
+                >
+                  {activeTab === 'lfteam'
+                    ? <PlayerLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
+                    : <TeamLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />}
+                </motion.div>
+              ))}
+            </div>
           )}
         </main>
       </div>
@@ -375,15 +302,6 @@ export default function FindTeammatesPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Create Listing Sheet ────────────────────────────────────────────── */}
-      <CreateListingSheet
-        open={createSheetOpen}
-        onClose={() => setCreateSheetOpen(false)}
-        ranks={ranks}
-        gameRoles={gameRoles}
-        regions={regions}
-        initialIntent={activeTab === 'lfteam' ? 'looking_for_team' : 'looking_for_player'}
-      />
     </CompetitivePageShell>
   );
 }

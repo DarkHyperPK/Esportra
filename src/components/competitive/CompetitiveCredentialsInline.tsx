@@ -86,7 +86,7 @@ export function CompetitiveCredentialsInline({
     );
   }
 
-  const topRoles = profile.preferredRoles.slice(0, 3);
+  const topRoles = (profile.preferredRoles ?? []).slice(0, 3);
 
   return (
     <div className="border border-white/[0.06] bg-white/[0.03] p-4">

@@ -69,7 +69,9 @@ const LookingForTeamPage = lazyWithRetry(() => import("./pages/competitive/Looki
 const LookingForTeamCreatePage = lazyWithRetry(() => import("./pages/competitive/LookingForTeamCreatePage"));
 const LookingForPlayerPage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerPage"));
 const LookingForPlayerCreatePage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerCreatePage"));
+const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
+const LfgEditPage = lazyWithRetry(() => import("./pages/competitive/LfgEditPage"));
 const EditCompetitiveProfilePage = lazyWithRetry(() => import("./pages/competitive/EditCompetitiveProfilePage"));
 const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
 const RecruitmentWorkspacePage = lazyWithRetry(() => import("./pages/competitive/recruitment/RecruitmentWorkspacePage"));
@@ -554,7 +556,7 @@ const AppContent = React.memo(() => {
                 {/* Competitive Routes — wrapped in ProductLayout for nav_v2 app shell */}
                 <Route path="/competitive" element={<ProductLayout />}>
                   <Route path="discover" element={<DiscoverPage />} />
-                  <Route path="find-teammates" element={<Navigate to="/competitive/looking-for-team" replace />} />
+                  <Route path="find-teammates" element={<FindTeammatesPage />} />
                   <Route path="looking-for-team" element={
                     <ProtectedRoute>
                       <LookingForTeamPage />
@@ -579,6 +581,11 @@ const AppContent = React.memo(() => {
                   <Route path="lfg/:id" element={
                     <ProtectedRoute>
                       <LfgManagePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="lfg/:id/edit" element={
+                    <ProtectedRoute>
+                      <LfgEditPage />
                     </ProtectedRoute>
                   } />
                   <Route path="profile/edit" element={

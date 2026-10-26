@@ -65,14 +65,11 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
       items: [],
     },
     {
-      id: 'find-team', label: 'Find a Team', icon: Users,
-      to: '/competitive/looking-for-team',
-      items: [],
-    },
-    {
-      id: 'find-players', label: 'Find Players', icon: Search,
-      to: '/competitive/looking-for-player',
-      items: [],
+      id: 'find-teammates', label: 'Find Teammates', icon: Users,
+      items: [
+        { label: 'Looking for Team', to: '/competitive/looking-for-team' },
+        { label: 'Looking for Player', to: '/competitive/looking-for-player' },
+      ],
     },
     {
       id: 'scrims', label: 'Scrims', icon: Crosshair,
