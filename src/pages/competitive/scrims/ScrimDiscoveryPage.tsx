@@ -8,6 +8,7 @@ import { useDiscoverScrims, useMakeOffer } from '@/hooks/competitive/useScrims';
 import { ScrimListingCard } from '@/components/competitive/ScrimListingCard';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 
 const GAME_SLUG = 'valorant';
 
@@ -31,6 +32,8 @@ function SkeletonCard() {
 
 function MakeOfferForm({ listingId, onClose }: { listingId: string; onClose: () => void }) {
   const offerMutation = useMakeOffer(listingId);
+  const teamsQuery = useMyTeamsSummary();
+  const teams = (teamsQuery.data ?? []) as { id: string; name: string }[];
   const [offeringTeamId, setOfferingTeamId] = useState('');
   const [proposedAt, setProposedAt] = useState('');
   const [duration, setDuration] = useState('');
@@ -38,16 +41,18 @@ function MakeOfferForm({ listingId, onClose }: { listingId: string; onClose: () 
   const [teamIdError, setTeamIdError] = useState('');
   const [apiError, setApiError] = useState('');
 
+  const resolvedTeamId = offeringTeamId || teams[0]?.id || '';
+
   async function handleSubmit() {
     setApiError('');
     setTeamIdError('');
-    if (!offeringTeamId.trim()) {
-      setTeamIdError('Your team ID is required.');
+    if (!resolvedTeamId) {
+      setTeamIdError('You need to be on a team to send an offer.');
       return;
     }
     try {
       await offerMutation.mutateAsync({
-        offeringTeamId: offeringTeamId.trim(),
+        offeringTeamId: resolvedTeamId,
         proposedAt: proposedAt || undefined,
         proposedDurationMinutes: duration ? parseInt(duration, 10) : undefined,
         notes: notes.trim() || undefined,
@@ -63,16 +68,24 @@ function MakeOfferForm({ listingId, onClose }: { listingId: string; onClose: () 
       <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
         SEND SCRIM OFFER
       </p>
-      <Field label="Your team ID" htmlFor={`oti-${listingId}`}>
-        <input
-          id={`oti-${listingId}`}
-          value={offeringTeamId}
-          onChange={(e) => setOfferingTeamId(e.target.value)}
-          placeholder="Team UUID"
-          className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
-        />
-        {teamIdError && <p role="alert" className="text-xs text-red-300 mt-1">{teamIdError}</p>}
-      </Field>
+      {teams.length > 1 && (
+        <Field label="Your team" htmlFor={`oti-${listingId}`}>
+          <select
+            id={`oti-${listingId}`}
+            value={offeringTeamId}
+            onChange={(e) => setOfferingTeamId(e.target.value)}
+            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white focus:outline-none focus:border-white/30"
+          >
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          {teamIdError && <p role="alert" className="text-xs text-red-300 mt-1">{teamIdError}</p>}
+        </Field>
+      )}
+      {teams.length === 0 && teamIdError && (
+        <p role="alert" className="text-xs text-red-300">{teamIdError}</p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Proposed date & time" htmlFor={`oat-${listingId}`} optional>
           <input

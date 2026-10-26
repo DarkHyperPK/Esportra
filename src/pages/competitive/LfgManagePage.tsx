@@ -124,11 +124,11 @@ export default function LfgManagePage() {
           <div className="flex items-center gap-3">
             <span
               className="font-rajdhani text-[24px] font-bold text-white uppercase"
-              aria-label={`Listing status: ${listing.status}`}
+              aria-label={`Listing status: ${listing.status ?? ''}`}
             >
-              {listing.status.toUpperCase()}
+              {listing.status?.toUpperCase() ?? ''}
             </span>
-            <StatusPill label={listing.status.toUpperCase()} tone={STATUS_TONE[listing.status]} />
+            <StatusPill label={listing.status?.toUpperCase() ?? ''} tone={STATUS_TONE[listing.status as LfgStatus] ?? 'neutral'} />
           </div>
           <ExpiryLine listing={listing} />
         </div>
@@ -138,7 +138,7 @@ export default function LfgManagePage() {
         {/* Listing details */}
         <div className="space-y-3 mb-6">
           <p className="text-[13px] text-white/55">
-            Valorant · {listing.intent.charAt(0).toUpperCase() + listing.intent.slice(1)}
+            Valorant · {listing.intent ? listing.intent.charAt(0).toUpperCase() + listing.intent.slice(1) : ''}
           </p>
           {(listing.minRankDisplayName || listing.maxRankDisplayName) && (
             <p className="font-rajdhani text-[13px] font-semibold text-white">

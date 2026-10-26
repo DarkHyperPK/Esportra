@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { PageIntro, InlineNotice, StatusPill, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -487,8 +488,12 @@ const TAB_CLASS =
 
 export default function ScrimWorkspacePage() {
   const [searchParams] = useSearchParams();
-  const teamId = searchParams.get('team_id') ?? '';
   const [showNewListing, setShowNewListing] = useState(false);
+
+  const teamsQuery = useMyTeamsSummary();
+  const teams = (teamsQuery.data ?? []) as { id: string; name: string }[];
+  const urlTeamId = searchParams.get('team_id');
+  const teamId = urlTeamId ?? teams[0]?.id ?? '';
 
   const listingsQuery = useScrimListings(teamId);
   const myOffersQuery = useMyOffers(teamId);
@@ -498,11 +503,22 @@ export default function ScrimWorkspacePage() {
   const myOffers = myOffersQuery.data ?? [];
   const sessions = sessionsQuery.data ?? [];
 
+  if (teamsQuery.isLoading) {
+    return (
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4 animate-pulse">
+          <div className="h-8 w-48 bg-white/[0.06]" />
+          <div className="h-4 w-64 bg-white/[0.04]" />
+        </div>
+      </CompetitivePageShell>
+    );
+  }
+
   if (!teamId) {
     return (
       <CompetitivePageShell>
         <div className="px-4 py-8">
-          <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
+          <InlineNotice tone="neutral">You need to be on a team to use the Scrim Workspace.</InlineNotice>
         </div>
       </CompetitivePageShell>
     );
