@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare, Search,
+  Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
   ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
