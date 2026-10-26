@@ -41,8 +41,8 @@ const Navbar = () => {
       data-app-navbar
       data-mounted
       className={cn(
-        "z-[999] px-3 sm:px-6",
-        isLandingPage ? "fixed inset-x-0 top-4" : "sticky top-4"
+        "z-[999] px-4 sm:px-8",
+        isLandingPage ? "fixed inset-x-0 top-6" : "sticky top-6"
       )}
     >
       <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#0a0a0c]/85 px-3 pl-5 pr-3 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-4 sm:pl-6 sm:pr-4">

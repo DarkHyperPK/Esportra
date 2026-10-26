@@ -50,7 +50,7 @@ const DesktopNav = ({
 
   const linkClass = (active: boolean) =>
     cn(
-      "relative inline-flex items-center gap-1.5 px-1 py-2 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70",
+      "relative inline-flex items-center gap-1.5 px-1 py-2 text-[15px] font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70",
       active && "text-white"
     );
 
@@ -234,7 +234,7 @@ const DesktopNav = ({
           <>
             <Link
               to="/auth/signin"
-              className="px-3 py-2 text-sm font-medium text-white/85 transition-colors hover:text-white"
+              className="px-3 py-2 text-[15px] font-medium text-white/85 transition-colors hover:text-white"
             >
               Log in
             </Link>
