@@ -314,6 +314,7 @@ export interface LfgListing {
 export interface CreateLfgListingRequest {
   gameSlug: string;
   intent: LfgIntent;
+  teamId?: string | null;
 
   // Canonical fields (PROJ-075)
   modeKey?: string | null;

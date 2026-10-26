@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SlidersHorizontal, Search, Users, Plus } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useDiscoverLfg } from '@/hooks/competitive/useDiscovery';
@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { PlayerLfgCard } from '@/components/competitive/PlayerLfgCard';
 import { FindTeammatesFilterPanel, INITIAL_FILTER, activeFilterCount } from '@/components/competitive/FindTeammatesFilterPanel';
-import { CreateListingSheet } from '@/components/competitive/CreateListingSheet';
 import type { FilterState } from '@/components/competitive/FindTeammatesFilterPanel';
 
 const GAME = 'valorant';
@@ -39,10 +38,10 @@ function SkeletonCard() {
 export default function LookingForTeamPage() {
   const { user } = useAuth();
   const reduced = useReducedMotion() ?? false;
+  const navigate = useNavigate();
 
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTER);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
   const ranksQuery = useCatalogRankTiers(GAME);
   const rolesQuery = useCatalogGameRoles(GAME);
@@ -81,7 +80,7 @@ export default function LookingForTeamPage() {
             )}
             <button
               type="button"
-              onClick={() => setCreateSheetOpen(true)}
+              onClick={() => navigate('/competitive/looking-for-team/create')}
               className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
@@ -150,7 +149,7 @@ export default function LookingForTeamPage() {
                 <>
                   <Users className="h-8 w-8 text-white/25" />
                   <p className="text-[15px] font-medium text-white/55">No listings yet. Be the first.</p>
-                  <button type="button" onClick={() => setCreateSheetOpen(true)} className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 py-2">Create Listing</button>
+                  <button type="button" onClick={() => navigate('/competitive/looking-for-team/create')} className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 py-2">Create Listing</button>
                 </>
               )}
             </div>
@@ -193,15 +192,6 @@ export default function LookingForTeamPage() {
         </div>
       )}
 
-      <CreateListingSheet
-        open={createSheetOpen}
-        onClose={() => setCreateSheetOpen(false)}
-        onPublished={() => void lfgQuery.refetch()}
-        ranks={ranks}
-        gameRoles={gameRoles}
-        regions={regions}
-        initialIntent="looking_for_team"
-      />
     </CompetitivePageShell>
   );
 }
