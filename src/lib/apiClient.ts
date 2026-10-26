@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { readGhostModeSession } from '@/lib/ghostModeSession';
 import { clearUserBrowserStorage } from '@/lib/resetClientSession';
 import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
-import { toSnakeCaseDeep, toCamelCaseDeep } from '@/lib/caseTransform';
+import { toSnakeCaseDeep } from '@/lib/caseTransform';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -258,7 +258,6 @@ function fetchGetDeduped<T>(path: string): Promise<T> {
 
   const promise = fetchWithAuth(path)
     .then((res) => res.json())
-    .then((data) => toCamelCaseDeep(data))
     .finally(() => inflightGets.delete(path));
 
   inflightGets.set(path, promise);
@@ -280,7 +279,7 @@ export const apiClient = {
       body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     }, 0, { overrideToken: token });
     const json = await res.json();
-    return toCamelCaseDeep(json) as T;
+    return json as T;
   },
 
   /** GET /api/{path} → Blob (receipt proxy fallback when public storage URL fails) */
@@ -299,7 +298,7 @@ export const apiClient = {
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     const json = await res.json();
-    return toCamelCaseDeep(json) as T;
+    return json as T;
   },
 
   /** PUT /api/{path} with JSON body → parsed JSON (or void for 204) */
@@ -310,7 +309,7 @@ export const apiClient = {
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     const json = await res.json();
-    return toCamelCaseDeep(json) as T;
+    return json as T;
   },
 
   /** PATCH /api/{path} with JSON body → parsed JSON */
@@ -320,7 +319,7 @@ export const apiClient = {
       body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
     });
     const json = await res.json();
-    return toCamelCaseDeep(json) as T;
+    return json as T;
   },
 
   /** DELETE /api/{path} → void */

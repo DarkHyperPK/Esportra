@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters, PopularAgent } from '@/types/competitive';
 
 function buildPlayerSearchParams(filters: PlayerSearchFilters): string {

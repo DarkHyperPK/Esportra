@@ -14,7 +14,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import type { CatalogRankTier, CatalogGameRole, CatalogRegion } from '@/types/competitive';
 import { catalogKeys } from './queryKeys';
 

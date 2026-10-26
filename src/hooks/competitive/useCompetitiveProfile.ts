@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import type { CompetitiveProfile, UpsertCompetitiveProfileRequest } from '@/types/competitive';
 
 export function competitiveProfileKey(userId: string, gameSlug: string) {

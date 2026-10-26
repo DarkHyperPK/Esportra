@@ -11,7 +11,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import type { RankTier, GameRole, GameRegion } from '@/types/competitive';
 
 // Catalog data is stable — cache for 24 hours
