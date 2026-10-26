@@ -19,8 +19,8 @@ const BOTTOM_TABS: BottomTab[] = [
     id: 'find-teammates',
     label: 'Teammates',
     icon: Users,
-    to: '/competitive/discover',
-    matchPaths: ['/competitive/discover', '/competitive/lfg', '/competitive/profile'],
+    to: '/competitive/looking-for-team',
+    matchPaths: ['/competitive/discover', '/competitive/lfg', '/competitive/profile', '/competitive/looking-for-team', '/competitive/looking-for-player'],
   },
   {
     id: 'scrims',
@@ -54,11 +54,12 @@ interface DrawerGroup {
 
 const DRAWER_GROUPS: DrawerGroup[] = [
   {
-    label: 'Find Teammates',
+    label: 'Competitive',
     items: [
       { label: 'Discover Players', to: '/competitive/discover' },
       { label: 'My Profile', to: '/competitive/profile/edit' },
-      { label: 'Find Teammates', to: '/competitive/find-teammates' },
+      { label: 'Find a Team', to: '/competitive/looking-for-team' },
+      { label: 'Find Players', to: '/competitive/looking-for-player' },
     ],
   },
   {

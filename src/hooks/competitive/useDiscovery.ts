@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters } from '@/types/competitive';
+import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters, PopularAgent } from '@/types/competitive';
 
 function buildPlayerSearchParams(filters: PlayerSearchFilters): string {
   const params = new URLSearchParams({ game: filters.game });
@@ -37,13 +37,31 @@ export function useDiscoverPlayers(filters: PlayerSearchFilters) {
   });
 }
 
+function parsePopularAgents(raw: unknown): PopularAgent[] | null {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw as PopularAgent[];
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) as PopularAgent[]; } catch { return null; }
+  }
+  return null;
+}
+
+function enrichListings(listings: LfgListing[]): LfgListing[] {
+  return listings.map((l) => ({
+    ...l,
+    popularAgents: parsePopularAgents(l.popularAgents),
+  }));
+}
+
 export function useDiscoverLfg(filters: LfgSearchFilters) {
   return useQuery({
     queryKey: ['discover', 'lfg', filters],
-    queryFn: () =>
-      apiClient.get<LfgListing[]>(
+    queryFn: async () => {
+      const data = await apiClient.get<LfgListing[]>(
         `/api/competitive/lfg?${buildLfgSearchParams(filters)}`,
-      ),
+      );
+      return enrichListings(data);
+    },
     enabled: !!filters.game,
     staleTime: 30_000,
   });

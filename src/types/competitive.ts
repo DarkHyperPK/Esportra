@@ -222,6 +222,17 @@ export interface UpsertCompetitiveProfileRequest {
  * LFG listing response shape (discovery, mine, detail).
  * @see shared-contracts/types.md §3
  */
+export interface PopularAgent {
+  agentId: string;
+  displayName: string;
+  iconUrl: string;
+  gamesPlayed: number;
+  wins: number;
+  kills?: number;
+  deaths?: number;
+  kdRatio?: number | null;
+}
+
 export interface LfgListing {
   id: string;
   userId: string;
@@ -247,6 +258,7 @@ export interface LfgListing {
   minRankIconUrl: string | null;
   maxRankIconUrl: string | null;
   preferredRoles: string[];
+  preferredAgents: string[];
   languages: string[];
   description: string | null;
   expiresAt: string | null;
@@ -272,6 +284,26 @@ export interface LfgListing {
   closedAt: string | null;
   /** @deprecated Use avatarSeed */
   avatarUrl: string | null;
+
+  // Riot stats enrichment (from riot_player_stats JOIN)
+  competitiveTier: number | null;
+  competitiveTierName: string | null;
+  winCount: number | null;
+  lossCount: number | null;
+  winRate: number | null;
+  kdRatio: number | null;
+  popularAgents: PopularAgent[] | null;
+  matchesAnalyzed: number | null;
+  riotSyncedAt: string | null;
+  // Riot identity
+  riotGameName: string | null;
+  riotTagLine: string | null;
+  // Team enrichment (for LFP listings)
+  teamName: string | null;
+  teamLogoUrl: string | null;
+  teamTag: string | null;
+  teamMemberCount: number | null;
+  teamVerifiedCount: number | null;
 }
 
 /**
@@ -290,6 +322,7 @@ export interface CreateLfgListingRequest {
   minRankSortOrder?: number | null;
   maxRankSortOrder?: number | null;
   preferredRoles?: string[];
+  preferredAgents?: string[];
   languages?: string[];
   description?: string | null;
   /** ISO 8601 absolute datetime; required for non-casual intents */
@@ -326,6 +359,7 @@ export interface UpdateLfgListingRequest {
   minRankSortOrder?: number | null;
   maxRankSortOrder?: number | null;
   preferredRoles?: string[];
+  preferredAgents?: string[];
   languages?: string[];
   description?: string | null;
   expiresAt?: string | null;

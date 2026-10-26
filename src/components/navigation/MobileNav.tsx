@@ -12,6 +12,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { JackButton } from "@/components/ui/JackButton";
+import { usePlatformFeatures, FEATURES } from "@/hooks/usePlatformFeatures";
 
 const MobileNav = ({
   isOpen,
@@ -35,6 +36,9 @@ const MobileNav = ({
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
     userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
+
+  const { isEnabled } = usePlatformFeatures();
+  const isAppShell = isEnabled(FEATURES.navV2) && location.pathname.startsWith('/competitive');
 
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const toggleMenu = (menu: string) => setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -163,8 +167,8 @@ const MobileNav = ({
                 </span>
               </Link>
 
-              {/* Competitive */}
-              {user && (
+              {/* Competitive — suppressed in app shell (AppBottomNav handles it) */}
+              {user && !isAppShell && (
                 <div>
                   <button
                     type="button"
@@ -186,7 +190,8 @@ const MobileNav = ({
                       <motion.div {...accordionMotion} className="overflow-hidden">
                         <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
                           <JackSubItem to="/competitive/discover">Discover Players</JackSubItem>
-                          <JackSubItem to="/competitive/lfg/new">Find Teammates</JackSubItem>
+                          <JackSubItem to="/competitive/looking-for-team">Find a Team</JackSubItem>
+                          <JackSubItem to="/competitive/looking-for-player">Find Players</JackSubItem>
                           <JackSubItem to="/competitive/profile/edit">My Competitive Profile</JackSubItem>
                           <JackSubItem to="/competitive/recruitment">Team Recruitment</JackSubItem>
                           <JackSubItem to="/competitive/recruitment/my-applications">My Applications</JackSubItem>

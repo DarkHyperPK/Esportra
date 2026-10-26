@@ -14,6 +14,7 @@ import { useCreateLfgListing, usePublishLfgListing } from '@/hooks/competitive/u
 import { useCompetitiveProfile } from '@/hooks/competitive/useCompetitiveProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/lib/apiClient';
+import { VALORANT_AGENTS } from '@/lib/valorantAgents';
 import type { CatalogRankTier, CatalogGameRole, CatalogRegion, LfgIntent } from '@/types/competitive';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ interface FormState {
   maxRankSortOrder: number | null;
   regionKey: string | null;
   preferredRoles: string[];
+  preferredAgents: string[];
   languages: string[];
   description: string;
   expiresInDays: 1 | 3 | 7;
@@ -44,6 +46,7 @@ const INITIAL_FORM: FormState = {
   maxRankSortOrder: null,
   regionKey: null,
   preferredRoles: [],
+  preferredAgents: [],
   languages: [],
   description: '',
   expiresInDays: 3,
@@ -170,6 +173,7 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
         maxRankSortOrder: form.maxRankSortOrder ?? undefined,
         regionKey: form.regionKey ?? undefined,
         preferredRoles: form.preferredRoles,
+        preferredAgents: form.preferredAgents,
         languages: form.languages,
         description: form.description || undefined,
         expiresAt,
@@ -207,6 +211,17 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
       preferredRoles: f.preferredRoles.includes(roleKey)
         ? f.preferredRoles.filter(r => r !== roleKey)
         : [...f.preferredRoles, roleKey],
+    }));
+  }
+
+  function toggleAgent(agentId: string) {
+    setForm(f => ({
+      ...f,
+      preferredAgents: f.preferredAgents.includes(agentId)
+        ? f.preferredAgents.filter(a => a !== agentId)
+        : f.preferredAgents.length < 5
+          ? [...f.preferredAgents, agentId]
+          : f.preferredAgents,
     }));
   }
 
@@ -335,6 +350,42 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
                       </ChipToggle>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Agent picker — Valorant only */}
+              {form.intent && (
+                <div>
+                  <Caption>
+                    {form.intent === 'looking_for_player' || form.intent === 'competitive_roster'
+                      ? 'Agents you need (optional, up to 5)'
+                      : 'Agents you main (optional, up to 5)'}
+                  </Caption>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(VALORANT_AGENTS.entries()).map(([uuid, a]) => {
+                      const active = form.preferredAgents.includes(uuid);
+                      return (
+                        <button
+                          key={uuid}
+                          type="button"
+                          onClick={() => toggleAgent(uuid)}
+                          title={a.displayName}
+                          className={[
+                            'flex flex-col items-center gap-1 px-2 py-1.5 rounded-md border transition-colors text-[10px] min-h-[44px] min-w-[52px]',
+                            active
+                              ? 'border-white/30 bg-white/[0.10] text-white'
+                              : 'border-white/[0.06] text-white/35 hover:border-white/15',
+                          ].join(' ')}
+                        >
+                          <img src={a.iconUrl} alt={a.displayName} className="h-7 w-7 object-contain rounded" />
+                          <span className="truncate max-w-[48px]">{a.displayName}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {form.preferredAgents.length >= 5 && (
+                    <p className="mt-1.5 text-[11px] text-white/35">Max 5 agents selected.</p>
+                  )}
                 </div>
               )}
 

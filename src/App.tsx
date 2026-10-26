@@ -65,7 +65,8 @@ const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 
 // Competitive
 const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
-const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
+const LookingForTeamPage = lazyWithRetry(() => import("./pages/competitive/LookingForTeamPage"));
+const LookingForPlayerPage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerPage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
 const EditCompetitiveProfilePage = lazyWithRetry(() => import("./pages/competitive/EditCompetitiveProfilePage"));
 const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
@@ -551,12 +552,18 @@ const AppContent = React.memo(() => {
                 {/* Competitive Routes — wrapped in ProductLayout for nav_v2 app shell */}
                 <Route path="/competitive" element={<ProductLayout />}>
                   <Route path="discover" element={<DiscoverPage />} />
-                  <Route path="find-teammates" element={
+                  <Route path="find-teammates" element={<Navigate to="/competitive/looking-for-team" replace />} />
+                  <Route path="looking-for-team" element={
                     <ProtectedRoute>
-                      <FindTeammatesPage />
+                      <LookingForTeamPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="lfg/new" element={<Navigate to="/competitive/find-teammates" replace />} />
+                  <Route path="looking-for-player" element={
+                    <ProtectedRoute>
+                      <LookingForPlayerPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="lfg/new" element={<Navigate to="/competitive/looking-for-team" replace />} />
                   <Route path="lfg/:id" element={
                     <ProtectedRoute>
                       <LfgManagePage />

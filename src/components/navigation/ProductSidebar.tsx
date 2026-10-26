@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
+  Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare, Search,
   ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -65,8 +65,13 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
       items: [],
     },
     {
-      id: 'find-teammates', label: 'Find Teammates', icon: Users,
-      to: '/competitive/find-teammates',
+      id: 'find-team', label: 'Find a Team', icon: Users,
+      to: '/competitive/looking-for-team',
+      items: [],
+    },
+    {
+      id: 'find-players', label: 'Find Players', icon: Search,
+      to: '/competitive/looking-for-player',
       items: [],
     },
     {
