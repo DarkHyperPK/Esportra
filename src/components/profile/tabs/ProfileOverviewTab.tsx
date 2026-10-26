@@ -1,11 +1,9 @@
 import React from 'react';
 import type { UserStatsDto, TournamentHistoryEntryDto, TeamMembershipDto } from '@/types/profile';
-import type { CompetitiveProfile } from '@/types/competitive';
 import { StatTilesRow, type StatTile } from '@/components/profile/stats/StatTilesRow';
 // hasFiredSetRef is stable across tab switches so count-up fires exactly once
 import { TournamentTimelineItem } from '@/components/profile/history/TournamentTimelineItem';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { CompetitiveCredentialsInline } from '@/components/competitive/CompetitiveCredentialsInline';
 
 interface ProfileOverviewTabProps {
   stats: UserStatsDto;
@@ -15,11 +13,6 @@ interface ProfileOverviewTabProps {
   onViewAllTournaments: () => void;
   onViewAllTeams: () => void;
   profileUsername: string;
-  /** Competitive credentials — optional; section hidden when not provided */
-  competitiveProfile?: CompetitiveProfile | null;
-  isCompetitiveLoading?: boolean;
-  isOwnProfile?: boolean;
-  onViewCompetitive?: () => void;
 }
 
 /**
@@ -33,10 +26,6 @@ export function ProfileOverviewTab({
   onViewAllTournaments,
   onViewAllTeams,
   profileUsername: _profileUsername,
-  competitiveProfile,
-  isCompetitiveLoading,
-  isOwnProfile,
-  onViewCompetitive,
 }: ProfileOverviewTabProps): React.JSX.Element {
   const s = stats.statistics;
   const activeTeams = teams.filter((t) => t.is_active);
@@ -82,18 +71,6 @@ export function ProfileOverviewTab({
       <section>
         <StatTilesRow tiles={tiles} hasFiredSetRef={hasFiredSetRef} />
       </section>
-
-      {/* Competitive credentials inline card — shown when data is available */}
-      {isCompetitiveLoading !== undefined && (
-        <section>
-          <CompetitiveCredentialsInline
-            profile={competitiveProfile ?? null}
-            isLoading={isCompetitiveLoading}
-            isOwnProfile={isOwnProfile ?? false}
-            onViewCompetitive={onViewCompetitive}
-          />
-        </section>
-      )}
 
       {/* Recent activity */}
       <section>

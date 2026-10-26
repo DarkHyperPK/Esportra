@@ -230,10 +230,6 @@ export default function ProfilePage(): React.JSX.Element {
             onViewAllTournaments={() => setActiveTab('history')}
             onViewAllTeams={() => setActiveTab('teams')}
             profileUsername={profile.username}
-            competitiveProfile={competitiveQuery.data}
-            isCompetitiveLoading={competitiveQuery.isLoading}
-            isOwnProfile={isOwner}
-            onViewCompetitive={() => setActiveTab('competitive')}
           />
         );
       case 'history':
