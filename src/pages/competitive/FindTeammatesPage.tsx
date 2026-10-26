@@ -128,7 +128,7 @@ export default function FindTeammatesPage() {
               className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">Create Listing</span>
+              <span className="hidden sm:inline">{activeTab === 'lfteam' ? "I'm Looking" : "We're Recruiting"}</span>
             </button>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function FindTeammatesPage() {
                   transition={{ duration: 0.14, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 8) * 0.02 }}
                 >
                   {activeTab === 'lfteam'
-                    ? <PlayerLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
+                    ? <PlayerLfgCard listing={listing} gameRoles={gameRoles} ranks={ranks} currentUserId={user?.id} />
                     : <TeamLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />}
                 </motion.div>
               ))}

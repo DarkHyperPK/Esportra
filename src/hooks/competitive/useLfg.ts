@@ -19,6 +19,7 @@ import type {
   CreateLfgListingRequest,
   UpdateLfgListingRequest,
   ExpressInterestRequest,
+  TeamDetailedMember,
 } from '@/types/competitive';
 
 export interface AcceptInterestResponse {
@@ -46,6 +47,15 @@ export function useLfgListing(id: string) {
     queryFn: () => apiClient.get<LfgListing>(`/api/competitive/lfg/${id}`),
     enabled: !!id,
     staleTime: 30_000,
+  });
+}
+
+export function useTeamDetailedMembers(teamId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['team-members-detailed', teamId],
+    queryFn: () => apiClient.get<TeamDetailedMember[]>(`/api/teams/${teamId}/members/detailed`),
+    enabled: !!teamId && enabled,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, UserRound } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompetitiveProfile } from '@/hooks/competitive/useCompetitiveProfile';
 import { useCatalogGameRoles } from '@/hooks/competitive/useCatalog';
@@ -47,7 +47,7 @@ export default function LookingForTeamCreatePage() {
 
   const createMutation = useCreateLfgListing();
 
-  const previewListing: LfgListing | null = profile && user
+  const previewListing: LfgListing | null = user
     ? {
         id: 'preview',
         userId: user.id,
@@ -60,18 +60,18 @@ export default function LookingForTeamCreatePage() {
         username: userProfile?.username ?? user.email?.split('@')[0] ?? 'You',
         avatarSeed: userProfile?.avatar_seed ?? user.id,
         modeKey: null,
-        regionKey: profile.regionKey,
-        regionDisplayName: profile.regionDisplayName,
+        regionKey: profile?.regionKey ?? null,
+        regionDisplayName: profile?.regionDisplayName ?? null,
         preferredServers: [],
-        minRankSortOrder: profile.rankSortOrder,
-        maxRankSortOrder: profile.rankSortOrder,
-        minRankDisplayName: profile.rankDisplayName,
-        maxRankDisplayName: profile.rankDisplayName,
-        minRankIconUrl: profile.rankIconUrl,
+        minRankSortOrder: profile?.rankSortOrder ?? null,
+        maxRankSortOrder: profile?.rankSortOrder ?? null,
+        minRankDisplayName: profile?.rankDisplayName ?? null,
+        maxRankDisplayName: profile?.rankDisplayName ?? null,
+        minRankIconUrl: profile?.rankIconUrl ?? null,
         maxRankIconUrl: null,
-        preferredRoles: profile.preferredRoles ?? [],
+        preferredRoles: profile?.preferredRoles ?? [],
         preferredAgents: [],
-        languages: profile.languages ?? [],
+        languages: profile?.languages ?? [],
         description: description || null,
         expiresAt: new Date(Date.now() + expiresInDays * 86_400_000).toISOString(),
         // deprecated compat
@@ -88,19 +88,18 @@ export default function LookingForTeamCreatePage() {
     : null;
 
   async function handleGoLive() {
-    if (!profile) return;
     setPhase('saving');
     try {
       const expiresAt = new Date(Date.now() + expiresInDays * 86_400_000).toISOString();
       const result = await createMutation.mutateAsync({
         gameSlug: GAME,
         intent: 'looking_for_team',
-        minRankSortOrder: profile.rankSortOrder ?? undefined,
-        maxRankSortOrder: profile.rankSortOrder ?? undefined,
-        regionKey: profile.regionKey ?? undefined,
-        preferredRoles: profile.preferredRoles ?? [],
+        minRankSortOrder: profile?.rankSortOrder ?? undefined,
+        maxRankSortOrder: profile?.rankSortOrder ?? undefined,
+        regionKey: profile?.regionKey ?? undefined,
+        preferredRoles: profile?.preferredRoles ?? [],
         preferredAgents: [],
-        languages: profile.languages ?? [],
+        languages: profile?.languages ?? [],
         description: description || undefined,
         expiresAt,
       });
@@ -140,24 +139,6 @@ export default function LookingForTeamCreatePage() {
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-4 rounded bg-white/[0.06]" style={{ width: `${60 + i * 12}%` }} />
             ))}
-          </div>
-        ) : !profile ? (
-          /* No profile — gated */
-          <div className="border border-white/[0.08] bg-white/[0.02] p-8 flex flex-col items-center gap-4 text-center">
-            <UserRound className="h-10 w-10 text-white/20" />
-            <div>
-              <p className="text-[16px] font-semibold text-white mb-1">No competitive profile yet</p>
-              <p className="text-[14px] text-white/50">
-                Your listing is built from your profile — rank, roles, region, and playstyle.
-                Set it up once and list instantly.
-              </p>
-            </div>
-            <Link
-              to="/competitive/profile/edit"
-              className="mt-2 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-6 py-2.5 transition-colors"
-            >
-              Create competitive profile
-            </Link>
           </div>
         ) : (
           <div className="space-y-8">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Loader2, ChevronDown, Users, Shield } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { useExpressInterest } from '@/hooks/competitive/useLfg';
+import { useExpressInterest, useTeamDetailedMembers } from '@/hooks/competitive/useLfg';
 import { ApiError } from '@/lib/apiClient';
 import type { LfgListing, CatalogGameRole } from '@/types/competitive';
 
@@ -84,6 +84,7 @@ export function TeamLfgCard({ listing, gameRoles = [], currentUserId }: TeamLfgC
   const reduced = useReducedMotion() ?? false;
   const expressInterest = useExpressInterest(listing.id);
   const isOwn = currentUserId === listing.userId;
+  const membersQuery = useTeamDetailedMembers(listing.teamId, expanded);
 
   const preferredRoles = listing.preferredRoles ?? [];
 
@@ -229,6 +230,52 @@ export function TeamLfgCard({ listing, gameRoles = [], currentUserId }: TeamLfgC
               {/* Description */}
               {listing.description && (
                 <p className="text-[13px] text-white/55 leading-relaxed">{listing.description}</p>
+              )}
+
+              {/* Roster */}
+              {listing.teamId && (
+                <div>
+                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/25 mb-2">Roster</p>
+                  {membersQuery.isLoading ? (
+                    <div className="space-y-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex items-center gap-2 animate-pulse">
+                          <div className="h-7 w-7 rounded bg-white/[0.06] shrink-0" />
+                          <div className="h-3 rounded bg-white/[0.06]" style={{ width: `${40 + i * 15}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : membersQuery.isError ? (
+                    <p className="text-[12px] text-white/30">Could not load roster</p>
+                  ) : (membersQuery.data ?? []).length === 0 ? null : (
+                    <div className="space-y-1.5">
+                      {(membersQuery.data ?? []).map((member) => {
+                        const riotTag = member.riotGameName && member.riotTagLine
+                          ? `${member.riotGameName}#${member.riotTagLine}`
+                          : null;
+                        return (
+                          <div key={member.userId} className="flex items-center gap-2">
+                            <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-white/[0.06] font-mono text-[9px] font-bold text-white/50">
+                              {member.username.slice(0, 2).toUpperCase()}
+                            </span>
+                            <span className="text-[12px] text-white/70 flex-1 min-w-0 truncate">
+                              {member.username}
+                              {riotTag && <span className="ml-1 text-white/30 hidden sm:inline">{riotTag}</span>}
+                            </span>
+                            {member.kd != null && (
+                              <span className="text-[11px] text-white/40 shrink-0 tabular-nums">{member.kd} KD</span>
+                            )}
+                            {member.tournamentCount > 0 && (
+                              <span className="text-[10px] bg-white/[0.06] border border-white/[0.08] text-white/40 px-1.5 py-0.5 rounded shrink-0">
+                                {member.tournamentCount}T
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Express Interest / Apply */}

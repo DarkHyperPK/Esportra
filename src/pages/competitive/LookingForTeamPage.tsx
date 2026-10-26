@@ -75,7 +75,7 @@ export default function LookingForTeamPage() {
               className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">Create Listing</span>
+              <span className="hidden sm:inline">I'm Looking</span>
             </button>
           </div>
         </div>
@@ -140,7 +140,6 @@ export default function LookingForTeamPage() {
                 <>
                   <Users className="h-8 w-8 text-white/25" />
                   <p className="text-[15px] font-medium text-white/55">No listings yet. Be the first.</p>
-                  <button type="button" onClick={() => navigate('/competitive/looking-for-team/create')} className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 py-2">Create Listing</button>
                 </>
               )}
             </div>
@@ -154,7 +153,7 @@ export default function LookingForTeamPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.14, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 8) * 0.02 }}
                 >
-                  <PlayerLfgCard listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
+                  <PlayerLfgCard listing={listing} gameRoles={gameRoles} ranks={ranks} currentUserId={user?.id} />
                 </motion.div>
               ))}
             </div>

@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useExpressInterest } from '@/hooks/competitive/useLfg';
 import { ApiError } from '@/lib/apiClient';
 import { resolveAgent } from '@/lib/valorantAgents';
-import type { LfgListing, CatalogGameRole, PopularAgent } from '@/types/competitive';
+import type { LfgListing, CatalogGameRole, CatalogRankTier, PopularAgent } from '@/types/competitive';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,63 +16,38 @@ function relativeTime(isoStr: string): string {
   return `${Math.floor(ms / 86_400_000)}d`;
 }
 
-function abbrevRank(name: string): string {
-  const [first, num] = name.trim().split(' ');
-  const short = first.length <= 4 ? first : first.slice(0, 3);
-  return num ? `${short} ${num}` : short;
-}
-
-function rankMeta(tier: number | null, name: string | null): { label: string; color: string } {
-  const n = name ?? '';
-  const lower = n.toLowerCase();
-  const label = n ? abbrevRank(n) : '—';
-  const fromName = (kw: string, color: string) => lower.includes(kw) ? { label, color } : null;
-
-  if (tier != null) {
-    if (tier >= 27) return { label: 'Rad', color: '#f59e0b' };
-    if (tier >= 24) return { label, color: '#f43f5e' };
-    if (tier >= 21) return { label, color: '#4ade80' };
-    if (tier >= 18) return { label, color: '#818cf8' };
-    if (tier >= 15) return { label, color: '#22d3ee' };
-    if (tier >= 12) return { label, color: '#facc15' };
-    if (tier >= 9)  return { label, color: '#94a3b8' };
-    if (tier >= 6)  return { label, color: '#c08030' };
-    return { label, color: '#71717a' };
-  }
-
-  return (
-    fromName('radiant', '#f59e0b') ??
-    fromName('immortal', '#f43f5e') ??
-    fromName('ascendant', '#4ade80') ??
-    fromName('diamond', '#818cf8') ??
-    fromName('platinum', '#22d3ee') ??
-    fromName('gold', '#facc15') ??
-    fromName('silver', '#94a3b8') ??
-    fromName('bronze', '#c08030') ??
-    fromName('iron', '#71717a') ??
-    { label, color: '#52525b' }
-  );
+function rankColorFromName(name: string | null): string {
+  const lower = (name ?? '').toLowerCase();
+  if (lower.includes('radiant'))   return '#f59e0b';
+  if (lower.includes('immortal'))  return '#f43f5e';
+  if (lower.includes('ascendant')) return '#4ade80';
+  if (lower.includes('diamond'))   return '#818cf8';
+  if (lower.includes('platinum'))  return '#22d3ee';
+  if (lower.includes('gold'))      return '#facc15';
+  if (lower.includes('silver'))    return '#94a3b8';
+  if (lower.includes('bronze'))    return '#c08030';
+  if (lower.includes('iron'))      return '#71717a';
+  return '#52525b';
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SeedAvatar({ seed }: { seed: string | null }) {
+function SeedAvatar({ seed, size = 32 }: { seed: string | null; size?: number }) {
   return (
-    <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white/[0.08] font-mono text-[10px] font-bold text-white/60">
+    <span aria-hidden className="flex shrink-0 items-center justify-center rounded bg-white/[0.08] font-mono text-[10px] font-bold text-white/60"
+      style={{ width: size, height: size }}>
       {(seed ?? '??').slice(0, 2).toUpperCase()}
     </span>
   );
 }
 
-function RankBadge({ tier, name }: { tier: number | null; name: string | null }) {
-  if (!name && tier == null) return null;
-  const { label, color } = rankMeta(tier, name);
-  return (
-    <span className="inline-flex items-center gap-1 shrink-0">
-      <span className="h-[7px] w-[7px] rounded-full shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-[11px] font-semibold tabular-nums" style={{ color }}>{label}</span>
-    </span>
-  );
+function RankImg({ iconUrl, name, size, fallbackColor }: { iconUrl: string | null; name: string | null; size: number; fallbackColor: string }) {
+  const [failed, setFailed] = useState(false);
+  if (iconUrl && !failed) {
+    return <img src={iconUrl} alt={name ?? 'Rank'} title={name ?? undefined} onError={() => setFailed(true)}
+      className="shrink-0 object-contain" style={{ width: size, height: size }} />;
+  }
+  return <span className="rounded-full shrink-0 inline-block" style={{ width: 8, height: 8, backgroundColor: fallbackColor }} />;
 }
 
 function AgentThumb({ agent, size = 22 }: { agent: PopularAgent; size?: number }) {
@@ -109,10 +84,11 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 interface PlayerLfgCardProps {
   listing: LfgListing;
   gameRoles?: CatalogGameRole[];
+  ranks?: CatalogRankTier[];
   currentUserId?: string | null;
 }
 
-export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: PlayerLfgCardProps) {
+export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUserId }: PlayerLfgCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [sent, setSent] = useState(false);
   const [expressError, setExpressError] = useState<string | null>(null);
@@ -122,27 +98,26 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
   const isOwn = currentUserId === listing.userId;
 
   const popularAgents = (listing.popularAgents ?? []) as PopularAgent[];
-  const topAgents = popularAgents.slice(0, 3);
+  const top2Agents = popularAgents.slice(0, 2);
   const preferredRoles = listing.preferredRoles ?? [];
 
   const rankName = listing.competitiveTierName ?? listing.minRankDisplayName;
   const rankTier = listing.competitiveTier ?? null;
-  const rankRange = (() => {
-    const min = listing.minRankDisplayName;
-    const max = listing.maxRankDisplayName;
-    if (!min && !max) return null;
-    if (!min || !max || min === max) return min ?? max;
-    const minAbbr = abbrevRank(min);
-    const maxAbbr = abbrevRank(max);
-    if (minAbbr === maxAbbr) return minAbbr;
-    return `${minAbbr}–${maxAbbr}`;
+
+  const rankIconUrl = (() => {
+    if (rankTier != null) {
+      const found = ranks.find((r) => r.sortOrder === rankTier - 3);
+      if (found?.iconUrl) return found.iconUrl;
+    }
+    return listing.minRankIconUrl ?? null;
   })();
+  const rankFallbackColor = rankColorFromName(rankName);
 
   const riotTag = listing.riotGameName && listing.riotTagLine
     ? `${listing.riotGameName}#${listing.riotTagLine}`
     : null;
 
-  const { color: rankColor } = rankMeta(rankTier, rankName);
+  const hasRow3 = !!(listing.regionDisplayName || listing.languages?.[0] || listing.description);
 
   function handleExpress() {
     setExpressError(null);
@@ -169,53 +144,85 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
           : 'border-white/[0.06] bg-white/[0.025] hover:border-white/[0.14] hover:bg-white/[0.04]'
       }`}
     >
-      {/* ── Collapsed row ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-3 py-3.5">
-        <SeedAvatar seed={listing.avatarSeed} />
+      {/* ── Collapsed 3-row section ────────────────────────────────────── */}
+      <div className="px-3 pt-3 pb-2.5 space-y-1.5">
 
-        {/* Identity */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="text-[13px] font-semibold text-white truncate leading-none">{listing.username}</span>
+        {/* Row 1: identity + time */}
+        <div className="flex items-center gap-2">
+          <SeedAvatar seed={listing.avatarSeed} />
+          <span className="text-[13px] font-semibold text-white truncate leading-none flex-1 min-w-0">
+            {listing.username}
+          </span>
           {riotTag && (
-            <span className="text-[11px] text-white/30 truncate hidden sm:inline leading-none">{riotTag}</span>
+            <span className="text-[11px] text-white/30 truncate hidden sm:inline leading-none shrink-0 max-w-[130px]">
+              {riotTag}
+            </span>
           )}
+          <span className="text-[11px] text-white/25 shrink-0 tabular-nums ml-auto pl-2">{relativeTime(listing.createdAt)}</span>
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-white/25 shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
         </div>
 
-        {/* Rank badge */}
-        <RankBadge tier={rankTier} name={rankName ?? rankRange} />
-
-        {/* Agent icons */}
-        {topAgents.length > 0 && (
-          <div className="hidden sm:flex items-center gap-1 shrink-0">
-            {topAgents.map((a) => <AgentThumb key={a.agentId} agent={a} />)}
+        {/* Row 2: rank + top agents + role icons */}
+        {(rankName || rankIconUrl || top2Agents.length > 0 || preferredRoles.length > 0) && (
+          <div className="flex items-center gap-2 pl-10">
+            {(rankIconUrl || rankName) && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <RankImg iconUrl={rankIconUrl} name={rankName ?? null} size={26} fallbackColor={rankFallbackColor} />
+                {rankName && (
+                  <span className="text-[11px] font-semibold" style={{ color: rankFallbackColor }}>{rankName}</span>
+                )}
+              </div>
+            )}
+            {top2Agents.length > 0 && (
+              <div className="flex items-center gap-2 shrink-0">
+                {top2Agents.map((a) => {
+                  const resolved = resolveAgent(a.agentId);
+                  return (
+                    <div key={a.agentId} className="flex items-center gap-1">
+                      <AgentThumb agent={a} size={20} />
+                      <span className="text-[10px] text-white/40 hidden sm:inline">
+                        {a.displayName || resolved?.displayName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {preferredRoles.length > 0 && (
+              <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                {preferredRoles.slice(0, 3).map((rk) => {
+                  const role = gameRoles.find((r) => r.roleKey === rk);
+                  return role?.iconUrl
+                    ? <img key={rk} src={role.iconUrl} alt={role.displayName ?? rk} title={role.displayName ?? rk}
+                        className="h-4 w-4 opacity-50" />
+                    : null;
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Role icons */}
-        {preferredRoles.length > 0 && (
-          <div className="flex items-center gap-0.5 shrink-0">
-            {preferredRoles.slice(0, 3).map((rk) => {
-              const role = gameRoles.find((r) => r.roleKey === rk);
-              return role?.iconUrl
-                ? <img key={rk} src={role.iconUrl} alt={role.displayName ?? rk} title={role.displayName ?? rk}
-                    className="h-4 w-4 opacity-50" />
-                : null;
-            })}
+        {/* Row 3: region + language + description snippet */}
+        {hasRow3 && (
+          <div className="flex items-center gap-1.5 pl-10 text-[11px] text-white/35 min-w-0">
+            {listing.regionDisplayName && (
+              <span className="shrink-0">{listing.regionDisplayName}</span>
+            )}
+            {listing.languages?.[0] && (
+              <span className="shrink-0 before:content-['·'] before:mr-1.5 before:text-white/20">
+                {listing.languages[0]}
+              </span>
+            )}
+            {listing.description && (
+              <span className="truncate text-white/25 before:content-['·'] before:mr-1.5 before:text-white/20">
+                {listing.description}
+              </span>
+            )}
           </div>
         )}
-
-        {/* Region */}
-        {listing.regionDisplayName && (
-          <span className="text-[11px] text-white/30 shrink-0 hidden md:inline">{listing.regionDisplayName}</span>
-        )}
-
-        {/* Time */}
-        <span className="text-[11px] text-white/25 shrink-0 tabular-nums">{relativeTime(listing.createdAt)}</span>
-
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-white/25 shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          aria-hidden
-        />
       </div>
 
       {/* ── Expanded drawer ───────────────────────────────────────────── */}
@@ -236,7 +243,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
                 <div className="flex items-center gap-3 flex-wrap">
                   {rankName && (
                     <div className="flex items-center gap-2 mr-2">
-                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: rankColor }} />
+                      <RankImg iconUrl={rankIconUrl} name={rankName} size={48} fallbackColor={rankFallbackColor} />
                       <span className="text-[16px] font-bold text-white [font-family:var(--font-heading)]">{rankName}</span>
                     </div>
                   )}
@@ -255,7 +262,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
                 </div>
               )}
 
-              {/* Agent breakdown from Riot */}
+              {/* Agent breakdown */}
               {popularAgents.length > 0 && (
                 <div>
                   <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/25 mb-2">This Act</p>
@@ -282,7 +289,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], currentUserId }: Player
                 </div>
               )}
 
-              {/* Region + languages row */}
+              {/* Region + languages */}
               {(listing.regionDisplayName || listing.languages?.[0] || listing.languages?.[1]) && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-white/40">
                   {listing.regionDisplayName && <span>{listing.regionDisplayName}</span>}

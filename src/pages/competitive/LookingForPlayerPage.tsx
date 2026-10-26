@@ -75,7 +75,7 @@ export default function LookingForPlayerPage() {
               className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">Post Team Listing</span>
+              <span className="hidden sm:inline">We're Recruiting</span>
             </button>
           </div>
         </div>
@@ -140,7 +140,6 @@ export default function LookingForPlayerPage() {
                 <>
                   <Users className="h-8 w-8 text-white/25" />
                   <p className="text-[15px] font-medium text-white/55">No team listings yet.</p>
-                  <button type="button" onClick={() => navigate('/competitive/looking-for-player/create')} className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 py-2">Post Team Listing</button>
                 </>
               )}
             </div>

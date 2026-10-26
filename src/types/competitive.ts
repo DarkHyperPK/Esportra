@@ -419,6 +419,19 @@ export interface ExpressInterestRequest {
   message?: string | null;
 }
 
+// ── Team members (detailed) ───────────────────────────────────────────────────
+
+export interface TeamDetailedMember {
+  userId: string;
+  username: string;
+  role: string;
+  riotGameName: string | null;
+  riotTagLine: string | null;
+  kd: number | null;
+  winRate: number | null;
+  tournamentCount: number;
+}
+
 // ── Player search ─────────────────────────────────────────────────────────────
 
 /**
