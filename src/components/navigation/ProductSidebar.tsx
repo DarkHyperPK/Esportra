@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Crosshair, ClipboardList, Trophy, MapPin, BarChart2,
-  ChevronLeft, ChevronDown, User,
+  ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { useOrgStaffContext } from '@/hooks/useOrgStaffContext';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { JackButton } from '@/components/ui/JackButton';
 import UserMenu from './UserMenu';
 import { NotificationSidebar } from '../notifications/NotificationSidebar';
 
@@ -191,6 +192,83 @@ function CollapsedAvatar() {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+// ─── Logged-out sidebar ───────────────────────────────────────────────────────
+
+const PUBLIC_LINKS = [
+  { label: 'Tournaments', to: '/tournaments', icon: Trophy },
+  { label: 'Venues', to: '/venues/search', icon: MapPin },
+  { label: 'Rankings', to: '/leaderboards', icon: BarChart2 },
+  { label: 'Tools', to: '/tools/map-veto', icon: Wrench },
+  { label: 'Pricing', to: '/pricing', icon: DollarSign },
+  { label: 'About', to: '/about/company', icon: Info },
+];
+
+function LoggedOutSidebar() {
+  const { pathname } = useLocation();
+  return (
+    <motion.aside
+      className="hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[240px]"
+      style={{ backgroundColor: '#08080a', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        animate={{
+          background: [
+            'radial-gradient(ellipse 100% 35% at 50% 0%, rgba(244,63,94,0.22) 0%, transparent 65%)',
+            'radial-gradient(ellipse 80% 45% at 50% 0%, rgba(168,85,247,0.14) 0%, transparent 65%)',
+          ],
+        }}
+        transition={{ duration: 5, repeat: Infinity, repeatType: 'mirror' as const, ease: 'easeInOut' }}
+      />
+      <div className="relative flex flex-col h-full">
+        <div className="shrink-0 px-4 pt-4 pb-2">
+          <Link to="/" aria-label="Esportra home">
+            <img
+              src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
+              alt="Esportra"
+              className="h-6 w-auto object-contain"
+            />
+          </Link>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-2" aria-label="Site navigation">
+          {PUBLIC_LINKS.map((link) => {
+            const active = pathname === link.to || pathname.startsWith(link.to + '/');
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-3 transition-colors',
+                  'text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]',
+                  active ? 'text-white/90' : 'text-white/60 hover:text-white/80',
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="shrink-0 p-3 space-y-2">
+          <div className="h-px bg-white/[0.08] mb-3" />
+          <JackButton as={Link} to="/auth/signup" size="sm" className="w-full justify-center">
+            Sign up
+          </JackButton>
+          <Link
+            to="/auth/signin"
+            className="flex w-full items-center justify-center px-3 py-2 text-[13px] font-medium text-white/70 hover:text-white transition-colors"
+          >
+            Log in
+          </Link>
+        </div>
+      </div>
+    </motion.aside>
+  );
+}
+
 /**
  * Persistent left sidebar (nav_v2). 240 px expanded / 52 px collapsed.
  * top-0 h-[100dvh] — fills the full viewport; topbar is suppressed when nav_v2 is on.
@@ -232,7 +310,7 @@ export function ProductSidebar() {
     }
   }
 
-  if (!user) return null;
+  if (!user) return <LoggedOutSidebar />;
 
   const sections = buildSections(canManageTournaments, canManageVenues);
 

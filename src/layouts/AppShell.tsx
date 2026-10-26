@@ -48,7 +48,7 @@ export function AppShell() {
   const isAdmin = pathname.startsWith('/admin');
   const isChromeless = isChromelessPath(pathname);
 
-  if (!navV2 || !user || isAdmin || isChromeless) {
+  if (!navV2 || isAdmin || isChromeless) {
     return <Outlet />;
   }
 
@@ -70,7 +70,7 @@ export function AppShell() {
           </AnimatePresence>
         </main>
       </div>
-      <AppBottomNav />
+      {user && <AppBottomNav />}
     </>
   );
 }

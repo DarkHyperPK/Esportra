@@ -20,7 +20,7 @@ const Navbar = () => {
   const location = useLocation();
   const isLandingPage = location.pathname === "/";
 
-  if (isEnabled(FEATURES.navV2) && user) return null;
+  if (isEnabled(FEATURES.navV2)) return null;
 
   const handleSignOut = async () => {
     try {
