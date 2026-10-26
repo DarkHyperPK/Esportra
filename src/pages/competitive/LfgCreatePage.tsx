@@ -16,10 +16,13 @@ const DESC_MAX = 280;
 const DESC_WARN = 260;
 
 const INTENT_OPTIONS: { slug: LfgIntent; label: string; description: string }[] = [
-  { slug: 'ranked', label: 'Ranked', description: 'Climb the ladder with teammates.' },
-  { slug: 'scrims', label: 'Scrims', description: 'Structured practice against real opponents.' },
+  { slug: 'looking_for_team', label: 'LFT', description: 'Climb the ladder as part of a team.' },
+  { slug: 'looking_for_player', label: 'LFP', description: 'Recruit players for your roster.' },
+  { slug: 'competitive_roster', label: 'Roster', description: 'Structured practice against real opponents.' },
+  { slug: 'teammates', label: 'Teammates', description: 'Find people to queue with regularly.' },
+  { slug: 'duo', label: 'Duo', description: 'Partner up for ranked play.' },
+  { slug: 'group', label: 'Group', description: 'Build a full group from scratch.' },
   { slug: 'casual', label: 'Casual', description: 'Unranked play, low pressure.' },
-  { slug: 'coaching', label: 'Coaching', description: 'Learn from or teach other players.' },
 ];
 
 const MODE_OPTIONS = [

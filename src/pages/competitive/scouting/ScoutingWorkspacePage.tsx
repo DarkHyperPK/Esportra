@@ -60,10 +60,9 @@ function CreateShortlistForm({ onCancel }: { onCancel: () => void }) {
         className="w-full bg-white/[0.04] border border-white/[0.08] text-white/90 text-[13px] px-3 h-9 focus:outline-none focus:border-white/20"
       />
       {create.isError && (
-        <InlineNotice
-          tone="critical"
-          message={getApiErrorMessage(create.error) ?? 'Could not create shortlist.'}
-        />
+        <InlineNotice tone="critical">
+          {getApiErrorMessage(create.error) ?? 'Could not create shortlist.'}
+        </InlineNotice>
       )}
       <div className="flex gap-2">
         <Button
@@ -211,7 +210,7 @@ export default function ScoutingWorkspacePage() {
 
       {isError && (
         <div className="px-4 lg:px-8 pb-4">
-          <InlineNotice tone="critical" message="Could not load shortlists." />
+          <InlineNotice tone="critical">Could not load shortlists.</InlineNotice>
         </div>
       )}
 

@@ -25,10 +25,13 @@ interface LfgFilterPanelProps {
 type FilterPanelProps = PlayerFilterPanelProps | LfgFilterPanelProps;
 
 const LFG_INTENTS: { slug: LfgIntent; label: string }[] = [
-  { slug: 'ranked', label: 'RANKED' },
-  { slug: 'scrims', label: 'SCRIMS' },
+  { slug: 'looking_for_team', label: 'LFT' },
+  { slug: 'looking_for_player', label: 'LFP' },
+  { slug: 'competitive_roster', label: 'ROSTER' },
+  { slug: 'teammates', label: 'TEAMMATES' },
+  { slug: 'duo', label: 'DUO' },
+  { slug: 'group', label: 'GROUP' },
   { slug: 'casual', label: 'CASUAL' },
-  { slug: 'coaching', label: 'COACHING' },
 ];
 
 function FilterEyebrow() {
@@ -87,23 +90,23 @@ export function FilterPanel(props: FilterPanelProps) {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-[11px] text-white/35 mb-1">Min</p>
-              <Select value={filters.minRank ?? ''} onValueChange={(v) => onChange({ ...filters, minRank: v || undefined })}>
+              <Select value={String(filters.minRank ?? '')} onValueChange={(v) => onChange({ ...filters, minRank: v ? parseInt(v, 10) : undefined })}>
                 <SelectTrigger aria-label="Minimum rank" className="rounded-none border-white/10 bg-black/30 text-white h-9 text-[13px]">
                   <SelectValue placeholder="Any rank" />
                 </SelectTrigger>
                 <SelectContent className="rounded-none bg-[#1a1a1a] border-white/10">
-                  {rankTiers.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.displayName}</SelectItem>)}
+                  {rankTiers.map((t) => <SelectItem key={t.slug} value={String(t.tier)}>{t.displayName}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <p className="text-[11px] text-white/35 mb-1">Max</p>
-              <Select value={filters.maxRank ?? ''} onValueChange={(v) => onChange({ ...filters, maxRank: v || undefined })}>
+              <Select value={String(filters.maxRank ?? '')} onValueChange={(v) => onChange({ ...filters, maxRank: v ? parseInt(v, 10) : undefined })}>
                 <SelectTrigger aria-label="Maximum rank" className="rounded-none border-white/10 bg-black/30 text-white h-9 text-[13px]">
                   <SelectValue placeholder="Any rank" />
                 </SelectTrigger>
                 <SelectContent className="rounded-none bg-[#1a1a1a] border-white/10">
-                  {rankTiers.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.displayName}</SelectItem>)}
+                  {rankTiers.map((t) => <SelectItem key={t.slug} value={String(t.tier)}>{t.displayName}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -187,23 +190,23 @@ export function FilterPanel(props: FilterPanelProps) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <p className="text-[11px] text-white/35 mb-1">Min</p>
-            <Select value={filters.minRank ?? ''} onValueChange={(v) => onChange({ ...filters, minRank: v || undefined })}>
+            <Select value={String(filters.minRank ?? '')} onValueChange={(v) => onChange({ ...filters, minRank: v ? parseInt(v, 10) : undefined })}>
               <SelectTrigger aria-label="Minimum rank" className="rounded-none border-white/10 bg-black/30 text-white h-9 text-[13px]">
                 <SelectValue placeholder="Any rank" />
               </SelectTrigger>
               <SelectContent className="rounded-none bg-[#1a1a1a] border-white/10">
-                {rankTiers.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.displayName}</SelectItem>)}
+                {rankTiers.map((t) => <SelectItem key={t.slug} value={String(t.tier)}>{t.displayName}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
             <p className="text-[11px] text-white/35 mb-1">Max</p>
-            <Select value={filters.maxRank ?? ''} onValueChange={(v) => onChange({ ...filters, maxRank: v || undefined })}>
+            <Select value={String(filters.maxRank ?? '')} onValueChange={(v) => onChange({ ...filters, maxRank: v ? parseInt(v, 10) : undefined })}>
               <SelectTrigger aria-label="Maximum rank" className="rounded-none border-white/10 bg-black/30 text-white h-9 text-[13px]">
                 <SelectValue placeholder="Any rank" />
               </SelectTrigger>
               <SelectContent className="rounded-none bg-[#1a1a1a] border-white/10">
-                {rankTiers.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.displayName}</SelectItem>)}
+                {rankTiers.map((t) => <SelectItem key={t.slug} value={String(t.tier)}>{t.displayName}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

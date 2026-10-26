@@ -79,7 +79,7 @@ export function LfgInterestCard({
       )}
 
       {/* Region */}
-      <RegionLabel region={interest.regionDisplayName} server={interest.preferredServers?.[0] ?? null} />
+      <RegionLabel region={interest.regionDisplayName} server={interest.servers?.[0] ?? null} />
 
       {/* Message */}
       {excerpt && (

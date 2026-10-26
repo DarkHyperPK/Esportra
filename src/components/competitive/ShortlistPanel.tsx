@@ -88,10 +88,9 @@ function NoteEditor({
           className="w-full bg-white/[0.04] border border-white/[0.08] text-white/90 text-[13px] px-3 py-2 resize-none focus:outline-none focus:border-white/20"
         />
         {upsert.isError && (
-          <InlineNotice
-            tone="critical"
-            message={getApiErrorMessage(upsert.error) ?? 'Could not save note.'}
-          />
+          <InlineNotice tone="critical">
+            {getApiErrorMessage(upsert.error) ?? 'Could not save note.'}
+          </InlineNotice>
         )}
         <div className="flex gap-2">
           <Button
