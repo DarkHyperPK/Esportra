@@ -110,8 +110,8 @@ export function dayLabel(date: Date, now: Date = new Date()): string {
 /** Groups an already-sorted list by calendar day, keeping order. */
 export function groupNotificationsByDay(list: Notification[], now: Date = new Date()): NotificationDayGroup[] {
   return list.reduce<NotificationDayGroup[]>((groups, n) => {
-    const d = parseISO(n.created_at);
-    const label = isValid(d) ? dayLabel(d, now) : 'Earlier';
+    const d = n.created_at ? parseISO(n.created_at) : null;
+    const label = d && isValid(d) ? dayLabel(d, now) : 'Earlier';
     const last = groups[groups.length - 1];
     if (last && last.label === label) return [...groups.slice(0, -1), { ...last, items: [...last.items, n] }];
     return [...groups, { key: `${label}-${groups.length}`, label, items: [n] }];

@@ -79,6 +79,9 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, items: tournamentItems },
     { id: 'venues', label: 'Venues', icon: MapPin, items: venueItems },
     { id: 'rankings', label: 'Rankings', icon: BarChart2, to: '/leaderboards', items: [] },
+    { id: 'tools', label: 'Tools', icon: Wrench, to: '/tools/map-veto', items: [] },
+    { id: 'pricing', label: 'Pricing', icon: DollarSign, to: '/pricing', items: [] },
+    { id: 'about', label: 'About', icon: Info, to: '/about/company', items: [] },
   ];
 }
 
