@@ -92,7 +92,12 @@ export default function LfgManagePage() {
   async function handleAccept(interestId: string) {
     setActiveInterestId(interestId);
     setInterestAction('accept');
-    try { await acceptInterest.mutateAsync(interestId); } finally {
+    try {
+      const result = await acceptInterest.mutateAsync(interestId);
+      if (result.conversationId) {
+        navigate(`/inbox/${result.conversationId}`);
+      }
+    } finally {
       setActiveInterestId(null); setInterestAction(null);
     }
   }

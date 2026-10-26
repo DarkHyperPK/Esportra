@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users, Crosshair, Trophy, MapPin, BarChart2,
+  Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
   ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -59,6 +59,11 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
   if (canManageVenues) venueItems.push({ label: 'My Venue', to: '/venues/manage' });
 
   return [
+    {
+      id: 'inbox', label: 'Inbox', icon: MessageSquare,
+      to: '/inbox',
+      items: [],
+    },
     {
       id: 'find-teammates', label: 'Find Teammates', icon: Users,
       to: '/competitive/find-teammates',

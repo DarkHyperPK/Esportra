@@ -20,6 +20,11 @@ import type {
   UpdateLfgListingRequest,
   ExpressInterestRequest,
 } from '@/types/competitive';
+
+export interface AcceptInterestResponse {
+  interest: LfgInterest;
+  conversationId: string;
+}
 import { lfgKeys } from './queryKeys';
 
 // Re-export keys so existing imports that destructure from this file still work.
@@ -171,7 +176,7 @@ export function useAcceptInterest(listingId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (interestId: string) =>
-      apiClient.post(`/api/competitive/lfg/interests/${interestId}/accept`),
+      apiClient.post<AcceptInterestResponse>(`/api/competitive/lfg/interests/${interestId}/accept`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: lfgKeys.interests(listingId) });
     },

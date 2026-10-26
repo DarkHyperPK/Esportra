@@ -23,12 +23,13 @@ export type LfgStatus = 'draft' | 'published' | 'paused' | 'expired' | 'closed' 
  * @see shared-contracts/types.md §1
  */
 export type LfgIntent =
-  | 'duo'
-  | 'group'
-  | 'teammates'
   | 'looking_for_team'
   | 'looking_for_player'
   | 'competitive_roster'
+  // Legacy values — DB enum retains these; not accepted by new listings
+  | 'duo'
+  | 'group'
+  | 'teammates'
   | 'casual';
 
 export type ExperienceLevel = 'casual' | 'amateur' | 'semi_pro' | 'pro';
@@ -224,6 +225,7 @@ export interface UpsertCompetitiveProfileRequest {
 export interface LfgListing {
   id: string;
   userId: string;
+  teamId: string | null;
   gameSlug: string;
   intent: LfgIntent;
   status: LfgStatus;

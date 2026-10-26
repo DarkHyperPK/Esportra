@@ -81,6 +81,10 @@ const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scr
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
 
+// Messaging
+const InboxPage = lazyWithRetry(() => import("./pages/messaging/InboxPage"));
+const ConversationPage = lazyWithRetry(() => import("./pages/messaging/ConversationPage"));
+
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
 const StaffInvitesPage = lazyWithRetry(() => import("./pages/user/StaffInvites"));
@@ -616,6 +620,18 @@ const AppContent = React.memo(() => {
                     </ProtectedRoute>
                   } />
                 </Route>
+
+                {/* Messaging Routes */}
+                <Route path="/inbox" element={
+                  <ProtectedRoute>
+                    <InboxPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/inbox/:id" element={
+                  <ProtectedRoute>
+                    <ConversationPage />
+                  </ProtectedRoute>
+                } />
 
                 {/* Venues Routes */}
                 <Route path="/venues" element={<VenueSearch />} />
