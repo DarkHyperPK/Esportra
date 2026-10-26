@@ -140,14 +140,14 @@ export default function LfgManagePage() {
               {[listing.minRankDisplayName, listing.maxRankDisplayName].filter(Boolean).join(' — ')}
             </p>
           )}
-          {listing.roles.length > 0 && (
+          {(listing.preferredRoles?.length ?? 0) > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {listing.roles.map((r) => (
+              {listing.preferredRoles!.map((r) => (
                 <RoleChip key={r} role={r} displayName={r.toUpperCase()} mode="display" />
               ))}
             </div>
           )}
-          <RegionLabel region={listing.regionDisplayName} server={listing.servers?.[0] ?? null} />
+          <RegionLabel region={listing.regionDisplayName} server={listing.preferredServers?.[0] ?? null} />
           {listing.description && (
             <p className="text-[13px] text-white/55">&ldquo;{listing.description}&rdquo;</p>
           )}
@@ -225,7 +225,7 @@ export default function LfgManagePage() {
                   </Button>
                 )}
                 {isReadonly && (
-                  <Button variant="outline" onClick={() => navigate('/competitive/lfg/new')}
+                  <Button variant="outline" onClick={() => navigate('/competitive/find-teammates')}
                     className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07] text-[13px]">
                     Create new listing
                   </Button>

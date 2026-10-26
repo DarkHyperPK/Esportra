@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Users, Crosshair, ClipboardList, Trophy, MapPin, BarChart2,
+  Users, Crosshair, Trophy, MapPin, BarChart2,
   ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -69,13 +69,6 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
       items: [
         { label: 'Find Scrims', to: '/competitive/scrims' },
         { label: 'My Scrim History', to: '/competitive/scrims' },
-      ],
-    },
-    {
-      id: 'tryouts', label: 'Tryouts', icon: ClipboardList,
-      items: [
-        { label: 'Open Tryouts', to: '/competitive/tryouts/workspace' },
-        { label: 'My Applications', to: '/competitive/recruitment/my-applications' },
       ],
     },
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, items: tournamentItems },

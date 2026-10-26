@@ -148,7 +148,7 @@ const DesktopNav = ({
               <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
                 <div className="space-y-px bg-[#0a0a0c]">
                   <JackItem to="/competitive/discover">Discover Players</JackItem>
-                  <JackItem to="/competitive/lfg/new">Find Teammates</JackItem>
+                  <JackItem to="/competitive/find-teammates">Find Teammates</JackItem>
                   <JackItem to="/competitive/profile/edit">My Competitive Profile</JackItem>
                   <JackDivider />
                   <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>
@@ -156,9 +156,6 @@ const DesktopNav = ({
                   <JackItem to="/competitive/recruitment/my-applications">My Applications</JackItem>
                   <JackDivider />
                   <JackItem to="/competitive/scrims">Scrims</JackItem>
-                  <JackItem to="/competitive/tryouts/workspace">Tryouts</JackItem>
-                  <JackDivider />
-                  <JackItem to="/competitive/scouting">Scouting</JackItem>
                 </div>
               </FramerDropdownContent>
             </FramerDropdownRoot>

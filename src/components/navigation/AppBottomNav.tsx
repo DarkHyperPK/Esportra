@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, Crosshair, ClipboardList, Trophy, Menu, X } from 'lucide-react';
+import { Users, Crosshair, Trophy, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,13 +28,6 @@ const BOTTOM_TABS: BottomTab[] = [
     icon: Crosshair,
     to: '/competitive/scrims',
     matchPaths: ['/competitive/scrims'],
-  },
-  {
-    id: 'tryouts',
-    label: 'Tryouts',
-    icon: ClipboardList,
-    to: '/competitive/tryouts/workspace',
-    matchPaths: ['/competitive/tryouts', '/competitive/recruitment'],
   },
   {
     id: 'tournaments',
@@ -65,7 +58,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     items: [
       { label: 'Discover Players', to: '/competitive/discover' },
       { label: 'My Profile', to: '/competitive/profile/edit' },
-      { label: 'Looking for Team', to: '/competitive/lfg/new' },
+      { label: 'Find Teammates', to: '/competitive/find-teammates' },
     ],
   },
   {
@@ -73,13 +66,6 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     items: [
       { label: 'Find Scrims', to: '/competitive/scrims' },
       { label: 'My Scrim History', to: '/competitive/scrims' },
-    ],
-  },
-  {
-    label: 'Tryouts',
-    items: [
-      { label: 'Open Tryouts', to: '/competitive/tryouts/workspace' },
-      { label: 'My Applications', to: '/competitive/recruitment/my-applications' },
     ],
   },
   {

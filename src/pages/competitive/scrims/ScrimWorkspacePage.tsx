@@ -7,6 +7,7 @@ import {
   useScrimListings,
   useCreateScrimListing,
   usePauseListing,
+  useReopenListing,
   useCloseListing,
   useListingOffers,
   useMyOffers,
@@ -68,6 +69,7 @@ function NewListingForm({
     try {
       await createMutation.mutateAsync({
         teamId,
+        gameSlug: 'valorant',
         modeKey: mode.trim() || undefined,
         regionKey: region.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -136,8 +138,9 @@ function NewListingForm({
 
 function ListingCard({ listing }: { listing: ScrimListing }) {
   const pauseMutation = usePauseListing(listing.id);
+  const reopenMutation = useReopenListing(listing.id);
   const closeMutation = useCloseListing(listing.id);
-  const isPending = pauseMutation.isPending || closeMutation.isPending;
+  const isPending = pauseMutation.isPending || reopenMutation.isPending || closeMutation.isPending;
 
   return (
     <div className="border border-white/[0.06] bg-white/[0.03] p-4 flex items-center gap-3">
@@ -169,11 +172,11 @@ function ListingCard({ listing }: { listing: ScrimListing }) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => pauseMutation.mutate()}
+            onClick={() => reopenMutation.mutate()}
             disabled={isPending}
             className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
           >
-            Reopen
+            {reopenMutation.isPending ? '…' : 'Reopen'}
           </Button>
         )}
         {listing.status !== 'closed' && (

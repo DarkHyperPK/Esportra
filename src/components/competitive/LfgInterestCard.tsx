@@ -70,16 +70,16 @@ export function LfgInterestCard({
       </div>
 
       {/* Roles */}
-      {interest.roles.length > 0 && (
+      {(interest.preferredRoles?.length ?? 0) > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {interest.roles.map((role) => (
+          {interest.preferredRoles!.map((role) => (
             <RoleChip key={role} role={role} displayName={role.toUpperCase()} mode="display" />
           ))}
         </div>
       )}
 
       {/* Region */}
-      <RegionLabel region={interest.regionDisplayName} server={interest.servers?.[0] ?? null} />
+      <RegionLabel region={interest.regionDisplayName} server={interest.preferredServers?.[0] ?? null} />
 
       {/* Message */}
       {excerpt && (

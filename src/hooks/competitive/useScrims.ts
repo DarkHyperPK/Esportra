@@ -186,6 +186,16 @@ export function usePauseListing(listingId: string) {
   });
 }
 
+export function useReopenListing(listingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.post<ScrimListing>(`/api/scrims/listings/${listingId}/reopen`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scrims', 'listings'] });
+    },
+  });
+}
+
 export function useCloseListing(listingId: string) {
   const qc = useQueryClient();
   return useMutation({

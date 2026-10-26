@@ -66,7 +66,6 @@ const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 // Competitive
 const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
 const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
-const LfgCreatePage = lazyWithRetry(() => import("./pages/competitive/LfgCreatePage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
 const EditCompetitiveProfilePage = lazyWithRetry(() => import("./pages/competitive/EditCompetitiveProfilePage"));
 const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
@@ -553,11 +552,7 @@ const AppContent = React.memo(() => {
                       <FindTeammatesPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="lfg/new" element={
-                    <ProtectedRoute>
-                      <LfgCreatePage />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="lfg/new" element={<Navigate to="/competitive/find-teammates" replace />} />
                   <Route path="lfg/:id" element={
                     <ProtectedRoute>
                       <LfgManagePage />
