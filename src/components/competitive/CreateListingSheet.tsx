@@ -139,7 +139,7 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
     return () => {
       if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
     };
-  }, [open]);
+  }, [open, initialIntent]);
 
   // Auto-close after published
   useEffect(() => {
