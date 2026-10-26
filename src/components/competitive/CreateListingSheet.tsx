@@ -11,8 +11,6 @@ import { InlineNotice } from '@/components/ui/kit';
 import { IntentPicker } from './IntentPicker';
 import { RankSelector } from './RankSelector';
 import { useCreateLfgListing, usePublishLfgListing } from '@/hooks/competitive/useLfg';
-import { useCompetitiveProfile } from '@/hooks/competitive/useCompetitiveProfile';
-import { useAuth } from '@/hooks/useAuth';
 import { ApiError } from '@/lib/apiClient';
 import { VALORANT_AGENTS } from '@/lib/valorantAgents';
 import type { CatalogRankTier, CatalogGameRole, CatalogRegion, LfgIntent } from '@/types/competitive';
@@ -113,7 +111,6 @@ function getErrorCode(err: unknown): string | undefined {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRoles, regions, initialIntent }: CreateListingSheetProps) {
-  const { user } = useAuth();
   const reduced = useReducedMotion() ?? false;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
@@ -123,32 +120,13 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
   const [draftId, setDraftId] = useState<string | null>(null);
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Profile for pre-population and completeness check
-  const profileQuery = useCompetitiveProfile(user?.id ?? '', 'valorant');
-  const profile = profileQuery.data ?? null;
-  const showProfilePrompt = open && !!user?.id && !profileQuery.isLoading && !profile;
-  const showPrefilledBanner = open && !!profile;
-
   // Mutations — publish hook requires an ID; draftId populated after create succeeds
   const createMutation = useCreateLfgListing();
   const publishMutation = usePublishLfgListing(draftId ?? '');
 
-  // Reset on open — seed from profile when available
   useEffect(() => {
     if (open) {
-      const seed: FormState = profile
-        ? {
-            ...INITIAL_FORM,
-            intent: initialIntent ?? null,
-            minRankSortOrder: profile.rankSortOrder,
-            maxRankSortOrder: profile.rankSortOrder,
-            preferredRoles: profile.preferredRoles ?? [],
-            regionKey: profile.regionKey,
-            languages: profile.languages ?? [],
-            description: profile.notes ?? '',
-          }
-        : { ...INITIAL_FORM, intent: initialIntent ?? null };
-      setForm(seed);
+      setForm({ ...INITIAL_FORM, intent: initialIntent ?? null });
       setPhase('idle');
       setError(null);
       setDraftId(null);
@@ -314,24 +292,6 @@ export function CreateListingSheet({ open, onClose, onPublished, ranks, gameRole
             {/* Body — scrollable */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 
-              {/* Pre-filled from profile */}
-              {showPrefilledBanner && (
-                <InlineNotice tone="success">
-                  Pre-filled from your competitive profile.{' '}
-                  <span className="text-white/50">Edit any field below.</span>
-                </InlineNotice>
-              )}
-
-              {/* No profile — prompt to create one (non-blocking) */}
-              {showProfilePrompt && (
-                <InlineNotice tone="warning">
-                  No competitive profile found.{' '}
-                  <Link to="/competitive/profile/edit" className="underline underline-offset-2 hover:text-white transition-colors">
-                    Create your profile
-                  </Link>{' '}
-                  to appear in player search, or fill in the details below.
-                </InlineNotice>
-              )}
 
               {/* Intent picker */}
               <div>

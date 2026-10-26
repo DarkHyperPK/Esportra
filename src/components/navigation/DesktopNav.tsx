@@ -149,7 +149,6 @@ const DesktopNav = ({
                 <div className="space-y-px bg-[#0a0a0c]">
                   <JackItem to="/competitive/discover">Discover Players</JackItem>
                   <JackItem to="/competitive/find-teammates">Find Teammates</JackItem>
-                  <JackItem to="/competitive/profile/edit">My Competitive Profile</JackItem>
                   <JackDivider />
                   <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>
                   <JackItem to="/competitive/recruitment/workspace">My Openings</JackItem>

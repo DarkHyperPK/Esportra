@@ -6,7 +6,6 @@ import { Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getCountryFlagUrl } from '@/utils/countries';
 import EditProfileDialog from './EditProfileDialog';
-import { CompetitiveProfileSection } from '@/components/competitive/CompetitiveProfileSection';
 
 interface PlayerProfileProps {
   profileData?: any;
@@ -81,13 +80,6 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
         </div>
       </div>
 
-      {/* Competitive profile section — gated internally by feature flag */}
-      {displayProfile?.id && (
-        <CompetitiveProfileSection
-          userId={displayProfile.id}
-          isOwnProfile={isOwnProfile}
-        />
-      )}
 
       {isOwnProfile && (
         <EditProfileDialog

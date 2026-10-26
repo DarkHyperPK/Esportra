@@ -306,7 +306,7 @@ function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotif
     {
       key: 'riot', name: 'Riot Games',
       description: riotLoading ? 'Loading...' : riotAccount
-        ? (riotAccount.game_name && riotAccount.tag_line ? `${riotAccount.game_name}#${riotAccount.tag_line}` : '')
+        ? (riotAccount.gameName && riotAccount.tagLine ? `${riotAccount.gameName}#${riotAccount.tagLine}` : '')
         : '',
       connected: !!riotAccount, loading: riotLoading,
       icon: <img src="/Riot.png" alt="Riot Games" className="w-8 h-8 drop-shadow-md" />,

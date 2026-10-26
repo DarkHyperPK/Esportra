@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCompetitiveProfile } from '@/hooks/competitive/useCompetitiveProfile';
 import { useCatalogGameRoles } from '@/hooks/competitive/useCatalog';
 import { useCreateLfgListing } from '@/hooks/competitive/useLfg';
 import { apiClient } from '@/lib/apiClient';
@@ -29,21 +28,12 @@ export default function LookingForTeamCreatePage() {
   const { user, profile: userProfile } = useAuth();
   const navigate = useNavigate();
 
-  const profileQuery = useCompetitiveProfile(user?.id ?? '', GAME);
   const rolesQuery = useCatalogGameRoles(GAME);
-  const profile = profileQuery.data ?? null;
   const gameRoles = rolesQuery.data ?? [];
 
   const [description, setDescription] = useState('');
   const [expiresInDays, setExpiresInDays] = useState<1 | 3 | 7>(3);
   const [phase, setPhase] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-  const [descSeeded, setDescSeeded] = useState(false);
-
-  // Seed description from bio once profile loads
-  if (profile && !descSeeded) {
-    setDescription(profile.notes ?? '');
-    setDescSeeded(true);
-  }
 
   const createMutation = useCreateLfgListing();
 
@@ -60,18 +50,18 @@ export default function LookingForTeamCreatePage() {
         username: userProfile?.username ?? user.email?.split('@')[0] ?? 'You',
         avatarSeed: userProfile?.avatar_seed ?? user.id,
         modeKey: null,
-        regionKey: profile?.regionKey ?? null,
-        regionDisplayName: profile?.regionDisplayName ?? null,
+        regionKey: null,
+        regionDisplayName: null,
         preferredServers: [],
-        minRankSortOrder: profile?.rankSortOrder ?? null,
-        maxRankSortOrder: profile?.rankSortOrder ?? null,
-        minRankDisplayName: profile?.rankDisplayName ?? null,
-        maxRankDisplayName: profile?.rankDisplayName ?? null,
-        minRankIconUrl: profile?.rankIconUrl ?? null,
+        minRankSortOrder: null,
+        maxRankSortOrder: null,
+        minRankDisplayName: null,
+        maxRankDisplayName: null,
+        minRankIconUrl: null,
         maxRankIconUrl: null,
-        preferredRoles: profile?.preferredRoles ?? [],
+        preferredRoles: [],
         preferredAgents: [],
-        languages: profile?.languages ?? [],
+        languages: [],
         description: description || null,
         expiresAt: new Date(Date.now() + expiresInDays * 86_400_000).toISOString(),
         // deprecated compat
@@ -94,12 +84,9 @@ export default function LookingForTeamCreatePage() {
       const result = await createMutation.mutateAsync({
         gameSlug: GAME,
         intent: 'looking_for_team',
-        minRankSortOrder: profile?.rankSortOrder ?? undefined,
-        maxRankSortOrder: profile?.rankSortOrder ?? undefined,
-        regionKey: profile?.regionKey ?? undefined,
-        preferredRoles: profile?.preferredRoles ?? [],
+        preferredRoles: [],
         preferredAgents: [],
-        languages: profile?.languages ?? [],
+        languages: [],
         description: description || undefined,
         expiresAt,
       });
@@ -111,7 +98,6 @@ export default function LookingForTeamCreatePage() {
     }
   }
 
-  const isLoading = profileQuery.isLoading;
   const charsLeft = DESC_MAX - description.length;
 
   return (
@@ -134,26 +120,13 @@ export default function LookingForTeamCreatePage() {
           Your competitive profile is your listing. Confirm the details and go live.
         </p>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-4 rounded bg-white/[0.06]" style={{ width: `${60 + i * 12}%` }} />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-8">
+        <div className="space-y-8">
             {/* Preview */}
             <div>
               <Caption>How you'll appear</Caption>
               <div className="pointer-events-none select-none opacity-90">
                 <PlayerLfgCard listing={previewListing!} gameRoles={gameRoles} />
               </div>
-              <p className="mt-2 text-[11px] text-white/30">
-                To update rank, roles, or region —{' '}
-                <Link to="/competitive/profile/edit" className="underline hover:text-white/60 transition-colors">
-                  edit your profile
-                </Link>
-              </p>
             </div>
 
             {/* Description */}
@@ -224,7 +197,6 @@ export default function LookingForTeamCreatePage() {
               </button>
             </div>
           </div>
-        )}
       </div>
     </CompetitivePageShell>
   );

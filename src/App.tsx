@@ -72,7 +72,6 @@ const LookingForPlayerCreatePage = lazyWithRetry(() => import("./pages/competiti
 const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
 const LfgEditPage = lazyWithRetry(() => import("./pages/competitive/LfgEditPage"));
-const EditCompetitiveProfilePage = lazyWithRetry(() => import("./pages/competitive/EditCompetitiveProfilePage"));
 const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
 const RecruitmentWorkspacePage = lazyWithRetry(() => import("./pages/competitive/recruitment/RecruitmentWorkspacePage"));
 const ApplicationFormPage = lazyWithRetry(() => import("./pages/competitive/recruitment/ApplicationFormPage"));
@@ -586,11 +585,6 @@ const AppContent = React.memo(() => {
                   <Route path="lfg/:id/edit" element={
                     <ProtectedRoute>
                       <LfgEditPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="profile/edit" element={
-                    <ProtectedRoute>
-                      <EditCompetitiveProfilePage />
                     </ProtectedRoute>
                   } />
                   <Route path="recruitment" element={<OpeningDiscoveryPage />} />

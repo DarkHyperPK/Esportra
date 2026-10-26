@@ -294,7 +294,8 @@ export function ProductSidebar() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
   const { pathname } = useLocation();
   const isTournamentDashboard = pathname.startsWith('/organizer/tournaments/');
-  const isCollapsed = collapsed || isTournamentDashboard;
+  const isCompetitivePage = pathname.startsWith('/competitive/');
+  const isCollapsed = collapsed || isTournamentDashboard || isCompetitivePage;
 
   function toggle() {
     setCollapsed(prev => {

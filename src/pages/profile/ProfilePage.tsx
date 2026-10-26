@@ -23,8 +23,6 @@ import { TournamentHistoryTab } from '@/components/profile/tabs/TournamentHistor
 import { TeamsTab } from '@/components/profile/tabs/TeamsTab';
 import { AchievementsTab } from '@/components/profile/tabs/AchievementsTab';
 import { MatchHistoryTab } from '@/components/profile/tabs/MatchHistoryTab';
-import { CompetitiveCredentialsTab } from '@/components/competitive/CompetitiveCredentialsTab';
-import { useCompetitiveProfile } from '@/hooks/competitive/useCompetitiveProfile';
 
 /**
  * ProfilePage: top-level route for /profile/:username.
@@ -89,14 +87,6 @@ export default function ProfilePage(): React.JSX.Element {
   );
 
   const isOwner = !!authProfile && authProfile.username === username;
-
-  // Competitive profile — fetched after profileId is known.
-  // Returns null on 404 (no profile or profileVisible=false for non-owners).
-  const competitiveQuery = useCompetitiveProfile(profileId ?? '', 'valorant');
-
-  // Show the Competitive tab if own profile, or if the profile is public.
-  const showCompetitiveTab =
-    isOwner || competitiveQuery.data?.profileVisible === true;
 
   const bannerPositionMutation = useMutation({
     mutationFn: ({ focalY, zoom, height }: { focalY: number; zoom: number; height: number }) =>
@@ -240,15 +230,6 @@ export default function ProfilePage(): React.JSX.Element {
         return <TeamsTab profileId={profile.id} />;
       case 'achievements':
         return <AchievementsTab profileId={profile.id} accentColor={accentColor} />;
-      case 'competitive':
-        return (
-          <CompetitiveCredentialsTab
-            profile={competitiveQuery.data ?? null}
-            isLoading={competitiveQuery.isLoading}
-            isOwnProfile={isOwner}
-            linkedAccounts={linkedQuery.data ?? null}
-          />
-        );
       default:
         return <div />;
     }
@@ -281,7 +262,6 @@ export default function ProfilePage(): React.JSX.Element {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         accentColor={accentColor}
-        showCompetitiveTab={showCompetitiveTab}
       />
 
       {/* Main content */}

@@ -191,7 +191,6 @@ const MobileNav = ({
                         <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
                           <JackSubItem to="/competitive/discover">Discover Players</JackSubItem>
                           <JackSubItem to="/competitive/find-teammates">Find Teammates</JackSubItem>
-                          <JackSubItem to="/competitive/profile/edit">My Competitive Profile</JackSubItem>
                           <JackSubItem to="/competitive/recruitment">Team Recruitment</JackSubItem>
                           <JackSubItem to="/competitive/recruitment/my-applications">My Applications</JackSubItem>
                           <JackSubItem to="/competitive/scrims">Scrims</JackSubItem>

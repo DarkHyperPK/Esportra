@@ -106,7 +106,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
 
   const rankIconUrl = (() => {
     if (rankTier != null) {
-      const found = ranks.find((r) => r.sortOrder === rankTier - 3);
+      const found = ranks.find((r) => r.sortOrder === rankTier - 2);
       if (found?.iconUrl) return found.iconUrl;
     }
     return listing.minRankIconUrl ?? null;

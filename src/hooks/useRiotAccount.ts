@@ -4,13 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 
 export interface RiotAccountData {
     id: string;
-    user_id: string;
+    userId: string;
     puuid: string;
-    game_name: string;
-    tag_line: string;
+    gameName: string;
+    tagLine: string;
     region: string | null;
-    linked_at: string | null;
-    updated_at: string | null;
+    linkedAt: string | null;
+    updatedAt: string | null;
 }
 
 /**
