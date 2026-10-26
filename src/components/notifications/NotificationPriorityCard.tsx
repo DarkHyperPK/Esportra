@@ -29,7 +29,7 @@ export function NotificationPriorityCard({
 }: NotificationPriorityCardProps) {
   const kind = getNotificationKind(n.type);
   const deadline = notificationDeadline(n);
-  const created = parseISO(n.created_at);
+  const created = n.created_at ? parseISO(n.created_at) : null;
   const isStaffInvite = n.type === 'staff_invite' && typeof n.data?.organization_staff_id === 'string';
   const busy = staffInvite === 'accepting' || staffInvite === 'declining';
   const resolved = staffInvite === 'accepted' || staffInvite === 'declined';

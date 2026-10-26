@@ -25,7 +25,8 @@ interface NotificationItemProps {
   onDelete?: (n: Notification) => void;
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string | undefined | null): string {
+  if (!iso) return '';
   const d = parseISO(iso);
   return isValid(d) ? formatDistanceToNow(d, { addSuffix: true }) : '';
 }
