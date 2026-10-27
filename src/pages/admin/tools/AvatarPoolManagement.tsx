@@ -175,7 +175,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
     const [generating, setGenerating] = useState(false);
 
     const batchMutation = useMutation({
-        mutationFn: (items: { Style: string; Seed: string }[]) =>
+        mutationFn: (items: { style: string; seed: string }[]) =>
             apiClient.post<{ inserted: number; skipped_duplicate: number; skipped_invalid: number; total: number }>('/api/admin/avatars/pool/batch', items),
         onSuccess: (data) => {
             const parts: string[] = [];
@@ -239,7 +239,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
 
     const handleDrop = () => {
         if (seeds.length === 0) return;
-        batchMutation.mutate(seeds.map(seed => ({ Style: style, Seed: seed })));
+        batchMutation.mutate(seeds.map(seed => ({ style, seed })));
     };
 
     const allSelected = seeds.length > 0 && selected.size === seeds.length;
