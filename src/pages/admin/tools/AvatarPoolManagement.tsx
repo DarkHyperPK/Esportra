@@ -38,19 +38,32 @@ const ADJECTIVES = [
     'swift', 'iron', 'shadow', 'storm', 'frost', 'venom', 'blaze', 'lunar', 'void',
     'azure', 'crimson', 'golden', 'silent', 'rogue', 'wild', 'night', 'cyber', 'nova',
     'phantom', 'apex', 'dark', 'toxic', 'neon', 'hyper', 'stealth', 'epic', 'radiant',
+    'obsidian', 'scarlet', 'emerald', 'onyx', 'chrome', 'static', 'hollow', 'primal',
+    'solar', 'arcane', 'brutal', 'covert', 'delta', 'eternal', 'fierce', 'galactic',
+    'hex', 'inferno', 'jade', 'kinetic', 'lethal', 'molten', 'null', 'omega',
+    'prismatic', 'quantum', 'razor', 'spectral', 'thunder', 'ultra', 'zenith',
 ];
 const NOUNS = [
     'wolf', 'hawk', 'fang', 'bolt', 'blade', 'claw', 'drake', 'rex', 'viper',
     'titan', 'ghost', 'reaper', 'striker', 'warden', 'forge', 'pulse', 'core',
     'shard', 'lance', 'echo', 'surge', 'nexus', 'rift', 'omen', 'veil', 'scion',
+    'raptor', 'kraken', 'hydra', 'phoenix', 'lynx', 'mantis', 'raven', 'serpent',
+    'tempest', 'umbra', 'valor', 'wraith', 'xenon', 'yeti', 'zephyr', 'condor',
+    'dusk', 'ember', 'flare', 'golem', 'haze', 'icon', 'jinx', 'knight',
+    'leviathan', 'mirage', 'nomad', 'oracle', 'predator', 'quasar', 'ronin',
 ];
+// 57 × 57 = 3249 combos per style; with a 2-digit suffix option that's 324,900+
+const SUFFIXES = ['', '2', '3', 'x', 'pro', 'og', 'v2'];
 
 function generateRandomSeeds(count: number): string[] {
     const out = new Set<string>();
-    while (out.size < count) {
+    let attempts = 0;
+    while (out.size < count && attempts < count * 20) {
+        attempts++;
         const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
         const n = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-        out.add(`${a}${n}`);
+        const s = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
+        out.add(`${a}${n}${s}`);
     }
     return [...out];
 }
@@ -150,13 +163,14 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
 
     const batchMutation = useMutation({
         mutationFn: (items: { Style: string; Seed: string }[]) =>
-            apiClient.post<{ inserted: number; total: number }>('/api/admin/avatars/pool/batch', items),
+            apiClient.post<{ inserted: number; skipped_duplicate: number; skipped_invalid: number; total: number }>('/api/admin/avatars/pool/batch', items),
         onSuccess: (data) => {
+            const parts: string[] = [];
+            if (data.skipped_duplicate > 0) parts.push(`${data.skipped_duplicate} already in pool`);
+            if (data.skipped_invalid > 0) parts.push(`${data.skipped_invalid} invalid (empty style/seed)`);
             toast({
                 title: `${data.inserted} avatar${data.inserted === 1 ? '' : 's'} added`,
-                description: data.total > data.inserted
-                    ? `${data.total - data.inserted} duplicate(s) skipped.`
-                    : 'All seeds are now in the pool.',
+                description: parts.length > 0 ? parts.join(', ') + ' skipped.' : 'All seeds are now in the pool.',
             });
             setSeeds([]);
             setSelected(new Set());
