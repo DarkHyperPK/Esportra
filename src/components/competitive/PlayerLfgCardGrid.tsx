@@ -54,9 +54,9 @@ export function PlayerLfgCardGrid({ listing, gameRoles = [], ranks = [], current
   const rankTier = listing.competitiveTier ?? null;
   const rankIconUrl = (() => {
     if (rankTier != null) {
-      const found = ranks.find((r) => r.sortOrder === rankTier - 2);
+      const found = ranks.find((r) => r.sortOrder === rankTier - 3);
       if (found?.iconUrl) return found.iconUrl;
-      return getRankIconUrl(rankTier - 2);
+      return getRankIconUrl(rankTier - 3);
     }
     return listing.minRankIconUrl ?? null;
   })();

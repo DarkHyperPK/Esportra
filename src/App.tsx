@@ -71,6 +71,7 @@ const LookingForPlayerPage = lazyWithRetry(() => import("./pages/competitive/Loo
 const LookingForPlayerCreatePage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerCreatePage"));
 const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
 const LfgMyListingsPage = lazyWithRetry(() => import("./pages/competitive/LfgMyListingsPage"));
+const LfgCreateWizardPage = lazyWithRetry(() => import("./pages/competitive/LfgCreateWizardPage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
 const LfgEditPage = lazyWithRetry(() => import("./pages/competitive/LfgEditPage"));
 const OpeningDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/recruitment/OpeningDiscoveryPage"));
@@ -577,7 +578,12 @@ const AppContent = React.memo(() => {
                       <LookingForPlayerCreatePage />
                     </ProtectedRoute>
                   } />
-                  <Route path="lfg/new" element={<Navigate to="/competitive/looking-for-team" replace />} />
+                  <Route path="lfg/create" element={
+                    <ProtectedRoute>
+                      <LfgCreateWizardPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="lfg/new" element={<Navigate to="/competitive/lfg/create" replace />} />
                   <Route path="lfg/mine" element={
                     <ProtectedRoute>
                       <LfgMyListingsPage />

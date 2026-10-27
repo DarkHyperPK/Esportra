@@ -10,12 +10,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useCreateLfgListing, useMyGameStats } from '@/hooks/competitive/useLfg';
 import { apiClient } from '@/lib/apiClient';
-import { VALORANT_AGENTS } from '@/lib/valorantAgents';
+import { VALORANT_AGENTS, parsePopularAgents } from '@/lib/valorantAgents';
 import { getRankIconUrl } from '@/lib/valorantRanks';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { PlayerLfgCard } from '@/components/competitive/PlayerLfgCard';
 import { RankSelector } from '@/components/competitive/RankSelector';
-import type { LfgListing, PopularAgent } from '@/types/competitive';
+import type { LfgListing } from '@/types/competitive';
 
 const GAME = 'valorant';
 const DESC_MAX = 280;
@@ -89,9 +89,7 @@ export default function LookingForTeamCreatePage() {
   const gameRoles = rolesQuery.data ?? [];
   const regions = regionsQuery.data ?? [];
 
-  const popularAgents: PopularAgent[] = Array.isArray(stats?.popularAgents)
-    ? stats.popularAgents
-    : [];
+  const popularAgents = parsePopularAgents(stats?.popularAgents);
 
   function toggleAgent(agentId: string) {
     setSelectedAgents((prev) =>

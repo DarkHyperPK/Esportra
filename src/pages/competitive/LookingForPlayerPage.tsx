@@ -98,7 +98,7 @@ export default function LookingForPlayerPage() {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/competitive/looking-for-player/create')}
+              onClick={() => navigate('/competitive/lfg/create?type=lfp')}
               className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden />
@@ -150,6 +150,43 @@ export default function LookingForPlayerPage() {
 
       <div className="flex">
         <aside className="hidden lg:block w-[240px] shrink-0 sticky top-0 h-[calc(100vh-160px)] overflow-y-auto border-r border-white/[0.06] pr-5 py-6 pl-6">
+          {/* My Active Listing */}
+          {myPublished.length > 0 && (
+            <div className="mb-5 pb-5 border-b border-white/[0.06]">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-white/30 mb-2">My Listing</p>
+              {myPublished.slice(0, 1).map((l) => (
+                <div key={l.id} className="rounded-md border border-white/[0.08] bg-white/[0.02] p-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(l.avatarSeed ?? l.teamName ?? l.username)}&size=24`}
+                      alt="" aria-hidden className="h-6 w-6 rounded shrink-0"
+                    />
+                    <span className="text-[12px] font-semibold text-white truncate">{l.teamName ?? l.username}</span>
+                  </div>
+                  {l.description && (
+                    <p className="text-[10px] text-white/30 line-clamp-2 leading-snug">{l.description}</p>
+                  )}
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="text-[9px] text-emerald-400/80 font-mono uppercase">● Live</span>
+                    <Link to={`/competitive/lfg/${l.id}`}
+                      className="ml-auto text-[10px] text-white/40 hover:text-white transition-colors">
+                      Manage →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {myPublished.length === 0 && (
+            <div className="mb-5 pb-5 border-b border-white/[0.06]">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-white/30 mb-2">My Listing</p>
+              <Link to="/competitive/lfg/create?type=lfp"
+                className="flex items-center justify-center gap-1.5 w-full border border-dashed border-white/[0.1] text-white/35 hover:text-white/60 hover:border-white/20 text-[11px] py-2.5 rounded-md transition-colors">
+                <Plus className="h-3 w-3" aria-hidden />
+                Create listing
+              </Link>
+            </div>
+          )}
           <FindTeammatesFilterPanel
             filters={filters}
             onChange={setFilters}
