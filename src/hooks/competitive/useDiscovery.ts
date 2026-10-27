@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { lfgKeys } from './queryKeys';
-import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters, PopularAgent } from '@/types/competitive';
+import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters } from '@/types/competitive';
+import { parsePopularAgents } from '@/lib/valorantAgents';
 
 function buildPlayerSearchParams(filters: PlayerSearchFilters): string {
   const params = new URLSearchParams({ game: filters.game });
@@ -41,15 +42,6 @@ export function useDiscoverPlayers(filters: PlayerSearchFilters) {
     enabled: !!filters.game,
     staleTime: 30_000,
   });
-}
-
-function parsePopularAgents(raw: unknown): PopularAgent[] | null {
-  if (!raw) return null;
-  if (Array.isArray(raw)) return raw as PopularAgent[];
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw) as PopularAgent[]; } catch { return null; }
-  }
-  return null;
 }
 
 function enrichListings(listings: LfgListing[]): LfgListing[] {

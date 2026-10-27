@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import type { LfgListing } from '@/types/competitive';
+import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 
 export function LfgAvatar({ listing, name }: { listing: LfgListing; name: string }) {
-  const [failed, setFailed] = useState(false);
+  const [failedSource, setFailedSource] = useState<string | null>(null);
   const team = listing.intent !== 'looking_for_team';
-  const source = team ? listing.teamLogoUrl : listing.avatarSeed
-    ? `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(listing.avatarSeed)}&size=80`
-    : null;
+  const source = team ? listing.teamLogoUrl : resolveLfgAvatar(listing.profileAvatarUrl, listing.avatarSeed, listing.avatarStyle);
   return <span className={`lfg-avatar ${team ? 'team' : ''}`}>
-    {source && !failed ? <img src={source} alt="" onError={() => setFailed(true)} /> : name.slice(0, 2).toUpperCase()}
+    {source && source !== failedSource ? <img src={source} alt="" onError={() => setFailedSource(source)} /> : name.slice(0, 2).toUpperCase()}
   </span>;
 }

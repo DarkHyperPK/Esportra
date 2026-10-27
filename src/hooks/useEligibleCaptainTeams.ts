@@ -12,6 +12,7 @@ export type CaptainTeamRow = {
   id: string;
   name: string;
   tag?: string | null;
+  logo_url?: string | null;
   team_kind?: string | null;
   is_solo?: boolean | null;
   games: Record<string, unknown> | string[] | string | null;

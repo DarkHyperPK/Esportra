@@ -249,6 +249,8 @@ export interface LfgListing {
   /** Spec: string | null. Kept as string for legacy Avatar component compat (T11-T13 fix). */
   username: string;
   avatarSeed: string | null;
+  profileAvatarUrl?: string | null;
+  avatarStyle?: string | null;
 
   // Canonical fields (PROJ-075)
   modeKey: string | null;
