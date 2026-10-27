@@ -4,7 +4,7 @@ import { CommandButton } from '@/components/management/CommandSurface';
 import { StatusPill, TONE_TEXT } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/contexts/notification-context';
-import type { StaffInviteState } from '@/hooks/useNotificationActions';
+import type { StaffInviteState, LfgInterestState } from '@/hooks/useNotificationActions';
 import { getNotificationKind } from '@/utils/notificationRegistry';
 import { notificationDeadline, priorityActionLabel } from '@/utils/notificationSubject';
 import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
@@ -15,9 +15,11 @@ interface NotificationPriorityCardProps {
   notification: Notification;
   compact?: boolean;
   staffInvite?: StaffInviteState;
+  lfgInterest?: LfgInterestState;
   onOpen: (n: Notification) => void;
   onMarkRead: (n: Notification) => void;
   onRespondToStaffInvite: (n: Notification, accept: boolean) => void;
+  onRespondToLfgInterest?: (n: Notification, accept: boolean) => void;
 }
 
 /**
@@ -25,7 +27,7 @@ interface NotificationPriorityCardProps {
  * clock if there is one, and the one action that resolves it.
  */
 export function NotificationPriorityCard({
-  notification: n, compact, staffInvite, onOpen, onMarkRead, onRespondToStaffInvite,
+  notification: n, compact, staffInvite, lfgInterest, onOpen, onMarkRead, onRespondToStaffInvite, onRespondToLfgInterest,
 }: NotificationPriorityCardProps) {
   const kind = getNotificationKind(n.type);
   const deadline = notificationDeadline(n);
@@ -33,6 +35,9 @@ export function NotificationPriorityCard({
   const isStaffInvite = n.type === 'staff_invite' && typeof n.data?.organization_staff_id === 'string';
   const busy = staffInvite === 'accepting' || staffInvite === 'declining';
   const resolved = staffInvite === 'accepted' || staffInvite === 'declined';
+  const isLfgInterest = n.type === 'lfg_interest_received' && typeof n.data?.interest_id === 'string';
+  const lfgBusy = lfgInterest === 'accepting' || lfgInterest === 'declining';
+  const lfgResolved = lfgInterest === 'accepted' || lfgInterest === 'declined';
 
   return (
     <article
@@ -78,6 +83,19 @@ export function NotificationPriorityCard({
               </CommandButton>
               <CommandButton variant="ghost" size="sm" disabled={busy} onClick={() => onRespondToStaffInvite(n, false)}>
                 {staffInvite === 'declining' ? 'Declining' : 'Decline'}
+              </CommandButton>
+            </>
+          )
+        ) : isLfgInterest ? (
+          lfgResolved ? (
+            <StatusPill tone={lfgInterest === 'accepted' ? 'success' : 'neutral'} label={lfgInterest === 'accepted' ? 'Accepted' : 'Declined'} />
+          ) : (
+            <>
+              <CommandButton variant="primary" size="sm" slide disabled={lfgBusy} onClick={() => onRespondToLfgInterest?.(n, true)}>
+                {lfgInterest === 'accepting' ? 'Accepting…' : 'Accept'}
+              </CommandButton>
+              <CommandButton variant="ghost" size="sm" disabled={lfgBusy} onClick={() => onRespondToLfgInterest?.(n, false)}>
+                {lfgInterest === 'declining' ? 'Declining…' : 'Decline'}
               </CommandButton>
             </>
           )

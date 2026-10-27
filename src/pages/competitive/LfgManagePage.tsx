@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Pencil, Pause, Play, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Pencil, Pause, Play, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLfgListing, useLfgInterests,
-  usePublishLfgListing, usePauseLfgListing, useCloseLfgListing,
+  usePublishLfgListing, usePauseLfgListing, useDeleteLfgListing,
   useAcceptInterest, useDeclineInterest,
 } from '@/hooks/competitive/useLfg';
 import { useCatalogGameRoles } from '@/hooks/competitive/useCatalog';
@@ -15,8 +16,6 @@ import { CompetitivePageShell } from '@/components/competitive/CompetitivePageSh
 import type { LfgStatus } from '@/types/competitive';
 
 const GAME = 'valorant';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function relativeDate(iso: string | null) {
   if (!iso) return '';
@@ -41,14 +40,12 @@ function StatusBadge({ status }: { status: LfgStatus }) {
   );
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
 export default function LfgManagePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeInterestId, setActiveInterestId] = useState<string | null>(null);
   const [interestAction, setInterestAction] = useState<'accept' | 'decline' | null>(null);
 
@@ -57,12 +54,12 @@ export default function LfgManagePage() {
   const rolesQuery = useCatalogGameRoles(GAME);
   const publishMutation = usePublishLfgListing(id!);
   const pauseMutation = usePauseLfgListing(id!);
-  const closeMutation = useCloseLfgListing(id!);
+  const deleteMutation = useDeleteLfgListing(id!);
   const acceptInterest = useAcceptInterest(id!);
   const declineInterest = useDeclineInterest(id!);
 
   const gameRoles = rolesQuery.data ?? [];
-  const isStatusPending = publishMutation.isPending || pauseMutation.isPending || closeMutation.isPending;
+  const isStatusPending = publishMutation.isPending || pauseMutation.isPending || deleteMutation.isPending;
 
   if (listingQuery.isLoading) {
     return (
@@ -111,11 +108,15 @@ export default function LfgManagePage() {
     finally { setActiveInterestId(null); setInterestAction(null); }
   }
 
+  async function handleDelete() {
+    await deleteMutation.mutateAsync();
+    navigate('/competitive/lfg/mine');
+  }
+
   return (
     <CompetitivePageShell>
       <div className="max-w-xl mx-auto px-4 sm:px-6 pt-6 pb-16">
 
-        {/* Back nav */}
         <Link to="/competitive/lfg/mine"
           className="inline-flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors mb-8">
           <ArrowLeft className="h-4 w-4" />
@@ -153,22 +154,31 @@ export default function LfgManagePage() {
 
         {/* Interests */}
         {!['draft', 'removed'].includes(listing.status) && interests.length > 0 && (
-          <div className="mb-6 space-y-3">
+          <div className="mb-6">
             <div className="border-t border-white/[0.06] pt-4">
               <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-white/25 mb-3">
                 Interests ({interests.length})
               </p>
-              {[...pendingInterests, ...acceptedInterests].map((interest) => (
-                <LfgInterestCard
-                  key={interest.id}
-                  interest={interest}
-                  onAccept={handleAccept}
-                  onDecline={handleDecline}
-                  isAccepting={activeInterestId === interest.id && interestAction === 'accept'}
-                  isDeclining={activeInterestId === interest.id && interestAction === 'decline'}
-                  readonly={isReadonly}
-                />
-              ))}
+              <motion.div
+                className="space-y-3"
+                initial="hidden"
+                animate="show"
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+              >
+                <AnimatePresence mode="popLayout">
+                  {[...pendingInterests, ...acceptedInterests].map((interest) => (
+                    <LfgInterestCard
+                      key={interest.id}
+                      interest={interest}
+                      onAccept={handleAccept}
+                      onDecline={handleDecline}
+                      isAccepting={activeInterestId === interest.id && interestAction === 'accept'}
+                      isDeclining={activeInterestId === interest.id && interestAction === 'decline'}
+                      readonly={isReadonly}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             </div>
           </div>
         )}
@@ -186,107 +196,125 @@ export default function LfgManagePage() {
         {/* Actions */}
         {listing.status !== 'removed' && (
           <div className="border-t border-white/[0.06] pt-6">
-            {!showCloseConfirm ? (
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Edit */}
-                {!isReadonly && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/competitive/lfg/${id}/edit`)}
-                    className="flex items-center gap-1.5 rounded-md border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-colors"
-                  >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden />
-                    Edit
-                  </button>
-                )}
+            <AnimatePresence mode="wait" initial={false}>
+              {!showDeleteConfirm ? (
+                <motion.div
+                  key="actions"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex flex-wrap items-center gap-3"
+                >
+                  {!isReadonly && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => navigate(`/competitive/lfg/${id}/edit`)}
+                      className="flex items-center gap-1.5 border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      Edit
+                    </motion.button>
+                  )}
 
-                {/* Pause/Resume */}
-                {listing.status === 'published' && (
-                  <button
-                    type="button"
-                    onClick={() => pauseMutation.mutate()}
-                    disabled={isStatusPending}
-                    className="flex items-center gap-1.5 rounded-md border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
-                  >
-                    {pauseMutation.isPending
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Pause className="h-3.5 w-3.5" aria-hidden />}
-                    Pause
-                  </button>
-                )}
-                {listing.status === 'paused' && (
-                  <button
-                    type="button"
-                    onClick={() => publishMutation.mutate()}
-                    disabled={isStatusPending}
-                    className="flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
-                  >
-                    {publishMutation.isPending
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      : <Play className="h-3.5 w-3.5" aria-hidden />}
-                    Resume
-                  </button>
-                )}
-                {listing.status === 'draft' && (
-                  <button
-                    type="button"
-                    onClick={() => publishMutation.mutate()}
-                    disabled={isStatusPending}
-                    className="flex items-center gap-1.5 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
-                  >
-                    {publishMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                    Publish
-                  </button>
-                )}
-                {(isReadonly) && (
-                  <button
-                    type="button"
-                    onClick={() => navigate('/competitive/find-teammates')}
-                    className="rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-colors"
-                  >
-                    Create new listing
-                  </button>
-                )}
+                  {listing.status === 'published' && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => pauseMutation.mutate()}
+                      disabled={isStatusPending}
+                      className="flex items-center gap-1.5 border border-white/[0.1] text-white/70 hover:text-white text-[13px] px-4 h-9 transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)] disabled:opacity-50"
+                    >
+                      {pauseMutation.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Pause className="h-3.5 w-3.5" aria-hidden />}
+                      Pause
+                    </motion.button>
+                  )}
+                  {listing.status === 'paused' && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => publishMutation.mutate()}
+                      disabled={isStatusPending}
+                      className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 text-[13px] px-4 h-9 transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(52,211,153,0.2)] disabled:opacity-50"
+                    >
+                      {publishMutation.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Play className="h-3.5 w-3.5" aria-hidden />}
+                      Resume
+                    </motion.button>
+                  )}
+                  {listing.status === 'draft' && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => publishMutation.mutate()}
+                      disabled={isStatusPending}
+                      className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(244,63,94,0.4)] disabled:opacity-50"
+                    >
+                      {publishMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Publish
+                    </motion.button>
+                  )}
+                  {isReadonly && (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => navigate('/competitive/find-teammates')}
+                      className="bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-4 h-9 transition-all hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(244,63,94,0.4)]"
+                    >
+                      Create new listing
+                    </motion.button>
+                  )}
 
-                {/* Close */}
-                {!isReadonly && (
-                  <button
+                  <motion.button
                     type="button"
-                    onClick={() => setShowCloseConfirm(true)}
-                    className="ml-auto text-[13px] text-red-400/70 hover:text-red-400 transition-colors"
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="ml-auto flex items-center gap-1.5 text-[13px] text-red-400/60 hover:text-red-400 transition-colors"
                   >
-                    Close listing
-                  </button>
-                )}
-              </div>
-            ) : (
-              /* Close confirm inline */
-              <div className="rounded-md border border-red-500/20 bg-red-500/[0.06] p-4 space-y-3">
-                <p className="text-[14px] text-white font-medium">Close this listing?</p>
-                <p className="text-[13px] text-white/55">It will no longer be visible to other players.</p>
-                <div className="flex gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => { closeMutation.mutate(); setShowCloseConfirm(false); }}
-                    disabled={closeMutation.isPending}
-                    className="flex items-center gap-2 rounded-md bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
-                  >
-                    {closeMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Close listing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCloseConfirm(false)}
-                    className="flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="confirm"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="rounded-sm border border-red-500/25 bg-red-500/[0.07] p-4 space-y-3 shadow-[0_4px_20px_rgba(239,68,68,0.1)]"
+                >
+                  <p className="text-[14px] text-white font-medium">Delete this listing?</p>
+                  <p className="text-[13px] text-white/50">Permanently removes it and all interests. Can't be undone.</p>
+                  <div className="flex gap-3 pt-1">
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => void handleDelete()}
+                      disabled={deleteMutation.isPending}
+                      className="flex items-center gap-2 bg-red-500/25 border border-red-500/35 text-red-400 hover:bg-red-500/35 text-[13px] px-4 h-9 transition-all hover:shadow-[0_4px_12px_rgba(239,68,68,0.2)] disabled:opacity-50"
+                    >
+                      {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Delete listing
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[13px] text-white/40 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {(publishMutation.isError || pauseMutation.isError || closeMutation.isError) && (
+            {(publishMutation.isError || pauseMutation.isError || deleteMutation.isError) && (
               <p className="mt-3 text-[12px] text-red-400">Action failed. Try again.</p>
             )}
           </div>

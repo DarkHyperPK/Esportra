@@ -8,7 +8,7 @@ import type { Notification } from '@/contexts/notification-context';
 import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
 import { buildRedeemInvitePath, getTournamentInviteFromNotification } from '@/utils/tournamentInviteNotification';
 
-export type NotificationCategory = 'matches' | 'disputes' | 'teams' | 'tournaments' | 'staff' | 'system';
+export type NotificationCategory = 'matches' | 'disputes' | 'teams' | 'tournaments' | 'staff' | 'competitive' | 'system';
 
 export interface NotificationKind {
   icon: LucideIcon;
@@ -52,6 +52,8 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   payment_rejected: kind(XCircle, 'warning', 'tournaments', 'Payment'),
   ban: kind(ShieldAlert, 'critical', 'tournaments', 'Banned'),
   kick: kind(ShieldAlert, 'warning', 'tournaments', 'Removed'),
+  // Competitive
+  lfg_interest_received: kind(Users, 'accent', 'competitive', 'LFG Interest'),
   // Staff
   staff_invite: kind(Shield, 'accent', 'staff', 'Staff invite'),
   // System
@@ -70,6 +72,7 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   teams: 'Teams',
   tournaments: 'Tournaments',
   staff: 'Staff',
+  competitive: 'Competitive',
   system: 'Other',
 };
 

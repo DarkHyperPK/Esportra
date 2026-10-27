@@ -94,9 +94,11 @@ const NotificationsPage = () => {
                 key={n.id}
                 notification={n}
                 staffInvite={actions.staffInvites[n.id]}
+                lfgInterest={actions.lfgInterests[n.id]}
                 onOpen={(x) => void actions.open(x)}
                 onMarkRead={(x) => void actions.markRead(x)}
                 onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+                onRespondToLfgInterest={(x, accept) => void actions.respondToLfgInterest(x, accept)}
               />
             )}
             isLoading={actions.isLoading}
@@ -112,9 +114,11 @@ const NotificationsPage = () => {
                 selected={selected.has(n.id)}
                 onSelectedChange={(on) => toggle(n.id, on)}
                 staffInvite={actions.staffInvites[n.id]}
+                lfgInterest={actions.lfgInterests[n.id]}
                 onOpen={(x) => void actions.open(x)}
                 onMarkRead={(x) => void actions.markRead(x)}
                 onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+                onRespondToLfgInterest={(x, accept) => void actions.respondToLfgInterest(x, accept)}
                 onDelete={isSyntheticNotification(n.id) ? undefined : (x) => void actions.remove([x.id])}
               />
             )}

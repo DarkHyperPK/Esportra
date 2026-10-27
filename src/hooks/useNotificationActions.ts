@@ -9,6 +9,7 @@ import type { Notification } from '@/contexts/notification-context';
 import { isSyntheticNotification, resolveNotificationDestination } from '@/utils/notificationRegistry';
 
 export type StaffInviteState = 'accepting' | 'declining' | 'accepted' | 'declined';
+export type LfgInterestState = 'accepting' | 'declining' | 'accepted' | 'declined';
 
 /**
  * Everything a notification surface can do: open, mark read, answer a staff
@@ -22,6 +23,7 @@ export function useNotificationActions({ onNavigate }: { onNavigate?: () => void
   const { toast } = useToast();
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set());
   const [staffInvites, setStaffInvites] = useState<Record<string, StaffInviteState>>({});
+  const [lfgInterests, setLfgInterests] = useState<Record<string, LfgInterestState>>({});
 
   const notifications = useMemo(
     () => ctx.notifications.filter((n) => !hiddenIds.has(n.id)),
@@ -72,6 +74,34 @@ export function useNotificationActions({ onNavigate }: { onNavigate?: () => void
     }
   }, [ctx, markRead, navigate, onNavigate, toast, user?.id]);
 
+  const respondToLfgInterest = useCallback(async (n: Notification, accept: boolean) => {
+    const interestId = typeof n.data?.interest_id === 'string' ? n.data.interest_id : null;
+    if (!interestId) return;
+    setLfgInterests((s) => ({ ...s, [n.id]: accept ? 'accepting' : 'declining' }));
+    try {
+      const action = accept ? 'accept' : 'decline';
+      const result = await apiClient.post<{ conversation_id?: string }>(`/api/competitive/lfg/interests/${interestId}/${action}`);
+      setLfgInterests((s) => ({ ...s, [n.id]: accept ? 'accepted' : 'declined' }));
+      await markRead(n);
+      if (accept && result?.conversation_id) {
+        onNavigate?.();
+        navigate(`/inbox/${result.conversation_id}`);
+      }
+      void ctx.refreshNotifications();
+    } catch {
+      setLfgInterests((s) => {
+        const next = { ...s };
+        delete next[n.id];
+        return next;
+      });
+      toast({
+        title: "Couldn't respond to interest",
+        description: 'Check your connection and try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [ctx, markRead, navigate, onNavigate, toast]);
+
   const remove = useCallback(async (ids: string[]) => {
     const deletable = ids.filter((id) => !isSyntheticNotification(id));
     if (deletable.length === 0) return false;
@@ -106,6 +136,8 @@ export function useNotificationActions({ onNavigate }: { onNavigate?: () => void
     open,
     respondToStaffInvite,
     staffInvites,
+    respondToLfgInterest,
+    lfgInterests,
     remove,
   };
 }

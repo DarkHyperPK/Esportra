@@ -6,7 +6,7 @@ import { CommandButton, CommandIconButton } from '@/components/management/Comman
 import { StatusPill, TONE_TEXT } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/contexts/notification-context';
-import type { StaffInviteState } from '@/hooks/useNotificationActions';
+import type { StaffInviteState, LfgInterestState } from '@/hooks/useNotificationActions';
 import { getNotificationKind } from '@/utils/notificationRegistry';
 import { getDenseScheduleNotificationMeta, isLongNotificationMessage } from '@/utils/notificationDisplay';
 import { MatchScheduleNotificationBody } from './MatchScheduleNotificationBody';
@@ -16,12 +16,14 @@ interface NotificationItemProps {
   notification: Notification;
   density?: 'compact' | 'comfortable';
   staffInvite?: StaffInviteState;
+  lfgInterest?: LfgInterestState;
   selectable?: boolean;
   selected?: boolean;
   onSelectedChange?: (selected: boolean) => void;
   onOpen: (n: Notification) => void;
   onMarkRead: (n: Notification) => void;
   onRespondToStaffInvite: (n: Notification, accept: boolean) => void;
+  onRespondToLfgInterest?: (n: Notification, accept: boolean) => void;
   onDelete?: (n: Notification) => void;
 }
 
@@ -36,8 +38,8 @@ function relativeTime(iso: string | undefined | null): string {
  * it, never inside it. Unread carries the only rose cue: a 2px inset rule.
  */
 export function NotificationItem({
-  notification: n, density = 'comfortable', staffInvite, selectable, selected, onSelectedChange,
-  onOpen, onMarkRead, onRespondToStaffInvite, onDelete,
+  notification: n, density = 'comfortable', staffInvite, lfgInterest, selectable, selected, onSelectedChange,
+  onOpen, onMarkRead, onRespondToStaffInvite, onRespondToLfgInterest, onDelete,
 }: NotificationItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -70,6 +72,9 @@ export function NotificationItem({
   const isPendingStaffInvite = n.type === 'staff_invite' && typeof n.data?.organization_staff_id === 'string'
     && staffInvite !== 'accepted' && staffInvite !== 'declined';
   const busy = staffInvite === 'accepting' || staffInvite === 'declining';
+  const isPendingLfgInterest = n.type === 'lfg_interest_received' && typeof n.data?.interest_id === 'string'
+    && lfgInterest !== 'accepted' && lfgInterest !== 'declined';
+  const lfgBusy = lfgInterest === 'accepting' || lfgInterest === 'declining';
   // Long messages (organizer alerts list several findings) expand in place; the row still opens the action.
   const isLong = !hasSchedule && !isAnnouncement && isLongNotificationMessage(n.message);
   const toggleExpanded = () => {
@@ -83,7 +88,7 @@ export function NotificationItem({
       onMarkRead(n);
       return;
     }
-    if (isPendingStaffInvite) {
+    if (isPendingStaffInvite || isPendingLfgInterest) {
       onMarkRead(n);
       return;
     }
@@ -138,7 +143,7 @@ export function NotificationItem({
           </span>
         </button>
 
-        {(isAnnouncement || isLong || isPendingStaffInvite || staffInvite === 'accepted' || staffInvite === 'declined') && (
+        {(isAnnouncement || isLong || isPendingStaffInvite || staffInvite === 'accepted' || staffInvite === 'declined' || isPendingLfgInterest || lfgInterest === 'accepted' || lfgInterest === 'declined') && (
           <div className="mt-3 flex flex-wrap items-center gap-2 pl-[3.5rem]">
             {isLong && (
               <CommandButton variant="ghost" size="sm" onClick={toggleExpanded} aria-expanded={expanded}>
@@ -172,6 +177,18 @@ export function NotificationItem({
             )}
             {staffInvite === 'accepted' && <StatusPill tone="success" label="Accepted" />}
             {staffInvite === 'declined' && <StatusPill tone="neutral" label="Declined" />}
+            {isPendingLfgInterest && (
+              <>
+                <CommandButton variant="primary" size="sm" slide disabled={lfgBusy} onClick={() => onRespondToLfgInterest?.(n, true)}>
+                  {lfgInterest === 'accepting' ? 'Accepting…' : 'Accept'}
+                </CommandButton>
+                <CommandButton variant="ghost" size="sm" disabled={lfgBusy} onClick={() => onRespondToLfgInterest?.(n, false)}>
+                  {lfgInterest === 'declining' ? 'Declining…' : 'Decline'}
+                </CommandButton>
+              </>
+            )}
+            {lfgInterest === 'accepted' && <StatusPill tone="success" label="Accepted" />}
+            {lfgInterest === 'declined' && <StatusPill tone="neutral" label="Declined" />}
           </div>
         )}
       </div>

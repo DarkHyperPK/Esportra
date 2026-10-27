@@ -91,9 +91,11 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
                 notification={n}
                 compact
                 staffInvite={actions.staffInvites[n.id]}
+                lfgInterest={actions.lfgInterests[n.id]}
                 onOpen={(x) => void actions.open(x)}
                 onMarkRead={(x) => void actions.markRead(x)}
                 onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+                onRespondToLfgInterest={(x, accept) => void actions.respondToLfgInterest(x, accept)}
               />
             )}
             isLoading={actions.isLoading}
@@ -110,9 +112,11 @@ export const NotificationSidebar = ({ className }: { className?: string }) => {
                 notification={n}
                 density="compact"
                 staffInvite={actions.staffInvites[n.id]}
+                lfgInterest={actions.lfgInterests[n.id]}
                 onOpen={(x) => void actions.open(x)}
                 onMarkRead={(x) => void actions.markRead(x)}
                 onRespondToStaffInvite={(x, accept) => void actions.respondToStaffInvite(x, accept)}
+                onRespondToLfgInterest={(x, accept) => void actions.respondToLfgInterest(x, accept)}
               />
             )}
           />

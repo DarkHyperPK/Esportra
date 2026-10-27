@@ -218,6 +218,20 @@ export function useDeclineInterest(listingId: string) {
 }
 
 /**
+ * DELETE /api/competitive/lfg/{id} — hard delete own listing
+ */
+export function useDeleteLfgListing(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.delete(`/api/competitive/lfg/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
+    },
+  });
+}
+
+/**
  * DELETE /api/competitive/lfg/{listingId}/interest — withdraw own interest
  */
 export function useWithdrawInterest(listingId: string) {
