@@ -55,15 +55,16 @@ const NOUNS = [
 // 57 × 57 = 3249 combos per style; with a 2-digit suffix option that's 324,900+
 const SUFFIXES = ['', '2', '3', 'x', 'pro', 'og', 'v2'];
 
-function generateRandomSeeds(count: number): string[] {
+function generateRandomSeeds(count: number, exclude: Set<string> = new Set()): string[] {
     const out = new Set<string>();
     let attempts = 0;
-    while (out.size < count && attempts < count * 20) {
+    while (out.size < count && attempts < count * 50) {
         attempts++;
         const a = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
         const n = NOUNS[Math.floor(Math.random() * NOUNS.length)];
         const s = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
-        out.add(`${a}${n}${s}`);
+        const seed = `${a}${n}${s}`;
+        if (!exclude.has(seed)) out.add(seed);
     }
     return [...out];
 }
@@ -77,12 +78,13 @@ function dicebearUrl(style: string, seed: string) {
 // ── Pool item card ─────────────────────────────────────────────────────────────
 
 function PoolItemCard({
-    item, isSelected, onToggleSelect, onDelete,
+    item, isSelected, onToggleSelect, onDelete, onForceDelete,
 }: {
     item: AdminPoolItem;
     isSelected: boolean;
     onToggleSelect: () => void;
     onDelete: (id: string) => void;
+    onForceDelete: (id: string) => void;
 }) {
     const isClaimed = !!item.claimed_by;
 
@@ -135,6 +137,16 @@ function PoolItemCard({
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 )}
+                {isClaimed && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onForceDelete(item.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-700 hover:text-red-600"
+                        title="Force delete (clears user's avatar)"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
             </div>
 
             {isClaimed ? (
@@ -160,6 +172,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
     const [style, setStyle] = useState<AvatarStyleId>('critters');
     const [seeds, setSeeds] = useState<string[]>([]);
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [generating, setGenerating] = useState(false);
 
     const batchMutation = useMutation({
         mutationFn: (items: { Style: string; Seed: string }[]) =>
@@ -181,13 +194,34 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
         },
     });
 
-    const handleGenerate = () => {
-        const generated = generateRandomSeeds(10);
-        setSeeds(prev => {
-            const existing = new Set(prev);
-            generated.forEach(s => existing.add(s));
-            return [...existing];
-        });
+    const handleGenerate = async () => {
+        setGenerating(true);
+        try {
+            const { seeds: existingSeeds } = await apiClient.get<{ seeds: string[] }>(
+                `/api/admin/avatars/pool/seeds?style=${encodeURIComponent(style)}`
+            );
+            const existingSet = new Set(existingSeeds);
+            const generated = generateRandomSeeds(10, existingSet);
+            if (generated.length === 0) {
+                toast({ title: 'No unique seeds found', description: 'All combinations for this style are taken. Try a different style.', variant: 'destructive' });
+                return;
+            }
+            setSeeds(prev => {
+                const next = new Set(prev);
+                generated.forEach(s => next.add(s));
+                return [...next];
+            });
+        } catch {
+            // Fallback: generate without exclusion check
+            const generated = generateRandomSeeds(10);
+            setSeeds(prev => {
+                const next = new Set(prev);
+                generated.forEach(s => next.add(s));
+                return [...next];
+            });
+        } finally {
+            setGenerating(false);
+        }
     };
 
     const toggleSelect = (seed: string) => {
@@ -240,9 +274,10 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                 <button
                     type="button"
                     onClick={handleGenerate}
-                    className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+                    disabled={generating}
+                    className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
-                    <Wand2 className="w-3 h-3" />
+                    {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
                     Generate 10
                 </button>
                 {seeds.length > 0 && (
@@ -372,6 +407,17 @@ export default function AvatarPoolManagement() {
         },
         onError: (err: any) => {
             toast({ title: 'Cannot delete', description: err?.body?.error ?? 'Something went wrong.', variant: 'destructive' });
+        },
+    });
+
+    const forceDeleteMutation = useMutation({
+        mutationFn: (id: string) => apiClient.delete(`/api/admin/avatars/pool/${id}?force=true`),
+        onSuccess: () => {
+            toast({ title: 'Avatar force-removed', description: 'Item deleted and user\'s avatar cleared.' });
+            queryClient.invalidateQueries({ queryKey: ['admin-avatar-pool'] });
+        },
+        onError: (err: any) => {
+            toast({ title: 'Force delete failed', description: err?.body?.error ?? 'Something went wrong.', variant: 'destructive' });
         },
     });
 
@@ -533,6 +579,7 @@ export default function AvatarPoolManagement() {
                                             isSelected={poolSelected.has(item.id)}
                                             onToggleSelect={() => togglePoolSelect(item.id)}
                                             onDelete={(id) => deleteMutation.mutate(id)}
+                                            onForceDelete={(id) => forceDeleteMutation.mutate(id)}
                                         />
                                     ))}
                                 </div>
