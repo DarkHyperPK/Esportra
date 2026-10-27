@@ -97,7 +97,13 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
   const expressInterest = useExpressInterest(listing.id);
   const isOwn = currentUserId === listing.userId;
 
-  const popularAgents = (listing.popularAgents ?? []) as PopularAgent[];
+  const popularAgents: PopularAgent[] = (() => {
+    const raw = listing.popularAgents;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw as PopularAgent[];
+    if (typeof raw === 'string') { try { return JSON.parse(raw) as PopularAgent[]; } catch { return []; } }
+    return [];
+  })();
   const top2Agents = popularAgents.slice(0, 2);
   const preferredRoles = listing.preferredRoles ?? [];
 

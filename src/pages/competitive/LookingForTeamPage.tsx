@@ -57,18 +57,13 @@ export default function LookingForTeamPage() {
 
   return (
     <CompetitivePageShell>
-      <div className="px-6 pt-8 pb-4">
+      <div className="px-6 pt-8 pb-0">
         <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-1">VALORANT</p>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 mb-5">
           <h1 className="[font-family:var(--font-heading)] font-black text-[28px] text-white leading-tight">
-            Find a Team
+            Matchmaking
           </h1>
           <div className="flex items-center gap-3 shrink-0">
-            {myListingsCount > 0 && (
-              <Link to="/competitive/lfg/mine" className="text-[13px] text-white/55 hover:text-white transition-colors hidden sm:block">
-                My Listings
-              </Link>
-            )}
             <button
               type="button"
               onClick={() => navigate('/competitive/looking-for-team/create')}
@@ -78,6 +73,33 @@ export default function LookingForTeamPage() {
               <span className="hidden sm:inline">I'm Looking</span>
             </button>
           </div>
+        </div>
+
+        {/* Pane tabs */}
+        <div className="flex items-center gap-0 border-b border-white/[0.08]">
+          <Link
+            to="/competitive/looking-for-team"
+            className="px-4 py-2.5 text-[12px] font-medium border-b-2 -mb-px transition-colors border-rose-500 text-white"
+          >
+            Find a Team
+            <span className="ml-1.5 text-[10px] text-white/30">Players LFT</span>
+          </Link>
+          <Link
+            to="/competitive/looking-for-player"
+            className="px-4 py-2.5 text-[12px] font-medium border-b-2 -mb-px transition-colors border-transparent text-white/40 hover:text-white/70"
+          >
+            Find Players
+            <span className="ml-1.5 text-[10px] text-white/20">Teams LFP</span>
+          </Link>
+          {myListingsCount > 0 && (
+            <Link
+              to="/competitive/lfg/mine"
+              className="ml-auto px-4 py-2.5 text-[12px] font-medium border-b-2 -mb-px transition-colors border-transparent text-white/40 hover:text-white/70"
+            >
+              My Listings
+              <span className="ml-1 text-[10px] text-rose-400/70">{myListingsCount}</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -110,13 +132,6 @@ export default function LookingForTeamPage() {
           <p className="text-[11px] font-mono text-white/35 mb-3">
             Sorted by most recent. Players looking for a team.
           </p>
-
-          {myListingsCount > 0 && (
-            <p className="text-[12px] text-white/40 mb-3">
-              You have {myListingsCount} listing{myListingsCount > 1 ? 's' : ''}.{' '}
-              <Link to="/competitive/lfg/mine" className="text-white/60 hover:text-white transition-colors">Manage</Link>
-            </p>
-          )}
 
           {lfgQuery.isLoading ? (
             <div className="space-y-3">{[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}</div>

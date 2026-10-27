@@ -89,27 +89,43 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
-function SidebarSection({ section, collapsed }: { section: NavSection; collapsed: boolean }) {
+function SidebarSection({ section, collapsed, onExpand }: { section: NavSection; collapsed: boolean; onExpand?: () => void }) {
   const { pathname } = useLocation();
   const active = isSectionActive(section, pathname);
   const Icon = section.icon;
   const [open, setOpen] = useState(active);
 
   if (collapsed) {
+    const hasSubItems = section.items.length > 0;
     const primaryTo = section.to ?? section.items[0]?.to ?? '/';
+    const baseClass = cn(
+      'relative flex w-full justify-center py-3 transition-colors',
+      active ? 'text-rose-400' : 'text-white/50 hover:text-white/80',
+    );
+    const indicator = active && (
+      <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-rose-500" aria-hidden="true" />
+    );
+    if (hasSubItems) {
+      return (
+        <button
+          type="button"
+          aria-label={section.label}
+          onClick={() => onExpand?.()}
+          className={baseClass}
+        >
+          <Icon className="h-5 w-5" />
+          {indicator}
+        </button>
+      );
+    }
     return (
       <Link
         to={primaryTo}
         aria-label={section.label}
-        className={cn(
-          'relative flex w-full justify-center py-3 transition-colors',
-          active ? 'text-rose-400' : 'text-white/50 hover:text-white/80',
-        )}
+        className={baseClass}
       >
         <Icon className="h-5 w-5" />
-        {active && (
-          <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-rose-500" aria-hidden="true" />
-        )}
+        {indicator}
       </Link>
     );
   }
@@ -387,7 +403,7 @@ export function ProductSidebar() {
               {i > 0 && !isCollapsed && (
                 <div className="mx-3 my-1 h-px bg-white/[0.08]" aria-hidden="true" />
               )}
-              <SidebarSection section={section} collapsed={isCollapsed} />
+              <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
             </div>
           ))}
         </nav>
