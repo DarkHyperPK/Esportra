@@ -33,7 +33,29 @@ function rankColorFromName(name: string | null): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SeedAvatar({ seed, size = 32, accentColor }: { seed: string | null; size?: number; accentColor?: string }) {
+function SeedAvatar({ seed, username, size = 32, accentColor }: {
+  seed: string | null;
+  username?: string;
+  size?: number;
+  accentColor?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const avatarSeed = encodeURIComponent(seed ?? username ?? 'unknown');
+  const src = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${avatarSeed}&size=${size}`;
+
+  if (!failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        onError={() => setFailed(true)}
+        className="shrink-0 rounded"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   return (
     <span aria-hidden className="flex shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold"
       style={{
@@ -42,7 +64,7 @@ function SeedAvatar({ seed, size = 32, accentColor }: { seed: string | null; siz
         color: accentColor ?? 'rgba(255,255,255,0.6)',
         border: accentColor ? `1px solid ${accentColor}44` : undefined,
       }}>
-      {(seed ?? '??').slice(0, 2).toUpperCase()}
+      {(seed ?? username ?? '??').slice(0, 2).toUpperCase()}
     </span>
   );
 }
@@ -156,7 +178,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
 
         {/* Row 1: identity + time */}
         <div className="flex items-center gap-2">
-          <SeedAvatar seed={listing.avatarSeed} accentColor={rankFallbackColor !== '#52525b' ? rankFallbackColor : undefined} />
+          <SeedAvatar seed={listing.avatarSeed} username={listing.username} accentColor={rankFallbackColor !== '#52525b' ? rankFallbackColor : undefined} />
           <span className="text-[13px] font-semibold text-white truncate leading-none flex-1 min-w-0">
             {listing.username}
           </span>

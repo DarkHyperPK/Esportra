@@ -113,12 +113,18 @@ export function PlayerLfgCardGrid({ listing, gameRoles = [], ranks = [], current
 
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-2.5 pointer-events-none">
-        {rankIconUrl ? (
-          <img src={rankIconUrl} alt={rankName ?? 'Rank'} title={rankName ?? undefined}
-            className="h-7 w-7 object-contain drop-shadow-lg" />
-        ) : (
-          <span className="h-7 w-7" />
-        )}
+        <div className="flex items-center gap-1.5">
+          <img
+            src={`https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(listing.avatarSeed ?? listing.username)}&size=28`}
+            alt=""
+            aria-hidden
+            className="h-7 w-7 rounded drop-shadow-lg"
+          />
+          {rankIconUrl && (
+            <img src={rankIconUrl} alt={rankName ?? 'Rank'} title={rankName ?? undefined}
+              className="h-5 w-5 object-contain drop-shadow-lg" />
+          )}
+        </div>
         <span className="text-[9px] font-mono text-white/35 mt-0.5">{relativeTime(listing.createdAt)}</span>
       </div>
 
