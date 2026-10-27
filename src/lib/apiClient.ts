@@ -18,7 +18,6 @@ import { supabase } from '@/lib/supabase';
 import { readGhostModeSession } from '@/lib/ghostModeSession';
 import { clearUserBrowserStorage } from '@/lib/resetClientSession';
 import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
-import { toSnakeCaseDeep } from '@/lib/caseTransform';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -276,7 +275,7 @@ export const apiClient = {
   async postWithToken<T>(path: string, token: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'POST',
-      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     }, 0, { overrideToken: token });
     const json = await res.json();
     return json as T;
@@ -294,7 +293,7 @@ export const apiClient = {
   async post<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'POST',
-      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     const json = await res.json();
@@ -305,7 +304,7 @@ export const apiClient = {
   async put<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PUT',
-      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     const json = await res.json();
@@ -316,7 +315,7 @@ export const apiClient = {
   async patch<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PATCH',
-      body: body !== undefined ? JSON.stringify(toSnakeCaseDeep(body)) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     const json = await res.json();
     return json as T;
