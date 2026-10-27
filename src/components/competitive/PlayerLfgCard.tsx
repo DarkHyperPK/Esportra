@@ -3,7 +3,8 @@ import { Loader2, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useExpressInterest } from '@/hooks/competitive/useLfg';
 import { ApiError } from '@/lib/apiClient';
-import { resolveAgent } from '@/lib/valorantAgents';
+import { resolveAgent, parsePopularAgents } from '@/lib/valorantAgents';
+import { getRankIconUrl } from '@/lib/valorantRanks';
 import type { LfgListing, CatalogGameRole, CatalogRankTier, PopularAgent } from '@/types/competitive';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -32,10 +33,15 @@ function rankColorFromName(name: string | null): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SeedAvatar({ seed, size = 32 }: { seed: string | null; size?: number }) {
+function SeedAvatar({ seed, size = 32, accentColor }: { seed: string | null; size?: number; accentColor?: string }) {
   return (
-    <span aria-hidden className="flex shrink-0 items-center justify-center rounded bg-white/[0.08] font-mono text-[10px] font-bold text-white/60"
-      style={{ width: size, height: size }}>
+    <span aria-hidden className="flex shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold"
+      style={{
+        width: size, height: size,
+        backgroundColor: accentColor ? `${accentColor}22` : 'rgba(255,255,255,0.08)',
+        color: accentColor ?? 'rgba(255,255,255,0.6)',
+        border: accentColor ? `1px solid ${accentColor}44` : undefined,
+      }}>
       {(seed ?? '??').slice(0, 2).toUpperCase()}
     </span>
   );
@@ -97,13 +103,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
   const expressInterest = useExpressInterest(listing.id);
   const isOwn = currentUserId === listing.userId;
 
-  const popularAgents: PopularAgent[] = (() => {
-    const raw = listing.popularAgents;
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw as PopularAgent[];
-    if (typeof raw === 'string') { try { return JSON.parse(raw) as PopularAgent[]; } catch { return []; } }
-    return [];
-  })();
+  const popularAgents = parsePopularAgents(listing.popularAgents);
   const top2Agents = popularAgents.slice(0, 2);
   const preferredRoles = listing.preferredRoles ?? [];
 
@@ -114,6 +114,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
     if (rankTier != null) {
       const found = ranks.find((r) => r.sortOrder === rankTier - 2);
       if (found?.iconUrl) return found.iconUrl;
+      return getRankIconUrl(rankTier - 2);
     }
     return listing.minRankIconUrl ?? null;
   })();
@@ -155,7 +156,7 @@ export function PlayerLfgCard({ listing, gameRoles = [], ranks = [], currentUser
 
         {/* Row 1: identity + time */}
         <div className="flex items-center gap-2">
-          <SeedAvatar seed={listing.avatarSeed} />
+          <SeedAvatar seed={listing.avatarSeed} accentColor={rankFallbackColor !== '#52525b' ? rankFallbackColor : undefined} />
           <span className="text-[13px] font-semibold text-white truncate leading-none flex-1 min-w-0">
             {listing.username}
           </span>

@@ -64,7 +64,10 @@ export default function LookingForPlayerPage() {
   const regions = regionsQuery.data ?? [];
   const myListingsCount = myListingsQuery.data?.length ?? 0;
   const filterCount = activeFilterCount(filters, false);
-  const listings = lfgQuery.data ?? [];
+  const myPublished = (myListingsQuery.data ?? []).filter(
+    (l) => (l.intent === 'looking_for_player' || l.intent === 'competitive_roster') && l.status === 'published'
+  );
+  const listings = [...myPublished, ...(lfgQuery.data ?? [])];
 
   return (
     <CompetitivePageShell>

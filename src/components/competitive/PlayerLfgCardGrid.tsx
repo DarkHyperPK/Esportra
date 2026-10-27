@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useExpressInterest } from '@/hooks/competitive/useLfg';
 import { ApiError } from '@/lib/apiClient';
-import { resolveAgent, getAgentPortraitUrl } from '@/lib/valorantAgents';
+import { resolveAgent, getAgentPortraitUrl, parsePopularAgents } from '@/lib/valorantAgents';
 import { getRankIconUrl } from '@/lib/valorantRanks';
 import type { LfgListing, CatalogGameRole, CatalogRankTier, PopularAgent } from '@/types/competitive';
 
@@ -44,13 +44,7 @@ export function PlayerLfgCardGrid({ listing, gameRoles = [], ranks = [], current
   const expressInterest = useExpressInterest(listing.id);
   const isOwn = currentUserId === listing.userId;
 
-  const popularAgents: PopularAgent[] = (() => {
-    const raw = listing.popularAgents;
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw as PopularAgent[];
-    if (typeof raw === 'string') { try { return JSON.parse(raw) as PopularAgent[]; } catch { return []; } }
-    return [];
-  })();
+  const popularAgents = parsePopularAgents(listing.popularAgents);
 
   const primaryAgent = popularAgents[0]
     ?? (listing.preferredAgents?.[0] ? { agentId: listing.preferredAgents[0] } as PopularAgent : null);
@@ -167,9 +161,14 @@ export function PlayerLfgCardGrid({ listing, gameRoles = [], ranks = [], current
 
         {/* Rank name in rank color — hero label */}
         {rankName && (
-          <p className="text-[10px] font-semibold mb-2.5 leading-none" style={{ color: rankColor }}>
+          <p className="text-[10px] font-semibold mb-1 leading-none" style={{ color: rankColor }}>
             {rankName}
           </p>
+        )}
+
+        {/* Description snippet */}
+        {listing.description && !expanded && (
+          <p className="text-[9px] text-white/30 leading-snug line-clamp-2 mb-2">{listing.description}</p>
         )}
 
         {/* Bottom icon row: role icons or agent thumbs */}

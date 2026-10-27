@@ -1,3 +1,5 @@
+import type { PopularAgent } from '@/types/competitive';
+
 export interface ValorantAgent {
   displayName: string;
   iconUrl: string;
@@ -43,4 +45,24 @@ export function resolveAgent(agentId: string | null | undefined): ValorantAgent 
 
 export function getAgentPortraitUrl(agentId: string): string {
   return `https://media.valorant-api.com/agents/${agentId}/fullPortraitV2.png`;
+}
+
+export function parsePopularAgents(raw: PopularAgent[] | string | null | undefined): PopularAgent[] {
+  if (!raw) return [];
+  const arr: unknown[] = Array.isArray(raw)
+    ? raw
+    : (() => { try { return JSON.parse(raw as string) as unknown[]; } catch { return []; } })();
+  return arr.map((a) => {
+    const o = a as Record<string, unknown>;
+    return {
+      agentId: String(o.agentId ?? o.agent_id ?? ''),
+      displayName: String(o.displayName ?? o.display_name ?? ''),
+      iconUrl: String(o.iconUrl ?? o.icon_url ?? ''),
+      gamesPlayed: Number(o.gamesPlayed ?? o.games_played ?? 0),
+      wins: Number(o.wins ?? 0),
+      kills: o.kills != null ? Number(o.kills) : undefined,
+      deaths: o.deaths != null ? Number(o.deaths) : undefined,
+      kdRatio: (o.kdRatio ?? o.kd_ratio ?? null) as number | null | undefined,
+    } satisfies PopularAgent;
+  });
 }
