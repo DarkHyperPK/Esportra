@@ -4,7 +4,6 @@ import {
   Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
   ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -16,10 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { JackButton } from '@/components/ui/JackButton';
 import UserMenu from './UserMenu';
 import { NotificationSidebar } from '../notifications/NotificationSidebar';
-
-// ─── Brand constants ──────────────────────────────────────────────────────────
-
-const NOISE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C%2Ffilter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C%2Fsvg%3E")`;
+import './product-sidebar.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -93,22 +89,27 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
   const Icon = section.icon;
   const [open, setOpen] = useState(active);
 
+  useEffect(() => {
+    if (active) setOpen(true);
+  }, [active]);
+
   if (collapsed) {
     const hasSubItems = section.items.length > 0;
     const primaryTo = section.to ?? section.items[0]?.to ?? '/';
     const baseClass = cn(
-      'relative flex w-full justify-center py-3 transition-colors',
-      active ? 'text-rose-400' : 'text-white/50 hover:text-white/80',
+      'product-sidebar-item product-sidebar-item-collapsed',
+      active && 'is-active',
     );
     const indicator = active && (
-      <span className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-rose-500" aria-hidden="true" />
+      <span className="product-sidebar-indicator" aria-hidden="true" />
     );
     if (hasSubItems) {
       return (
         <button
           type="button"
           aria-label={section.label}
-          onClick={() => onExpand?.()}
+          title={section.label}
+          onClick={() => { setOpen(true); onExpand?.(); }}
           className={baseClass}
         >
           <Icon className="h-5 w-5" />
@@ -120,6 +121,8 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
       <Link
         to={primaryTo}
         aria-label={section.label}
+        aria-current={active ? 'page' : undefined}
+        title={section.label}
         className={baseClass}
       >
         <Icon className="h-5 w-5" />
@@ -132,12 +135,13 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
     return (
       <Link
         to={section.to}
+        aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-2 px-4 py-3 transition-colors',
-          'text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]',
-          active ? 'text-white/80' : 'text-white/70 hover:text-white',
+          'product-sidebar-item',
+          active && 'is-active',
         )}
       >
+        {active && <span className="product-sidebar-indicator" aria-hidden="true" />}
         <Icon className="h-5 w-5" />
         <span>{section.label}</span>
       </Link>
@@ -149,35 +153,36 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
       <button
         type="button"
         onClick={() => setOpen(p => !p)}
+        aria-expanded={open}
+        aria-controls={`sidebar-${section.id}`}
         className={cn(
-          'flex w-full items-center gap-2 px-4 pt-4 pb-1.5 transition-colors',
-          active ? 'text-white/90' : 'text-white/60 hover:text-white/80',
+          'product-sidebar-item product-sidebar-section',
+          active && 'is-active',
         )}
       >
+        {active && <span className="product-sidebar-indicator" aria-hidden="true" />}
         <Icon className="h-5 w-5 shrink-0" />
-        <span className="flex-1 text-left text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]">
+        <span className="flex-1 text-left">
           {section.label}
         </span>
-        <ChevronDown className={cn('h-3 w-3 shrink-0 transition-transform duration-150', open && 'rotate-180')} />
+        <ChevronDown className={cn('product-sidebar-chevron h-3.5 w-3.5 shrink-0', open && 'rotate-180')} />
       </button>
-      {open && section.items.map(item => {
+      <div id={`sidebar-${section.id}`} className="product-sidebar-subnav" hidden={!open}>{section.items.map(item => {
         const itemActive = isItemActive(pathname, item.to);
         return (
           <Link
             key={`${section.id}-${item.label}`}
             to={item.to}
+            aria-current={itemActive ? 'page' : undefined}
             className={cn(
-              'block w-full px-5 py-2 transition-colors border-l-2',
-              'text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]',
-              itemActive
-                ? 'border-rose-500 text-rose-400 bg-rose-500/[0.10]'
-                : 'border-transparent text-white/70 hover:text-white hover:bg-rose-500/[0.08] hover:border-rose-500/50',
+              'product-sidebar-subitem',
+              itemActive && 'is-active',
             )}
           >
             {item.label}
           </Link>
         );
-      })}
+      })}</div>
     </div>
   );
 }
@@ -223,32 +228,24 @@ const PUBLIC_LINKS = [
 function LoggedOutSidebar() {
   const { pathname } = useLocation();
   return (
-    <motion.aside
-      className="hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[240px]"
+    <aside
+      className="product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[240px]"
       style={{ backgroundColor: '#08080a', borderRight: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        animate={{
-          background: [
-            'radial-gradient(ellipse 100% 35% at 50% 0%, rgba(244,63,94,0.22) 0%, transparent 65%)',
-            'radial-gradient(ellipse 80% 45% at 50% 0%, rgba(168,85,247,0.14) 0%, transparent 65%)',
-          ],
-        }}
-        transition={{ duration: 5, repeat: Infinity, repeatType: 'mirror' as const, ease: 'easeInOut' }}
-      />
+      <div className="product-sidebar-ambience" aria-hidden="true" />
       <div className="relative flex flex-col h-full">
-        <div className="shrink-0 px-4 pt-4 pb-2">
-          <Link to="/" aria-label="Esportra home">
+        <div className="product-sidebar-brand-wrap">
+          <Link to="/" aria-label="Esportra home" className="product-sidebar-brand">
             <img
               src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
               alt="Esportra"
               className="h-6 w-auto object-contain"
             />
+            <span><strong>ESPORTRA</strong><small>COMPETITIVE PLATFORM</small></span>
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2" aria-label="Site navigation">
+        <nav className="product-sidebar-nav flex-1 overflow-y-auto py-2" aria-label="Site navigation">
           {PUBLIC_LINKS.map((link) => {
             const active = pathname === link.to || pathname.startsWith(link.to + '/');
             const Icon = link.icon;
@@ -256,12 +253,13 @@ function LoggedOutSidebar() {
               <Link
                 key={link.to}
                 to={link.to}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-3 transition-colors',
-                  'text-[11px] uppercase tracking-widest font-medium [font-family:var(--font-heading)]',
-                  active ? 'text-white/90' : 'text-white/60 hover:text-white/80',
+                  'product-sidebar-item',
+                  active && 'is-active',
                 )}
               >
+                {active && <span className="product-sidebar-indicator" aria-hidden="true" />}
                 <Icon className="h-5 w-5 shrink-0" />
                 <span>{link.label}</span>
               </Link>
@@ -282,7 +280,7 @@ function LoggedOutSidebar() {
           </Link>
         </div>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
 
@@ -344,9 +342,9 @@ export function ProductSidebar() {
   const sections = buildSections(canManageTournaments, canManageVenues);
 
   return (
-    <motion.aside
+    <aside
       className={cn(
-        'hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] transition-all duration-200',
+        'product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh]',
         isCollapsed ? 'w-[52px]' : 'w-[240px]',
       )}
       style={{
@@ -354,53 +352,28 @@ export function ProductSidebar() {
         borderRight: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {/* ── Animated gradient ambience ── */}
-      {/* Top rose glow — pulses between rose and violet */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        animate={{
-          background: [
-            'radial-gradient(ellipse 100% 35% at 50% 0%, rgba(244,63,94,0.22) 0%, transparent 65%)',
-            'radial-gradient(ellipse 80% 45% at 50% 0%, rgba(168,85,247,0.14) 0%, transparent 65%)',
-          ],
-        }}
-        transition={{ duration: 5, repeat: Infinity, repeatType: 'mirror' as const, ease: 'easeInOut' }}
-      />
-      {/* Bottom rose bleed */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(244,63,94,0.12) 0%, transparent 70%)' }}
-      />
-      {/* Noise texture */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.07]"
-        style={{ backgroundImage: NOISE_BG, backgroundSize: '128px 128px' }}
-      />
+      <div className="product-sidebar-ambience" aria-hidden="true" />
 
       {/* ── Content (renders above the absolute layers) ── */}
       <div className="relative flex flex-col h-full">
 
         {/* Logo */}
-        <div className={cn(
-          'shrink-0 flex items-center',
-          isCollapsed ? 'justify-center px-2 pt-4 pb-2' : 'px-4 pt-4 pb-2',
-        )}>
-          <Link to="/" aria-label="Esportra home">
+        <div className={cn('product-sidebar-brand-wrap', isCollapsed && 'is-collapsed')}>
+          <Link to="/" aria-label="Esportra home" className="product-sidebar-brand">
             <img
               src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
               alt="Esportra"
               className={cn('object-contain', isCollapsed ? 'h-7 w-7' : 'h-6 w-auto')}
             />
+            {!isCollapsed && <span><strong>ESPORTRA</strong><small>COMPETITIVE PLATFORM</small></span>}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2" aria-label="Site navigation">
+        <nav className="product-sidebar-nav flex-1 overflow-y-auto py-2" aria-label="Site navigation">
           {sections.map((section, i) => (
             <div key={section.id}>
-              {i > 0 && !isCollapsed && (
-                <div className="mx-3 my-1 h-px bg-white/[0.08]" aria-hidden="true" />
-              )}
+              {(i === 3 || i === 6) && <div className="product-sidebar-group-rule" aria-hidden="true" />}
               <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
             </div>
           ))}
@@ -431,7 +404,7 @@ export function ProductSidebar() {
             <button
               type="button"
               onClick={toggle}
-              className="flex w-full items-center justify-center p-2 text-white/30 hover:text-white/70 transition-colors"
+              className="product-sidebar-toggle"
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               <ChevronLeft className={cn('h-4 w-4 transition-transform duration-200', isCollapsed && 'rotate-180')} />
@@ -440,6 +413,6 @@ export function ProductSidebar() {
         </div>
 
       </div>
-    </motion.aside>
+    </aside>
   );
 }
