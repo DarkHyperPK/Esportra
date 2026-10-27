@@ -75,11 +75,11 @@ function buildTeamMemberOrderPayload(
   orderedMembers: Array<{ user_id: string }>,
   captainId: string | undefined,
   allTeamMembers: Array<{ user_id: string }>,
-): Array<{ userId: string; displayOrder: number }> {
+): Array<{ user_id: string; display_order: number }> {
   if (!captainId) {
     return orderedMembers.map((member, index) => ({
-      userId: member.user_id,
-      displayOrder: index,
+      user_id: member.user_id,
+      display_order: index,
     }));
   }
 
@@ -90,14 +90,14 @@ function buildTeamMemberOrderPayload(
   );
 
   return [
-    { userId: captainId, displayOrder: 0 },
+    { user_id: captainId, display_order: 0 },
     ...withoutCaptain.map((member, index) => ({
-      userId: member.user_id,
-      displayOrder: index + 1,
+      user_id: member.user_id,
+      display_order: index + 1,
     })),
     ...notInRoster.map((member, index) => ({
-      userId: member.user_id,
-      displayOrder: withoutCaptain.length + 1 + index,
+      user_id: member.user_id,
+      display_order: withoutCaptain.length + 1 + index,
     })),
   ];
 }
