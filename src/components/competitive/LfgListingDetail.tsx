@@ -4,20 +4,28 @@ import { motion } from 'framer-motion';
 import { useLfgReducedMotion } from '@/hooks/competitive/useLfgReducedMotion';
 import { LFG_LANGUAGES } from '@/lib/lfgLanguages';
 import { LfgAvatar } from './LfgAvatar';
+import { parsePopularAgents, resolveAgent } from '@/lib/valorantAgents';
+import { getRankIconUrl } from '@/lib/valorantRanks';
+import { useValorantAgents } from '@/hooks/useValorantCatalog';
 import { useExpressInterest, useWithdrawInterest } from '@/hooks/competitive/useLfg';
 import type { CatalogGameRole, LfgListing } from '@/types/competitive';
 
-export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink = true }: { listing: LfgListing; roles: CatalogGameRole[]; currentUserId?: string; showOwnerLink?: boolean }) {
+export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink = true, inline = false }: { listing: LfgListing; roles: CatalogGameRole[]; currentUserId?: string; showOwnerLink?: boolean; inline?: boolean }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const reduced = useLfgReducedMotion();
   const express = useExpressInterest(listing.id);
   const withdraw = useWithdrawInterest(listing.id);
   const team = listing.intent !== 'looking_for_team';
+  const agentCatalog = useValorantAgents(listing.gameSlug === 'valorant');
   const name = (team ? listing.teamName : listing.username) || 'Player';
   const own = currentUserId === listing.userId;
   const expired = !!listing.expiresAt && new Date(listing.expiresAt).getTime() <= Date.now() && !['removed','closed'].includes(listing.status);
   const roleNames = (listing.preferredRoles ?? []).map(key => roles.find(role => role.roleKey === key)?.displayName ?? key);
+  const roleIcon = roles.find(role => role.roleKey === listing.preferredRoles?.[0])?.iconUrl || Object.values(agentCatalog.data ?? {}).find(agent => agent.role?.toLowerCase() === roleNames[0]?.toLowerCase())?.roleIcon;
+  const rankIcon = listing.gameSlug === 'valorant' && listing.competitiveTier != null ? getRankIconUrl(listing.competitiveTier - 3) : listing.minRankIconUrl;
+  const agentStats = listing.gameSlug === 'valorant' ? parsePopularAgents(listing.popularAgents) : [];
+  const agentIds = listing.preferredAgents?.length ? listing.preferredAgents : agentStats.slice(0, 5).map(agent => agent.agentId);
   async function send() {
     setError('');
     try { await express.mutateAsync({ message: message.trim() || null }); setMessage(''); }
@@ -30,13 +38,13 @@ export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink 
   }
   return (
     <motion.div className="lfg-detail-body" initial={reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? false : { opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} transition={{ duration: .18, ease: [0.2, 0, 0, 1] }}>
-      <div className="lfg-eyebrow">{team ? 'Team spotlight' : 'Player spotlight'}</div>
-      <div className="lfg-identity"><LfgAvatar listing={listing} name={name} /><div><h2>{name}</h2><p className="lfg-sub">{listing.gameSlug} · {listing.modeKey || 'Any mode'}</p></div></div>
+      {!inline && <div className="lfg-identity"><LfgAvatar listing={listing} name={name} /><div><h2>{name}</h2><p className="lfg-sub">{listing.gameSlug} · {listing.modeKey || 'Any mode'}</p></div></div>}
       {own && <p className="lfg-status">Listing status: {expired ? 'Expired' : listing.status}</p>}
-      <div className="lfg-stats"><div><small>Rank</small><strong>{listing.competitiveTierName || listing.minRankDisplayName || 'Any rank'}</strong></div><div><small>Region</small><strong>{listing.regionDisplayName || listing.regionKey || 'Any'}</strong></div><div><small>Role</small><strong>{roleNames[0] || 'Flexible'}</strong></div></div>
+      {!inline && <div className="lfg-stats"><div><small>Rank</small><strong className="lfg-detail-stat">{rankIcon && <img src={rankIcon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{listing.competitiveTierName || listing.minRankDisplayName || 'Any rank'}</strong></div><div><small>Region</small><strong>{listing.regionDisplayName || listing.regionKey || 'Any'}</strong></div><div><small>Role</small><strong className="lfg-detail-stat">{roleIcon && <img src={roleIcon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{roleNames[0] || 'Flexible'}</strong></div></div>}
+      {inline && <p className="lfg-sub">{listing.gameSlug} · {listing.modeKey || 'Any mode'}</p>}
       <h3>What {team ? 'we are' : 'I am'} looking for</h3><p className="lfg-description">{listing.description || 'No description provided.'}</p>
       {roleNames.length > 1 && <><h3>Roles</h3><p className="lfg-description">{roleNames.join(', ')}</p></>}
-      {!!listing.preferredServers?.length && <><h3>Servers</h3><p className="lfg-description">{listing.preferredServers.join(', ')}</p></>}
+      {listing.gameSlug === 'valorant' && listing.intent === 'looking_for_team' && agentIds.length > 0 && <><h3>Preferred agents</h3><div className="lfg-agent-breakdown">{agentIds.map(id => { const stats = agentStats.find(agent => agent.agentId.toLowerCase() === id.toLowerCase()); const agent = agentCatalog.data?.[id.toLowerCase()]; const fallback = resolveAgent(id); const name = agent?.displayName || fallback?.displayName || stats?.displayName || 'Agent'; const icon = agent?.displayIcon || fallback?.iconUrl || stats?.iconUrl; return <p key={id}><strong className="lfg-detail-agent">{icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{name}</strong><span>{stats?.gamesPlayed ? `${stats.gamesPlayed} games · ${Math.round(stats.wins / stats.gamesPlayed * 100)}% WR · ${stats.kdRatio != null ? Number(stats.kdRatio).toFixed(2) : '—'} K/D` : 'No recorded matches'}</span></p>; })}</div></>}
       {!!listing.languages?.length && <><h3>Languages</h3><p className="lfg-description">{listing.languages.map(code => LFG_LANGUAGES.find(item => item.code === code)?.label ?? code).join(', ')}</p></>}
       {own ? showOwnerLink && <Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage listing</Link> : listing.viewerInterestStatus ? <>
         <p className="lfg-status">Request: {listing.viewerInterestStatus}</p>

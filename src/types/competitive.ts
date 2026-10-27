@@ -250,6 +250,7 @@ export interface LfgListing {
   username: string;
   avatarSeed: string | null;
   profileAvatarUrl?: string | null;
+  profileBannerUrl?: string | null;
   avatarStyle?: string | null;
 
   // Canonical fields (PROJ-075)
@@ -395,6 +396,8 @@ export interface LfgInterest {
   /** Spec: string | null. Kept as string for legacy Avatar component compat (T11-T13 fix). */
   username: string;
   avatarSeed: string | null;
+  profileAvatarUrl?: string | null;
+  avatarStyle?: string | null;
   rankTierKey: string | null;
   rankTierDisplayName: string | null;
   rankTierIconUrl: string | null;
@@ -449,7 +452,7 @@ export interface MyGameStats {
   riotLinked: boolean;
   riotGameName: string | null;
   riotTagLine: string | null;
-  syncStatus: 'pending' | 'syncing' | 'done' | 'error' | null;
+  syncStatus: 'pending' | 'syncing' | 'complete' | 'partial' | 'error' | null;
   syncedAt: string | null;
   competitiveTier: number | null;
   competitiveTierName: string | null;
@@ -572,6 +575,9 @@ export interface LfgInboxEntry {
   listingName: string | null;
   listingStatus: LfgStatus;
   counterpartUsername: string | null;
+  counterpartAvatarSeed?: string | null;
+  counterpartAvatarUrl?: string | null;
+  counterpartAvatarStyle?: string | null;
   conversationId: string | null;
 }
 

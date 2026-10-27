@@ -12,7 +12,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
 import type { CaptainTeamRow } from '@/hooks/useEligibleCaptainTeams';
@@ -39,7 +39,7 @@ export { lfgKeys };
 export function useLfgCaptainTeams(userId?: string, enabled = true) {
   return useQuery({
     queryKey: ['lfg', 'captain-teams', userId],
-    queryFn: () => rawApiClient.get<CaptainTeamRow[]>('/api/teams/my-captain-teams?limit=50'),
+    queryFn: () => rawApiClient.get<CaptainTeamRow[]>('/api/teams/my-captain-teams?limit=50&offset=0'),
     enabled: !!userId && enabled,
     staleTime: 60_000,
   });
@@ -73,7 +73,33 @@ export function useMyGameStats(game: string) {
     queryFn: () => apiClient.get<MyGameStats>(`/api/competitive/game-stats/me?game=${game}`),
     staleTime: 60_000,
     enabled: !!game,
+    refetchInterval: query => ['pending', 'syncing'].includes(query.state.data?.syncStatus ?? '') ? 5000 : false,
   });
+}
+
+export function useSyncValorantStats() {
+  const qc = useQueryClient();
+  const [poll, setPoll] = useState<{ started: number; previous: string | null } | null>(null);
+  useEffect(() => {
+    if (!poll) return;
+    const timer = window.setInterval(() => {
+      void qc.refetchQueries({ queryKey: ['my-game-stats', 'valorant'], type: 'active' }).then(() => {
+        const data = qc.getQueryData<MyGameStats>(['my-game-stats', 'valorant']);
+        if (Date.now() - poll.started > 120_000 || (data?.syncStatus === 'error') ||
+          (data?.syncedAt && data.syncedAt !== poll.previous && ['complete', 'partial'].includes(data.syncStatus ?? ''))) setPoll(null);
+      });
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [poll, qc]);
+  const mutation = useMutation({
+    mutationFn: () => apiClient.post<{ status: string }>('/api/competitive/game-stats/sync'),
+    onSuccess: result => {
+      const previous = qc.getQueryData<MyGameStats>(['my-game-stats', 'valorant'])?.syncedAt ?? null;
+      if (result.status === 'queued') setPoll({ started: Date.now(), previous });
+      void qc.invalidateQueries({ queryKey: ['my-game-stats', 'valorant'] });
+    },
+  });
+  return { ...mutation, isSyncing: !!poll };
 }
 
 export function useSaveLfgDraft() {
@@ -157,9 +183,9 @@ export function useUpdateLfgListing(id: string) {
   return useMutation({
     mutationFn: (req: UpdateLfgListingRequest) =>
       apiClient.put<LfgListing>(`/api/competitive/lfg/${id}`, req),
-    onSuccess: (updated) => {
-      qc.setQueryData(lfgKeys.detail(id), updated);
-      void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
+    onSuccess: async () => {
+      // Update responses contain the listing fields but not joined identity or stats.
+      await qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
   });
 }
@@ -171,12 +197,7 @@ export function usePublishLfgListing(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.post<LfgListing>(`/api/competitive/lfg/${id}/publish`),
-    onSuccess: (updated) => {
-      qc.setQueryData(lfgKeys.detail(id), updated);
-      void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
-      // Broad invalidation: new listing now visible in discovery feeds
-      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
-    },
+    onSuccess: async () => { await qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
   });
 }
 
@@ -185,11 +206,7 @@ export function usePauseLfgListing(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.post<LfgListing>(`/api/competitive/lfg/${id}/pause`),
-    onSuccess: (updated) => {
-      qc.setQueryData(lfgKeys.detail(id), updated);
-      void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
-      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
-    },
+    onSuccess: async () => { await qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
   });
 }
 
@@ -198,11 +215,7 @@ export function useCloseLfgListing(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.post<LfgListing>(`/api/competitive/lfg/${id}/close`),
-    onSuccess: (updated) => {
-      qc.setQueryData(lfgKeys.detail(id), updated);
-      void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
-      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
-    },
+    onSuccess: async () => { await qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
   });
 }
 

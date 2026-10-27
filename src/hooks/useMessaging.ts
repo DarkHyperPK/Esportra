@@ -1,11 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { HubPaths } from '@/lib/signalrClient';
 import { useHub } from '@/hooks/useSignalR';
-import type { Conversation, ConversationMessage, SendMessageRequest } from '@/types/messaging';
+import type { ConversationMessage, SendMessageRequest } from '@/types/messaging';
+import { normalizeConversation, normalizeMessage } from '@/lib/messagingNormalization';
 
-const messagingKeys = {
+export const messagingKeys = {
   all: () => ['conversations'] as const,
   list: () => [...messagingKeys.all(), 'list'] as const,
   messages: (id: string) => ['conversations', id, 'messages'] as const,
@@ -14,17 +15,18 @@ const messagingKeys = {
 export function useConversations() {
   return useQuery({
     queryKey: messagingKeys.list(),
-    queryFn: () => apiClient.get<Conversation[]>('/api/conversations'),
+    queryFn: async () => (await apiClient.get<unknown[]>('/api/conversations')).map(normalizeConversation),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 }
 
 export function useConversationMessages(conversationId: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: messagingKeys.messages(conversationId),
-    queryFn: () =>
-      apiClient.get<ConversationMessage[]>(`/api/conversations/${conversationId}/messages`),
+    queryFn: async ({ pageParam }) => (await apiClient.get<unknown[]>(`/api/conversations/${conversationId}/messages?limit=50&offset=${pageParam}`)).map(normalizeMessage),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => last.length === 50 ? pages.length * 50 : undefined,
     enabled: !!conversationId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -61,23 +63,35 @@ export function useMarkRead(conversationId: string) {
 export function useConversationRealtime(
   conversationId: string,
   onMessage: (msg: ConversationMessage) => void,
+  enabled = true,
 ) {
   const conn = useHub(HubPaths.Conversation, { autoStart: true });
+  const qc = useQueryClient();
   const callbackRef = useRef(onMessage);
   callbackRef.current = onMessage;
 
   useEffect(() => {
-    if (!conversationId || !conn) return;
+    if (!conn || !enabled) return;
 
-    const handler = (msg: ConversationMessage) => {
+    const handler = (payload: ConversationMessage) => {
+      const msg = normalizeMessage(payload);
+      void qc.invalidateQueries({ queryKey: messagingKeys.list() });
       if (msg.conversationId === conversationId) callbackRef.current(msg);
     };
-    conn.invoke('JoinConversation', conversationId).catch(console.error);
+    const onMutation = () => {
+      void qc.invalidateQueries({ queryKey: messagingKeys.list() });
+      if (conversationId) void qc.invalidateQueries({ queryKey: messagingKeys.messages(conversationId) });
+    };
     conn.on('MessageReceived', handler);
+    conn.on('MessageEdited', onMutation);
+    conn.on('MessageDeleted', onMutation);
+    if (conversationId) conn.invoke('JoinConversation', conversationId).catch(() => {});
 
     return () => {
       conn.off('MessageReceived', handler);
-      conn.invoke('LeaveConversation', conversationId).catch(() => {});
+      conn.off('MessageEdited', onMutation);
+      conn.off('MessageDeleted', onMutation);
+      if (conversationId) conn.invoke('LeaveConversation', conversationId).catch(() => {});
     };
-  }, [conversationId, conn]);
+  }, [conversationId, conn, qc, enabled]);
 }
