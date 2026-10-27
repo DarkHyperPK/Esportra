@@ -406,38 +406,71 @@ export default function LookingForTeamCreatePage() {
           <div>
             <Caption>Preferred agents (select up to 5)</Caption>
             {popularAgents.length > 0 && (
-              <p className="text-[11px] text-white/30 mb-2">Dot = played on your account</p>
+              <p className="text-[11px] text-white/30 mb-2">
+                Sorted by most played · select up to 5
+              </p>
             )}
             <div className="flex flex-wrap gap-2 mb-3">
-              {[...VALORANT_AGENTS.entries()].map(([agentId, resolved]) => {
-                const popularEntry = popularAgents.find((a) => a.agentId === agentId);
-                const isSelected = selectedAgents.includes(agentId);
-                return (
-                  <button
-                    key={agentId}
-                    type="button"
-                    disabled={!isSelected && selectedAgents.length >= 5}
-                    onClick={() => toggleAgent(agentId)}
-                    title={resolved.displayName}
-                    className={[
-                      'relative flex flex-col items-center gap-1 p-1.5 border transition-colors',
-                      isSelected
-                        ? 'border-rose-500/50 bg-rose-500/10'
-                        : 'border-white/[0.06] hover:border-white/20 disabled:opacity-30',
-                    ].join(' ')}
-                  >
-                    <img
-                      src={resolved.iconUrl}
-                      alt={resolved.displayName}
-                      className="h-10 w-10 object-contain"
-                    />
-                    <span className="text-[9px] text-white/50 leading-none">{resolved.displayName}</span>
-                    {popularEntry && (
-                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500" aria-hidden="true" />
-                    )}
-                  </button>
-                );
-              })}
+              {(() => {
+                // Sort: played agents first (by games_played desc), then unplayed alphabetically
+                const played = popularAgents.slice().sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+                const playedIds = new Set(played.map((a) => a.agentId));
+                const unplayed = [...VALORANT_AGENTS.entries()]
+                  .filter(([id]) => !playedIds.has(id))
+                  .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName));
+                const sorted: Array<{ agentId: string; gamesPlayed: number; rank: number | null }> = [
+                  ...played.map((a, i) => ({ agentId: a.agentId, gamesPlayed: a.gamesPlayed, rank: i + 1 })),
+                  ...unplayed.map(([id]) => ({ agentId: id, gamesPlayed: 0, rank: null })),
+                ];
+                return sorted.map(({ agentId, gamesPlayed, rank }) => {
+                  const resolved = VALORANT_AGENTS.get(agentId);
+                  if (!resolved) return null;
+                  const isSelected = selectedAgents.includes(agentId);
+                  const hasStats = gamesPlayed > 0;
+                  const isTop3 = rank != null && rank <= 3;
+                  return (
+                    <button
+                      key={agentId}
+                      type="button"
+                      disabled={!isSelected && selectedAgents.length >= 5}
+                      onClick={() => toggleAgent(agentId)}
+                      title={resolved.displayName}
+                      className={[
+                        'relative flex flex-col items-center gap-1 p-1.5 border transition-colors',
+                        isSelected
+                          ? 'border-rose-500/50 bg-rose-500/10'
+                          : 'border-white/[0.06] hover:border-white/20 disabled:opacity-30',
+                      ].join(' ')}
+                    >
+                      <img
+                        src={resolved.iconUrl}
+                        alt={resolved.displayName}
+                        className="h-10 w-10 object-contain"
+                      />
+                      <span className="text-[9px] text-white/50 leading-none">{resolved.displayName}</span>
+                      {/* Games played count badge */}
+                      {hasStats && (
+                        <span
+                          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[8px] font-bold leading-none px-1"
+                          style={{
+                            backgroundColor: isTop3 ? '#f43f5e' : 'rgba(255,255,255,0.12)',
+                            color: isTop3 ? '#fff' : 'rgba(255,255,255,0.7)',
+                          }}
+                          aria-hidden="true"
+                        >
+                          {gamesPlayed > 99 ? '99+' : gamesPlayed}
+                        </span>
+                      )}
+                      {/* TOP label for top 3 */}
+                      {isTop3 && !isSelected && (
+                        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase tracking-wider text-rose-400 leading-none">
+                          TOP
+                        </span>
+                      )}
+                    </button>
+                  );
+                });
+              })()}
             </div>
             {/* Selected agent breakdown */}
             {selectedAgents.length > 0 && (
