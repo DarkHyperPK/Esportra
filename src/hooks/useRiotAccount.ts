@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { toCamelCaseDeep } from '@/lib/caseTransform';
 import { useAuth } from '@/hooks/useAuth';
 
 export interface RiotAccountData {
@@ -26,8 +27,9 @@ export function useRiotAccount() {
         queryFn: async () => {
             if (!user?.id) return null;
             try {
-                const data = await apiClient.get<any>(`/api/integrations/riot`);
-                return data?.linked ? data : null;
+                const raw = await apiClient.get<any>(`/api/integrations/riot`);
+                if (!raw?.linked) return null;
+                return toCamelCaseDeep(raw) as RiotAccountData;
             } catch {
                 return null;
             }

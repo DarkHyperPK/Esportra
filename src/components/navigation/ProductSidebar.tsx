@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
@@ -295,7 +295,18 @@ export function ProductSidebar() {
   const { pathname } = useLocation();
   const isTournamentDashboard = pathname.startsWith('/organizer/tournaments/');
   const isCompetitivePage = pathname.startsWith('/competitive/');
-  const isCollapsed = collapsed || isTournamentDashboard || isCompetitivePage;
+  const wasCompetitivePage = useRef(isCompetitivePage);
+
+  // Auto-collapse when navigating INTO competitive pages; allow manual toggle after.
+  useEffect(() => {
+    if (isCompetitivePage && !wasCompetitivePage.current) {
+      setCollapsed(true);
+      localStorage.setItem('sidebar_collapsed', 'true');
+    }
+    wasCompetitivePage.current = isCompetitivePage;
+  }, [isCompetitivePage]);
+
+  const isCollapsed = collapsed || isTournamentDashboard;
 
   function toggle() {
     setCollapsed(prev => {

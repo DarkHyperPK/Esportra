@@ -213,6 +213,33 @@ export default function LookingForTeamCreatePage() {
     );
   }
 
+  // ── Gate: stats fetch error ──────────────────────────────────────────────────
+  if (statsQuery.isError) {
+    return (
+      <CompetitivePageShell>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-16">
+          <Link
+            to="/competitive/looking-for-team"
+            className="inline-flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors mb-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Find a Team
+          </Link>
+          <p className="text-[14px] text-white/50 mb-4">
+            Couldn't load your stats. Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => void statsQuery.refetch()}
+            className="text-[13px] text-rose-400 hover:text-rose-300 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </CompetitivePageShell>
+    );
+  }
+
   // ── Gate: Riot account not linked ────────────────────────────────────────────
   if (!stats?.riotLinked) {
     return (
