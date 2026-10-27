@@ -211,7 +211,7 @@ export default function LookingForPlayerCreatePage() {
                       {m.riotGameName ? (
                         <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono text-white/40">
                           {m.kd != null && <span>{m.kd.toFixed(2)} K/D</span>}
-                          {m.winRate != null && <span>{Math.round(m.winRate * 100)}% WR</span>}
+                          {m.winRate != null && <span>{Math.round(Number(m.winRate))}% WR</span>}
                           {m.tournamentCount > 0 && <span>{m.tournamentCount}T</span>}
                         </div>
                       ) : (
