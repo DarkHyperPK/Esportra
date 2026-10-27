@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SlidersHorizontal, Search, Users, Plus } from 'lucide-react';
+import { SlidersHorizontal, Search, Users, Plus, LayoutGrid, List } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useDiscoverLfg } from '@/hooks/competitive/useDiscovery';
 import { useMyLfgListings } from '@/hooks/competitive/useLfg';
@@ -8,8 +8,18 @@ import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/h
 import { useAuth } from '@/hooks/useAuth';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { TeamLfgCard } from '@/components/competitive/TeamLfgCard';
+import { TeamLfgCardGrid } from '@/components/competitive/TeamLfgCardGrid';
 import { FindTeammatesFilterPanel, INITIAL_FILTER, activeFilterCount } from '@/components/competitive/FindTeammatesFilterPanel';
 import type { FilterState } from '@/components/competitive/FindTeammatesFilterPanel';
+
+type ViewMode = 'list' | 'grid';
+
+function getViewMode(): ViewMode {
+  try { return (localStorage.getItem('lfg-view-mode') as ViewMode) ?? 'list'; } catch { return 'list'; }
+}
+function saveViewMode(v: ViewMode) {
+  try { localStorage.setItem('lfg-view-mode', v); } catch { /* ignore */ }
+}
 
 const GAME = 'valorant';
 
@@ -33,6 +43,7 @@ export default function LookingForPlayerPage() {
 
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTER);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(getViewMode);
 
   const ranksQuery = useCatalogRankTiers(GAME);
   const rolesQuery = useCatalogGameRoles(GAME);
@@ -63,7 +74,25 @@ export default function LookingForPlayerPage() {
           <h1 className="[font-family:var(--font-heading)] font-black text-[28px] text-white leading-tight">
             Matchmaking
           </h1>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => { setViewMode('list'); saveViewMode('list'); }}
+                title="List view"
+                className={`h-8 w-8 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-white/[0.08] text-white' : 'text-white/35 hover:text-white/60'}`}
+              >
+                <List className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode('grid'); saveViewMode('grid'); }}
+                title="Grid view"
+                className={`h-8 w-8 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'bg-white/[0.08] text-white' : 'text-white/35 hover:text-white/60'}`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => navigate('/competitive/looking-for-player/create')}
@@ -164,6 +193,20 @@ export default function LookingForPlayerPage() {
                   <p className="text-[15px] font-medium text-white/55">No team listings yet.</p>
                 </>
               )}
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2" role="list">
+              {listings.map((listing, i) => (
+                <motion.div
+                  key={listing.id}
+                  role="listitem"
+                  initial={reduced ? false : { opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.14, ease: [0.2, 0, 0, 1], delay: reduced ? 0 : Math.min(i, 12) * 0.015 }}
+                >
+                  <TeamLfgCardGrid listing={listing} gameRoles={gameRoles} currentUserId={user?.id} />
+                </motion.div>
+              ))}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5" role="list">

@@ -40,3 +40,7 @@ export function resolveAgent(agentId: string | null | undefined): ValorantAgent 
   if (!agentId) return null;
   return VALORANT_AGENTS.get(agentId.toLowerCase()) ?? null;
 }
+
+export function getAgentPortraitUrl(agentId: string): string {
+  return `https://media.valorant-api.com/agents/${agentId}/fullPortraitV2.png`;
+}
