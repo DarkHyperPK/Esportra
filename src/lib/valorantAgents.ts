@@ -35,7 +35,10 @@ export const VALORANT_AGENTS: ReadonlyMap<string, ValorantAgent> = new Map([
   agent('1dbf2edd-4729-0984-3115-daa5eed44993', 'Clove'),
   agent('95b78ed7-4637-86d9-7e41-71ba8c293152', 'Harbor'),
   agent('efba5359-4016-a1e5-7626-b1ae76895940', 'Vyse'),
-  agent('d9d8da82-4c23-8b2d-41b4-cfb9e32fc8e7', 'Tejo'),
+  agent('b444168c-4e35-8076-db47-ef9bf368f384', 'Tejo'),
+  agent('df1cb487-4902-002e-5c17-d28e83e78588', 'Waylay'),
+  agent('92eeef5d-43b5-1d4a-8d03-b3927a09034b', 'Veto'),
+  agent('7c8a4701-4de6-9355-b254-e09bc2a34b72', 'Miks'),
 ]);
 
 export function resolveAgent(agentId: string | null | undefined): ValorantAgent | null {
