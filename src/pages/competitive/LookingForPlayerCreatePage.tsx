@@ -55,7 +55,7 @@ export default function LookingForPlayerCreatePage() {
   const teamsQuery = useQuery({
     queryKey: ['captain-teams', GAME, user?.id],
     queryFn: async () => {
-      const all = await apiClient.get<CaptainTeamRow[]>(`/api/teams/my-captain-teams?game=${GAME}&limit=50`);
+      const all = await apiClient.get<CaptainTeamRow[]>(`/api/teams/my-captain-teams?limit=50`);
       return (all ?? []).filter((t) =>
         (t.team_kind === 'team' || (!t.team_kind && !t.is_solo)),
       );
@@ -159,7 +159,7 @@ export default function LookingForPlayerCreatePage() {
               </p>
             </div>
             <Link
-              to="/teams/create"
+              to="/teams"
               className="mt-2 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[13px] px-6 py-2.5 transition-colors"
             >
               Create a team

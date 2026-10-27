@@ -10,7 +10,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useCreateLfgListing, useMyGameStats } from '@/hooks/competitive/useLfg';
 import { apiClient } from '@/lib/apiClient';
-import { resolveAgent } from '@/lib/valorantAgents';
+import { VALORANT_AGENTS } from '@/lib/valorantAgents';
+import { getRankIconUrl } from '@/lib/valorantRanks';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { PlayerLfgCard } from '@/components/competitive/PlayerLfgCard';
 import { RankSelector } from '@/components/competitive/RankSelector';
@@ -355,6 +356,9 @@ export default function LookingForTeamCreatePage() {
           {(stats.riotGameName || stats.competitiveTierName) && (
             <div className="border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
               <div className="flex items-center gap-2">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0 text-rose-400" fill="currentColor" aria-hidden="true">
+                  <path d="M12.534 21.77L.545 4.921l.013-.008A11.98 11.98 0 0 1 12 0c4.56 0 8.539 2.547 10.632 6.307L12.534 21.77z" />
+                </svg>
                 <span className="text-[13px] text-white/80 font-medium">
                   {stats.riotGameName}
                   {stats.riotTagLine ? <span className="text-white/35">#{stats.riotTagLine}</span> : null}
@@ -363,27 +367,27 @@ export default function LookingForTeamCreatePage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {tierBadge && (
                   <span className="flex items-center gap-1.5">
-                    <img src={tierBadge.iconUrl ?? ''} alt={tierBadge.displayName} className="h-5 w-5 object-contain" />
+                    <img src={tierBadge.iconUrl ?? getRankIconUrl(tierBadge.sortOrder)} alt={tierBadge.displayName} className="h-5 w-5 object-contain" />
                     <span className="text-[12px] text-white/70">{stats.competitiveTierName}</span>
                   </span>
                 )}
                 {stats.winRate != null && (
-                  <span className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
-                    {Math.round(stats.winRate * 100)}% WR
+                  <span title="Win Rate" className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
+                    {Math.round(Number(stats.winRate))}% WR
                   </span>
                 )}
                 {stats.kdRatio != null && (
-                  <span className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
-                    {stats.kdRatio.toFixed(2)} K/D
+                  <span title="K/D Ratio" className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
+                    {Number(stats.kdRatio).toFixed(2)} K/D
                   </span>
                 )}
                 {stats.winCount != null && stats.lossCount != null && (
-                  <span className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
+                  <span title="Win / Loss record" className="text-[11px] font-mono text-white/45 border border-white/[0.06] px-2 py-0.5">
                     {stats.winCount}W – {stats.lossCount}L
                   </span>
                 )}
                 {stats.matchesAnalyzed != null && (
-                  <span className="text-[11px] text-white/25">
+                  <span title="Matches analyzed" className="text-[11px] text-white/25">
                     {stats.matchesAnalyzed} matches
                   </span>
                 )}
@@ -399,64 +403,72 @@ export default function LookingForTeamCreatePage() {
           )}
 
           {/* Agent picker */}
-          {popularAgents.length > 0 && (
-            <div>
-              <Caption>Preferred agents (select up to 5)</Caption>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {popularAgents.map((agent) => {
-                  const resolved = resolveAgent(agent.agentId);
+          <div>
+            <Caption>Preferred agents (select up to 5)</Caption>
+            {popularAgents.length > 0 && (
+              <p className="text-[11px] text-white/30 mb-2">Dot = played on your account</p>
+            )}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[...VALORANT_AGENTS.entries()].map(([agentId, resolved]) => {
+                const popularEntry = popularAgents.find((a) => a.agentId === agentId);
+                const isSelected = selectedAgents.includes(agentId);
+                return (
+                  <button
+                    key={agentId}
+                    type="button"
+                    disabled={!isSelected && selectedAgents.length >= 5}
+                    onClick={() => toggleAgent(agentId)}
+                    title={resolved.displayName}
+                    className={[
+                      'relative flex flex-col items-center gap-1 p-1.5 border transition-colors',
+                      isSelected
+                        ? 'border-rose-500/50 bg-rose-500/10'
+                        : 'border-white/[0.06] hover:border-white/20 disabled:opacity-30',
+                    ].join(' ')}
+                  >
+                    <img
+                      src={resolved.iconUrl}
+                      alt={resolved.displayName}
+                      className="h-10 w-10 object-contain"
+                    />
+                    <span className="text-[9px] text-white/50 leading-none">{resolved.displayName}</span>
+                    {popularEntry && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Selected agent breakdown */}
+            {selectedAgents.length > 0 && (
+              <div className="space-y-1.5">
+                {selectedAgents.map((agentId) => {
+                  const resolved = VALORANT_AGENTS.get(agentId);
+                  const agent = popularAgents.find((a) => a.agentId === agentId);
                   if (!resolved) return null;
-                  const isSelected = selectedAgents.includes(agent.agentId);
+                  const agentWr = agent && agent.gamesPlayed > 0
+                    ? Math.round((agent.wins / agent.gamesPlayed) * 100)
+                    : null;
                   return (
-                    <button
-                      key={agent.agentId}
-                      type="button"
-                      disabled={!isSelected && selectedAgents.length >= 5}
-                      onClick={() => toggleAgent(agent.agentId)}
-                      title={resolved.displayName}
-                      className={[
-                        'relative flex flex-col items-center gap-1 p-1.5 border transition-colors',
-                        isSelected
-                          ? 'border-rose-500/50 bg-rose-500/10'
-                          : 'border-white/[0.06] hover:border-white/20 disabled:opacity-30',
-                      ].join(' ')}
-                    >
-                      <img
-                        src={resolved.iconUrl}
-                        alt={resolved.displayName}
-                        className="h-10 w-10 object-contain"
-                      />
-                      <span className="text-[9px] text-white/50 leading-none">{resolved.displayName}</span>
-                    </button>
+                    <div key={agentId} className="flex items-center gap-3 text-[12px] text-white/50 pl-1">
+                      <span className="text-white/70 w-20 truncate">{resolved.displayName}</span>
+                      {agent ? (
+                        <>
+                          <span className="font-mono">{agent.gamesPlayed}g</span>
+                          {agent.kdRatio != null && (
+                            <span className="font-mono">{Number(agent.kdRatio).toFixed(2)} K/D</span>
+                          )}
+                          {agentWr != null && (
+                            <span className="font-mono">{agentWr}% WR</span>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
-              {/* Selected agent breakdown */}
-              {selectedAgents.length > 0 && (
-                <div className="space-y-1.5">
-                  {selectedAgents.map((agentId) => {
-                    const agent = popularAgents.find((a) => a.agentId === agentId);
-                    if (!agent) return null;
-                    const agentWr = agent.gamesPlayed > 0
-                      ? Math.round((agent.wins / agent.gamesPlayed) * 100)
-                      : null;
-                    return (
-                      <div key={agentId} className="flex items-center gap-3 text-[12px] text-white/50 pl-1">
-                        <span className="text-white/70 w-20 truncate">{agent.displayName}</span>
-                        <span className="font-mono">{agent.gamesPlayed}g</span>
-                        {agent.kdRatio != null && (
-                          <span className="font-mono">{agent.kdRatio.toFixed(2)} K/D</span>
-                        )}
-                        {agentWr != null && (
-                          <span className="font-mono">{agentWr}% WR</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Role picker */}
           {gameRoles.length > 0 && (
