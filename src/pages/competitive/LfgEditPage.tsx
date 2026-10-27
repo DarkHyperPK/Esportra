@@ -1,150 +1,65 @@
-import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
+import { useCatalogGameRoles, useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useLfgListing, useUpdateLfgListing } from '@/hooks/competitive/useLfg';
-import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
-
-const DESC_MAX = 280;
+import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
+import { LfgLanguagePicker } from '@/components/competitive/LfgLanguagePicker';
 
 export default function LfgEditPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams();
   const navigate = useNavigate();
-
-  const listingQuery = useLfgListing(id!);
-  const updateMutation = useUpdateLfgListing(id!);
-
-  const [description, setDescription] = useState('');
-  const [expiresInDays, setExpiresInDays] = useState<1 | 3 | 7>(3);
+  const { user } = useAuth();
+  const catalog = useGameCatalogContext();
+  const listing = useLfgListing(id);
+  const update = useUpdateLfgListing(id);
+  const game = listing.data?.gameSlug || '';
+  const roles = useCatalogGameRoles(game).data ?? [];
+  const ranks = useCatalogRankTiers(game).data ?? [];
+  const regions = useCatalogRegions(game).data ?? [];
+  const modes = catalog.games.find(item => item.slug === game)?.modes ?? [];
   const [seeded, setSeeded] = useState(false);
-  const [phase, setPhase] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-
-  const listing = listingQuery.data;
-
+  const [description, setDescription] = useState('');
+  const [role, setRole] = useState<string[]>([]);
+  const [mode, setMode] = useState('');
+  const [region, setRegion] = useState('');
+  const [servers, setServers] = useState('');
+  const [languages, setLanguages] = useState('');
+  const [minRank, setMinRank] = useState('');
+  const [maxRank, setMaxRank] = useState('');
+  const [duration, setDuration] = useState('');
+  const [error, setError] = useState('');
   useEffect(() => {
-    if (listing && !seeded) {
-      setDescription(listing.description ?? '');
-      if (listing.expiresAt) {
-        const daysLeft = Math.ceil(
-          (new Date(listing.expiresAt).getTime() - Date.now()) / 86_400_000,
-        );
-        setExpiresInDays(daysLeft >= 7 ? 7 : daysLeft >= 3 ? 3 : 1);
-      }
-      setSeeded(true);
-    }
-  }, [listing, seeded]);
-
-  async function handleSave() {
-    setPhase('saving');
+    if (!listing.data || seeded) return;
+    const item = listing.data;
+    setDescription(item.description ?? ''); setRole(item.preferredRoles ?? []); setMode(item.modeKey ?? ''); setRegion(item.regionKey ?? '');
+    setServers((item.preferredServers ?? []).join(', ')); setLanguages((item.languages ?? []).join(', '));
+    setMinRank(item.minRankSortOrder == null ? '' : String(item.minRankSortOrder)); setMaxRank(item.maxRankSortOrder == null ? '' : String(item.maxRankSortOrder));
+    setSeeded(true);
+  }, [listing.data, seeded]);
+  async function save() {
+    setError('');
+    if (minRank && maxRank && Number(minRank) > Number(maxRank)) { setError('Minimum rank must not exceed maximum rank.'); return; }
     try {
-      const expiresAt = new Date(Date.now() + expiresInDays * 86_400_000).toISOString();
-      await updateMutation.mutateAsync({ description: description || null, expiresAt });
-      setPhase('done');
-      setTimeout(() => navigate(`/competitive/lfg/${id}`), 800);
-    } catch {
-      setPhase('error');
-    }
+      await update.mutateAsync({ description: description.trim() || null, clearDescription: !description.trim(), modeKey: mode || null, clearMode: !mode,
+        regionKey: region || null, clearRegion: !region, minRankSortOrder: minRank ? Number(minRank) : null, clearMinRank: !minRank,
+        maxRankSortOrder: maxRank ? Number(maxRank) : null, clearMaxRank: !maxRank, preferredRoles: role,
+        preferredServers: servers.split(',').map(item => item.trim()).filter(Boolean), languages: languages.split(',').map(item => item.trim()).filter(Boolean),
+        ...(duration ? { expiresAt: new Date(Date.now() + Number(duration) * 86400000).toISOString() } : {}) });
+      navigate(`/competitive/lfg/${id}`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save changes. Try again.'); }
   }
-
-  if (listingQuery.isLoading) {
-    return (
-      <CompetitivePageShell>
-        <div className="max-w-xl mx-auto px-4 py-8 space-y-3 animate-pulse">
-          <div className="h-4 w-32 bg-white/[0.06] rounded" />
-          <div className="h-8 w-48 bg-white/[0.06] rounded" />
-        </div>
-      </CompetitivePageShell>
-    );
-  }
-
-  if (listingQuery.isError || !listing) {
-    return (
-      <CompetitivePageShell>
-        <div className="max-w-xl mx-auto px-4 py-8">
-          <p className="text-[14px] text-white/55">Could not load listing.</p>
-        </div>
-      </CompetitivePageShell>
-    );
-  }
-
-  const charsLeft = DESC_MAX - description.length;
-
-  return (
-    <CompetitivePageShell>
-      <div className="max-w-xl mx-auto px-4 sm:px-6 pt-6 pb-16">
-        <Link to={`/competitive/lfg/${id}`}
-          className="inline-flex items-center gap-1.5 text-[13px] text-white/40 hover:text-white transition-colors mb-8">
-          <ArrowLeft className="h-4 w-4" />
-          Back to listing
-        </Link>
-
-        <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-1">Edit Listing</p>
-        <h1 className="[font-family:var(--font-heading)] font-black text-[26px] text-white leading-tight mb-8">
-          Update your listing
-        </h1>
-
-        <div className="space-y-8">
-          {/* Description */}
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-white/40 mb-2">Description</p>
-            <div className="relative">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, DESC_MAX))}
-                placeholder="Describe your playstyle, availability, what you're looking for..."
-                rows={4}
-                className="w-full rounded-md bg-white/[0.03] border border-white/[0.08] text-white text-[13px] px-3 py-2.5 placeholder-white/25 focus:outline-none focus:border-white/20 resize-none"
-              />
-              <p className={`text-right text-[11px] mt-1 ${charsLeft <= 20 ? 'text-amber-400' : 'text-white/35'}`}>
-                {description.length} / {DESC_MAX}
-              </p>
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-white/40 mb-2">Extend expiry</p>
-            <div className="flex gap-2">
-              {([1, 3, 7] as const).map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => setExpiresInDays(days)}
-                  className={[
-                    'px-4 py-2 rounded-md border text-[13px] transition-colors min-h-[44px]',
-                    expiresInDays === days
-                      ? 'border-white/30 bg-white text-[#08080a]'
-                      : 'border-white/[0.08] text-white/55 hover:border-white/20',
-                  ].join(' ')}
-                >
-                  {days === 1 ? '1 day' : `${days} days`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {phase === 'error' && (
-            <p className="text-[13px] text-red-400">Something went wrong. Try again.</p>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-            <Link to={`/competitive/lfg/${id}`}
-              className="text-[13px] text-white/40 hover:text-white transition-colors">
-              Cancel
-            </Link>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={phase === 'saving' || phase === 'done'}
-              className="flex items-center gap-2 rounded-md bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white text-[13px] px-6 h-10 transition-colors"
-            >
-              {phase === 'saving'
-                ? <><Loader2 className="h-4 w-4 animate-spin" /><span>Saving…</span></>
-                : phase === 'done' ? 'Saved!' : 'Save changes'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </CompetitivePageShell>
-  );
+  return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / Edit listing</div><h1>Update your listing.</h1><p>Game remains fixed for this listing.</p></div></header><div className="lfg-page">
+    {listing.isLoading ? <div className="lfg-panel lfg-empty">Loading listing…</div> : listing.isError || !listing.data || listing.data.userId !== user?.id ? <div className="lfg-panel lfg-empty"><strong>Listing is unavailable.</strong><Link className="lfg-button" to="/competitive/lfg/mine">My listings</Link></div> : <div className="lfg-panel" style={{ maxWidth:760, padding:24 }}>
+      <p className="lfg-sub" style={{ marginBottom:20 }}>{catalog.games.find(item => item.slug === game)?.name || game} · {listing.data.status}</p>
+      {!!roles.length && <div className="lfg-field">Roles<div className="lfg-row-actions">{roles.map(item => <button className="lfg-button" type="button" key={item.id} aria-pressed={role.includes(item.roleKey)} onClick={() => setRole(role.includes(item.roleKey) ? role.filter(value => value !== item.roleKey) : [...role, item.roleKey])}>{item.displayName}</button>)}</div></div>}
+      {!!modes.length && <label className="lfg-field">Mode<select className="lfg-input" value={mode} onChange={event => setMode(event.target.value)}><option value="">Any mode</option>{modes.map(item => <option key={item.key || item.value} value={item.key || item.value}>{item.name}</option>)}</select></label>}
+      {!!regions.length && <label className="lfg-field">Region<select className="lfg-input" value={region} onChange={event => setRegion(event.target.value)}><option value="">Any region</option>{regions.map(item => <option key={item.id} value={item.regionKey}>{item.displayName}</option>)}</select></label>}
+      {!!ranks.length && <div className="lfg-row-actions"><label className="lfg-field" style={{ flex:1 }}>Minimum rank<select className="lfg-input" value={minRank} onChange={event => setMinRank(event.target.value)}><option value="">Any rank</option>{ranks.map(item => <option key={item.id} value={item.sortOrder}>{item.displayName}</option>)}</select></label><label className="lfg-field" style={{ flex:1 }}>Maximum rank<select className="lfg-input" value={maxRank} onChange={event => setMaxRank(event.target.value)}><option value="">Any rank</option>{ranks.map(item => <option key={item.id} value={item.sortOrder}>{item.displayName}</option>)}</select></label></div>}
+      <label className="lfg-field">Servers, separated by commas<input className="lfg-input" value={servers} onChange={event => setServers(event.target.value)} /></label><div className="lfg-field">Languages<LfgLanguagePicker value={languages.split(',').map(item => item.trim()).filter(Boolean)} onChange={value => setLanguages(value.join(', '))} /></div>
+      <label className="lfg-field">Description ({description.length}/280)<textarea className="lfg-input" rows={4} maxLength={280} value={description} onChange={event => setDescription(event.target.value)} /></label><label className="lfg-field">Expiry<select className="lfg-input" value={duration} onChange={event => setDuration(event.target.value)}><option value="">Keep current expiry</option><option value="1">Extend to 1 day</option><option value="3">Extend to 3 days</option><option value="7">Extend to 7 days</option></select></label>
+      {error && <p className="lfg-error" role="alert">{error}</p>}<div className="lfg-row-actions"><Link className="lfg-button" to={`/competitive/lfg/${id}`}>Cancel</Link><button className="lfg-button lfg-button-primary" type="button" disabled={update.isPending} onClick={() => void save()}>{update.isPending ? 'Saving…' : 'Save changes'}</button></div>
+    </div>}
+  </div></LfgWorkspace>;
 }

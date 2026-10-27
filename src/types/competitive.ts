@@ -234,6 +234,10 @@ export interface PopularAgent {
 }
 
 export interface LfgListing {
+  isSaved?: boolean;
+  viewerInterestId?: string | null;
+  viewerInterestStatus?: LfgInterestStatus | null;
+  viewerConversationId?: string | null;
   id: string;
   userId: string;
   teamId: string | null;
@@ -354,6 +358,11 @@ export interface CreateLfgListingRequest {
  * @see shared-contracts/types.md §3
  */
 export interface UpdateLfgListingRequest {
+  clearMode?: boolean;
+  clearRegion?: boolean;
+  clearMinRank?: boolean;
+  clearMaxRank?: boolean;
+  clearDescription?: boolean;
   modeKey?: string | null;
   regionKey?: string | null;
   preferredServers?: string[];
@@ -528,6 +537,11 @@ export interface PlayerSearchFilters {
  */
 export interface LfgSearchFilters {
   game: string;
+  roles?: string[];
+  query?: string;
+  language?: string;
+  server?: string;
+  savedOnly?: boolean;
   intent?: LfgIntent[];
   /** sort_order integer */
   minRank?: number;
@@ -542,6 +556,21 @@ export interface LfgSearchFilters {
   region?: string;
   /** @deprecated Use offset */
   page?: number;
+}
+
+export interface LfgInboxEntry {
+  id: string;
+  listingId: string;
+  fromUserId: string;
+  toUserId: string;
+  status: LfgInterestStatus;
+  message: string | null;
+  createdAt: string;
+  gameSlug: string;
+  listingName: string | null;
+  listingStatus: LfgStatus;
+  counterpartUsername: string | null;
+  conversationId: string | null;
 }
 
 // ── Availability ──────────────────────────────────────────────────────────────

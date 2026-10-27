@@ -69,7 +69,9 @@ export function useConversationRealtime(
   useEffect(() => {
     if (!conversationId || !conn) return;
 
-    const handler = (msg: ConversationMessage) => callbackRef.current(msg);
+    const handler = (msg: ConversationMessage) => {
+      if (msg.conversationId === conversationId) callbackRef.current(msg);
+    };
     conn.invoke('JoinConversation', conversationId).catch(console.error);
     conn.on('MessageReceived', handler);
 

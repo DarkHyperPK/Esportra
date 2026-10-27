@@ -66,10 +66,8 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     },
     {
       id: 'find-teammates', label: 'Find Teammates', icon: Users,
-      items: [
-        { label: 'Looking for Team', to: '/competitive/looking-for-team' },
-        { label: 'Looking for Player', to: '/competitive/looking-for-player' },
-      ],
+      to: '/competitive/lfg',
+      items: [],
     },
     {
       id: 'scrims', label: 'Scrims', icon: Crosshair,

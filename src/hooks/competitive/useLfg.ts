@@ -12,7 +12,10 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
+import { apiClient as rawApiClient } from '@/lib/apiClient';
+import type { CaptainTeamRow } from '@/hooks/useEligibleCaptainTeams';
 import type {
   LfgListing,
   LfgInterest,
@@ -21,6 +24,7 @@ import type {
   ExpressInterestRequest,
   TeamDetailedMember,
   MyGameStats,
+  LfgInboxEntry,
 } from '@/types/competitive';
 
 export interface AcceptInterestResponse {
@@ -32,6 +36,35 @@ import { lfgKeys } from './queryKeys';
 // Re-export keys so existing imports that destructure from this file still work.
 export { lfgKeys };
 
+export function useLfgCaptainTeams(userId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['lfg', 'captain-teams', userId],
+    queryFn: () => rawApiClient.get<CaptainTeamRow[]>('/api/teams/my-captain-teams?limit=50'),
+    enabled: !!userId && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useLfgInbox(direction: 'received' | 'sent', game?: string, offset = 0) {
+  const params = new URLSearchParams({ direction, limit: '30', offset: String(offset) });
+  if (game) params.set('game', game);
+  return useQuery({
+    queryKey: [...lfgKeys.inbox(direction, game), offset],
+    queryFn: () => apiClient.get<LfgInboxEntry[]>(`/api/competitive/lfg/interests/mine?${params}`),
+    staleTime: 15_000,
+  });
+}
+
+export function useSetLfgSaved() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, saved }: { id: string; saved: boolean }) => saved
+      ? apiClient.put(`/api/competitive/lfg/${id}/saved`, {})
+      : apiClient.delete(`/api/competitive/lfg/${id}/saved`),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
+  });
+}
+
 // ── Query hooks ────────────────────────────────────────────────────────────────
 
 export function useMyGameStats(game: string) {
@@ -39,7 +72,36 @@ export function useMyGameStats(game: string) {
     queryKey: ['my-game-stats', game],
     queryFn: () => apiClient.get<MyGameStats>(`/api/competitive/game-stats/me?game=${game}`),
     staleTime: 60_000,
+    enabled: !!game,
   });
+}
+
+export function useSaveLfgDraft() {
+  const qc = useQueryClient();
+  const draft = useRef<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: async ({ request, publish }: { request: CreateLfgListingRequest; publish: boolean }) => {
+      let id = draft.current;
+      if (!id) {
+        const created = await apiClient.post<LfgListing>('/api/competitive/lfg', request);
+        id = created.id;
+        draft.current = id;
+        setDraftId(id);
+        void qc.invalidateQueries({ queryKey: lfgKeys.mine() });
+      } else {
+        const { gameSlug: _gameSlug, intent: _intent, teamId: _teamId, ...editable } = request;
+        await apiClient.put<LfgListing>(`/api/competitive/lfg/${id}`, { ...editable,
+          clearMode: !editable.modeKey, clearRegion: !editable.regionKey,
+          clearMinRank: editable.minRankSortOrder == null, clearMaxRank: editable.maxRankSortOrder == null,
+          clearDescription: !editable.description });
+      }
+      if (publish) await apiClient.post<LfgListing>(`/api/competitive/lfg/${id}/publish`);
+      return id;
+    },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
+  });
+  return { ...mutation, draftId };
 }
 
 export function useMyLfgListings() {
@@ -68,11 +130,11 @@ export function useTeamDetailedMembers(teamId: string | null, enabled: boolean) 
   });
 }
 
-export function useLfgInterests(listingId: string) {
+export function useLfgInterests(listingId: string, enabled = true) {
   return useQuery({
     queryKey: lfgKeys.interests(listingId),
     queryFn: () => apiClient.get<LfgInterest[]>(`/api/competitive/lfg/${listingId}/interests`),
-    enabled: !!listingId,
+    enabled: !!listingId && enabled,
     staleTime: 30_000,
   });
 }
@@ -183,6 +245,7 @@ export function useExpressInterest(listingId: string) {
       apiClient.post<LfgInterest>(`/api/competitive/lfg/${listingId}/interest`, req),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: lfgKeys.detail(listingId) });
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
   });
 }
@@ -198,6 +261,8 @@ export function useAcceptInterest(listingId: string) {
       apiClient.post<AcceptInterestResponse>(`/api/competitive/lfg/interests/${interestId}/accept`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: lfgKeys.interests(listingId) });
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
+      void qc.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
 }
@@ -213,6 +278,7 @@ export function useDeclineInterest(listingId: string) {
       apiClient.post(`/api/competitive/lfg/interests/${interestId}/decline`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: lfgKeys.interests(listingId) });
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
   });
 }
@@ -240,6 +306,7 @@ export function useWithdrawInterest(listingId: string) {
     mutationFn: () => apiClient.delete(`/api/competitive/lfg/${listingId}/interest`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: lfgKeys.detail(listingId) });
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
   });
 }

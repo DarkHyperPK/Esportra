@@ -51,6 +51,20 @@ function OrganizerEditLegacyRedirect() {
 }
 
 /** Legacy `/br-lobby` URLs redirect to the canonical game room route. */
+function LegacyLfgRedirect({ kind }: { kind: 'players' | 'teams' }) {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set('kind', kind);
+  return <Navigate to={`/competitive/lfg?${params}`} replace />;
+}
+
+function LegacyLfgCreateRedirect({ type }: { type: 'lft' | 'lfp' }) {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set('type', type);
+  return <Navigate to={`/competitive/lfg/create?${params}`} replace />;
+}
+
 function BRGameRoomLegacyRedirect() {
   const { slug } = useParams<{ slug: string }>();
   return <Navigate to={`/tournaments/${slug}/br-game-room`} replace />;
@@ -65,11 +79,8 @@ const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 
 // Competitive
 const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
-const LookingForTeamPage = lazyWithRetry(() => import("./pages/competitive/LookingForTeamPage"));
-const LookingForTeamCreatePage = lazyWithRetry(() => import("./pages/competitive/LookingForTeamCreatePage"));
-const LookingForPlayerPage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerPage"));
-const LookingForPlayerCreatePage = lazyWithRetry(() => import("./pages/competitive/LookingForPlayerCreatePage"));
-const FindTeammatesPage = lazyWithRetry(() => import("./pages/competitive/FindTeammatesPage"));
+const LfgDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/LfgDiscoveryPage"));
+const LfgRequestsPage = lazyWithRetry(() => import("./pages/competitive/LfgRequestsPage"));
 const LfgMyListingsPage = lazyWithRetry(() => import("./pages/competitive/LfgMyListingsPage"));
 const LfgCreateWizardPage = lazyWithRetry(() => import("./pages/competitive/LfgCreateWizardPage"));
 const LfgManagePage = lazyWithRetry(() => import("./pages/competitive/LfgManagePage"));
@@ -557,27 +568,29 @@ const AppContent = React.memo(() => {
                 {/* Competitive Routes — wrapped in ProductLayout for nav_v2 app shell */}
                 <Route path="/competitive" element={<ProductLayout />}>
                   <Route path="discover" element={<DiscoverPage />} />
-                  <Route path="find-teammates" element={<FindTeammatesPage />} />
+                  <Route path="find-teammates" element={<LegacyLfgRedirect kind="players" />} />
                   <Route path="looking-for-team" element={
                     <ProtectedRoute>
-                      <LookingForTeamPage />
+                      <LegacyLfgRedirect kind="players" />
                     </ProtectedRoute>
                   } />
                   <Route path="looking-for-team/create" element={
                     <ProtectedRoute>
-                      <LookingForTeamCreatePage />
+                      <LegacyLfgCreateRedirect type="lft" />
                     </ProtectedRoute>
                   } />
                   <Route path="looking-for-player" element={
                     <ProtectedRoute>
-                      <LookingForPlayerPage />
+                      <LegacyLfgRedirect kind="teams" />
                     </ProtectedRoute>
                   } />
                   <Route path="looking-for-player/create" element={
                     <ProtectedRoute>
-                      <LookingForPlayerCreatePage />
+                      <LegacyLfgCreateRedirect type="lfp" />
                     </ProtectedRoute>
                   } />
+                  <Route path="lfg" element={<ProtectedRoute><LfgDiscoveryPage /></ProtectedRoute>} />
+                  <Route path="lfg/requests" element={<ProtectedRoute><LfgRequestsPage /></ProtectedRoute>} />
                   <Route path="lfg/create" element={
                     <ProtectedRoute>
                       <LfgCreateWizardPage />

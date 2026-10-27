@@ -54,6 +54,7 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   kick: kind(ShieldAlert, 'warning', 'tournaments', 'Removed'),
   // Competitive
   lfg_interest_received: kind(Users, 'accent', 'competitive', 'LFG Interest'),
+  lfg_interest_accepted: kind(CheckCircle2, 'success', 'competitive', 'LFG accepted'),
   // Staff
   staff_invite: kind(Shield, 'accent', 'staff', 'Staff invite'),
   // System

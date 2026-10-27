@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
+import { lfgKeys } from './queryKeys';
 import type { PlayerSearchResult, LfgListing, PlayerSearchFilters, LfgSearchFilters, PopularAgent } from '@/types/competitive';
 
 function buildPlayerSearchParams(filters: PlayerSearchFilters): string {
@@ -17,6 +18,11 @@ function buildPlayerSearchParams(filters: PlayerSearchFilters): string {
 function buildLfgSearchParams(filters: LfgSearchFilters): string {
   const params = new URLSearchParams({ game: filters.game });
   if (filters.intent?.length) params.set('intent', filters.intent.join(','));
+  if (filters.roles?.length) params.set('preferred_roles', filters.roles.join(','));
+  if (filters.query?.trim()) params.set('q', filters.query.trim());
+  if (filters.language) params.set('language', filters.language);
+  if (filters.server) params.set('server', filters.server);
+  if (filters.savedOnly) params.set('saved_only', 'true');
   if (filters.minRank != null) params.set('min_rank', String(filters.minRank));
   if (filters.maxRank != null) params.set('max_rank', String(filters.maxRank));
   if (filters.regionKey) params.set('region_key', filters.regionKey);
@@ -55,13 +61,30 @@ function enrichListings(listings: LfgListing[]): LfgListing[] {
 
 export function useDiscoverLfg(filters: LfgSearchFilters) {
   return useQuery({
-    queryKey: ['discover', 'lfg', filters],
+    queryKey: lfgKeys.discover(filters),
     queryFn: async () => {
       const data = await apiClient.get<LfgListing[]>(
         `/api/competitive/lfg?${buildLfgSearchParams(filters)}`,
       );
       return enrichListings(data);
     },
+    enabled: !!filters.game,
+    staleTime: 30_000,
+  });
+}
+
+export function useInfiniteLfg(filters: LfgSearchFilters) {
+  const limit = 30;
+  return useInfiniteQuery({
+    queryKey: [...lfgKeys.discover(filters), 'pages'],
+    queryFn: async ({ pageParam }) => {
+      const data = await apiClient.get<LfgListing[]>(
+        `/api/competitive/lfg?${buildLfgSearchParams({ ...filters, limit, offset: pageParam })}`,
+      );
+      return enrichListings(data);
+    },
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => last.length === limit ? pages.length * limit : undefined,
     enabled: !!filters.game,
     staleTime: 30_000,
   });
