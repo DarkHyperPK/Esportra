@@ -293,6 +293,7 @@ export interface LfgListing {
   avatarUrl: string | null;
 
   // Riot stats enrichment (from riot_player_stats JOIN)
+  playerCardId?: string | null;
   competitiveTier: number | null;
   competitiveTierName: string | null;
   winCount: number | null;
@@ -300,6 +301,7 @@ export interface LfgListing {
   winRate: number | null;
   kdRatio: number | null;
   popularAgents: PopularAgent[] | null;
+  statsSyncStatus?: 'pending' | 'syncing' | 'complete' | 'partial' | 'error' | null;
   matchesAnalyzed: number | null;
   riotSyncedAt: string | null;
   // Riot identity
@@ -446,14 +448,46 @@ export interface TeamDetailedMember {
   tournamentCount: number;
 }
 
+export interface LfgRosterMember {
+  userId: string;
+  username: string | null;
+  avatarUrl: string | null;
+  avatarSeed: string | null;
+  avatarStyle: string | null;
+  rosterRole: string | null;
+  isStarter: boolean;
+  competitiveTier: number | null;
+  competitiveTierName: string | null;
+  kdRatio: number | null;
+  winRate: number | null;
+  matchesAnalyzed: number | null;
+}
+
+export interface LfgRoster {
+  status: 'available' | 'missing' | 'ambiguous';
+  members: LfgRosterMember[];
+}
+
 // ── My game stats (LFT create flow) ──────────────────────────────────────────
 
+export interface ValorantActStats {
+  actId: string;
+  isCurrent: boolean;
+  startsAt: string;
+  syncStatus: 'pending' | 'partial' | 'available';
+  matches: number;
+  competitiveMatches: number;
+  popularAgents: PopularAgent[];
+}
+
 export interface MyGameStats {
+  actStats?: ValorantActStats[];
   riotLinked: boolean;
   riotGameName: string | null;
   riotTagLine: string | null;
   syncStatus: 'pending' | 'syncing' | 'complete' | 'partial' | 'error' | null;
   syncedAt: string | null;
+  playerCardId?: string | null;
   competitiveTier: number | null;
   competitiveTierName: string | null;
   winCount: number | null;

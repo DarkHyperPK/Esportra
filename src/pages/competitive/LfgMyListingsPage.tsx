@@ -1,3 +1,4 @@
+import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyLfgListings, useDeleteLfgListing, usePublishLfgListing, usePauseLfgListing } from '@/hooks/competitive/useLfg';
@@ -22,7 +23,7 @@ function ListingRow({ listing }: { listing: LfgListing }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update listing. Try again.'); }
   }
   return <article className="lfg-owned-card">
-    <div className="lfg-grid lfg-owned-preview"><LfgListingCard listing={listing} roles={roles.data ?? []} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn preview /></div>
+    <div className="lfg-grid lfg-owned-preview"><LfgListingCard listing={listing} roles={withLfgStaffRoles(listing.gameSlug || '', roles.data ?? [])} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn preview /></div>
     <div className="lfg-owned-controls"><div className="lfg-owned-meta"><span>{listing.gameSlug} · {team ? 'Recruiting players' : 'Looking for a team'}</span><strong>{expired ? 'Expired' : listing.status}</strong></div>
       {error && <p className="lfg-error" role="alert">{error}</p>}
       <div className="lfg-row-actions"><Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage</Link>{['draft','published','paused'].includes(listing.status) && <Link className="lfg-button" to={`/competitive/lfg/${listing.id}/edit`}>{expired ? 'Extend expiry' : 'Edit'}</Link>}{!expired && listing.status === 'published' && <button type="button" className="lfg-button" disabled={pending} onClick={() => void action('pause')}>Pause</button>}{!expired && ['draft','paused'].includes(listing.status) && <button type="button" className="lfg-button" disabled={pending} onClick={() => void action('publish')}>{listing.status === 'draft' ? 'Publish' : 'Resume'}</button>}{confirm ? <><button type="button" className="lfg-button" disabled={pending} onClick={() => void action('delete')}>Confirm delete</button><button type="button" className="lfg-button" onClick={() => setConfirm(false)}>Cancel</button></> : <button type="button" className="lfg-button" onClick={() => setConfirm(true)}>Delete</button>}</div>

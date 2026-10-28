@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInfiniteLfg } from './useDiscovery';
-import { useSaveLfgDraft, useSetLfgSaved } from './useLfg';
+import { useMyGameStats, useSaveLfgDraft, useSetLfgSaved } from './useLfg';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() }));
 vi.mock('@/hooks/competitive/competitiveApiClient', () => ({ competitiveApiClient: api }));
@@ -17,6 +17,17 @@ function setup() {
 
 describe('LFG integration hooks', () => {
   beforeEach(() => vi.resetAllMocks());
+
+  it('refreshes LFG listings after a queued stats sync completes', async () => {
+    api.get.mockResolvedValueOnce({ syncStatus: 'pending' }).mockResolvedValueOnce({ syncStatus: 'complete', popularAgents: [{ agentId: 'jett', gamesPlayed: 5 }] });
+    const { client, wrapper } = setup();
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useMyGameStats('valorant'), { wrapper });
+    await waitFor(() => expect(result.current.data?.syncStatus).toBe('pending'));
+    await act(async () => { await result.current.refetch(); });
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['lfg'] }));
+    expect(result.current.data?.popularAgents?.[0].gamesPlayed).toBe(5);
+  });
 
   it('passes game-specific filters and paginates discovery on the canonical cache key', async () => {
     api.get.mockImplementation((path: string) => Promise.resolve(path.includes('offset=30') ? [] : Array.from({ length: 30 }, (_, i) => ({ id: String(i) }))));

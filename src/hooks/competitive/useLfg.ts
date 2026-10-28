@@ -16,7 +16,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
 import type { CaptainTeamRow } from '@/hooks/useEligibleCaptainTeams';
@@ -29,6 +29,7 @@ import type {
   TeamDetailedMember,
   MyGameStats,
   LfgInboxEntry,
+  LfgRoster,
 } from '@/types/competitive';
 
 export interface AcceptInterestResponse {
@@ -72,12 +73,36 @@ export function useSetLfgSaved() {
 // ── Query hooks ────────────────────────────────────────────────────────────────
 
 export function useMyGameStats(game: string) {
-  return useQuery({
+  const qc = useQueryClient();
+  const previousStatus = useRef<string | null>(null);
+  const query = useQuery({
     queryKey: ['my-game-stats', game],
     queryFn: () => apiClient.get<MyGameStats>(`/api/competitive/game-stats/me?game=${game}`),
     staleTime: 60_000,
     enabled: !!game,
-    refetchInterval: query => ['pending', 'syncing'].includes(query.state.data?.syncStatus ?? '') ? 5000 : false,
+    refetchInterval: query => {
+      const data = query.state.data;
+      if (!data?.riotLinked) return false;
+      if (data.syncStatus === 'pending' || data.syncStatus === 'syncing' || !data.syncStatus) return 5000;
+      return data.syncStatus === 'partial' || data.syncStatus === 'error' ? 60_000 : false;
+    },
+  });
+  useEffect(() => {
+    const status = query.data?.syncStatus ?? null;
+    if (['pending', 'syncing'].includes(previousStatus.current ?? '') && ['complete', 'partial'].includes(status ?? '')) {
+      void qc.invalidateQueries({ queryKey: lfgKeys.all() });
+    }
+    previousStatus.current = status;
+  }, [qc, query.data?.syncStatus]);
+  return query;
+}
+
+export function useLfgRoster(listingId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...lfgKeys.detail(listingId), 'roster'],
+    queryFn: () => apiClient.get<LfgRoster>(`/api/competitive/lfg/${listingId}/roster`),
+    enabled: enabled && !!listingId && listingId !== 'preview',
+    staleTime: 60_000,
   });
 }
 
@@ -97,7 +122,7 @@ export function useSaveLfgDraft() {
       } else {
         const { gameSlug: _gameSlug, intent: _intent, teamId: _teamId, ...editable } = request;
         await apiClient.put<LfgListing>(`/api/competitive/lfg/${id}`, { ...editable,
-          clearMode: !editable.modeKey, clearRegion: !editable.regionKey,
+          clearRegion: !editable.regionKey,
           clearMinRank: editable.minRankSortOrder == null, clearMaxRank: editable.maxRankSortOrder == null,
           clearDescription: !editable.description });
       }

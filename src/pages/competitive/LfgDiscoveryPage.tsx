@@ -1,3 +1,4 @@
+import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
@@ -32,7 +33,7 @@ export default function LfgDiscoveryPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [saveError, setSaveError] = useState('');
   useEffect(() => { const timer = window.setTimeout(() => setSearch(query), 250); return () => window.clearTimeout(timer); }, [query]);
-  const roles = useCatalogGameRoles(game).data ?? [];
+  const roles = withLfgStaffRoles(game, useCatalogGameRoles(game).data ?? []);
   const ranks = useCatalogRankTiers(game).data ?? [];
   const regions = useCatalogRegions(game).data ?? [];
   const intents: LfgIntent[] = kind === 'players' ? ['looking_for_team'] : ['looking_for_player', 'competitive_roster'];
@@ -43,8 +44,8 @@ export default function LfgDiscoveryPage() {
   const rows = feed.data?.pages.flat() ?? [];
   const own = savedOnly ? [] : (myListings.data ?? []).filter(item => item.gameSlug === game && item.status === 'published' && (!item.expiresAt || new Date(item.expiresAt).getTime() > Date.now()) && intents.includes(item.intent)
     && (!role || item.preferredRoles?.includes(role)) && (!region || item.regionKey === region)
-    && (!rank || (item.minRankSortOrder != null && item.minRankSortOrder >= Number(rank)))
-    && (!maxRank || (item.maxRankSortOrder != null && item.maxRankSortOrder <= Number(maxRank)))
+    && (!rank || ((kind === 'players' ? game === 'valorant' && item.competitiveTier != null && item.competitiveTier >= 3 && item.competitiveTier - 3 >= Number(rank) : item.minRankSortOrder != null && item.minRankSortOrder >= Number(rank))))
+    && (!maxRank || ((kind === 'players' ? game === 'valorant' && item.competitiveTier != null && item.competitiveTier >= 3 && item.competitiveTier - 3 <= Number(maxRank) : item.maxRankSortOrder != null && item.maxRankSortOrder <= Number(maxRank))))
     && (!language || item.languages?.includes(language))
     && (!search || `${item.username ?? ''} ${item.teamName ?? ''} ${item.description ?? ''}`.toLowerCase().includes(search.toLowerCase())));
   const selectedId = params.get('listing') || '';
@@ -88,7 +89,7 @@ export default function LfgDiscoveryPage() {
           <input className="lfg-input lfg-search" aria-label="Search listings" placeholder="Search names and descriptions" maxLength={100} value={query} onChange={event => setQuery(event.target.value)} />
         </div>
         {saveError && <p className="lfg-error" role="alert">{saveError}</p>}
-        <div><p className="lfg-count">{kind === 'players' ? 'Players looking for a team' : 'Teams recruiting'} · {activeGame?.name ?? game}</p>
+        <div>
           {feed.isLoading || catalog.isLoading ? <div className="lfg-panel lfg-empty" aria-live="polite">Loading listings…</div> : feed.isError ? <div className="lfg-panel lfg-empty"><strong>Listings could not load.</strong><button className="lfg-button" type="button" onClick={() => void feed.refetch()}>Try again</button></div> : listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>{savedOnly ? 'No saved listings here.' : 'No listings found.'}</strong>{savedOnly ? 'Try the other listing type, another game, or save a listing in Discover.' : 'Try another game or adjust your filters.'}</div> : <>
             <div className="lfg-grid">{listings.map(item => <LfgListingCard key={item.id} listing={item} roles={roles} artwork={activeGame?.banner || activeGame?.logo} selected={item.id === selectedId} onSelect={() => select(item.id)} onSave={() => void toggleSave(item.id, !!item.isSaved)} savePending={save.isPending} isOwn={item.userId === user?.id} />)}</div>
             {feed.hasNextPage && <button className="lfg-button" type="button" style={{ marginTop:16, width:'100%' }} disabled={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>{feed.isFetchingNextPage ? 'Loading…' : 'Load more listings'}</button>}
