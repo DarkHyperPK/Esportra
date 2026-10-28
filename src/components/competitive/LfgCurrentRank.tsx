@@ -7,6 +7,6 @@ export function LfgCurrentRank({ game, rank }: { game: string; rank?: CurrentRan
   const icon = game === 'valorant' && rank?.competitiveTier != null && rank.competitiveTier >= 3
     ? getRankIconUrl(rank.competitiveTier - 3) : null;
   return <span className="lfg-compact-rank-inline" title="Rank in the latest synced competitive match." aria-label={`Current rank: ${name}`}>
-    <span className="lfg-sub">Current</span>{icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}<strong>{name}</strong>
+    {icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}<strong>{name}</strong>
   </span>;
 }

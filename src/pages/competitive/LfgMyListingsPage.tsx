@@ -1,3 +1,4 @@
+import { lfgErrorMessage } from '@/lib/lfgErrors';
 import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,7 +21,7 @@ function ListingRow({ listing }: { listing: LfgListing }) {
   async function action(type: 'delete' | 'publish' | 'pause') {
     setError('');
     try { if (type === 'delete') await remove.mutateAsync(); else if (type === 'publish') await publish.mutateAsync(); else await pause.mutateAsync(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update listing. Try again.'); }
+    catch (cause) { setError(lfgErrorMessage(cause, 'Could not update listing. Try again.')); }
   }
   return <article className="lfg-owned-card">
     <div className="lfg-grid lfg-owned-preview"><LfgListingCard listing={listing} roles={withLfgStaffRoles(listing.gameSlug || '', roles.data ?? [])} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn preview /></div>

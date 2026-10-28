@@ -22,6 +22,7 @@ export default function LfgDiscoveryPage() {
   const game = params.get('game') || catalog.games.find(item => item.slug === 'valorant')?.slug || catalog.games[0]?.slug || '';
   const kind = params.get('kind') === 'teams' ? 'teams' : 'players';
   const returnFocus = useRef<HTMLElement | null>(null);
+  const drawerInput = useRef(document.documentElement.dataset.lfgInput || 'pointer');
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
@@ -63,7 +64,7 @@ export default function LfgDiscoveryPage() {
     setRole(''); setRegion(''); setRank(''); setMaxRank(''); setLanguage(''); setQuery('');
     change({ game: value, listing: null });
   }
-  function select(id: string) { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; change({ listing: id }); }
+  function select(id: string) { drawerInput.current = document.documentElement.dataset.lfgInput || 'pointer'; returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; change({ listing: id }); }
   async function toggleSave(id: string, isSaved: boolean) {
     setSaveError('');
     try { await save.mutateAsync({ id, saved: !isSaved }); }
@@ -98,10 +99,10 @@ export default function LfgDiscoveryPage() {
       </section>
     </div>
     <Sheet open={!!selectedId} onOpenChange={open => { if (!open) change({ listing: null }); }}>
-      <SheetContent side="right" className="lfg-detail-drawer" onCloseAutoFocus={event => { if (returnFocus.current?.isConnected) { event.preventDefault(); returnFocus.current.focus(); } }}>
+      <SheetContent side="right" className="lfg-detail-drawer" data-open-input={drawerInput.current} onCloseAutoFocus={event => { if (returnFocus.current?.isConnected) { event.preventDefault(); returnFocus.current.focus(); } }}>
         <SheetTitle className="lfg-drawer-title">Listing details</SheetTitle>
-        <SheetDescription className="lfg-drawer-description">Review this listing and connect with its owner.</SheetDescription>
-        <div className="lfg-drawer-scroll" tabIndex={0} aria-label="Listing details content">
+        <SheetDescription className="sr-only">Review this listing and connect with its owner.</SheetDescription>
+        <div className="lfg-drawer-scroll" data-lenis-prevent tabIndex={0} aria-label="Listing details content">
         {detail.isLoading ? <p className="lfg-card-detail-message" role="status">Loading details…</p> : !detail.data ? <p className="lfg-card-detail-message" role="alert">This listing is unavailable. <button type="button" onClick={() => void detail.refetch()}>Try again</button></p> : <LfgListingDetail key={selectedId} listing={detail.data} roles={roles} currentUserId={user?.id} />}
         </div>
       </SheetContent>

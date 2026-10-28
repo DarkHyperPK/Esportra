@@ -1,6 +1,7 @@
+import { lfgErrorMessage } from '@/lib/lfgErrors';
 import { LfgCurrentRank } from '@/components/competitive/LfgCurrentRank';
 import { withLfgStaffRoles } from '@/lib/lfgRoles';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
@@ -36,7 +37,15 @@ export default function LfgCreateWizardPage() {
   const [error, setError] = useState('');
   const save = useSaveLfgDraft();
   const teams = useLfgCaptainTeams(user?.id, type === 'team');
-  const stats = useMyGameStats(game === 'valorant' && type === 'player' ? game : '');
+  const stats = useMyGameStats(game === 'valorant' ? game : '');
+  const refreshAccount = stats.refetch;
+  const riotBlocked = game === 'valorant' && (stats.isLoading || stats.isError || !stats.data?.riotLinked);
+  useEffect(() => {
+    if (game !== 'valorant') return;
+    const refresh = () => { void refreshAccount?.(); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [game, refreshAccount]);
   const roleQuery = useCatalogGameRoles(game);
   const availableRoles = withLfgStaffRoles(game, roleQuery.data ?? []);
   const rankQuery = useCatalogRankTiers(game);
@@ -61,6 +70,7 @@ export default function LfgCreateWizardPage() {
     playerCardId: currentStats?.playerCardId ?? null,
     competitiveTier: currentStats?.competitiveTier ?? null, competitiveTierName: currentStats?.competitiveTierName ?? null,
     winCount: currentStats?.winCount ?? null, lossCount: currentStats?.lossCount ?? null, winRate: currentStats?.winRate ?? null,
+    hsPct: currentStats?.hsPct ?? null,
     kdRatio: currentStats?.kdRatio ?? null, popularAgents: currentStats?.popularAgents ?? null,
     matchesAnalyzed: currentStats?.matchesAnalyzed ?? null, riotSyncedAt: currentStats?.syncedAt ?? null,
     riotGameName: currentStats?.riotGameName ?? null, riotTagLine: currentStats?.riotTagLine ?? null,
@@ -72,6 +82,7 @@ export default function LfgCreateWizardPage() {
   }
   async function submit(publish: boolean) {
     setError('');
+    if (riotBlocked) { setError('Link your Riot account before creating a Valorant listing.'); return; }
     if (!game || (type === 'team' && !teamId)) { setError('Choose a game and an eligible team.'); return; }
     if (type === 'team' && minRank && maxRank && Number(minRank) > Number(maxRank)) { setError('Minimum rank must not exceed maximum rank.'); return; }
     const request: CreateLfgListingRequest = { gameSlug: game, intent: type === 'player' ? 'looking_for_team' : 'looking_for_player',
@@ -81,14 +92,19 @@ export default function LfgCreateWizardPage() {
       languages: languages.split(',').map(item => item.trim()).filter(Boolean), description: description.trim() || null,
       expiresAt: new Date(Date.now() + duration * 86400000).toISOString() };
     try { await save.mutateAsync({ request, publish }); navigate('/competitive/lfg/mine'); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save listing. Try again.'); }
+    catch (cause) { setError(lfgErrorMessage(cause, 'Could not save listing. Try again.')); }
   }
   return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / Create listing</div><h1>Put yourself on the board.</h1><p>Tell people what you play and what you are looking for.</p></div></header>
     <div className="lfg-page lfg-wizard-layout"><div className="lfg-panel lfg-wizard-form">
       <div className="lfg-segmented" aria-label="Creation progress"><span className="lfg-chip">{step} / 3</span><span className="lfg-chip">{['Your search', 'Your details', 'Review'][step - 1]}</span></div>
       {step === 1 && <div style={{ marginTop:24 }}><h2 className="lfg-name">What are you looking for?</h2><div className="lfg-row-actions" style={{ margin:'14px 0 22px' }}><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'player'} onClick={() => setType('player')}>I need a team</button><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'team'} onClick={() => setType('team')}>We need a player</button></div><label className="lfg-field">Game<select className="lfg-input" value={game} disabled={!!save.draftId || !catalog.games.length} onChange={event => changeGame(event.target.value)}>{!catalog.games.length && <option value="">Game catalog unavailable</option>}{catalog.games.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label></div>}
+      {game === 'valorant' && riotBlocked && <section className="lfg-account-gate" aria-label="Riot account required">
+        <strong>{stats.isLoading ? 'Checking your Riot account…' : stats.isError ? 'Account status could not load' : 'Connect Riot to list for Valorant'}</strong>
+        <p className="lfg-sub">A linked Riot account is required for player, coach, manager and team listings.</p>
+        {stats.isError ? <button className="lfg-button" type="button" onClick={() => void stats.refetch()}>Retry account check</button> : !stats.isLoading && <Link className="lfg-button" to="/account/settings" target="_blank" rel="noopener noreferrer">Connect Riot account</Link>}
+      </section>}
       {step === 2 && <div style={{ marginTop:24 }}>
-        {type === 'team' ? <label className="lfg-field">Recruiting team<select className="lfg-input" value={teamId} disabled={!!save.draftId} onChange={event => setTeamId(event.target.value)}><option value="">Choose a team</option>{realTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select>{teams.isError && <span className="lfg-error">Teams could not load. <button type="button" onClick={() => void teams.refetch()}>Try again</button></span>}{!teams.isLoading && !teams.isError && !realTeams.length && <span>No captain teams found. <Link to="/teams">Manage teams</Link></span>}</label> : game === 'valorant' && <div className="lfg-panel" style={{ padding:16, marginBottom:20 }}><strong>Valorant stats</strong><div className="lfg-row-actions" style={{ marginTop:8 }}><LfgCurrentRank game={game} rank={stats.data} /></div><p className="lfg-sub">{stats.isLoading ? 'Loading…' : stats.isError ? 'Stats could not load.' : stats.data?.riotLinked ? `${stats.data.winRate != null ? `${stats.data.winRate}% win rate` : 'Stats unavailable'} · ${stats.data.syncStatus === 'error' ? 'Sync failed; retry later' : stats.data.syncStatus === 'partial' ? 'Partial match history' : stats.data.syncStatus === 'pending' || stats.data.syncStatus === 'syncing' || !stats.data.syncedAt ? 'Syncing…' : 'Up to date'}` : 'Link your Riot account to show available stats.'}</p>{!stats.data?.riotLinked && !stats.isLoading && !stats.isError && <Link className="lfg-sub" to="/settings/connections">Connect account</Link>}</div>}
+        {type === 'team' ? <label className="lfg-field">Recruiting team<select className="lfg-input" value={teamId} disabled={!!save.draftId} onChange={event => setTeamId(event.target.value)}><option value="">Choose a team</option>{realTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}</select>{teams.isError && <span className="lfg-error">Teams could not load. <button type="button" onClick={() => void teams.refetch()}>Try again</button></span>}{!teams.isLoading && !teams.isError && !realTeams.length && <span>No captain teams found. <Link to="/teams">Manage teams</Link></span>}</label> : game === 'valorant' && <div className="lfg-panel" style={{ padding:16, marginBottom:20 }}><strong>Valorant stats</strong><div className="lfg-row-actions" style={{ marginTop:8 }}><LfgCurrentRank game={game} rank={stats.data} /></div><p className="lfg-sub">{stats.isLoading ? 'Loading…' : stats.isError ? 'Stats could not load.' : stats.data?.riotLinked ? `${stats.data.winRate != null ? `${stats.data.winRate}% win rate` : 'Stats unavailable'} · ${stats.data.syncStatus === 'error' ? 'Sync failed; retry later' : stats.data.syncStatus === 'partial' ? 'Stats available' : stats.data.syncStatus === 'pending' || stats.data.syncStatus === 'syncing' || !stats.data.syncedAt ? 'Syncing…' : 'Up to date'}` : 'Link your Riot account to show available stats.'}</p>{!stats.data?.riotLinked && !stats.isLoading && !stats.isError && <Link className="lfg-sub" to="/account/settings" target="_blank" rel="noopener noreferrer">Connect account</Link>}</div>}
         {!!availableRoles.length && <div className="lfg-field">{type === 'team' ? 'Roles needed' : 'Your roles'}<LfgRolePicker game={game} roles={availableRoles} value={roles} onChange={setRoles} /></div>}
         {game === 'valorant' && type === 'player' && <LfgAgentPicker value={agents} onChange={setAgents} stats={stats.data?.popularAgents} syncStatus={stats.data?.syncStatus} />}
       </div>}
@@ -101,7 +117,7 @@ export default function LfgCreateWizardPage() {
         <div className="lfg-panel" style={{ padding:16 }}><div className="lfg-eyebrow">Review listing</div><strong>{type === 'player' ? 'Player looking for a team' : realTeams.find(team => team.id === teamId)?.name || 'Team recruiting'}</strong><p className="lfg-sub">{activeGame?.name} · {roles.join(', ') || 'Any role'} · {region || 'Any region'}</p><p className="lfg-description" style={{ marginTop:10 }}>{description || 'No description provided.'}</p></div>
       </div>}
       {error && <p className="lfg-error" role="alert">{error}{save.draftId && <> Your draft is saved. <Link to="/competitive/lfg/mine">View drafts</Link> or retry.</>}</p>}
-      <div className="lfg-row-actions" style={{ marginTop:24, justifyContent:'flex-end' }}>{step > 1 && <button className="lfg-button" type="button" onClick={() => setStep(step - 1)}>Back</button>}{step < 3 ? <button className="lfg-button lfg-button-primary" type="button" disabled={!game || (step === 2 && type === 'team' && !teamId)} onClick={() => setStep(step + 1)}>Continue</button> : <><button className="lfg-button" type="button" disabled={save.isPending} onClick={() => void submit(false)}>Save draft</button><button className="lfg-button lfg-button-primary" type="button" disabled={save.isPending} onClick={() => void submit(true)}>{save.isPending ? 'Saving…' : 'Publish listing'}</button></>}</div>
+      <div className="lfg-row-actions" style={{ marginTop:24, justifyContent:'flex-end' }}>{step > 1 && <button className="lfg-button" type="button" onClick={() => setStep(step - 1)}>Back</button>}{step < 3 ? <button className="lfg-button lfg-button-primary" type="button" disabled={riotBlocked || !game || (step === 2 && type === 'team' && !teamId)} onClick={() => setStep(step + 1)}>Continue</button> : <><button className="lfg-button" type="button" disabled={save.isPending || riotBlocked} onClick={() => void submit(false)}>Save draft</button><button className="lfg-button lfg-button-primary" type="button" disabled={save.isPending || riotBlocked} onClick={() => void submit(true)}>{save.isPending ? 'Saving…' : 'Publish listing'}</button></>}</div>
     </div><aside className="lfg-wizard-preview" aria-label="Listing preview"><div className="lfg-eyebrow">How you’ll appear</div><div className="lfg-grid" style={{ display:'block', marginTop:12 }}><LfgListingCard listing={previewListing} roles={availableRoles} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn preview /></div></aside></div>
   </LfgWorkspace>;
 }

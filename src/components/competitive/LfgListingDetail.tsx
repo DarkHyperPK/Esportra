@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useLfgBanner } from '@/hooks/competitive/useLfgBanner';
+import { LfgRole } from './LfgRole';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLfgReducedMotion } from '@/hooks/competitive/useLfgReducedMotion';
@@ -25,7 +27,7 @@ export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink 
   const own = currentUserId === listing.userId;
   const expired = !!listing.expiresAt && new Date(listing.expiresAt).getTime() <= Date.now() && !['removed','closed'].includes(listing.status);
   const roleNames = (listing.preferredRoles ?? []).map(key => roles.find(role => role.roleKey === key)?.displayName ?? key);
-  const roleIcon = roles.find(role => role.roleKey === listing.preferredRoles?.[0])?.iconUrl || Object.values(agentCatalog.data ?? {}).find(agent => agent.role?.toLowerCase() === roleNames[0]?.toLowerCase())?.roleIcon;
+  const { source: banner, onError: bannerError } = useLfgBanner(listing);
   const agentStats = listing.gameSlug === 'valorant' ? parsePopularAgents(listing.popularAgents) : [];
   const agentIds = listing.preferredAgents?.length ? listing.preferredAgents : agentStats.slice(0, 5).map(agent => agent.agentId);
   async function send() {
@@ -40,14 +42,18 @@ export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink 
   }
   return (
     <motion.div className="lfg-detail-body" initial={reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? false : { opacity: 0, transform: 'translateY(6px)' }} animate={{ opacity: 1, transform: 'translateY(0)' }} transition={{ duration: .18, ease: [0.2, 0, 0, 1] }}>
-      {!inline && <div className="lfg-identity"><LfgAvatar listing={listing} name={name} /><div><h2>{name}</h2><p className="lfg-sub">{listing.gameSlug}</p></div></div>}
+      {!inline && <div className={`lfg-drawer-hero ${banner ? 'has-art' : ''}`}>
+        {banner && <img className="lfg-compact-banner" src={banner} alt="" onError={bannerError} />}
+        <div className="lfg-identity"><LfgAvatar listing={listing} name={name} /><div><h2>{name}</h2><p className="lfg-sub lfg-game-name">{listing.gameSlug}{team && listing.teamTag ? ` · ${listing.teamTag}` : ''}</p></div></div>
+      </div>}
       {own && <p className="lfg-status">Listing status: {expired ? 'Expired' : listing.status}</p>}
-      {!inline && <div className="lfg-stats"><div><small>{team ? 'Required rank' : 'Current rank'}</small><div className="lfg-row-actions">{team ? <LfgRankRange listing={listing} /> : <LfgCurrentRank game={listing.gameSlug} rank={listing} />}</div></div><div><small>Region</small><strong>{listing.regionDisplayName || listing.regionKey || 'Any'}</strong></div><div><small>Roles</small><strong className="lfg-detail-stat">{roleIcon && <img src={roleIcon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{roleNames.join(', ') || 'Flexible'}</strong></div></div>}
+      {!inline && <div className={`lfg-stats ${team ? 'lfg-team-stats' : ''}`}><div><small>{team ? 'Required rank' : 'Current rank'}</small><div className="lfg-row-actions">{team ? <LfgRankRange listing={listing} /> : <LfgCurrentRank game={listing.gameSlug} rank={listing} />}</div></div><div><small>Region</small><strong>{listing.regionDisplayName || listing.regionKey || 'Any'}</strong></div><div className="lfg-detail-role-field"><small>Roles</small><div className="lfg-detail-roles">{listing.preferredRoles?.length ? listing.preferredRoles.map(key => <LfgRole key={key} game={listing.gameSlug} roleKey={key} roles={roles} />) : <strong>Flexible</strong>}</div></div></div>}
+
       {inline && <p className="lfg-sub">{listing.gameSlug}</p>}
-      <h3>What {team ? 'we are' : 'I am'} looking for</h3><p className="lfg-description">{listing.description || 'No description provided.'}</p>
+      {!team && <LfgOverallStats listing={listing} />}
+      <h3>About this listing</h3><p className="lfg-description">{listing.description || 'No description provided.'}</p>
       {inline && roleNames.length > 0 && <><h3>Roles</h3><p className="lfg-description">{roleNames.join(', ')}</p></>}
       {team && <><h3>Team roster</h3><LfgRoster listing={listing} /></>}
-      {!team && <LfgOverallStats listing={listing} />}
       {listing.gameSlug === 'valorant' && listing.intent === 'looking_for_team' && agentIds.length > 0 && <><h3>Preferred agents</h3><div className="lfg-agent-breakdown">{agentIds.map(id => { const stats = agentStats.find(agent => agent.agentId.toLowerCase() === id.toLowerCase()); const agent = agentCatalog.data?.[id.toLowerCase()]; const fallback = resolveAgent(id); const name = agent?.displayName || fallback?.displayName || stats?.displayName || 'Agent'; const icon = agent?.displayIcon || fallback?.iconUrl || stats?.iconUrl; return <p key={id}><strong className="lfg-detail-agent">{icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{name}</strong><span>{stats?.gamesPlayed ? `${stats.gamesPlayed} games · ${Math.round(stats.wins / stats.gamesPlayed * 100)}% WR · ${stats.kdRatio != null ? Number(stats.kdRatio).toFixed(2) : '—'} K/D` : listing.statsSyncStatus === 'complete' ? 'No recorded matches' : 'Stats unavailable'}</span></p>; })}</div></>}
       {!!listing.languages?.length && <><h3>Languages</h3><p className="lfg-description">{listing.languages.map(code => LFG_LANGUAGES.find(item => item.code === code)?.label ?? code).join(', ')}</p></>}
       {own ? showOwnerLink && <Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage listing</Link> : listing.viewerInterestStatus && listing.viewerInterestStatus !== 'withdrawn' ? <>

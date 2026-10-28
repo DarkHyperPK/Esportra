@@ -1,3 +1,4 @@
+import { lfgErrorMessage } from '@/lib/lfgErrors';
 import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -40,7 +41,7 @@ export default function LfgManagePage() {
       if (type === 'delete') { await remove.mutateAsync(); navigate('/competitive/lfg/mine'); }
       if (type === 'accept' && interestId) { const result = await accept.mutateAsync(interestId); if (result.conversationId) navigate(`/inbox/${result.conversationId}`); }
       if (type === 'decline' && interestId) await decline.mutateAsync(interestId);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update listing. Try again.'); }
+    } catch (cause) { setError(lfgErrorMessage(cause, 'Could not update listing. Try again.')); }
   }
   return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / Listing</div><h1>{own ? 'Manage your listing.' : 'Listing details.'}</h1><p>{own ? 'Review your listing and requests.' : 'See what they are looking for.'}</p></div></header><div className="lfg-page">
     {listing.isLoading ? <div className="lfg-panel lfg-empty">Loading listing…</div> : listing.isError || !listing.data ? <div className="lfg-panel lfg-empty"><strong>Listing is unavailable.</strong><button type="button" className="lfg-button" onClick={() => void listing.refetch()}>Try again</button></div> : <>

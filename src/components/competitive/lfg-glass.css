@@ -139,7 +139,7 @@ html[data-reduce-motion=true] .lfg-mobile-detail, html[data-reduce-motion=true] 
 .lfg-detail-drawer > button { width:44px; height:44px; top:8px; right:8px; display:grid; place-items:center; }
 @media (max-width:700px) { .lfg-detail-drawer .lfg-input { font-size:16px; } }
 @media (prefers-reduced-motion:reduce) { .lfg-detail-drawer { animation:none!important; transition:none!important; } }
-html[data-lfg-input=keyboard] .lfg-detail-drawer, html[data-reduce-motion=true] .lfg-detail-drawer { animation:none!important; transition:none!important; }
+.lfg-detail-drawer[data-open-input=keyboard], html[data-reduce-motion=true] .lfg-detail-drawer { animation:none!important; transition:none!important; }
 @media (prefers-reduced-transparency:reduce), (prefers-contrast:more) { .lfg-detail-drawer { background:#202026!important; backdrop-filter:none; } }
 
 .lfg-compact-content { padding:16px 18px; }
@@ -177,3 +177,59 @@ html[data-lfg-input=keyboard] .lfg-detail-drawer, html[data-reduce-motion=true] 
 .lfg-overall-stats strong { display:block; color:#fafafa; font-size:12px; overflow-wrap:anywhere; }
 
 .lfg-drawer-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+
+/* Detail hierarchy and team marks */
+.lfg-avatar.team.has-logo { background:transparent; border-radius:0; overflow:visible; }
+.lfg-avatar.team.has-logo img { padding:0; object-fit:contain; }
+.lfg-detail-drawer .lfg-stats { grid-template-columns:minmax(0,1fr) minmax(0,.8fr) minmax(0,1.2fr); gap:12px; align-items:start; }
+.lfg-detail-drawer .lfg-stats > div { min-width:0; }
+.lfg-detail-drawer .lfg-stats small { margin-bottom:7px; }
+.lfg-detail-drawer .lfg-compact-rank-inline { gap:5px; }
+.lfg-detail-drawer .lfg-compact-rank-inline img { width:20px; height:20px; }
+.lfg-detail-roles { display:flex; flex-wrap:wrap; gap:6px 10px; }
+.lfg-detail-roles .lfg-detail-stat { min-width:0; line-height:1.3; }
+.lfg-detail-roles .lfg-detail-stat img { width:17px; height:17px; }
+.lfg-game-name { text-transform:capitalize; }
+
+.lfg-detail-drawer .lfg-stats.lfg-team-stats { grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:15px; }
+.lfg-detail-drawer .lfg-team-stats > div:first-child { grid-column:1 / -1; }
+.lfg-detail-drawer .lfg-team-stats .lfg-rank-range { flex-wrap:nowrap; gap:7px; }
+.lfg-detail-drawer .lfg-team-stats .lfg-rank-bound { flex-wrap:nowrap; }
+
+/* Shared listing surfaces: the image fade ends at the body's exact surface color. */
+.lfg-compact-card { --lfg-card-surface:#19191e; background:var(--lfg-card-surface); }
+.lfg-compact-hero { background:var(--lfg-card-surface,#19191e); }
+.lfg-compact-hero::after,.lfg-drawer-hero::after { background:linear-gradient(to bottom,transparent 0%,rgba(25,25,30,.15) calc(100% - 64px),var(--lfg-card-surface,#19191e) calc(100% - 8px),var(--lfg-card-surface,#19191e) 100%); }
+.lfg-drawer-scroll { overflow-x:hidden; }
+.lfg-detail-drawer { height:100dvh; max-height:100dvh; }
+.lfg-detail-drawer .lfg-detail-body { --lfg-card-surface:#1b1b20; }
+.lfg-drawer-hero { position:relative; isolation:isolate; height:144px; margin:-24px -20px 16px; background:var(--lfg-card-surface); }
+.lfg-drawer-hero::after { content:''; position:absolute; inset:0; pointer-events:none; }
+.lfg-drawer-hero .lfg-identity { position:absolute; z-index:1; inset:auto 20px 12px; }
+.lfg-detail-drawer .lfg-drawer-hero h2 { font-size:20px; line-height:1.2; overflow-wrap:anywhere; }
+.lfg-detail-drawer .lfg-stats:not(.lfg-team-stats) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.lfg-detail-role-field { grid-column:1 / -1; }
+.lfg-role { display:inline-flex; align-items:center; gap:5px; color:#d4d4d8; font-size:11px; line-height:1.35; }
+.lfg-role img,.lfg-role svg { width:16px; height:16px; object-fit:contain; flex:none; }
+.lfg-card-roles { display:flex; flex-wrap:wrap; gap:6px 10px; margin-bottom:8px; }
+.lfg-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:8px 0; font-variant-numeric:tabular-nums; }
+.lfg-metrics small { display:block; font-size:10px; font-weight:400; color:#a1a1aa; margin-bottom:3px; }
+.lfg-metrics strong { display:block; font-size:13px; line-height:1.2; color:#fafafa; }
+.lfg-compact-summary { margin:6px 0 8px; }
+.lfg-compact-card .lfg-metrics { border-block:1px solid #ffffff12; margin-bottom:4px; }
+.lfg-drawer-title { flex:none; }
+.lfg-detail-drawer > button { z-index:3; background:#19191ed9; }
+
+.lfg-account-gate { padding:16px; margin-top:20px; border:1px solid #ffffff24; border-radius:12px; }
+.lfg-account-gate p { margin:8px 0 12px; line-height:1.5; }
+
+@media (hover:hover) and (pointer:fine) { .lfg-grid .lfg-compact-card:hover { --lfg-card-surface:#1f1f25; } }
+@media (prefers-reduced-transparency:reduce), (prefers-contrast:more) { .lfg-grid .lfg-compact-card { --lfg-card-surface:#202026; } }
+
+@media (prefers-reduced-transparency:reduce), (prefers-contrast:more) { .lfg-detail-drawer .lfg-detail-body { --lfg-card-surface:#202026; } }
+
+.lfg-drawer-hero:not(.has-art) { height:84px; }
+.lfg-team-stats .lfg-detail-role-field { grid-column:auto; }
+
+.lfg-detail-drawer { animation-duration:180ms!important; transition-duration:180ms!important; }
+.lfg-compact-agent { width:min(49px,calc((100% - 20px)/5)); }

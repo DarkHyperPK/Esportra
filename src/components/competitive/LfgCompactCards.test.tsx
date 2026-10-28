@@ -90,4 +90,14 @@ describe('compact LFG cards', () => {
     const { container } = render(<QueryClientProvider client={new QueryClient()}><LfgListingCard listing={listing} roles={[]} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={false} /></QueryClientProvider>);
     expect(container.querySelector('.lfg-compact-banner')).not.toBeInTheDocument();
   });
+  it('gives coach cards an icon and WR/KD/HS without a match count', () => {
+    const listing = { id:'coach', intent:'looking_for_team', gameSlug:'valorant', username:'Coach', preferredRoles:['coach'], preferredAgents:['agent-0'], languages:[], winRate:50, kdRatio:1.5, hsPct:0, matchesAnalyzed:53 } as unknown as LfgListing;
+    const { container } = render(<LfgListingCard listing={listing} roles={[]} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={false} />);
+    expect(container.querySelector('.lfg-role svg')).toBeInTheDocument();
+    expect(screen.getByText('HS%')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(screen.queryByText('Matches')).not.toBeInTheDocument();
+    expect(container.querySelector('.lfg-compact-agent')).toBeInTheDocument();
+  });
+
 });

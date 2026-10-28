@@ -8,6 +8,7 @@ describe('current player rank', () => {
     expect(screen.getByLabelText('Current rank: Silver 2')).toHaveAttribute('title', 'Rank in the latest synced competitive match.');
     expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('/10.png'));
     expect(screen.queryByText(/peak/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Current', { exact: true })).not.toBeInTheDocument();
   });
   it('shows unavailable when no current rank was synced', () => {
     render(<LfgCurrentRank game="valorant" />);

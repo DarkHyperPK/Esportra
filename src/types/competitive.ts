@@ -300,6 +300,7 @@ export interface LfgListing {
   lossCount: number | null;
   winRate: number | null;
   kdRatio: number | null;
+  hsPct?: number | null;
   popularAgents: PopularAgent[] | null;
   statsSyncStatus?: 'pending' | 'syncing' | 'complete' | 'partial' | 'error' | null;
   matchesAnalyzed: number | null;
@@ -494,6 +495,7 @@ export interface MyGameStats {
   lossCount: number | null;
   winRate: number | null;
   kdRatio: number | null;
+  hsPct?: number | null;
   matchesAnalyzed: number | null;
   popularAgents: PopularAgent[] | null;
 }

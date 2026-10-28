@@ -5,7 +5,7 @@ import LfgCreateWizardPage from './LfgCreateWizardPage';
 import LfgEditPage from './LfgEditPage';
 
 const state = vi.hoisted(() => ({
-  save: vi.fn(), update: vi.fn(), intent: 'looking_for_team',
+  save: vi.fn(), update: vi.fn(), refetch: vi.fn(), linked: true, intent: 'looking_for_team',
   ranks: [{ id: 'rank', sortOrder: 4, displayName: 'Silver 2', iconUrl: null }],
 }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'owner' }, profile: { username: 'Player' } }) }));
@@ -15,7 +15,7 @@ vi.mock('@/hooks/competitive/useCatalog', () => ({
 }));
 vi.mock('@/hooks/competitive/useLfg', () => ({
   useLfgCaptainTeams: () => ({ data: [{ id: 'team', name: 'Team' }] }),
-  useMyGameStats: () => ({ data: { riotLinked: true, competitiveTierName: 'Gold 1', syncStatus: 'complete', syncedAt: '2026-10-28' } }),
+  useMyGameStats: () => ({ refetch: state.refetch, data: { riotLinked: state.linked, competitiveTierName: 'Gold 1', syncStatus: 'complete', syncedAt: '2026-10-28' } }),
   useSaveLfgDraft: () => ({ mutateAsync: state.save }),
   useUpdateLfgListing: () => ({ mutateAsync: state.update }),
   useLfgListing: () => ({ data: { id: 'listing', userId: 'owner', gameSlug: 'valorant', intent: state.intent, status: 'draft', minRankSortOrder: 4, maxRankSortOrder: 7 } }),
@@ -33,7 +33,7 @@ function create(type: 'lft' | 'lfp') {
 function edit() {
   render(<MemoryRouter initialEntries={['/competitive/lfg/listing/edit']}><Routes><Route path="/competitive/lfg/:id/edit" element={<LfgEditPage />} /><Route path="/competitive/lfg/:id" element={<p>Saved</p>} /></Routes></MemoryRouter>);
 }
-beforeEach(() => { vi.clearAllMocks(); state.intent = 'looking_for_team'; state.save.mockResolvedValue({}); state.update.mockResolvedValue({}); });
+beforeEach(() => { vi.clearAllMocks(); state.intent = 'looking_for_team'; state.linked = true; state.save.mockResolvedValue({}); state.update.mockResolvedValue({}); });
 
 describe('LFG rank ownership', () => {
   it('creates LFT without recruiting rank requirements', async () => {
@@ -71,4 +71,19 @@ describe('LFG rank ownership', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(state.update).toHaveBeenCalledWith(expect.objectContaining({ minRankSortOrder: 4, maxRankSortOrder: 7, clearMinRank: false, clearMaxRank: false })));
   });
+  it.each(['lft', 'lfp'] as const)('requires Riot linking for %s and preserves the valid settings destination', type => {
+    state.linked = false;
+    create(type);
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Connect Riot account' })).toHaveAttribute('href', '/account/settings');
+    expect(state.save).not.toHaveBeenCalled();
+  });
+
+  it('refreshes Riot link status when returning from account settings', () => {
+    state.linked = false;
+    create('lft');
+    fireEvent.focus(window);
+    expect(state.refetch).toHaveBeenCalledOnce();
+  });
+
 });
