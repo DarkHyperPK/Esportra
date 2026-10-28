@@ -102,9 +102,10 @@ html[data-reduce-motion=true] .lfg-mobile-detail, html[data-reduce-motion=true] 
 .lfg-detail-drawer {
   width:min(100%,440px)!important;
   max-width:440px!important;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  padding:24px 0 max(24px,env(safe-area-inset-bottom))!important;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:24px 0 0!important;
   color:#fafafa;
   background:#1b1b20!important;
   border-left:1px solid #ffffff30;
@@ -174,3 +175,5 @@ html[data-lfg-input=keyboard] .lfg-detail-drawer, html[data-reduce-motion=true] 
 .lfg-overall-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .lfg-overall-stats small { display:block; color:#a1a1aa; font-size:10px; }
 .lfg-overall-stats strong { display:block; color:#fafafa; font-size:12px; overflow-wrap:anywhere; }
+
+.lfg-drawer-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding-bottom:max(24px,env(safe-area-inset-bottom)); }

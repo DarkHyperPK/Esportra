@@ -260,10 +260,14 @@ export function useExpressInterest(listingId: string) {
   return useMutation({
     mutationFn: (req: ExpressInterestRequest) =>
       apiClient.post<LfgInterest>(`/api/competitive/lfg/${listingId}/interest`, req),
-    onSuccess: () => {
+    onSuccess: (interest) => {
+      qc.setQueryData<LfgListing>(lfgKeys.detail(listingId), current => current ? {
+        ...current, viewerInterestId: interest.id, viewerInterestStatus: 'expressed', viewerConversationId: null,
+      } : current);
       void qc.invalidateQueries({ queryKey: lfgKeys.detail(listingId) });
       void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
+    onError: () => { void qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
   });
 }
 
@@ -322,8 +326,12 @@ export function useWithdrawInterest(listingId: string) {
   return useMutation({
     mutationFn: () => apiClient.delete(`/api/competitive/lfg/${listingId}/interest`),
     onSuccess: () => {
+      qc.setQueryData<LfgListing>(lfgKeys.detail(listingId), current => current ? {
+        ...current, viewerInterestStatus: 'withdrawn', viewerConversationId: null,
+      } : current);
       void qc.invalidateQueries({ queryKey: lfgKeys.detail(listingId) });
       void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     },
+    onError: () => { void qc.invalidateQueries({ queryKey: lfgKeys.all() }); },
   });
 }

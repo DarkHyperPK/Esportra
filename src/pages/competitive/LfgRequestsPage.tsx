@@ -30,6 +30,7 @@ function RequestRow({ item, received }: { item: LfgInboxEntry; received: boolean
     {item.status === 'expressed' && (received ? <><button className="lfg-button lfg-button-primary" type="button" disabled={pending} onClick={() => void respond('accept')}>Accept</button><button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('decline')}>Decline</button></> : <button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('withdraw')}>Withdraw</button>)}
     {item.status === 'accepted' && item.conversationId && <Link className="lfg-button lfg-button-primary" to={`/inbox/${item.conversationId}`}>Open conversation</Link>}
     {received && <Link className="lfg-button" to={`/competitive/lfg/${item.listingId}`}>View listing</Link>}
+    {!received && item.status === 'withdrawn' && item.listingStatus === 'published' && <Link className="lfg-button" to={`/competitive/lfg?game=${encodeURIComponent(item.gameSlug)}&kind=${item.intent === 'looking_for_team' ? 'players' : 'teams'}&listing=${encodeURIComponent(item.listingId)}`}>Invite again</Link>}
   </div></article>;
 }
 

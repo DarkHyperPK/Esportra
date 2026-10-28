@@ -598,6 +598,7 @@ export interface LfgSearchFilters {
 }
 
 export interface LfgInboxEntry {
+  intent: LfgIntent;
   id: string;
   listingId: string;
   fromUserId: string;

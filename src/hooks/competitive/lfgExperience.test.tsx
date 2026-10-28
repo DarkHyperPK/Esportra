@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInfiniteLfg } from './useDiscovery';
-import { useMyGameStats, useSaveLfgDraft, useSetLfgSaved } from './useLfg';
+import { useMyGameStats, useSaveLfgDraft, useSetLfgSaved, useExpressInterest, useWithdrawInterest } from './useLfg';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() }));
 vi.mock('@/hooks/competitive/competitiveApiClient', () => ({ competitiveApiClient: api }));
@@ -71,4 +71,21 @@ describe('LFG integration hooks', () => {
     expect(api.put).toHaveBeenCalledWith('/api/competitive/lfg/listing-1/saved', {});
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['lfg'] });
   });
+  it('updates detail immediately on invite and withdrawal and refreshes after errors', async () => {
+    api.post.mockResolvedValue({ id: 'new-request', status: 'expressed' });
+    api.delete.mockResolvedValue({ success: true });
+    const { client, wrapper } = setup();
+    client.setQueryData(['lfg', 'detail', 'listing'], { id: 'listing', viewerInterestStatus: 'withdrawn' });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const invite = renderHook(() => useExpressInterest('listing'), { wrapper });
+    await act(async () => { await invite.result.current.mutateAsync({ message: 'Hello' }); });
+    expect(client.getQueryData(['lfg', 'detail', 'listing'])).toMatchObject({ viewerInterestId: 'new-request', viewerInterestStatus: 'expressed' });
+    const withdraw = renderHook(() => useWithdrawInterest('listing'), { wrapper });
+    await act(async () => { await withdraw.result.current.mutateAsync(); });
+    expect(client.getQueryData(['lfg', 'detail', 'listing'])).toMatchObject({ viewerInterestStatus: 'withdrawn' });
+    api.post.mockRejectedValue(new Error('offline'));
+    await act(async () => { await expect(invite.result.current.mutateAsync({ message: 'Hello again' })).rejects.toThrow('offline'); });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['lfg'] });
+  });
+
 });

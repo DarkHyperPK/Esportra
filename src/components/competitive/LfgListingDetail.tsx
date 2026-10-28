@@ -49,16 +49,16 @@ export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink 
       {team && <><h3>Team roster</h3><LfgRoster listing={listing} /></>}
       {!team && <LfgOverallStats listing={listing} />}
       {listing.gameSlug === 'valorant' && listing.intent === 'looking_for_team' && agentIds.length > 0 && <><h3>Preferred agents</h3><div className="lfg-agent-breakdown">{agentIds.map(id => { const stats = agentStats.find(agent => agent.agentId.toLowerCase() === id.toLowerCase()); const agent = agentCatalog.data?.[id.toLowerCase()]; const fallback = resolveAgent(id); const name = agent?.displayName || fallback?.displayName || stats?.displayName || 'Agent'; const icon = agent?.displayIcon || fallback?.iconUrl || stats?.iconUrl; return <p key={id}><strong className="lfg-detail-agent">{icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{name}</strong><span>{stats?.gamesPlayed ? `${stats.gamesPlayed} games · ${Math.round(stats.wins / stats.gamesPlayed * 100)}% WR · ${stats.kdRatio != null ? Number(stats.kdRatio).toFixed(2) : '—'} K/D` : listing.statsSyncStatus === 'complete' ? 'No recorded matches' : 'Stats unavailable'}</span></p>; })}</div></>}
-      {listing.statsSyncStatus === 'partial' && !team && <p className="lfg-sub">Agent stats reflect partial match history.</p>}
       {!!listing.languages?.length && <><h3>Languages</h3><p className="lfg-description">{listing.languages.map(code => LFG_LANGUAGES.find(item => item.code === code)?.label ?? code).join(', ')}</p></>}
-      {own ? showOwnerLink && <Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage listing</Link> : listing.viewerInterestStatus ? <>
+      {own ? showOwnerLink && <Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage listing</Link> : listing.viewerInterestStatus && listing.viewerInterestStatus !== 'withdrawn' ? <>
         <p className="lfg-status">Request: {listing.viewerInterestStatus}</p>
         {listing.viewerInterestStatus === 'expressed' && <button className="lfg-button" disabled={withdraw.isPending} type="button" onClick={() => void cancel()}>Withdraw request</button>}
         {listing.viewerInterestStatus === 'accepted' && listing.viewerConversationId && <Link className="lfg-button lfg-button-primary" to={`/inbox/${listing.viewerConversationId}`}>Open conversation</Link>}
         {listing.viewerInterestStatus === 'accepted' && !listing.viewerConversationId && <Link className="lfg-button" to="/inbox">Open Inbox</Link>}
       </> : <>
+        {listing.viewerInterestStatus === 'withdrawn' && <p className="lfg-status">Request withdrawn</p>}
         <h3>Your introduction</h3><textarea className="lfg-input" maxLength={500} value={message} onChange={event => setMessage(event.target.value)} aria-label="Introduction" placeholder="Tell them what you are looking for…" />
-        <button className="lfg-button lfg-button-primary" disabled={express.isPending} type="button" onClick={() => void send()}>{express.isPending ? 'Sending…' : team ? 'Request to join' : 'Invite to connect'}</button>
+        <button className="lfg-button lfg-button-primary" disabled={express.isPending} type="button" onClick={() => void send()}>{express.isPending ? 'Sending…' : listing.viewerInterestStatus === 'withdrawn' ? 'Invite again' : team ? 'Request to join' : 'Invite to connect'}</button>
         <p className="lfg-sub" style={{ marginTop: 9 }}>A conversation opens after acceptance. Team membership is separate.</p>
       </>}
       {error && <p className="lfg-error" role="alert">{error}</p>}

@@ -101,7 +101,9 @@ export default function LfgDiscoveryPage() {
       <SheetContent side="right" className="lfg-detail-drawer" onCloseAutoFocus={event => { if (returnFocus.current?.isConnected) { event.preventDefault(); returnFocus.current.focus(); } }}>
         <SheetTitle className="lfg-drawer-title">Listing details</SheetTitle>
         <SheetDescription className="lfg-drawer-description">Review this listing and connect with its owner.</SheetDescription>
-        {detail.isLoading ? <p className="lfg-card-detail-message" role="status">Loading details…</p> : detail.isError || !detail.data ? <p className="lfg-card-detail-message" role="alert">This listing is unavailable. <button type="button" onClick={() => void detail.refetch()}>Try again</button></p> : <LfgListingDetail key={selectedId} listing={detail.data} roles={roles} currentUserId={user?.id} />}
+        <div className="lfg-drawer-scroll" tabIndex={0} aria-label="Listing details content">
+        {detail.isLoading ? <p className="lfg-card-detail-message" role="status">Loading details…</p> : !detail.data ? <p className="lfg-card-detail-message" role="alert">This listing is unavailable. <button type="button" onClick={() => void detail.refetch()}>Try again</button></p> : <LfgListingDetail key={selectedId} listing={detail.data} roles={roles} currentUserId={user?.id} />}
+        </div>
       </SheetContent>
     </Sheet>
   </LfgWorkspace>;
