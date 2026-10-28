@@ -9,10 +9,14 @@
  *   listingId param is kept for cache invalidation; it is no longer in the URL.
  * - Added usePublishLfgListing, usePauseLfgListing, useCloseLfgListing.
  * - useLfgListing and useLfgInterests now use canonical query keys.
+ *
+ * 2026-10-28: Removed useSyncValorantStats — Valorant stats now sync
+ * automatically on the backend (stamped 'pending' + Hangfire job on
+ * GET /game-stats/me). useMyGameStats still polls while pending/syncing.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
 import type { CaptainTeamRow } from '@/hooks/useEligibleCaptainTeams';
@@ -75,31 +79,6 @@ export function useMyGameStats(game: string) {
     enabled: !!game,
     refetchInterval: query => ['pending', 'syncing'].includes(query.state.data?.syncStatus ?? '') ? 5000 : false,
   });
-}
-
-export function useSyncValorantStats() {
-  const qc = useQueryClient();
-  const [poll, setPoll] = useState<{ started: number; previous: string | null } | null>(null);
-  useEffect(() => {
-    if (!poll) return;
-    const timer = window.setInterval(() => {
-      void qc.refetchQueries({ queryKey: ['my-game-stats', 'valorant'], type: 'active' }).then(() => {
-        const data = qc.getQueryData<MyGameStats>(['my-game-stats', 'valorant']);
-        if (Date.now() - poll.started > 120_000 || (data?.syncStatus === 'error') ||
-          (data?.syncedAt && data.syncedAt !== poll.previous && ['complete', 'partial'].includes(data.syncStatus ?? ''))) setPoll(null);
-      });
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, [poll, qc]);
-  const mutation = useMutation({
-    mutationFn: () => apiClient.post<{ status: string }>('/api/competitive/game-stats/sync'),
-    onSuccess: result => {
-      const previous = qc.getQueryData<MyGameStats>(['my-game-stats', 'valorant'])?.syncedAt ?? null;
-      if (result.status === 'queued') setPoll({ started: Date.now(), previous });
-      void qc.invalidateQueries({ queryKey: ['my-game-stats', 'valorant'] });
-    },
-  });
-  return { ...mutation, isSyncing: !!poll };
 }
 
 export function useSaveLfgDraft() {

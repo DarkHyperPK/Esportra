@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCatalogRankTiers, useCatalogGameRoles, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useCreateLfgListing, useMyGameStats } from '@/hooks/competitive/useLfg';
@@ -82,7 +82,6 @@ export default function LookingForTeamCreatePage() {
   const [expiresInDays, setExpiresInDays] = useState<1 | 3 | 7>(3);
   const [phase, setPhase] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [syncTriggered, setSyncTriggered] = useState(false);
 
   const stats = statsQuery.data;
   const ranks = ranksQuery.data ?? [];
@@ -107,14 +106,6 @@ export default function LookingForTeamCreatePage() {
     setLanguages((prev) =>
       prev.includes(code) ? prev.filter((l) => l !== code) : [...prev, code],
     );
-  }
-
-  async function handleTriggerSync() {
-    setSyncTriggered(true);
-    try {
-      await apiClient.post('/api/competitive/game-stats/sync');
-    } catch { /* ignore errors — status shown via statsQuery */ }
-    void statsQuery.refetch();
   }
 
   async function handleGoLive() {
@@ -271,7 +262,7 @@ export default function LookingForTeamCreatePage() {
 
   // ── Gate: stats syncing or pending ──────────────────────────────────────────
   const isSyncing = stats.syncStatus === 'syncing' || stats.syncStatus === 'pending';
-  const noStats = !stats.popularAgents && stats.syncStatus !== 'done';
+  const noStats = !stats.popularAgents && stats.syncStatus !== 'complete';
 
   if (isSyncing || (noStats && !stats.syncStatus)) {
     return (
@@ -292,22 +283,10 @@ export default function LookingForTeamCreatePage() {
             We're pulling your Valorant match history. This usually takes under a minute.
           </p>
           <div className="flex items-center gap-3">
-            {isSyncing ? (
-              <span className="flex items-center gap-2 text-[13px] text-white/50">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Syncing…
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void handleTriggerSync()}
-                disabled={syncTriggered}
-                className="flex items-center gap-2 border border-white/[0.08] hover:border-white/20 text-white/70 hover:text-white text-[13px] px-4 h-9 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Sync now
-              </button>
-            )}
+            <span className="flex items-center gap-2 text-[13px] text-white/50">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Syncing…
+            </span>
             <button
               type="button"
               onClick={() => void statsQuery.refetch()}
