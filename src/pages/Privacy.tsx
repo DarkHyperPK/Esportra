@@ -62,7 +62,7 @@ const PrivacyPage: React.FC = () => {
             <ul className="list-disc list-inside space-y-2 ml-4 text-gray-400">
               <li><strong className="text-gray-200">Standard HTTP Data:</strong> Your browser automatically sends standard information with every request, including browser type and version, operating system, device type, screen resolution, and language preferences.</li>
               <li><strong className="text-gray-200">IP Address:</strong> Your IP address is recorded in server and authentication logs as part of standard web infrastructure operations.</li>
-              <li><strong className="text-gray-200">Authentication Logs:</strong> Our infrastructure provider (Supabase) records login events, timestamps, IP addresses, and authentication method used for security and abuse prevention purposes.</li>
+              <li><strong className="text-gray-200">Authentication Logs:</strong> Our cloud infrastructure provider records login events, timestamps, IP addresses, and authentication method used for security and abuse prevention purposes.</li>
               <li><strong className="text-gray-200">Server Logs:</strong> API request logs including timestamps, endpoints accessed, and response codes are recorded by our hosting infrastructure for operational and debugging purposes.</li>
               <li><strong className="text-gray-200">Local Storage:</strong> We use your browser's local storage and session storage to maintain your authenticated session and user preferences (e.g., theme settings).</li>
             </ul>
@@ -70,9 +70,8 @@ const PrivacyPage: React.FC = () => {
             <h3 className="text-lg font-semibold text-white mb-2 mt-6">1.3 Information from Third Parties</h3>
             <p className="mb-3">We may receive information about you from third-party sources, including:</p>
             <ul className="list-disc list-inside space-y-2 ml-4 text-gray-400">
-              <li><strong className="text-gray-200">Authentication Providers:</strong> When you sign in using third-party services (e.g., Google, Discord, Twitch), we receive your name, email address, and profile picture from those services.</li>
+              <li><strong className="text-gray-200">Authentication Providers:</strong> When you sign in using third-party authentication services, we receive your name, email address, and profile picture from those services.</li>
               <li><strong className="text-gray-200">Gaming Platforms:</strong> With your authorization, we may collect game statistics, rankings, match history, and achievement data from connected gaming platforms.</li>
-              <li><strong className="text-gray-200">Analytics Providers:</strong> Aggregated or de-identified usage and demographic data from analytics services that help us understand how the Platform is used.</li>
               <li><strong className="text-gray-200">Publicly Available Information:</strong> Information from public esports databases, leaderboards, and social media profiles that you have made publicly available.</li>
             </ul>
           </section>
@@ -148,10 +147,10 @@ const PrivacyPage: React.FC = () => {
               <span className="text-rose-500 font-mono text-lg">04.</span> Game Data & Opt-In Policy
             </h2>
             <p className="mb-3">
-              We respect your right to control your gaming identity. Our Platform interacts with third-party game developer APIs (such as Riot Games) to provide tournament functionality and statistics. This data collection is strictly <strong>opt-in</strong>:
+              We respect your right to control your gaming identity. Our Platform interacts with third-party game developer APIs to provide tournament functionality and statistics. This data collection is strictly <strong>opt-in</strong>:
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4 text-gray-400">
-              <li><strong className="text-gray-200">Voluntary Linking:</strong> We only collect, process, or display detailed gameplay statistics (e.g., KDA, match history, rank) for users who have explicitly chosen to link their game accounts (e.g., via Riot Sign-On) to the Platform.</li>
+              <li><strong className="text-gray-200">Voluntary Linking:</strong> We only collect, process, or display detailed gameplay statistics (e.g., KDA, match history, rank) for users who have explicitly chosen to link their game accounts to the Platform.</li>
               <li><strong className="text-gray-200">Public Visibility:</strong> By linking your game account, you consent to having your game statistics displayed publicly on tournament brackets, match pages, and leaderboards associated with our events.</li>
               <li><strong className="text-gray-200">Revocation:</strong> You may unlink your game account at any time through your profile settings. Once unlinked, we will cease updating your statistics.</li>
               <li><strong className="text-gray-200">Unlinked Players:</strong> Players who have not linked their accounts will not have their individual gameplay statistics displayed.</li>
@@ -249,7 +248,7 @@ const PrivacyPage: React.FC = () => {
               <li><strong className="text-gray-200">Encryption:</strong> All data is encrypted in transit using TLS 1.2+ and at rest using AES-256 encryption.</li>
               <li><strong className="text-gray-200">Access Controls:</strong> Role-based access controls (RBAC) and Row-Level Security (RLS) policies ensure that users can only access data they are authorized to view.</li>
               <li><strong className="text-gray-200">Authentication:</strong> Secure password hashing using bcrypt and session management with JWTs.</li>
-              <li><strong className="text-gray-200">Infrastructure:</strong> Our Platform is hosted on enterprise-grade cloud infrastructure with SOC 2 Type II certified providers, regular security audits, and automated vulnerability scanning.</li>
+              <li><strong className="text-gray-200">Infrastructure:</strong> Our Platform is hosted on enterprise-grade cloud infrastructure with SOC 2 Type II certified providers.</li>
               <li><strong className="text-gray-200">Monitoring:</strong> Continuous monitoring for unauthorized access, anomalous activity, and security threats with automated alerting.</li>
               <li><strong className="text-gray-200">Incident Response:</strong> We maintain a comprehensive incident response plan and will notify affected users and relevant authorities of any data breach in accordance with applicable laws.</li>
             </ul>
