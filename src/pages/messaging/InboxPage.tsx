@@ -5,6 +5,7 @@ import { ArrowLeft, MessageSquare, Search, Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { messagingKeys, useConversationMessages, useConversationRealtime, useConversations, useMarkRead, useSendMessage } from '@/hooks/useMessaging';
 import type { Conversation, ConversationMessage } from '@/types/messaging';
+import { LfgMessageReference } from './LfgMessageReference';
 import './inbox.css';
 
 function displayName(conversation: Conversation, userId?: string) {
@@ -34,7 +35,7 @@ function ConversationList({ conversations, userId, selectedId }: { conversations
   return <>
     <div className="inbox-list-header"><div className="inbox-eyebrow">Messages</div><h1>Inbox</h1><p>Direct and group messages</p></div>
     <div className="inbox-list-tools"><label className="inbox-search"><Search size={16} aria-hidden /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search conversations" aria-label="Search conversations" /></label><button type="button" className="inbox-filter" aria-pressed={unreadOnly} onClick={() => setUnreadOnly(!unreadOnly)}>Unread</button></div>
-    <div className="inbox-conversation-list">{visible.length ? visible.map(item => {
+    <div className="inbox-conversation-list" data-lenis-prevent>{visible.length ? visible.map(item => {
       const name = displayName(item, userId);
       return <Link className={`inbox-conversation ${item.id === selectedId ? 'active' : ''}`} key={item.id} to={`/inbox/${item.id}`} aria-current={item.id === selectedId ? 'page' : undefined}>
         <ConversationAvatar conversation={item} userId={userId} name={name} /><span className="inbox-conversation-copy"><span className="inbox-conversation-title"><strong>{name}</strong><time>{timeLabel(item.lastMessage?.createdAt || item.createdAt)}</time></span><span className="inbox-conversation-preview">{item.lastMessage?.content || 'Start the conversation'}</span></span>{item.unreadCount > 0 && <span className="inbox-unread" aria-label={`${item.unreadCount} unread messages`}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</span>}
@@ -79,11 +80,14 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
   const name = conversation ? displayName(conversation, userId) : 'Conversation';
   return <section className="inbox-thread" aria-label={`Conversation with ${name}`}>
     <header className="inbox-thread-header"><Link to="/inbox" className="inbox-back" aria-label="Back to inbox"><ArrowLeft size={18} /></Link><ConversationAvatar conversation={conversation} userId={userId} name={name} /><div><h2>{name}</h2><p>{conversation?.type === 'group' ? 'Group conversation' : 'Direct conversation'}</p></div></header>
-    <div className="inbox-messages" ref={scroll} onScroll={event => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} aria-live="polite">
+    <div className="inbox-messages" data-lenis-prevent ref={scroll} onScroll={event => { const node = event.currentTarget; nearBottom.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} aria-live="polite">
       {messages.isLoading ? <div className="inbox-thread-state">Loading messages…</div> : messages.isError && !messages.data ? <div className="inbox-thread-state" role="alert">Messages could not load. <button type="button" onClick={() => void messages.refetch()}>Try again</button></div> : <>
         {messages.hasNextPage && <button type="button" className="inbox-older" disabled={messages.isFetchingNextPage} onClick={() => void older()}>{messages.isFetchingNextPage ? 'Loading…' : 'Load earlier messages'}</button>}
         {messages.isFetchNextPageError && <div className="inbox-thread-state" role="alert">Earlier messages could not load. Try again.</div>}
-        {rows.length ? rows.map(message => <div key={message.id} className={`inbox-message ${message.senderId === userId ? 'own' : ''}`}><div className="inbox-message-bubble">{message.content}</div><time>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time></div>) : <div className="inbox-thread-state">Start the conversation.</div>}
+        {rows.length ? rows.map(message => <div key={message.id} className={`inbox-message ${message.senderId === userId ? 'own' : ''} ${message.listingReference ? 'has-listing' : ''}`}>
+          {message.listingReference && <LfgMessageReference reference={message.listingReference} />}
+          <div className="inbox-message-bubble">{message.content}</div><time>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>
+        </div>) : <div className="inbox-thread-state">Start the conversation.</div>}
       </>}
     </div>
     <div className="inbox-compose">{error && <p className="inbox-error" role="alert">{error}</p>}<div className="inbox-compose-row"><textarea aria-label="Message" placeholder="Write a message…" value={draft} maxLength={5000} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submit(); } }} rows={2} /><button type="button" onClick={() => void submit()} disabled={!draft.trim() || send.isPending || (messages.isError && !messages.data)} aria-label="Send message"><Send size={17} aria-hidden /><span>{send.isPending ? 'Sending…' : 'Send'}</span></button></div><p>Enter to send · Shift + Enter for a new line</p></div>

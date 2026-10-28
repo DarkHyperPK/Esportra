@@ -12,6 +12,16 @@ export interface ConversationParticipant {
   };
 }
 
+export interface LfgConversationReference {
+  listingId: string;
+  gameSlug: string;
+  intent: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  bannerUrl: string | null;
+}
+
 export interface ConversationMessage {
   id: string;
   conversationId: string;
@@ -21,6 +31,7 @@ export interface ConversationMessage {
   isEdited: boolean;
   editedAt: string | null;
   createdAt: string;
+  listingReference?: LfgConversationReference | null;
   sender: {
     id: string;
     username: string;

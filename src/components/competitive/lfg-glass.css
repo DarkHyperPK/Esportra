@@ -232,4 +232,13 @@ html[data-reduce-motion=true] .lfg-mobile-detail, html[data-reduce-motion=true] 
 .lfg-team-stats .lfg-detail-role-field { grid-column:auto; }
 
 .lfg-detail-drawer { animation-duration:180ms!important; transition-duration:180ms!important; }
-.lfg-compact-agent { width:min(49px,calc((100% - 20px)/5)); }
+.lfg-compact-hero { height:160px; }
+.lfg-drawer-hero.has-art { height:176px; }
+.lfg-compact-summary { align-items:flex-start; gap:8px 14px; margin:4px 0 12px; }
+.lfg-compact-summary > .lfg-compact-rank-inline { min-height:24px; flex:none; }
+.lfg-compact-summary .lfg-card-roles { flex:1 1 130px; align-items:center; gap:4px 10px; margin:0; }
+.lfg-compact-summary .lfg-role { min-height:24px; }
+.lfg-team-summary > .lfg-rank-range { flex-basis:100%; }
+.lfg-compact-agents { grid-template-columns:repeat(5,minmax(0,1fr)); width:100%; max-width:270px; }
+.lfg-compact-agent { width:100%; min-width:0; justify-self:stretch; }
+.lfg-compact-agent img,.lfg-compact-agent > span { width:36px; max-width:100%; height:36px; }

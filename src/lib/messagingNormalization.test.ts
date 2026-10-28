@@ -15,4 +15,19 @@ describe('messaging API normalization', () => {
     expect(normalizeMessage({ conversationId:'c', sender:'invalid' }).sender).toBeNull();
     expect(normalizeMessage({ conversationId:'c', sender:{ username:'player' } }).conversationId).toBe('c');
   });
+
+  it('restores the listing snapshot from JSONB and realtime messages', () => {
+    const listing = { listing_id:'c86953ca-4c94-c0f7-fd91-c19e03ff2b9f', game_slug:'valorant', intent:'looking_for_team', name:'Coach', description:'Ready to coach', banner_url:'/card.jpg' };
+    for (const attachments of [JSON.stringify({ lfg_listing:listing }), { lfg_listing:listing }]) {
+      const message = normalizeMessage({ message_type:'system', attachments });
+      expect(message.listingReference).toEqual(expect.objectContaining({ listingId:listing.listing_id, gameSlug:'valorant', name:'Coach', bannerUrl:'/card.jpg' }));
+      expect(normalizeMessage(message).listingReference).toEqual(message.listingReference);
+    }
+  });
+
+  it('ignores forged text-message references and malformed snapshots', () => {
+    expect(normalizeMessage({ message_type:'text', attachments:{ lfg_listing:{ name:'Fake' } } }).listingReference).toBeNull();
+    expect(normalizeMessage({ message_type:'system', attachments:'invalid' }).listingReference).toBeNull();
+    expect(normalizeMessage({ message_type:'system', attachments:{ lfg_listing:{ listing_id:'../../bad', name:'Player', game_slug:'valorant', intent:'looking_for_team' } } }).listingReference).toBeNull();
+  });
 });
