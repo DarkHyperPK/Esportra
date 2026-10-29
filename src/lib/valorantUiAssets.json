@@ -1,0 +1,248 @@
+{
+  "agents": {
+    "0e38b510-41a8-5780-5e8f-568b2a4f2d6c": {
+      "displayIcon": "/game-assets/valorant/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c.f9ad466494.webp",
+      "displayName": "Iso",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "0e38b510-41a8-5780-5e8f-568b2a4f2d6c"
+    },
+    "117ed9e3-49f3-6512-3ccf-0cada7e3823b": {
+      "displayIcon": "/game-assets/valorant/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b.a78d1ac245.webp",
+      "displayName": "Cypher",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "117ed9e3-49f3-6512-3ccf-0cada7e3823b"
+    },
+    "1dbf2edd-4729-0984-3115-daa5eed44993": {
+      "displayIcon": "/game-assets/valorant/agents/1dbf2edd-4729-0984-3115-daa5eed44993.0e6940c72e.webp",
+      "displayName": "Clove",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "1dbf2edd-4729-0984-3115-daa5eed44993"
+    },
+    "1e58de9c-4950-5125-93e9-a0aee9f98746": {
+      "displayIcon": "/game-assets/valorant/agents/1e58de9c-4950-5125-93e9-a0aee9f98746.3293756e40.webp",
+      "displayName": "Killjoy",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "1e58de9c-4950-5125-93e9-a0aee9f98746"
+    },
+    "22697a3d-45bf-8dd7-4fec-84a9e28c69d7": {
+      "displayIcon": "/game-assets/valorant/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7.6000135378.webp",
+      "displayName": "Chamber",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "22697a3d-45bf-8dd7-4fec-84a9e28c69d7"
+    },
+    "320b2a48-4d9b-a075-30f1-1f93a9b638fa": {
+      "displayIcon": "/game-assets/valorant/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa.e62a8c3eb6.webp",
+      "displayName": "Sova",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "320b2a48-4d9b-a075-30f1-1f93a9b638fa"
+    },
+    "41fb69c1-4189-7b37-f117-bcaf1e96f1bf": {
+      "displayIcon": "/game-assets/valorant/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf.ded5ff99ca.webp",
+      "displayName": "Astra",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "41fb69c1-4189-7b37-f117-bcaf1e96f1bf"
+    },
+    "569fdd95-4d10-43ab-ca70-79becc718b46": {
+      "displayIcon": "/game-assets/valorant/agents/569fdd95-4d10-43ab-ca70-79becc718b46.60e045e9d2.webp",
+      "displayName": "Sage",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "569fdd95-4d10-43ab-ca70-79becc718b46"
+    },
+    "5f8d3a7f-467b-97f3-062c-13acf203c006": {
+      "displayIcon": "/game-assets/valorant/agents/5f8d3a7f-467b-97f3-062c-13acf203c006.be31967acc.webp",
+      "displayName": "Breach",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "5f8d3a7f-467b-97f3-062c-13acf203c006"
+    },
+    "601dbbe7-43ce-be57-2a40-4abd24953621": {
+      "displayIcon": "/game-assets/valorant/agents/601dbbe7-43ce-be57-2a40-4abd24953621.c0c910caff.webp",
+      "displayName": "KAY/O",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "601dbbe7-43ce-be57-2a40-4abd24953621"
+    },
+    "6f2a04ca-43e0-be17-7f36-b3908627744d": {
+      "displayIcon": "/game-assets/valorant/agents/6f2a04ca-43e0-be17-7f36-b3908627744d.8811265f00.webp",
+      "displayName": "Skye",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "6f2a04ca-43e0-be17-7f36-b3908627744d"
+    },
+    "707eab51-4836-f488-046a-cda6bf494859": {
+      "displayIcon": "/game-assets/valorant/agents/707eab51-4836-f488-046a-cda6bf494859.5991755d77.webp",
+      "displayName": "Viper",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "707eab51-4836-f488-046a-cda6bf494859"
+    },
+    "7c8a4701-4de6-9355-b254-e09bc2a34b72": {
+      "displayIcon": "/game-assets/valorant/agents/7c8a4701-4de6-9355-b254-e09bc2a34b72.9d8fdba1e1.webp",
+      "displayName": "Miks",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "7c8a4701-4de6-9355-b254-e09bc2a34b72"
+    },
+    "7f94d92c-4234-0a36-9646-3a87eb8b5c89": {
+      "displayIcon": "/game-assets/valorant/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89.7345468d5e.webp",
+      "displayName": "Yoru",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "7f94d92c-4234-0a36-9646-3a87eb8b5c89"
+    },
+    "8e253930-4c05-31dd-1b6c-968525494517": {
+      "displayIcon": "/game-assets/valorant/agents/8e253930-4c05-31dd-1b6c-968525494517.61881ecf71.webp",
+      "displayName": "Omen",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "8e253930-4c05-31dd-1b6c-968525494517"
+    },
+    "92eeef5d-43b5-1d4a-8d03-b3927a09034b": {
+      "displayIcon": "/game-assets/valorant/agents/92eeef5d-43b5-1d4a-8d03-b3927a09034b.49c93431b8.webp",
+      "displayName": "Veto",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "92eeef5d-43b5-1d4a-8d03-b3927a09034b"
+    },
+    "95b78ed7-4637-86d9-7e41-71ba8c293152": {
+      "displayIcon": "/game-assets/valorant/agents/95b78ed7-4637-86d9-7e41-71ba8c293152.2c219e5b08.webp",
+      "displayName": "Harbor",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "95b78ed7-4637-86d9-7e41-71ba8c293152"
+    },
+    "9f0d8ba9-4140-b941-57d3-a7ad57c6b417": {
+      "displayIcon": "/game-assets/valorant/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417.d45f852054.webp",
+      "displayName": "Brimstone",
+      "role": "Controller",
+      "roleIcon": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+      "uuid": "9f0d8ba9-4140-b941-57d3-a7ad57c6b417"
+    },
+    "a3bfb853-43b2-7238-a4f1-ad90e9e46bcc": {
+      "displayIcon": "/game-assets/valorant/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc.16ce9acdb8.webp",
+      "displayName": "Reyna",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "a3bfb853-43b2-7238-a4f1-ad90e9e46bcc"
+    },
+    "add6443a-41bd-e414-f6ad-e58d267f4e95": {
+      "displayIcon": "/game-assets/valorant/agents/add6443a-41bd-e414-f6ad-e58d267f4e95.c6eefa99f5.webp",
+      "displayName": "Jett",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "add6443a-41bd-e414-f6ad-e58d267f4e95"
+    },
+    "b444168c-4e35-8076-db47-ef9bf368f384": {
+      "displayIcon": "/game-assets/valorant/agents/b444168c-4e35-8076-db47-ef9bf368f384.09f909ebd6.webp",
+      "displayName": "Tejo",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "b444168c-4e35-8076-db47-ef9bf368f384"
+    },
+    "bb2a4828-46eb-8cd1-e765-15848195d751": {
+      "displayIcon": "/game-assets/valorant/agents/bb2a4828-46eb-8cd1-e765-15848195d751.9e9d1ae075.webp",
+      "displayName": "Neon",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "bb2a4828-46eb-8cd1-e765-15848195d751"
+    },
+    "cc8b64c8-4b25-4ff9-6e7f-37b4da43d235": {
+      "displayIcon": "/game-assets/valorant/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235.73f4172014.webp",
+      "displayName": "Deadlock",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "cc8b64c8-4b25-4ff9-6e7f-37b4da43d235"
+    },
+    "dade69b4-4f5a-8528-247b-219e5a1facd6": {
+      "displayIcon": "/game-assets/valorant/agents/dade69b4-4f5a-8528-247b-219e5a1facd6.99f4eb459a.webp",
+      "displayName": "Fade",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "dade69b4-4f5a-8528-247b-219e5a1facd6"
+    },
+    "ddd5a15c-4fbe-42fa-3789-11a55ca5ee04": {
+      "displayIcon": "/game-assets/valorant/agents/ddd5a15c-4fbe-42fa-3789-11a55ca5ee04.829c4d4279.webp",
+      "displayName": "Hush",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "ddd5a15c-4fbe-42fa-3789-11a55ca5ee04"
+    },
+    "df1cb487-4902-002e-5c17-d28e83e78588": {
+      "displayIcon": "/game-assets/valorant/agents/df1cb487-4902-002e-5c17-d28e83e78588.25be3ebc52.webp",
+      "displayName": "Waylay",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "df1cb487-4902-002e-5c17-d28e83e78588"
+    },
+    "e370fa57-4757-3604-3648-499e1f642d3f": {
+      "displayIcon": "/game-assets/valorant/agents/e370fa57-4757-3604-3648-499e1f642d3f.2819fa110f.webp",
+      "displayName": "Gekko",
+      "role": "Initiator",
+      "roleIcon": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+      "uuid": "e370fa57-4757-3604-3648-499e1f642d3f"
+    },
+    "eb93336a-449b-9c1b-0a54-a891f7921d69": {
+      "displayIcon": "/game-assets/valorant/agents/eb93336a-449b-9c1b-0a54-a891f7921d69.4017b0a38b.webp",
+      "displayName": "Phoenix",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "eb93336a-449b-9c1b-0a54-a891f7921d69"
+    },
+    "efba5359-4016-a1e5-7626-b1ae76895940": {
+      "displayIcon": "/game-assets/valorant/agents/efba5359-4016-a1e5-7626-b1ae76895940.e804ee2484.webp",
+      "displayName": "Vyse",
+      "role": "Sentinel",
+      "roleIcon": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp",
+      "uuid": "efba5359-4016-a1e5-7626-b1ae76895940"
+    },
+    "f94c3b30-42be-e959-889c-5aa313dba261": {
+      "displayIcon": "/game-assets/valorant/agents/f94c3b30-42be-e959-889c-5aa313dba261.4329f46e8d.webp",
+      "displayName": "Raze",
+      "role": "Duelist",
+      "roleIcon": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+      "uuid": "f94c3b30-42be-e959-889c-5aa313dba261"
+    }
+  },
+  "ranks": {
+    "10": "/game-assets/valorant/ranks/10.e1b2b48ad6.webp",
+    "11": "/game-assets/valorant/ranks/11.527d769938.webp",
+    "12": "/game-assets/valorant/ranks/12.ad5e66678a.webp",
+    "13": "/game-assets/valorant/ranks/13.d3bea8bc8f.webp",
+    "14": "/game-assets/valorant/ranks/14.56d95f0754.webp",
+    "15": "/game-assets/valorant/ranks/15.c81298094a.webp",
+    "16": "/game-assets/valorant/ranks/16.a294d79b73.webp",
+    "17": "/game-assets/valorant/ranks/17.21aee6cdc5.webp",
+    "18": "/game-assets/valorant/ranks/18.277e53d50b.webp",
+    "19": "/game-assets/valorant/ranks/19.46164f31ce.webp",
+    "20": "/game-assets/valorant/ranks/20.002e824521.webp",
+    "21": "/game-assets/valorant/ranks/21.b174281275.webp",
+    "22": "/game-assets/valorant/ranks/22.785366d158.webp",
+    "23": "/game-assets/valorant/ranks/23.667913da81.webp",
+    "24": "/game-assets/valorant/ranks/24.8f2db836f6.webp",
+    "25": "/game-assets/valorant/ranks/25.3a1717c6a8.webp",
+    "26": "/game-assets/valorant/ranks/26.01caa8ca43.webp",
+    "27": "/game-assets/valorant/ranks/27.a97b90f7df.webp",
+    "3": "/game-assets/valorant/ranks/3.b5757ee2b0.webp",
+    "4": "/game-assets/valorant/ranks/4.bfda39ca80.webp",
+    "5": "/game-assets/valorant/ranks/5.321eaaa788.webp",
+    "6": "/game-assets/valorant/ranks/6.f11461e57f.webp",
+    "7": "/game-assets/valorant/ranks/7.0335e81495.webp",
+    "8": "/game-assets/valorant/ranks/8.3c5a84646b.webp",
+    "9": "/game-assets/valorant/ranks/9.ce1194cf8f.webp"
+  },
+  "roles": {
+    "controller": "/game-assets/valorant/roles/controller.e11e7affda.webp",
+    "duelist": "/game-assets/valorant/roles/duelist.b7d8cf8d11.webp",
+    "initiator": "/game-assets/valorant/roles/initiator.16249b9a47.webp",
+    "sentinel": "/game-assets/valorant/roles/sentinel.ccbdc5070a.webp"
+  },
+  "version": "4f025f0535"
+}

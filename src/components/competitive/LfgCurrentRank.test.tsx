@@ -6,7 +6,7 @@ describe('current player rank', () => {
   it('shows the latest synced rank and matching badge without a peak', () => {
     const { container } = render(<LfgCurrentRank game="valorant" rank={{ competitiveTier: 10, competitiveTierName: 'Silver 2' }} />);
     expect(screen.getByLabelText('Current rank: Silver 2')).toHaveAttribute('title', 'Rank in the latest synced competitive match.');
-    expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('/10.png'));
+    expect(container.querySelector('img')).toHaveAttribute('src', expect.stringMatching(/\/ranks\/10\.[a-f0-9]+\.webp$/));
     expect(screen.queryByText(/peak/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Current', { exact: true })).not.toBeInTheDocument();
   });

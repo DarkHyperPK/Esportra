@@ -29,6 +29,18 @@ describe('LFG integration hooks', () => {
     expect(result.current.data?.popularAgents?.[0].gamesPlayed).toBe(5);
   });
 
+  it('refreshes listings when hit data is repaired between polls without a status transition', async () => {
+    api.get.mockResolvedValueOnce({ riotLinked:true, syncStatus:'partial', syncedAt:'2026-10-29T10:00:00Z', hsPct:null })
+      .mockResolvedValueOnce({ riotLinked:true, syncStatus:'partial', syncedAt:'2026-10-29T10:01:00Z', hsPct:24 });
+    const { client, wrapper } = setup();
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const { result } = renderHook(() => useMyGameStats('valorant'), { wrapper });
+    await waitFor(() => expect(result.current.data?.syncedAt).toBe('2026-10-29T10:00:00Z'));
+    await act(async () => { await result.current.refetch(); });
+    await waitFor(() => expect(result.current.data?.hsPct).toBe(24));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey:['lfg'] });
+  });
+
   it('passes game-specific filters and paginates discovery on the canonical cache key', async () => {
     api.get.mockImplementation((path: string) => Promise.resolve(path.includes('offset=30') ? [] : Array.from({ length: 30 }, (_, i) => ({ id: String(i) }))));
     const { client, wrapper } = setup();

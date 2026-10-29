@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { bundledValorantAgents, getValorantAgentIcon, getValorantRoleIcon, valorantUiAssetVersion } from '@/lib/valorantUiAssets';
 
 /**
  * Public Valorant asset catalogs (agents, maps, ranks, weapons) from valorant-api.com.
@@ -70,10 +71,10 @@ const num = (value: unknown) => (typeof value === 'number' ? value : undefined);
 const slimAgent = (a: Raw): ValorantAgent => ({
     uuid: String(a.uuid ?? ''),
     displayName: str(a.displayName),
-    displayIcon: str(a.displayIcon),
+    displayIcon: getValorantAgentIcon(String(a.uuid ?? ''), str(a.displayIcon)),
     fullPortrait: str(a.fullPortrait),
     role: str((a.role as Raw | undefined)?.displayName),
-    roleIcon: str((a.role as Raw | undefined)?.displayIcon),
+    roleIcon: getValorantRoleIcon(str((a.role as Raw | undefined)?.displayName) ?? '') || str((a.role as Raw | undefined)?.displayIcon),
     abilities: Array.isArray(a.abilities)
         ? (a.abilities as Raw[]).map((ab) => ({ slot: str(ab.slot), displayIcon: str(ab.displayIcon), displayName: str(ab.displayName) }))
         : undefined,
@@ -107,7 +108,7 @@ function latestTiers(entries: Raw[]): Record<number, ValorantTier> {
 
 const slimWeapon = (w: Raw): ValorantWeapon => ({ uuid: str(w.uuid), displayName: str(w.displayName), displayIcon: str(w.displayIcon) });
 
-function useCatalog<T>(key: string, load: () => Promise<T>, enabled: boolean) {
+function useCatalog<T>(key: string, load: () => Promise<T>, enabled: boolean, seed?: T) {
     const cached = readCache<T>(key);
     return useQuery({
         queryKey: ['valorant-catalog', key],
@@ -116,8 +117,8 @@ function useCatalog<T>(key: string, load: () => Promise<T>, enabled: boolean) {
             writeCache(key, data);
             return data;
         },
-        initialData: cached?.data,
-        initialDataUpdatedAt: cached?.at,
+        initialData: cached?.data ?? seed,
+        initialDataUpdatedAt: cached?.at ?? (seed ? 0 : undefined),
         staleTime: DAY_MS,
         gcTime: Infinity,
         retry: 1,
@@ -126,15 +127,18 @@ function useCatalog<T>(key: string, load: () => Promise<T>, enabled: boolean) {
     });
 }
 
+const initialAgents: Record<string, ValorantAgent> = Object.fromEntries(Object.entries(bundledValorantAgents)
+    .map(([id, agent]) => [id, { ...agent, role: agent.role ?? undefined, roleIcon: agent.roleIcon ?? undefined }]));
+
 /** Playable agents keyed by lowercase uuid. */
 export const useValorantAgents = (enabled = true) =>
-    useCatalog('agents', async () => {
+    useCatalog<Record<string, ValorantAgent>>(`agents-ui-${valorantUiAssetVersion}`, async () => {
         const map: Record<string, ValorantAgent> = {};
         (await fetchList('/agents?isPlayableCharacter=true')).map(slimAgent).forEach((agent) => {
             if (agent.uuid) map[agent.uuid.toLowerCase()] = agent;
         });
         return map;
-    }, enabled);
+    }, enabled, initialAgents);
 
 export const useValorantMaps = (enabled = true) =>
     useCatalog('maps', async () => (await fetchList('/maps')).map(slimMap), enabled);

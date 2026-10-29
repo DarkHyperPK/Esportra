@@ -1,4 +1,5 @@
 import type { PopularAgent } from '@/types/competitive';
+import { bundledValorantAgents, getValorantAgentIcon } from './valorantUiAssets';
 
 export interface ValorantAgent {
   displayName: string;
@@ -6,7 +7,7 @@ export interface ValorantAgent {
 }
 
 function agent(uuid: string, name: string): [string, ValorantAgent] {
-  return [uuid, { displayName: name, iconUrl: `https://media.valorant-api.com/agents/${uuid}/displayicon.png` }];
+  return [uuid, { displayName: name, iconUrl: getValorantAgentIcon(uuid) || `https://media.valorant-api.com/agents/${uuid}/displayicon.png` }];
 }
 
 export const VALORANT_AGENTS: ReadonlyMap<string, ValorantAgent> = new Map([
@@ -39,6 +40,7 @@ export const VALORANT_AGENTS: ReadonlyMap<string, ValorantAgent> = new Map([
   agent('df1cb487-4902-002e-5c17-d28e83e78588', 'Waylay'),
   agent('92eeef5d-43b5-1d4a-8d03-b3927a09034b', 'Veto'),
   agent('7c8a4701-4de6-9355-b254-e09bc2a34b72', 'Miks'),
+  ...Object.values(bundledValorantAgents).map(item => agent(item.uuid, item.displayName)),
 ]);
 
 export function resolveAgent(agentId: string | null | undefined): ValorantAgent | null {

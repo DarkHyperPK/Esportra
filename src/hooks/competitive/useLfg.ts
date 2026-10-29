@@ -75,6 +75,7 @@ export function useSetLfgSaved() {
 export function useMyGameStats(game: string) {
   const qc = useQueryClient();
   const previousStatus = useRef<string | null>(null);
+  const previousSync = useRef<string | null>(null);
   const query = useQuery({
     queryKey: ['my-game-stats', game],
     queryFn: () => apiClient.get<MyGameStats>(`/api/competitive/game-stats/me?game=${game}`),
@@ -89,11 +90,14 @@ export function useMyGameStats(game: string) {
   });
   useEffect(() => {
     const status = query.data?.syncStatus ?? null;
-    if (['pending', 'syncing'].includes(previousStatus.current ?? '') && ['complete', 'partial'].includes(status ?? '')) {
+    const sync = query.data?.syncedAt ?? null;
+    if ((['pending', 'syncing'].includes(previousStatus.current ?? '') && ['complete', 'partial'].includes(status ?? '')) ||
+        (sync && previousSync.current && sync !== previousSync.current)) {
       void qc.invalidateQueries({ queryKey: lfgKeys.all() });
     }
     previousStatus.current = status;
-  }, [qc, query.data?.syncStatus]);
+    previousSync.current = sync;
+  }, [qc, query.data?.syncStatus, query.data?.syncedAt]);
   return query;
 }
 

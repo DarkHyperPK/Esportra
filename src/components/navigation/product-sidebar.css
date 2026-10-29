@@ -49,6 +49,7 @@
 .product-sidebar-unread { margin-left:auto; min-width:19px; height:19px; padding:0 5px; display:grid; place-items:center; border-radius:10px; background:#f43f5e; color:#fff; font-size:10px; line-height:1; font-weight:600; font-variant-numeric:tabular-nums; }
 .product-sidebar-item-collapsed .product-sidebar-unread { position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; padding:0 4px; font-size:9px; border:2px solid #0d0d0f; }
 .product-sidebar .user-menu-panel > div { overflow-y:auto; max-height:min(80dvh,calc(100dvh - 96px)) !important; }
+.product-sidebar:has(.user-menu-panel) { overflow:visible; }
 .product-sidebar-section { cursor: pointer; }
 .product-sidebar-section .product-sidebar-chevron { width: 14px; height: 14px; margin-left: auto; color: #a1a1aa; transition: transform 120ms ease; }
 .product-sidebar-subnav { margin: 3px 0 6px 20px; padding-left: 12px; border-left: 1px solid #ffffff12; }
