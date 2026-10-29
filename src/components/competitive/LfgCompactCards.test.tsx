@@ -90,6 +90,15 @@ describe('compact LFG cards', () => {
     const { container } = render(<QueryClientProvider client={new QueryClient()}><LfgListingCard listing={listing} roles={[]} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={false} /></QueryClientProvider>);
     expect(container.querySelector('.lfg-compact-banner')).not.toBeInTheDocument();
   });
+  it('uses the captain Riot card for a team instead of the listing creator card', () => {
+    const listing = { id:'team', intent:'looking_for_player', gameSlug:'valorant', teamName:'Team',
+      teamCaptainPlayerCardId:'c86953ca-4c94-c0f7-fd91-c19e03ff2b9f', playerCardId:'717d7191-8095-4de0-962c-ccfac7605379',
+      profileBannerUrl:'https://example.com/representative.png', preferredRoles:[], languages:[] } as unknown as LfgListing;
+    const { container } = render(<QueryClientProvider client={new QueryClient()}><LfgListingCard listing={listing} roles={[]} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={false} /></QueryClientProvider>);
+    expect(container.querySelector('.lfg-compact-banner')).toHaveAttribute('src', 'https://media.valorant-api.com/playercards/c86953ca-4c94-c0f7-fd91-c19e03ff2b9f/wideart.png');
+    fireEvent.error(container.querySelector('.lfg-compact-banner')!);
+    expect(container.querySelector('.lfg-compact-banner')).toBeNull();
+  });
   it('gives coach cards an icon and WR/KD/HS without a match count', () => {
     const listing = { id:'coach', intent:'looking_for_team', gameSlug:'valorant', username:'Coach', preferredRoles:['coach'], preferredAgents:['agent-0'], languages:[], winRate:50, kdRatio:1.5, hsPct:0, matchesAnalyzed:53 } as unknown as LfgListing;
     const { container } = render(<LfgListingCard listing={listing} roles={[]} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={false} />);

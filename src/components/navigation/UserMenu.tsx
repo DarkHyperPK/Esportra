@@ -2,12 +2,11 @@ import { ArrowRightLeft, ChevronDown, LogOut, User } from "lucide-react";
 import {
   FramerDropdownRoot,
   FramerDropdownContent,
-  FramerDropdownTrigger,
 } from "@/components/ui/FramerDropdown";
 import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 import { JackMenuItem, JackMenuDivider } from "@/components/ui/JackMenuItem";
 import { JackButton } from "@/components/ui/JackButton";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
@@ -21,6 +20,23 @@ import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { deriveHasApprovedLicense, deriveHasOrganization, meRolesQueryKey } from "@/lib/meRoles";
 import { getStoredSessionRole } from "@/lib/sessionRole";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
+
+function UserMenuTrigger({ compact, children }: { compact: boolean; children: React.ReactNode }) {
+  const { isOpen, setIsOpen, close } = useFramerDropdown();
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); trigger.current?.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, close]);
+  return <button ref={trigger} type="button" aria-label="Account menu" aria-expanded={isOpen} onClick={() => setIsOpen(!isOpen)}
+    className={`flex items-center text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 ${compact ? 'p-0' : 'gap-2 px-2 py-1.5'}`}>
+    {children}
+  </button>;
+}
 
 // Pill row showing current role + a JACK IN-style switch button
 const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -63,11 +79,13 @@ const UserMenu = ({
   upward = false,
   panelWidth = 280,
   panelAlign = "end",
+  compact = false,
 }: {
   handleSignOut: () => Promise<void>;
   upward?: boolean;
   panelWidth?: number;
   panelAlign?: "start" | "end" | "center";
+  compact?: boolean;
 }) => {
   const { user, profile, isEmailVerified } = useAuth();
   const { currentRole: userRole } = useRole();
@@ -147,16 +165,13 @@ const UserMenu = ({
   return (
     <>
       <FramerDropdownRoot
+        className={compact ? 'product-sidebar-compact-account' : undefined}
         borderRadius={0}
         accentColor="#f43f5e"
         backgroundColor="#0a0a0c"
         borderColor="rgba(244,63,94,0.4)"
       >
-        <FramerDropdownTrigger>
-          <button
-            type="button"
-            className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
-          >
+        <UserMenuTrigger compact={compact}>
             <span className="flex h-8 w-8 items-center justify-center overflow-hidden border border-white/10 bg-[#0a0a0c]">
               {showAvatarImage ? (
                 <img
@@ -175,20 +190,20 @@ const UserMenu = ({
                 <User className="h-4 w-4" />
               )}
             </span>
-            <span className="hidden max-w-[100px] truncate sm:inline">
+            {!compact && <><span className="hidden max-w-[100px] truncate sm:inline">
               {profile?.username || "Account"}
             </span>
             <ChevronDown className="h-4 w-4 opacity-60" />
-            {!isEmailVerified && user && dot("amber")}
-          </button>
-        </FramerDropdownTrigger>
+            {!isEmailVerified && user && dot("amber")}</>}
+        </UserMenuTrigger>
 
         <FramerDropdownContent
           align={panelAlign}
           side={upward ? "top" : "bottom"}
           width={panelWidth}
-          className="!rounded-none !border-white/10 !bg-matte-black !p-0 !backdrop-blur-0"
+          className="user-menu-panel !rounded-none !border-white/10 !bg-matte-black !p-0 !backdrop-blur-0"
         >
+          <div data-lenis-prevent>
           {/* Identity header */}
           <div className="border-b border-white/10 bg-[#0a0a0c] px-4 py-4">
             <p className="text-sm font-semibold text-white">
@@ -311,6 +326,7 @@ const UserMenu = ({
               <LogOut className="h-4 w-4" />
               Sign Out
             </JackButton>
+          </div>
           </div>
         </FramerDropdownContent>
       </FramerDropdownRoot>

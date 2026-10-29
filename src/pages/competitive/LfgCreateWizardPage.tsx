@@ -68,6 +68,7 @@ export default function LfgCreateWizardPage() {
     description: description || null, expiresAt: null, mode: null, minRankSlug: null, maxRankSlug: null, regionSlug: null,
     servers: [], roles: [], publishedAt: null, closedAt: null, avatarUrl: null,
     playerCardId: currentStats?.playerCardId ?? null,
+    teamCaptainPlayerCardId: game === 'valorant' && type === 'team' ? selectedTeam?.captain_valorant_player_card_id ?? null : null,
     competitiveTier: currentStats?.competitiveTier ?? null, competitiveTierName: currentStats?.competitiveTierName ?? null,
     winCount: currentStats?.winCount ?? null, lossCount: currentStats?.lossCount ?? null, winRate: currentStats?.winRate ?? null,
     hsPct: currentStats?.hsPct ?? null,

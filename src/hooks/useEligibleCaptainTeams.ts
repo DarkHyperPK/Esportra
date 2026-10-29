@@ -13,6 +13,7 @@ export type CaptainTeamRow = {
   name: string;
   tag?: string | null;
   logo_url?: string | null;
+  captain_valorant_player_card_id?: string | null;
   team_kind?: string | null;
   is_solo?: boolean | null;
   games: Record<string, unknown> | string[] | string | null;

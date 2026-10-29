@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
-  ChevronLeft, ChevronDown, User, Wrench, DollarSign, Info,
+  ChevronDown, Wrench, DollarSign, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,10 +10,11 @@ import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useOrgStaffContext } from '@/hooks/useOrgStaffContext';
 import { isSuperAdminUser } from '@/lib/adminAccess';
-import { getWebsiteAssetUrl } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { JackButton } from '@/components/ui/JackButton';
 import UserMenu from './UserMenu';
+import { ProductSidebarBrand } from './ProductSidebarBrand';
+import { InboxSidebarLink } from './InboxSidebarLink';
 import { NotificationSidebar } from '../notifications/NotificationSidebar';
 import './product-sidebar.css';
 
@@ -29,6 +30,8 @@ interface NavSection {
   items: NavItem[];
 }
 
+const SECTION_STARTS = new Set(['inbox', 'tournaments', 'tools']);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isItemActive(pathname: string, to: string): boolean {
@@ -43,7 +46,6 @@ function isSectionActive(section: NavSection, pathname: string): boolean {
 function buildSections(canManageTournaments: boolean, canManageVenues: boolean): NavSection[] {
   const tournamentItems: NavItem[] = [
     { label: 'Browse', to: '/tournaments' },
-    { label: 'My Registrations', to: '/tournaments' },
   ];
   if (canManageTournaments) {
     tournamentItems.push(
@@ -75,7 +77,7 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, items: tournamentItems },
     { id: 'venues', label: 'Venues', icon: MapPin, items: venueItems },
     { id: 'rankings', label: 'Rankings', icon: BarChart2, to: '/leaderboards', items: [] },
-    { id: 'tools', label: 'Tools', icon: Wrench, to: '/tools/map-veto', items: [] },
+    { id: 'tools', label: 'Tools', icon: Wrench, items: [{ label: 'Veto', to: '/tools/map-veto' }] },
     { id: 'pricing', label: 'Pricing', icon: DollarSign, to: '/pricing', items: [] },
     { id: 'about', label: 'About', icon: Info, to: '/about/company', items: [] },
   ];
@@ -92,6 +94,8 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
   useEffect(() => {
     if (active) setOpen(true);
   }, [active]);
+
+  if (section.id === 'inbox') return <InboxSidebarLink active={active} collapsed={collapsed} />;
 
   if (collapsed) {
     const hasSubItems = section.items.length > 0;
@@ -187,31 +191,6 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
   );
 }
 
-// ─── Collapsed avatar ─────────────────────────────────────────────────────────
-
-function CollapsedAvatar() {
-  const { profile } = useAuth();
-  const [avatarFailed, setAvatarFailed] = useState(false);
-  const avatarUrl = profile?.avatar_url?.trim() ?? '';
-  const showAvatar = !!(avatarUrl && !avatarFailed);
-  const initials = (profile?.username ?? profile?.full_name ?? 'U').slice(0, 2).toUpperCase();
-  return (
-    <Link
-      to="/user/profile"
-      aria-label="My profile"
-      className="flex h-8 w-8 mx-auto items-center justify-center overflow-hidden border border-white/10 bg-[#0a0a0c] hover:border-rose-500/50 transition-colors"
-    >
-      {showAvatar ? (
-        <img src={avatarUrl} alt={profile?.username ?? 'Profile'} className="h-full w-full object-cover" onError={() => setAvatarFailed(true)} />
-      ) : profile?.username ? (
-        <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-white">{initials}</span>
-      ) : (
-        <User className="h-4 w-4 text-white/50" />
-      )}
-    </Link>
-  );
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 // ─── Logged-out sidebar ───────────────────────────────────────────────────────
@@ -229,24 +208,14 @@ function LoggedOutSidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className="product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[240px]"
-      style={{ backgroundColor: '#08080a', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+      className="product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[232px]"
     >
-      <div className="product-sidebar-ambience" aria-hidden="true" />
       <div className="relative flex flex-col h-full">
-        <div className="product-sidebar-brand-wrap">
-          <Link to="/" aria-label="Esportra home" className="product-sidebar-brand">
-            <img
-              src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
-              alt="Esportra"
-              className="h-6 w-auto object-contain"
-            />
-            <span><strong>ESPORTRA</strong><small>COMPETITIVE PLATFORM</small></span>
-          </Link>
-        </div>
+        <ProductSidebarBrand />
 
-        <nav className="product-sidebar-nav flex-1 overflow-y-auto py-2" aria-label="Site navigation">
+        <nav className="product-sidebar-nav flex-1 overflow-y-auto" aria-label="Site navigation">
           {PUBLIC_LINKS.map((link) => {
+            if (link.label === 'Tools') return <SidebarSection key={link.to} section={{ id:'tools', label:'Tools', icon:Wrench, items:[{ label:'Veto', to:link.to }] }} collapsed={false} />;
             const active = pathname === link.to || pathname.startsWith(link.to + '/');
             const Icon = link.icon;
             return (
@@ -267,8 +236,7 @@ function LoggedOutSidebar() {
           })}
         </nav>
 
-        <div className="shrink-0 p-3 space-y-2">
-          <div className="h-px bg-white/[0.08] mb-3" />
+        <div className="product-sidebar-signin shrink-0 space-y-2">
           <JackButton as={Link} to="/auth/signup" size="sm" className="w-full justify-center">
             Sign up
           </JackButton>
@@ -285,7 +253,7 @@ function LoggedOutSidebar() {
 }
 
 /**
- * Persistent left sidebar (nav_v2). 240 px expanded / 52 px collapsed.
+ * Persistent left sidebar (nav_v2). 232 px expanded / 56 px collapsed.
  * top-0 h-[100dvh] — fills the full viewport; topbar is suppressed when nav_v2 is on.
  * Desktop only — AppBottomNav handles mobile.
  * No max-w-* or mx-auto (layout-viewport rule).
@@ -345,70 +313,36 @@ export function ProductSidebar() {
     <aside
       className={cn(
         'product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh]',
-        isCollapsed ? 'w-[52px]' : 'w-[240px]',
+        isCollapsed ? 'w-[56px] is-collapsed' : 'w-[232px]',
       )}
-      style={{
-        backgroundColor: '#08080a',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-      }}
     >
-      <div className="product-sidebar-ambience" aria-hidden="true" />
-
-      {/* ── Content (renders above the absolute layers) ── */}
       <div className="relative flex flex-col h-full">
-
-        {/* Logo */}
-        <div className={cn('product-sidebar-brand-wrap', isCollapsed && 'is-collapsed')}>
-          <Link to="/" aria-label="Esportra home" className="product-sidebar-brand">
-            <img
-              src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
-              alt="Esportra"
-              className={cn('object-contain', isCollapsed ? 'h-7 w-7' : 'h-6 w-auto')}
-            />
-            {!isCollapsed && <span><strong>ESPORTRA</strong><small>COMPETITIVE PLATFORM</small></span>}
-          </Link>
-        </div>
+        <ProductSidebarBrand collapsed={isCollapsed} onToggle={toggle} />
 
         {/* Navigation */}
-        <nav className="product-sidebar-nav flex-1 overflow-y-auto py-2" aria-label="Site navigation">
-          {sections.map((section, i) => (
-            <div key={section.id}>
-              {(i === 3 || i === 6) && <div className="product-sidebar-group-rule" aria-hidden="true" />}
+        <nav id="product-sidebar-navigation" className="product-sidebar-nav flex-1 overflow-y-auto" aria-label="Site navigation">
+          {sections.map(section => (
+            <div key={section.id} className={SECTION_STARTS.has(section.id) ? 'product-sidebar-group-start' : undefined}>
               <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
             </div>
           ))}
         </nav>
 
-        {/* Bottom bar: bell + user + collapse toggle */}
-        <div className="shrink-0">
-          <div className="mx-3 h-px bg-white/[0.08]" aria-hidden="true" />
+        {/* Account and notifications stay available in both sidebar sizes. */}
+        <div className="product-sidebar-footer shrink-0">
           <div className={cn(
             'flex items-center p-2',
             isCollapsed ? 'flex-col gap-2' : 'gap-1',
           )}>
-            {/* Notification bell */}
-            <NotificationSidebar className="relative flex items-center justify-center p-2 text-white/40 hover:text-white/80 transition-colors shrink-0 border-0 bg-transparent h-auto w-auto" />
-
             {/* User section */}
             {isCollapsed ? (
-              <CollapsedAvatar />
+              <UserMenu handleSignOut={handleSignOut} compact upward panelAlign="start" panelWidth={232} />
             ) : (
-              <div className="flex-1 min-w-0 [&>div]:w-full">
-                <UserMenu handleSignOut={handleSignOut} upward panelAlign="end" panelWidth={232} />
+              <div className="product-sidebar-account flex-1 min-w-0 [&>div]:w-full">
+                <UserMenu handleSignOut={handleSignOut} upward panelAlign="start" panelWidth={232} />
               </div>
             )}
-          </div>
-
-          {/* Collapse toggle */}
-          <div className="border-t border-white/[0.06] p-2">
-            <button
-              type="button"
-              onClick={toggle}
-              className="product-sidebar-toggle"
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <ChevronLeft className={cn('h-4 w-4 transition-transform duration-200', isCollapsed && 'rotate-180')} />
-            </button>
+            <NotificationSidebar className="product-sidebar-notifications relative flex items-center justify-center p-2 text-zinc-400 hover:text-white transition-colors shrink-0 border-0 bg-transparent h-auto w-auto" />
           </div>
         </div>
 

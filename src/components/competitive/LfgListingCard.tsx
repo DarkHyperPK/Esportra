@@ -24,7 +24,7 @@ export function LfgListingCard({ listing, roles, selected, onSelect, onSave, sav
   const agentIds = valorant && !team ? (preferred.length ? preferred : played.map(agent => agent.agentId)).filter(Boolean).slice(0, 5) : [];
   const { source: banner, onError: bannerError } = useLfgBanner(listing);
   const languages = (listing.languages ?? []).map(code => LFG_LANGUAGES.find(item => item.code === code)?.label ?? code);
-  return <article className={`lfg-card lfg-panel lfg-compact-card ${selected ? 'selected' : ''}`}>
+  return <article className={`lfg-card lfg-panel lfg-compact-card ${team ? 'lfg-team-card' : 'lfg-player-card'} ${selected ? 'selected' : ''}`}>
     <div className={`lfg-compact-hero ${banner ? 'has-art' : 'no-art'}`}>
       {banner && <img className="lfg-compact-banner" src={banner} alt="" loading="lazy" onError={bannerError} />}
       <div className="lfg-compact-top"><div className="lfg-identity"><LfgAvatar listing={listing} name={name} /><div className="lfg-compact-name"><h2 className="lfg-name">{name}</h2><p className="lfg-sub">{team ? listing.teamTag || 'Team' : listing.riotGameName ? `${listing.riotGameName}#${listing.riotTagLine ?? ''}` : 'Player'}</p></div></div>

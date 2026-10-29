@@ -311,6 +311,7 @@ export interface LfgListing {
   // Team enrichment (for LFP listings)
   teamName: string | null;
   teamLogoUrl: string | null;
+  teamCaptainPlayerCardId?: string | null;
   teamTag: string | null;
   teamMemberCount: number | null;
   teamVerifiedCount: number | null;

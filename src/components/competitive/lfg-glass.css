@@ -233,6 +233,8 @@ html[data-reduce-motion=true] .lfg-mobile-detail, html[data-reduce-motion=true] 
 
 .lfg-detail-drawer { animation-duration:180ms!important; transition-duration:180ms!important; }
 .lfg-compact-hero { height:160px; }
+.lfg-player-card .lfg-compact-hero { height:128px; }
+.lfg-player-card .lfg-compact-banner { opacity:.9; }
 .lfg-drawer-hero.has-art { height:176px; }
 .lfg-compact-summary { align-items:flex-start; gap:8px 14px; margin:4px 0 12px; }
 .lfg-compact-summary > .lfg-compact-rank-inline { min-height:24px; flex:none; }
