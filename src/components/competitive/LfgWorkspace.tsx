@@ -27,7 +27,7 @@ export function LfgWorkspace({ children }: { children: ReactNode }) {
       { transform: 'translateX(0) scaleX(1)' },
     ], { duration: 220, easing: 'cubic-bezier(.2, 0, 0, 1)' });
     return () => animation.cancel();
-  }, [pathname, reduced]);
+  }, [pathname, savedActive, reduced]);
   function rememberMarker(event: MouseEvent<HTMLElement>) {
     const target = (event.target as Element).closest('a');
     const marker = navRef.current?.querySelector<HTMLElement>('.lfg-nav-marker');

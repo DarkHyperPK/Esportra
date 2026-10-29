@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInfiniteLfg } from './useDiscovery';
-import { useMyGameStats, useSaveLfgDraft, useSetLfgSaved, useExpressInterest, useWithdrawInterest } from './useLfg';
+import { useLfgInbox, useMyGameStats, useSaveLfgDraft, useSetLfgSaved, useExpressInterest, useWithdrawInterest } from './useLfg';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() }));
 vi.mock('@/hooks/competitive/competitiveApiClient', () => ({ competitiveApiClient: api }));
@@ -54,6 +54,15 @@ describe('LFG integration hooks', () => {
     expect(fetched.error).toBeNull();
     expect(fetched.data?.pages[1]).toEqual([]);
     expect(fetched.hasNextPage).toBe(false);
+  });
+
+  it('filters requests by status on the server and keeps pagination bounded', async () => {
+    api.get.mockResolvedValue([]);
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useLfgInbox('received', 'valorant', 30, 'expressed'), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const query = new URLSearchParams(api.get.mock.calls[0][0].split('?')[1]);
+    expect(Object.fromEntries(query)).toMatchObject({ direction: 'received', game: 'valorant', status: 'expressed', offset: '30', limit: '30' });
   });
 
   it('reuses the saved draft after a publish failure', async () => {

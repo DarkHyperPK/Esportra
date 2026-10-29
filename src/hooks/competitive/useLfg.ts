@@ -50,11 +50,12 @@ export function useLfgCaptainTeams(userId?: string, enabled = true) {
   });
 }
 
-export function useLfgInbox(direction: 'received' | 'sent', game?: string, offset = 0) {
+export function useLfgInbox(direction: 'received' | 'sent', game?: string, offset = 0, status?: string) {
   const params = new URLSearchParams({ direction, limit: '30', offset: String(offset) });
   if (game) params.set('game', game);
+  if (status) params.set('status', status);
   return useQuery({
-    queryKey: [...lfgKeys.inbox(direction, game), offset],
+    queryKey: [...lfgKeys.inbox(direction, game), offset, status],
     queryFn: () => apiClient.get<LfgInboxEntry[]>(`/api/competitive/lfg/interests/mine?${params}`),
     staleTime: 15_000,
   });

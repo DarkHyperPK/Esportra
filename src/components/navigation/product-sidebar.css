@@ -73,3 +73,7 @@
 }
 
 html[data-reduce-motion=true] .product-sidebar *, html[data-reduce-motion=true] .product-sidebar *::before, html[data-reduce-motion=true] .product-sidebar *::after { transition: none !important; animation: none !important; }
+
+.product-sidebar-nav { overscroll-behavior:contain; }
+@media (prefers-reduced-motion:reduce) { .product-sidebar { transition:none!important; } }
+html[data-reduce-motion=true] .product-sidebar { transition:none!important; }

@@ -1,7 +1,7 @@
 import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useCatalogGameRoles, useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
@@ -55,6 +55,15 @@ export default function LfgDiscoveryPage() {
   const linkedListing = detail.data && detail.data.gameSlug === game && intents.includes(detail.data.intent) && (!savedOnly || detail.data.isSaved) && !feedListings.some(item => item.id === selectedId) ? detail.data : null;
   const listings = linkedListing ? [linkedListing, ...feedListings] : feedListings;
   const activeGame = catalog.games.find(item => item.slug === game);
+  function resetFilters() { setRole(''); setRegion(''); setRank(''); setMaxRank(''); setLanguage(''); setQuery(''); }
+  const appliedFilters = [
+    role && { label: roles.find(item => item.roleKey === role)?.displayName || role, clear: () => setRole('') },
+    rank && { label: `From ${ranks.find(item => String(item.sortOrder) === rank)?.displayName || rank}`, clear: () => setRank('') },
+    maxRank && { label: `Up to ${ranks.find(item => String(item.sortOrder) === maxRank)?.displayName || maxRank}`, clear: () => setMaxRank('') },
+    region && { label: regions.find(item => item.regionKey === region)?.displayName || region, clear: () => setRegion('') },
+    language && { label: LFG_LANGUAGES.find(item => item.code === language)?.label || language, clear: () => setLanguage('') },
+  ].filter(item => !!item);
+
   function change(next: Record<string, string | null>) {
     const updated = new URLSearchParams(params);
     Object.entries(next).forEach(([key, value]) => value ? updated.set(key, value) : updated.delete(key));
@@ -75,23 +84,26 @@ export default function LfgDiscoveryPage() {
       <label className="lfg-field">Your game<select className="lfg-input" value={game} onChange={event => changeGame(event.target.value)} disabled={!catalog.games.length}>{!catalog.games.length && <option value="">Game catalog unavailable</option>}{catalog.games.map(item => <option value={item.slug} key={item.slug}>{item.name}</option>)}</select></label>
     </header>
     <div className="lfg-layout">
-      <aside className={`lfg-filters lfg-panel ${filterOpen ? 'open' : ''}`} aria-label="Listing filters"><h2>Narrow the search</h2>
+      <aside id="lfg-filters" className={`lfg-filters lfg-panel ${filterOpen ? 'open' : ''}`} aria-label="Listing filters"><h2>Narrow the search</h2>
         {roles.length > 0 && <label className="lfg-field">Role<select className="lfg-input" value={role} onChange={event => setRole(event.target.value)}><option value="">Any role</option>{roles.map(item => <option key={item.id} value={item.roleKey}>{item.displayName}</option>)}</select></label>}
         {ranks.length > 0 && <LfgRankSelect label="Minimum rank" game={game} ranks={ranks} value={rank} onChange={setRank} />}
         {ranks.length > 0 && <LfgRankSelect label="Maximum rank" game={game} ranks={ranks} value={maxRank} onChange={setMaxRank} />}
         {regions.length > 0 && <label className="lfg-field">Region<select className="lfg-input" value={region} onChange={event => setRegion(event.target.value)}><option value="">Any region</option>{regions.map(item => <option key={item.id} value={item.regionKey}>{item.displayName}</option>)}</select></label>}
         <label className="lfg-field">Language<select className="lfg-input" value={language} onChange={event => setLanguage(event.target.value)}><option value="">Any language</option>{LFG_LANGUAGES.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
         <label className="lfg-field" style={{ flexDirection:'row', alignItems:'center' }}><input type="checkbox" checked={savedOnly} onChange={event => change({ saved: event.target.checked ? '1' : null, listing: null })} /> Saved listings</label>
-        <button className="lfg-button" type="button" onClick={() => { setRole(''); setRegion(''); setRank(''); setMaxRank(''); setLanguage(''); setQuery(''); }}>Reset filters</button>
+        <button className="lfg-button" type="button" onClick={resetFilters}>Reset filters</button>
       </aside>
       <section className="lfg-results" aria-label="Discover listings">
         <div className="lfg-tools"><div className="lfg-segmented" aria-label="Listing type"><button type="button" aria-pressed={kind === 'players'} onClick={() => change({ kind:'players', listing:null })}>Find players</button><button type="button" aria-pressed={kind === 'teams'} onClick={() => change({ kind:'teams', listing:null })}>Find a team</button></div>
-          <button type="button" className="lfg-button lfg-mobile-filter" onClick={() => setFilterOpen(!filterOpen)} aria-expanded={filterOpen}><SlidersHorizontal size={16} /> Filters</button>
+          <button type="button" className="lfg-button lfg-mobile-filter" onClick={() => setFilterOpen(!filterOpen)} aria-expanded={filterOpen} aria-controls="lfg-filters"><SlidersHorizontal size={16} /> Filters</button>
           <input className="lfg-input lfg-search" aria-label="Search listings" placeholder="Search names and descriptions" maxLength={100} value={query} onChange={event => setQuery(event.target.value)} />
         </div>
+        {appliedFilters.length > 0 && <div className="lfg-applied-filters" aria-label="Active filters">{appliedFilters.map(item => item && <button type="button" className="lfg-filter-chip" key={item.label} onClick={item.clear} aria-label={`Remove ${item.label} filter`}>{item.label}<X size={12} aria-hidden /></button>)}</div>}
+        <div className="lfg-refresh-status" role="status">{feed.isFetching && !feed.isLoading && !feed.isFetchingNextPage ? 'Updating listings…' : ''}</div>
+        {feed.isError && listings.length > 0 && <div className="lfg-refresh-error" role="alert">{feed.isFetchNextPageError ? 'More listings could not load.' : 'Listings could not refresh. Your results are still here.'} <button type="button" onClick={() => void (feed.isFetchNextPageError ? feed.fetchNextPage() : feed.refetch())}>Try again</button></div>}
         {saveError && <p className="lfg-error" role="alert">{saveError}</p>}
         <div>
-          {feed.isLoading || catalog.isLoading ? <div className="lfg-panel lfg-empty" aria-live="polite">Loading listings…</div> : feed.isError ? <div className="lfg-panel lfg-empty"><strong>Listings could not load.</strong><button className="lfg-button" type="button" onClick={() => void feed.refetch()}>Try again</button></div> : listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>{savedOnly ? 'No saved listings here.' : 'No listings found.'}</strong>{savedOnly ? 'Try the other listing type, another game, or save a listing in Discover.' : 'Try another game or adjust your filters.'}</div> : <>
+          {feed.isLoading || catalog.isLoading ? <div className="lfg-panel lfg-empty" aria-live="polite">Loading listings…</div> : feed.isError && listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>Listings could not load.</strong><button className="lfg-button" type="button" onClick={() => void feed.refetch()}>Try again</button></div> : listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>{savedOnly ? 'No saved listings here.' : 'No listings found.'}</strong>{savedOnly ? 'Try the other listing type, another game, or save a listing in Discover.' : 'Try another game or adjust your filters.'}{!savedOnly && <button type="button" className="lfg-button" onClick={resetFilters}>Reset filters</button>}</div> : <>
             <div className="lfg-grid">{listings.map((item, index) => <LfgListingCard priority={index < 3} key={item.id} listing={item} roles={roles} artwork={activeGame?.banner || activeGame?.logo} selected={item.id === selectedId} onSelect={() => select(item.id)} onSave={() => void toggleSave(item.id, !!item.isSaved)} savePending={save.isPending} isOwn={item.userId === user?.id} />)}</div>
             {feed.hasNextPage && <button className="lfg-button" type="button" style={{ marginTop:16, width:'100%' }} disabled={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>{feed.isFetchingNextPage ? 'Loading…' : 'Load more listings'}</button>}
           </>}

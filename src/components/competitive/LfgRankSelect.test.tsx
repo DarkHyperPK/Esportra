@@ -23,7 +23,9 @@ describe('rank filter badges', () => {
     render(<LfgRankSelect label="Minimum rank" game="valorant" ranks={ranks} value="0" onChange={() => {}} />);
     const image = within(screen.getByRole('button', { name: 'Minimum rank' })).getByRole('presentation');
     fireEvent.error(image);
-    expect(image).toHaveAttribute('src', 'https://trackercdn.com/cdn/tracker.gg/valorant/icons/tiers/3.png');
+    expect(image.getAttribute('src')).toMatch(/^\/game-assets\/valorant\/ranks\/3\.[a-f0-9]+\.webp$/);
+    fireEvent.error(image);
+    expect(within(screen.getByRole('button', { name: 'Minimum rank' })).queryByRole('presentation')).not.toBeInTheDocument();
   });
   it('keeps catalog assets for other games', () => {
     render(<LfgRankSelect label="Minimum rank" game="cs2" ranks={ranks} value="0" onChange={() => {}} />);

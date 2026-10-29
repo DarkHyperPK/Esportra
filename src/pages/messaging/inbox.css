@@ -1,6 +1,6 @@
 .inbox-workspace { min-height:calc(100dvh - 24px); padding:24px; color:#fafafa; background:radial-gradient(ellipse 70% 350px at 50% 0,#ffffff09,transparent 75%); }
-.inbox-shell { display:grid; grid-template-columns:minmax(290px,360px) minmax(0,1fr); height:calc(100dvh - 48px); min-height:500px; overflow:hidden; border:1px solid #ffffff20; border-radius:20px; background:#131317f2; box-shadow:0 18px 55px #0004,inset 0 1px #ffffff10; }
-@supports (backdrop-filter:blur(12px)) { .inbox-shell { background:#18181dd9; backdrop-filter:blur(12px); } }
+.inbox-shell { display:grid; grid-template-columns:minmax(290px,360px) minmax(0,1fr); height:calc(100dvh - 48px); min-height:0; overflow:hidden; border:1px solid #ffffff20; border-radius:20px; background:#18181d; }
+
 .inbox-list { min-width:0; display:flex; flex-direction:column; border-right:1px solid #ffffff17; }
 .inbox-list-header { padding:25px 22px 16px; }.inbox-eyebrow { color:#a1a1aa; font:10px/1.5 ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }.inbox-list-header h1 { font:800 28px/1.2 var(--font-heading),sans-serif; margin:4px 0; }.inbox-list-header p,.inbox-thread-header p { color:#a1a1aa; font-size:12px; }
 .inbox-list-tools { display:flex; gap:8px; padding:0 16px 15px; }.inbox-search { min-width:0; flex:1; display:flex; align-items:center; gap:8px; padding:0 11px; border:1px solid #ffffff20; border-radius:11px; background:#0d0d11a8; color:#a1a1aa; }.inbox-search input { min-width:0; width:100%; height:40px; background:transparent; color:white; font-size:12px; outline:none; }.inbox-filter,.inbox-older { border:1px solid #ffffff20; border-radius:11px; padding:8px 12px; color:#d4d4d8; font-size:12px; }.inbox-filter[aria-pressed=true] { background:#fff; color:#111; }
@@ -22,3 +22,26 @@
 .inbox-lfg-copy > span { text-transform:capitalize; }
 .inbox-lfg-copy p { margin-top:6px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; font-size:11px; line-height:1.45; color:#d4d4d8; }
 .inbox-lfg-reference:focus-visible { outline:2px solid #fafafa; outline-offset:3px; }
+
+/* Native scroll areas stay independent of page scrolling and Lenis. */
+.inbox-list { min-height:0; }
+.inbox-conversation-list,.inbox-messages { overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#ffffff30 transparent; scrollbar-gutter:stable; }
+.inbox-message-stage { position:relative; flex:1; min-height:0; display:flex; flex-direction:column; }
+.inbox-messages { overflow-anchor:none; }
+.inbox-date { display:flex; align-items:center; gap:12px; width:100%; margin:10px 0; color:#a1a1aa; font-size:10px; }
+.inbox-date::before,.inbox-date::after { content:''; flex:1; height:1px; background:#ffffff10; }
+.inbox-jump { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:7px; min-height:36px; padding:0 13px; border:1px solid #ffffff30; border-radius:18px; background:#303038; box-shadow:0 4px 16px #0004; color:#fafafa; font-size:12px; white-space:nowrap; }
+.inbox-search button { display:grid; place-items:center; min-width:28px; min-height:32px; }
+.inbox-search:focus-within { border-color:#fda4af80; }
+.inbox-search input:focus-visible { outline:0; }
+.inbox-workspace button,.inbox-workspace a { touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.inbox-compose button,.inbox-filter,.inbox-conversation { transition:background-color 140ms ease,border-color 140ms ease,color 140ms ease; }
+.inbox-workspace button:disabled { cursor:default; }
+.inbox-messages:focus-visible { outline:2px solid #fda4af; outline-offset:-3px; }
+@media (max-width:700px) { .inbox-jump { min-height:44px; }.inbox-compose-row > button { min-width:46px; padding:0 13px; }.inbox-compose-row > button span { display:none; } }
+@media (prefers-reduced-motion:no-preference) {
+  @starting-style { .inbox-jump { opacity:0; } }
+  .inbox-jump { transition:opacity 160ms ease-out; }
+}
+@media (prefers-reduced-motion:reduce) { .inbox-workspace * { transition:none!important; animation:none!important; } }
+html[data-reduce-motion=true] .inbox-workspace * { transition:none!important; animation:none!important; }

@@ -172,7 +172,7 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
         <ChevronDown className={cn('product-sidebar-chevron h-3.5 w-3.5 shrink-0', open && 'rotate-180')} />
       </button>
       <div id={`sidebar-${section.id}`} className="product-sidebar-subnav" hidden={!open}>{section.items.map(item => {
-        const itemActive = isItemActive(pathname, item.to);
+        const itemActive = isItemActive(pathname, item.to) && !section.items.some(other => other.to.length > item.to.length && isItemActive(pathname, other.to));
         return (
           <Link
             key={`${section.id}-${item.label}`}
