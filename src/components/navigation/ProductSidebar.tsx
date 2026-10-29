@@ -208,7 +208,7 @@ function LoggedOutSidebar() {
   const { pathname } = useLocation();
   return (
     <aside
-      className="product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[232px]"
+      className="product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh] w-[240px]"
     >
       <div className="relative flex flex-col h-full">
         <ProductSidebarBrand />
@@ -253,7 +253,7 @@ function LoggedOutSidebar() {
 }
 
 /**
- * Persistent left sidebar (nav_v2). 232 px expanded / 56 px collapsed.
+ * Persistent left sidebar (nav_v2). 240 px expanded / 52 px collapsed.
  * top-0 h-[100dvh] — fills the full viewport; topbar is suppressed when nav_v2 is on.
  * Desktop only — AppBottomNav handles mobile.
  * No max-w-* or mx-auto (layout-viewport rule).
@@ -313,7 +313,7 @@ export function ProductSidebar() {
     <aside
       className={cn(
         'product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh]',
-        isCollapsed ? 'w-[56px] is-collapsed' : 'w-[232px]',
+        isCollapsed ? 'w-[52px] is-collapsed' : 'w-[240px]',
       )}
     >
       <div className="relative flex flex-col h-full">
