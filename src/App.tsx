@@ -136,6 +136,7 @@ const ProposalsHistory = lazyWithRetry(() => import("./pages/admin/proposals/Pro
 const ProposalEditor = lazyWithRetry(() => import("./pages/admin/proposals/ProposalEditor"));
 const ProposalView = lazyWithRetry(() => import("./pages/admin/proposals/ProposalView"));
 const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
+const ProEventRequestsTool = lazyWithRetry(() => import("./pages/admin/tools/ProEventRequests"));
 const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
 const RoleBuilderTool = lazyWithRetry(() => import("./pages/admin/tools/RoleBuilder"));
@@ -429,6 +430,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />
                   <Route path="tools/map-management" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><MapManagement /></AdminRouteGuard>} />
                   <Route path="tools/license-management" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><LicenseManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/pro-event-requests" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><ProEventRequestsTool /></AdminRouteGuard>} />
                   <Route path="tools/system-settings" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SystemSettings /></AdminRouteGuard>} />
                   <Route path="tools/admin-management" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={['super_admin']}><AdminRoleManagement /></AdminRouteGuard>} />
                   <Route path="tools/role-builder" element={<AdminRouteGuard requiredPermission="rbac:view" requiredRoles={['super_admin']}><RoleBuilderTool /></AdminRouteGuard>} />
