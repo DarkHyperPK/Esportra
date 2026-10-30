@@ -204,9 +204,9 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
           </InlineNotice>
         )}
 
-        {/* S1-3: Non-captain, window open */}
+        {/* S1-3: Non-captain/manager, window open */}
         {isNonCapAndNotIn && (
-          <InlineNotice tone="neutral">Your captain checks the team in.</InlineNotice>
+          <InlineNotice tone="neutral">Your captain or manager checks the team in.</InlineNotice>
         )}
 
         {/* S1-7: Error */}

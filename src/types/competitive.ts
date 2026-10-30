@@ -875,6 +875,9 @@ export interface ScrimSession {
   vetoMyToken?: string | null;
   // PROJ-078 embedded dispute (null when no dispute)
   dispute?: ScrimDispute | null;
+  // myRole: caller's team_members.role — set by GET /api/scrims/sessions/{id} only.
+  // 'captain' | 'manager' | null. Used to gate the check-in button.
+  myRole?: string | null;
   createdAt: string;
   updatedAt: string;
   team1Name?: string | null;

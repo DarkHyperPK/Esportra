@@ -402,6 +402,10 @@ export default function ScrimSessionPage() {
     : null;
   const myTeamId: string | null =
     myTeamSide === 1 ? (session?.team1Id ?? null) : myTeamSide === 2 ? (session?.team2Id ?? null) : null;
+  // isCaptain: derived from the server-returned role — never trust the payload.
+  // GetSessionAsync already restricts access to captain/manager, so myRole is always one of those
+  // for valid responses. Non-captain team members will receive 404 from the session endpoint.
+  const isCaptain = session?.myRole === 'captain' || session?.myRole === 'manager';
 
   function arrive(delay: number) {
     if (reduce) return {};
@@ -466,7 +470,7 @@ export default function ScrimSessionPage() {
               callerTeamId={myTeamId ?? ''}
               sessionTeam1Id={session.team1Id}
               sessionId={session.id}
-              isCaptain={myTeamSide !== null}
+              isCaptain={isCaptain}
               onEvidenceSubmitted={() => sessionQuery.refetch()}
             />
           </motion.div>
@@ -484,7 +488,7 @@ export default function ScrimSessionPage() {
             <ScrimCheckinPanel
               session={session}
               callerTeamId={myTeamId ?? ''}
-              isCaptain={myTeamSide !== null}
+              isCaptain={isCaptain}
               onCheckinSuccess={() => sessionQuery.refetch()}
             />
           </motion.div>
