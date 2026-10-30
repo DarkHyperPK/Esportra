@@ -638,11 +638,7 @@ const AppContent = React.memo(() => {
                       <MyTryoutInvitesPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="scrims" element={
-                    <ProtectedRoute>
-                      <ScrimDiscoveryPage />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="scrims" element={<ScrimDiscoveryPage />} />
                   <Route path="scrims/workspace" element={
                     <ProtectedRoute>
                       <ScrimWorkspacePage />

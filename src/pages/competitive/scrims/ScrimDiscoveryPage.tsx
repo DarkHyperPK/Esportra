@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { Crosshair, SlidersHorizontal, CalendarDays, ChevronDown, X } from 'lucide-react';
 import { PageIntro, EYEBROW_CLASS } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Sheet,
   SheetContent,
@@ -315,6 +316,11 @@ function FilterSelectGroup({
 // ─── ScrimDiscoveryPage ───────────────────────────────────────────────────────
 
 export default function ScrimDiscoveryPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const signIn = (target: string) => `/auth/signin?redirect=${encodeURIComponent(target)}`;
+
   const catalog = useGameCatalogContext();
   const firstGame = catalog.games[0]?.slug ?? '';
 
@@ -393,6 +399,7 @@ export default function ScrimDiscoveryPage() {
   }
 
   function handleRequestScrim(listingId: string, prefilledAt?: string) {
+    if (!user) { navigate(signIn(location.pathname + location.search)); return; }
     setActiveOfferId(activeOfferId === listingId ? null : listingId);
     setOfferPrefilledAt(prefilledAt);
   }
