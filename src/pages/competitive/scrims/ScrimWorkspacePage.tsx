@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   useScrimListings,
   useCreateScrimListing,
+  useUpdateScrimListing,
   usePauseListing,
   useReopenListing,
   useCloseListing,
@@ -20,10 +21,23 @@ import {
   useCompleteScrimSession,
   useCancelScrimSession,
   useReportScrimResult,
+  useOpenDispute,
+  useSessionResults,
 } from '@/hooks/competitive/useScrims';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import type { ScrimListing, ScrimOffer, ScrimSession } from '@/types/competitive';
+
+// --- Local types ---
+
+interface ScrimResultReportRow {
+  id: string;
+  reportingTeamId: string;
+  reportingTeamName?: string | null;
+  team1Score: number;
+  team2Score: number;
+  notes?: string | null;
+}
 
 // --- Status tone maps ---
 
@@ -142,57 +156,73 @@ function ListingCard({ listing }: { listing: ScrimListing }) {
   const reopenMutation = useReopenListing(listing.id);
   const closeMutation = useCloseListing(listing.id);
   const isPending = pauseMutation.isPending || reopenMutation.isPending || closeMutation.isPending;
+  const [showEdit, setShowEdit] = useState(false);
 
   return (
-    <div className="border border-white/[0.06] bg-white/[0.03] p-4 flex items-center gap-3">
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <StatusPill label={listing.status.toUpperCase()} tone={LISTING_TONE[listing.status]} />
-          <p className="text-[13px] text-white/40">
-            {[listing.modeKey, listing.regionKey].filter(Boolean).join(' · ') || 'Any mode / region'}
-          </p>
+    <>
+      <div className="border border-white/[0.06] bg-white/[0.03] p-4 flex items-center gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatusPill label={listing.status.toUpperCase()} tone={LISTING_TONE[listing.status]} />
+            <p className="text-[13px] text-white/40">
+              {[listing.modeKey, listing.regionKey].filter(Boolean).join(' · ') || 'Any mode / region'}
+            </p>
+          </div>
+          {listing.notes && (
+            <p className="text-[13px] text-white/55 line-clamp-1">{listing.notes}</p>
+          )}
+          <p className="text-[11px] text-white/25">Created {formatDate(listing.createdAt)}</p>
         </div>
-        {listing.notes && (
-          <p className="text-[13px] text-white/55 line-clamp-1">{listing.notes}</p>
-        )}
-        <p className="text-[11px] text-white/25">Created {formatDate(listing.createdAt)}</p>
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          {(listing.status === 'open' || listing.status === 'paused') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowEdit((v) => !v)}
+              className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            >
+              Edit
+            </Button>
+          )}
+          {listing.status === 'open' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => pauseMutation.mutate()}
+              disabled={isPending}
+              className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            >
+              {pauseMutation.isPending ? '…' : 'Pause'}
+            </Button>
+          )}
+          {listing.status === 'paused' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => reopenMutation.mutate()}
+              disabled={isPending}
+              className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            >
+              {reopenMutation.isPending ? '…' : 'Reopen'}
+            </Button>
+          )}
+          {listing.status !== 'closed' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => closeMutation.mutate()}
+              disabled={isPending}
+              className="text-[12px] text-red-300/70 hover:text-red-300 rounded-none"
+            >
+              {closeMutation.isPending ? '…' : 'Close'}
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="flex gap-2 shrink-0">
-        {listing.status === 'open' && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => pauseMutation.mutate()}
-            disabled={isPending}
-            className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-          >
-            {pauseMutation.isPending ? '…' : 'Pause'}
-          </Button>
-        )}
-        {listing.status === 'paused' && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => reopenMutation.mutate()}
-            disabled={isPending}
-            className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-          >
-            {reopenMutation.isPending ? '…' : 'Reopen'}
-          </Button>
-        )}
-        {listing.status !== 'closed' && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => closeMutation.mutate()}
-            disabled={isPending}
-            className="text-[12px] text-red-300/70 hover:text-red-300 rounded-none"
-          >
-            {closeMutation.isPending ? '…' : 'Close'}
-          </Button>
-        )}
-      </div>
-    </div>
+      {showEdit && (
+        <EditListingForm listing={listing} onClose={() => setShowEdit(false)} />
+      )}
+    </>
   );
 }
 
@@ -288,6 +318,196 @@ function OutgoingOfferRow({ offer }: { offer: ScrimOffer }) {
           {withdrawMutation.isPending ? '…' : 'Withdraw'}
         </Button>
       )}
+    </div>
+  );
+}
+
+// --- Edit listing form (Gap 7) ---
+
+function EditListingForm({
+  listing,
+  onClose,
+}: {
+  listing: ScrimListing;
+  onClose: () => void;
+}) {
+  const updateMutation = useUpdateScrimListing(listing.id);
+  const [mode, setMode] = useState(listing.modeKey ?? '');
+  const [region, setRegion] = useState(listing.regionKey ?? '');
+  const [notes, setNotes] = useState(listing.notes ?? '');
+  const [apiError, setApiError] = useState('');
+
+  async function handleSubmit() {
+    setApiError('');
+    try {
+      await updateMutation.mutateAsync({
+        modeKey: mode.trim() || undefined,
+        regionKey: region.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      onClose();
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, 'Could not update listing. Try again.'));
+    }
+  }
+
+  return (
+    <div className="mt-3 border border-white/10 bg-black/30 p-3 space-y-3">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+        EDIT LISTING
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Mode" htmlFor={`elm-${listing.id}`} optional>
+          <input
+            id={`elm-${listing.id}`}
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            placeholder="e.g. competitive"
+            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+          />
+        </Field>
+        <Field label="Region" htmlFor={`elr-${listing.id}`} optional>
+          <input
+            id={`elr-${listing.id}`}
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            placeholder="e.g. EU, NA"
+            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+          />
+        </Field>
+      </div>
+      <Field label="Notes" htmlFor={`eln-${listing.id}`} optional>
+        <textarea
+          id={`eln-${listing.id}`}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+          rows={2}
+          className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+        />
+      </Field>
+      {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={updateMutation.isPending}
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-4 text-[13px]"
+        >
+          {updateMutation.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// --- Results panel (Gap 3) ---
+
+function ResultsPanel({ sessionId }: { sessionId: string }) {
+  const resultsQuery = useSessionResults(sessionId);
+  const results = (resultsQuery.data ?? []) as ScrimResultReportRow[];
+
+  if (resultsQuery.isLoading) {
+    return <div className="h-8 animate-pulse bg-white/[0.03] mt-2" />;
+  }
+  if (resultsQuery.isError) {
+    return <p className="text-[12px] text-white/40 mt-2">Could not load results.</p>;
+  }
+  if (results.length === 0) {
+    return <p className="text-[12px] text-white/40 mt-2">No result reports yet.</p>;
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+        RESULT REPORTS
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {results.map((r) => (
+          <div key={r.id} className="border border-white/[0.06] bg-white/[0.03] p-3 space-y-1">
+            <p className="text-[12px] font-medium text-white">
+              {r.reportingTeamName ?? r.reportingTeamId.slice(0, 8)}
+            </p>
+            <p className="text-[13px] text-white/70 tabular-nums">
+              {r.team1Score} – {r.team2Score}
+            </p>
+            {r.notes && (
+              <p className="text-[11px] text-white/40 line-clamp-2">{r.notes}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Dispute form (Gap 2) ---
+
+function DisputeForm({
+  session,
+  teamId,
+  onClose,
+}: {
+  session: ScrimSession;
+  teamId: string;
+  onClose: () => void;
+}) {
+  const disputeMutation = useOpenDispute(session.id);
+  const [reason, setReason] = useState('');
+  const [apiError, setApiError] = useState('');
+
+  async function handleSubmit() {
+    setApiError('');
+    if (!reason.trim()) {
+      setApiError('Reason is required.');
+      return;
+    }
+    try {
+      await disputeMutation.mutateAsync({ raisedByTeamId: teamId, reason: reason.trim() });
+      onClose();
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, 'Could not raise dispute. Try again.'));
+    }
+  }
+
+  return (
+    <div className="mt-3 border border-white/10 bg-black/30 p-3 space-y-3">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+        RAISE DISPUTE
+      </p>
+      <Field label="Reason" htmlFor={`dr-${session.id}`}>
+        <textarea
+          id={`dr-${session.id}`}
+          value={reason}
+          onChange={(e) => setReason(e.target.value.slice(0, 1000))}
+          placeholder="Describe the issue…"
+          rows={3}
+          className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+        />
+        <p className="text-[11px] text-white/25 mt-1">{reason.length}/1000</p>
+      </Field>
+      {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={disputeMutation.isPending}
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-4 text-[13px]"
+        >
+          {disputeMutation.isPending ? 'Submitting…' : 'Raise dispute'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -391,6 +611,8 @@ function ReportResultForm({
 
 function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: string }) {
   const [showReport, setShowReport] = useState(false);
+  const [showDispute, setShowDispute] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const startMutation = useStartScrimSession(session.id);
   const completeMutation = useCompleteScrimSession(session.id);
   const cancelMutation = useCancelScrimSession(session.id);
@@ -457,6 +679,26 @@ function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: s
               Report result
             </Button>
           )}
+          {(session.status === 'completed' || session.status === 'disputed') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowResults((v) => !v)}
+              className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            >
+              Results
+            </Button>
+          )}
+          {(session.status === 'in_progress' || session.status === 'completed') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowDispute((v) => !v)}
+              className="text-[12px] text-yellow-300/70 hover:text-yellow-300 rounded-none border border-white/[0.08]"
+            >
+              Raise dispute
+            </Button>
+          )}
           {(session.status === 'scheduled' || session.status === 'in_progress') && (
             <Button
               size="sm"
@@ -476,6 +718,10 @@ function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: s
           teamId={teamId}
           onClose={() => setShowReport(false)}
         />
+      )}
+      {showResults && <ResultsPanel sessionId={session.id} />}
+      {showDispute && (
+        <DisputeForm session={session} teamId={teamId} onClose={() => setShowDispute(false)} />
       )}
     </div>
   );

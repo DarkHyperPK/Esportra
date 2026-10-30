@@ -881,6 +881,7 @@ export interface PracticeSession {
   status: PracticeSessionStatus;
   createdBy: string;
   createdAt: string;
+  updatedAt: string;
   teamName?: string | null;
 }
 

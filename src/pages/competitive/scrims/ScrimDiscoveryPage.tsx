@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { PageIntro, InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useDiscoverScrims, useMakeOffer } from '@/hooks/competitive/useScrims';
 import { ScrimListingCard } from '@/components/competitive/ScrimListingCard';
@@ -141,10 +141,29 @@ function MakeOfferForm({ listingId, onClose }: { listingId: string; onClose: () 
 }
 
 export default function ScrimDiscoveryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modeFilter = searchParams.get('mode') ?? '';
+  const regionFilter = searchParams.get('region') ?? '';
+
   const discoverQuery = useDiscoverScrims(GAME_SLUG);
-  const listings = discoverQuery.data ?? [];
+  const allListings = discoverQuery.data ?? [];
+
+  const listings = allListings.filter((l) => {
+    const modeMatch = !modeFilter || (l.modeKey ?? '').toLowerCase().includes(modeFilter.toLowerCase());
+    const regionMatch = !regionFilter || (l.regionKey ?? '').toLowerCase().includes(regionFilter.toLowerCase());
+    return modeMatch && regionMatch;
+  });
+
   const [activeOfferId, setActiveOfferId] = useState<string | null>(null);
   const reduced = useReducedMotion() ?? false;
+
+  function updateFilter(key: 'mode' | 'region', value: string) {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      value ? p.set(key, value) : p.delete(key);
+      return p;
+    });
+  }
 
   return (
     <CompetitivePageShell>
@@ -153,6 +172,31 @@ export default function ScrimDiscoveryPage() {
       </div>
 
       <main className="px-4 lg:px-8 pb-8">
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <div className="flex-1 min-w-[120px]">
+            <label className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 block mb-1">
+              Mode
+            </label>
+            <input
+              value={modeFilter}
+              onChange={(e) => updateFilter('mode', e.target.value)}
+              placeholder="Any mode"
+              className="h-9 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+            />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+            <label className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 block mb-1">
+              Region
+            </label>
+            <input
+              value={regionFilter}
+              onChange={(e) => updateFilter('region', e.target.value)}
+              placeholder="Any region"
+              className="h-9 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+            />
+          </div>
+        </div>
+
         {discoverQuery.isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
@@ -170,7 +214,7 @@ export default function ScrimDiscoveryPage() {
               Retry
             </Button>
           </div>
-        ) : listings.length === 0 ? (
+        ) : allListings.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-4 text-center">
             <Crosshair className="h-8 w-8 text-white/25" />
             <p className="text-[15px] font-medium text-white/55">No scrim listings posted yet</p>
@@ -183,6 +227,10 @@ export default function ScrimDiscoveryPage() {
             >
               List your team
             </Link>
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-[14px] text-white/40">No listings match the current filters.</p>
           </div>
         ) : (
           <motion.div

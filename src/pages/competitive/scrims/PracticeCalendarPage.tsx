@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { PageIntro, InlineNotice, StatusPill, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import {
   usePracticeSessions,
   useCreatePractice,
+  useUpdatePractice,
   useCompletePractice,
   useCancelPractice,
   usePracticeAttendance,
@@ -218,6 +220,105 @@ function AttendanceRow({
   );
 }
 
+// --- Edit session form ---
+
+function EditSessionForm({
+  session,
+  onClose,
+}: {
+  session: PracticeSession;
+  onClose: () => void;
+}) {
+  const updateMutation = useUpdatePractice(session.id);
+  const [title, setTitle] = useState(session.title);
+  const [scheduledAt, setScheduledAt] = useState(
+    session.scheduledAt ? new Date(session.scheduledAt).toISOString().slice(0, 16) : ''
+  );
+  const [duration, setDuration] = useState(session.durationMinutes?.toString() ?? '');
+  const [notes, setNotes] = useState(session.notes ?? '');
+  const [apiError, setApiError] = useState('');
+
+  async function handleSubmit() {
+    setApiError('');
+    try {
+      await updateMutation.mutateAsync({
+        title: title.trim() || undefined,
+        scheduledAt: scheduledAt || undefined,
+        durationMinutes: duration ? parseInt(duration, 10) : undefined,
+        notes: notes.trim() || undefined,
+      });
+      onClose();
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, 'Could not update session. Try again.'));
+    }
+  }
+
+  return (
+    <div className="border border-white/10 bg-black/30 p-3 space-y-3 mt-2">
+      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
+        EDIT SESSION
+      </p>
+      <Field label="Title" htmlFor={`est-${session.id}`}>
+        <input
+          id={`est-${session.id}`}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Date & time" htmlFor={`esat-${session.id}`} optional>
+          <input
+            id={`esat-${session.id}`}
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
+          />
+        </Field>
+        <Field label="Duration (min)" htmlFor={`esdm-${session.id}`} optional>
+          <input
+            id={`esdm-${session.id}`}
+            type="number"
+            min={15}
+            max={480}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="e.g. 90"
+            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+          />
+        </Field>
+      </div>
+      <Field label="Notes" htmlFor={`esn-${session.id}`} optional>
+        <textarea
+          id={`esn-${session.id}`}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+          rows={2}
+          className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+        />
+      </Field>
+      {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={updateMutation.isPending}
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-4 text-[13px]"
+        >
+          {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // --- Session panel (inline attendance) ---
 
 function SessionPanel({ session }: { session: PracticeSession }) {
@@ -226,10 +327,11 @@ function SessionPanel({ session }: { session: PracticeSession }) {
   const attendanceQuery = usePracticeAttendance(session.id);
   const attendance = attendanceQuery.data ?? [];
   const isPending = completeMutation.isPending || cancelMutation.isPending;
+  const [showEdit, setShowEdit] = useState(false);
 
   return (
     <div className="border-t border-white/[0.06] mt-2 pt-3 space-y-3">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {session.status === 'scheduled' && (
           <>
             <Button
@@ -243,6 +345,14 @@ function SessionPanel({ session }: { session: PracticeSession }) {
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setShowEdit((v) => !v)}
+              className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            >
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => cancelMutation.mutate()}
               disabled={isPending}
               className="text-[12px] text-red-300/70 hover:text-red-300 rounded-none"
@@ -252,6 +362,9 @@ function SessionPanel({ session }: { session: PracticeSession }) {
           </>
         )}
       </div>
+      {showEdit && (
+        <EditSessionForm session={session} onClose={() => setShowEdit(false)} />
+      )}
       <div>
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/30 mb-2">
           ATTENDANCE ({attendance.length})
@@ -306,19 +419,33 @@ function PracticeSessionRow({ session }: { session: PracticeSession }) {
 
 export default function PracticeCalendarPage() {
   const [searchParams] = useSearchParams();
-  const teamId = searchParams.get('team_id') ?? '';
   const [showCreate, setShowCreate] = useState(false);
+
+  const teamsQuery = useMyTeamsSummary();
+  const teams = (teamsQuery.data ?? []) as { id: string; name: string }[];
+  const teamId = searchParams.get('team_id') ?? teams[0]?.id ?? '';
 
   const sessionsQuery = usePracticeSessions(teamId);
   const sessions = sessionsQuery.data ?? [];
   const scheduled = sessions.filter((s) => s.status === 'scheduled');
   const past = sessions.filter((s) => s.status !== 'scheduled');
 
-  if (!teamId) {
+  if (teamsQuery.isLoading) {
+    return (
+      <CompetitivePageShell>
+        <div className="px-4 py-8 space-y-4 animate-pulse">
+          <div className="h-8 w-48 bg-white/[0.06]" />
+          <div className="h-4 w-64 bg-white/[0.04]" />
+        </div>
+      </CompetitivePageShell>
+    );
+  }
+
+  if (!teamsQuery.isLoading && !teamId) {
     return (
       <CompetitivePageShell>
         <div className="px-4 py-8">
-          <InlineNotice tone="critical">No team ID provided. Add ?team_id= to the URL.</InlineNotice>
+          <InlineNotice tone="neutral">You need to be on a team to use Practice Sessions.</InlineNotice>
         </div>
       </CompetitivePageShell>
     );
