@@ -21,7 +21,7 @@ export function useLfgStatsSync(listingId?: string) {
     try {
       const result = await mutation.mutateAsync();
       setAvailableAt(Date.now() + result.retryAfterSeconds * 1000);
-      if (result.status === 'cooldown' || result.status === 'cached') setFeedback('Showing the latest saved stats.');
+      if (result.status === 'cooldown' || result.status === 'cached') setFeedback(result.syncedAt ? 'Stats updated.' : 'Stats are unavailable. Try again later.');
       else setAttempt({ started: Date.now(), baseline: result.syncedAt });
       refreshLfgStats(client);
     } catch (cause) {

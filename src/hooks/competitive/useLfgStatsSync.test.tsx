@@ -56,8 +56,16 @@ describe('on-demand LFG stats sync', () => {
     await act(async () => { await result.current.sync(); });
     expect(api.post).toHaveBeenCalledTimes(2);
     expect(api.get).not.toHaveBeenCalled();
-    expect(result.current.feedback).toBe('Showing the latest saved stats.');
+    expect(result.current.feedback).toBe('Stats updated.');
     expect(result.current.busy).toBe(false);
+  });
+
+  it('does not claim stats were updated when no saved snapshot exists', async () => {
+    api.post.mockResolvedValue({ status: 'cooldown', retryAfterSeconds: 3600, syncedAt: null });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useLfgStatsSync('listing'), { wrapper });
+    await act(async () => { await result.current.sync(); });
+    expect(result.current.feedback).toBe('Stats are unavailable. Try again later.');
   });
 
   it('shows queue errors while keeping another attempt possible', async () => {

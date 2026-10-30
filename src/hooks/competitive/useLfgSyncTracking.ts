@@ -15,7 +15,7 @@ function completion(data: LfgSyncState | undefined, baseline: string | null) {
   if (data?.status === 'error' || data?.status === 'unlinked') return 'Stats could not be refreshed. Please try again.';
   const changed = !!data?.syncedAt && Date.parse(data.syncedAt) !== Date.parse(baseline ?? '');
   if (data?.status === 'cached' || (['complete', 'partial'].includes(data?.status ?? '') && changed))
-    return changed ? 'Stats updated.' : 'Showing the latest saved stats.';
+    return data?.syncedAt ? 'Stats updated.' : 'Stats are unavailable. Try again later.';
   return null;
 }
 
