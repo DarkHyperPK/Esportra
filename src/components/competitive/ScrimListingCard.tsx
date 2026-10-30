@@ -100,15 +100,14 @@ export function ScrimListingCard({ listing, isOwner, onMakeOffer }: ScrimListing
 
       {/* Action strip */}
       <div className="flex items-center justify-end gap-3">
-        {isOwner && (
+        {isOwner ? (
           <Link
-            to={`/competitive/scrims?team_id=${listing.teamId}`}
-            className="text-[13px] text-white/50 hover:text-white transition-colors duration-150"
+            to="/competitive/scrims/workspace"
+            className="px-3 py-1.5 text-[13px] font-medium border border-white/[0.12] text-white/70 hover:text-white hover:border-white/25 transition-colors duration-150"
           >
-            Manage →
+            Manage
           </Link>
-        )}
-        {isOpen ? (
+        ) : isOpen ? (
           <motion.button
             type="button"
             whileTap={!reduced ? { scale: 0.97 } : undefined}

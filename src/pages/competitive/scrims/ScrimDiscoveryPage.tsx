@@ -147,6 +147,8 @@ export default function ScrimDiscoveryPage() {
 
   const discoverQuery = useDiscoverScrims(GAME_SLUG);
   const allListings = discoverQuery.data ?? [];
+  const teamsQuery = useMyTeamsSummary();
+  const myTeamIds = new Set((teamsQuery.data ?? []).map((t: unknown) => (t as { id: string }).id));
 
   const listings = allListings.filter((l) => {
     const modeMatch = !modeFilter || (l.modeKey ?? '').toLowerCase().includes(modeFilter.toLowerCase());
@@ -245,6 +247,7 @@ export default function ScrimDiscoveryPage() {
               <div key={listing.id} role="listitem" className="mb-2">
                 <ScrimListingCard
                   listing={listing}
+                  isOwner={listing.teamId ? myTeamIds.has(listing.teamId) : false}
                   onMakeOffer={(id) => setActiveOfferId(activeOfferId === id ? null : id)}
                 />
                 {activeOfferId === listing.id && (

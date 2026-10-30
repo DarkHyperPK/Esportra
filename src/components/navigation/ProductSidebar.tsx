@@ -71,7 +71,8 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
       id: 'scrims', label: 'Scrims', icon: Crosshair,
       items: [
         { label: 'Find Scrims', to: '/competitive/scrims' },
-        { label: 'My Scrim History', to: '/competitive/scrims' },
+        { label: 'Manage Scrims', to: '/competitive/scrims/workspace' },
+        { label: 'Practice Calendar', to: '/competitive/scrims/practice' },
       ],
     },
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, items: tournamentItems },
@@ -196,6 +197,7 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
 // ─── Logged-out sidebar ───────────────────────────────────────────────────────
 
 const PUBLIC_LINKS = [
+  { label: 'Find Teammates', to: '/competitive/lfg', icon: Users },
   { label: 'Tournaments', to: '/tournaments', icon: Trophy },
   { label: 'Venues', to: '/venues/search', icon: MapPin },
   { label: 'Rankings', to: '/leaderboards', icon: BarChart2 },
