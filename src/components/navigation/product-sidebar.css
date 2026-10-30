@@ -5,6 +5,8 @@
   border-right: 1px solid #ffffff0f;
   color: #a1a1aa;
   font-family: var(--font-body), sans-serif;
+  transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: clip;
 }
 
 .product-sidebar-brand-wrap {

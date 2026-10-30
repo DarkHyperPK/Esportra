@@ -10,8 +10,8 @@ function MemberAvatar({ member }: { member: LfgRosterMember }) {
   return <span className="lfg-roster-avatar">{source && !failed ? <img src={source} alt="" onError={() => setFailed(true)} /> : (member.username || '?').slice(0, 2).toUpperCase()}</span>;
 }
 
-export function LfgRoster({ listing, compact = false }: { listing: LfgListing; compact?: boolean }) {
-  const roster = useLfgRoster(listing.id, !!listing.teamId);
+export function LfgRoster({ listing, compact = false, viewerScope }: { listing: LfgListing; compact?: boolean; viewerScope?: string }) {
+  const roster = useLfgRoster(listing.id, !!listing.teamId, viewerScope);
   if (listing.id === 'preview') return null;
   if (roster.isLoading) return <p className="lfg-roster-message" role="status">Loading roster…</p>;
   if (roster.isError) return <p className="lfg-roster-message">Roster unavailable. <button type="button" onClick={() => void roster.refetch()}>Retry</button></p>;

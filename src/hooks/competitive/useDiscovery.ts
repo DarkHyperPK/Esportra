@@ -65,10 +65,10 @@ export function useDiscoverLfg(filters: LfgSearchFilters) {
   });
 }
 
-export function useInfiniteLfg(filters: LfgSearchFilters) {
+export function useInfiniteLfg(filters: LfgSearchFilters, viewerScope?: string) {
   const limit = 30;
   return useInfiniteQuery({
-    queryKey: [...lfgKeys.discover(filters), 'pages'],
+    queryKey: [...lfgKeys.discover(filters), 'pages', viewerScope],
     queryFn: async ({ pageParam }) => {
       const data = await apiClient.get<LfgListing[]>(
         `/api/competitive/lfg?${buildLfgSearchParams({ ...filters, limit, offset: pageParam })}`,

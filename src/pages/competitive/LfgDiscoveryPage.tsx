@@ -1,6 +1,6 @@
 import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
@@ -17,7 +17,11 @@ import type { LfgIntent } from '@/types/competitive';
 
 export default function LfgDiscoveryPage() {
   const [params, setParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const viewerScope = user?.id || 'guest';
+  const signIn = (target: string) => `/auth/signin?redirect=${encodeURIComponent(target)}`;
   const catalog = useGameCatalogContext();
   const game = params.get('game') || catalog.games.find(item => item.slug === 'valorant')?.slug || catalog.games[0]?.slug || '';
   const kind = params.get('kind') === 'teams' ? 'teams' : 'players';
@@ -39,18 +43,18 @@ export default function LfgDiscoveryPage() {
   const regions = useCatalogRegions(game).data ?? [];
   const intents: LfgIntent[] = kind === 'players' ? ['looking_for_team'] : ['looking_for_player', 'competitive_roster'];
   const feed = useInfiniteLfg({ game, intent: intents, roles: role ? [role] : undefined, regionKey: region || undefined,
-    minRank: rank ? Number(rank) : undefined, maxRank: maxRank ? Number(maxRank) : undefined, query: search, language: language || undefined, savedOnly });
-  const myListings = useMyLfgListings();
+    minRank: rank ? Number(rank) : undefined, maxRank: maxRank ? Number(maxRank) : undefined, query: search, language: language || undefined, savedOnly: savedOnly && !!user }, viewerScope);
+  const myListings = useMyLfgListings(!!user, user?.id);
   const save = useSetLfgSaved();
   const rows = feed.data?.pages.flat() ?? [];
-  const own = savedOnly ? [] : (myListings.data ?? []).filter(item => item.gameSlug === game && item.status === 'published' && (!item.expiresAt || new Date(item.expiresAt).getTime() > Date.now()) && intents.includes(item.intent)
+  const own = savedOnly || !user ? [] : (myListings.data ?? []).filter(item => item.gameSlug === game && item.status === 'published' && (!item.expiresAt || new Date(item.expiresAt).getTime() > Date.now()) && intents.includes(item.intent)
     && (!role || item.preferredRoles?.includes(role)) && (!region || item.regionKey === region)
     && (!rank || ((kind === 'players' ? game === 'valorant' && item.competitiveTier != null && item.competitiveTier >= 3 && item.competitiveTier - 3 >= Number(rank) : item.minRankSortOrder != null && item.minRankSortOrder >= Number(rank))))
     && (!maxRank || ((kind === 'players' ? game === 'valorant' && item.competitiveTier != null && item.competitiveTier >= 3 && item.competitiveTier - 3 <= Number(maxRank) : item.maxRankSortOrder != null && item.maxRankSortOrder <= Number(maxRank))))
     && (!language || item.languages?.includes(language))
     && (!search || `${item.username ?? ''} ${item.teamName ?? ''} ${item.description ?? ''}`.toLowerCase().includes(search.toLowerCase())));
   const selectedId = params.get('listing') || '';
-  const detail = useLfgListing(selectedId);
+  const detail = useLfgListing(selectedId, viewerScope);
   const feedListings = [...own, ...rows];
   const linkedListing = detail.data && detail.data.gameSlug === game && intents.includes(detail.data.intent) && (!savedOnly || detail.data.isSaved) && !feedListings.some(item => item.id === selectedId) ? detail.data : null;
   const listings = linkedListing ? [linkedListing, ...feedListings] : feedListings;
@@ -69,12 +73,16 @@ export default function LfgDiscoveryPage() {
     Object.entries(next).forEach(([key, value]) => value ? updated.set(key, value) : updated.delete(key));
     setParams(updated);
   }
+  useEffect(() => {
+    if (!authLoading && !user && savedOnly) navigate(signIn(location.pathname + location.search), { replace: true });
+  }, [authLoading, user, savedOnly, navigate, location.pathname, location.search]);
   function changeGame(value: string) {
     setRole(''); setRegion(''); setRank(''); setMaxRank(''); setLanguage(''); setQuery('');
     change({ game: value, listing: null });
   }
   function select(id: string) { drawerInput.current = document.documentElement.dataset.lfgInput || 'pointer'; returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; change({ listing: id }); }
   async function toggleSave(id: string, isSaved: boolean) {
+    if (!user) { navigate(signIn(location.pathname + location.search)); return; }
     setSaveError('');
     try { await save.mutateAsync({ id, saved: !isSaved }); }
     catch (error) { setSaveError(error instanceof Error ? error.message : 'Could not update saved listings.'); }
@@ -90,7 +98,7 @@ export default function LfgDiscoveryPage() {
         {ranks.length > 0 && <LfgRankSelect label="Maximum rank" game={game} ranks={ranks} value={maxRank} onChange={setMaxRank} />}
         {regions.length > 0 && <label className="lfg-field">Region<select className="lfg-input" value={region} onChange={event => setRegion(event.target.value)}><option value="">Any region</option>{regions.map(item => <option key={item.id} value={item.regionKey}>{item.displayName}</option>)}</select></label>}
         <label className="lfg-field">Language<select className="lfg-input" value={language} onChange={event => setLanguage(event.target.value)}><option value="">Any language</option>{LFG_LANGUAGES.map(item => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
-        <label className="lfg-field" style={{ flexDirection:'row', alignItems:'center' }}><input type="checkbox" checked={savedOnly} onChange={event => change({ saved: event.target.checked ? '1' : null, listing: null })} /> Saved listings</label>
+        <label className="lfg-field" style={{ flexDirection:'row', alignItems:'center' }}><input type="checkbox" checked={savedOnly} onChange={event => { if (!user && event.target.checked) navigate(signIn(`/competitive/lfg?saved=1&game=${encodeURIComponent(game)}`)); else change({ saved: event.target.checked ? '1' : null, listing: null }); }} /> Saved listings</label>
         <button className="lfg-button" type="button" onClick={resetFilters}>Reset filters</button>
       </aside>
       <section className="lfg-results" aria-label="Discover listings">
@@ -104,7 +112,7 @@ export default function LfgDiscoveryPage() {
         {saveError && <p className="lfg-error" role="alert">{saveError}</p>}
         <div>
           {feed.isLoading || catalog.isLoading ? <div className="lfg-panel lfg-empty" aria-live="polite">Loading listings…</div> : feed.isError && listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>Listings could not load.</strong><button className="lfg-button" type="button" onClick={() => void feed.refetch()}>Try again</button></div> : listings.length === 0 ? <div className="lfg-panel lfg-empty"><strong>{savedOnly ? 'No saved listings here.' : 'No listings found.'}</strong>{savedOnly ? 'Try the other listing type, another game, or save a listing in Discover.' : 'Try another game or adjust your filters.'}{!savedOnly && <button type="button" className="lfg-button" onClick={resetFilters}>Reset filters</button>}</div> : <>
-            <div className="lfg-grid">{listings.map((item, index) => <LfgListingCard priority={index < 3} key={item.id} listing={item} roles={roles} artwork={activeGame?.banner || activeGame?.logo} selected={item.id === selectedId} onSelect={() => select(item.id)} onSave={() => void toggleSave(item.id, !!item.isSaved)} savePending={save.isPending} isOwn={item.userId === user?.id} />)}</div>
+            <div className="lfg-grid">{listings.map((item, index) => <LfgListingCard viewerScope={viewerScope} priority={index < 3} key={item.id} listing={item} roles={roles} artwork={activeGame?.banner || activeGame?.logo} selected={item.id === selectedId} onSelect={() => select(item.id)} onSave={() => void toggleSave(item.id, !!item.isSaved)} savePending={save.isPending} isOwn={item.userId === user?.id} />)}</div>
             {feed.hasNextPage && <button className="lfg-button" type="button" style={{ marginTop:16, width:'100%' }} disabled={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>{feed.isFetchingNextPage ? 'Loading…' : 'Load more listings'}</button>}
           </>}
         </div>

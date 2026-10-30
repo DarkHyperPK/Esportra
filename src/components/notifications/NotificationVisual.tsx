@@ -41,6 +41,13 @@ export function NotificationVisual({ notification: n, size = 'sm' }: Notificatio
   const px = SIZE[size];
   const Icon = kind.icon;
   const tone = n.is_read ? 'neutral' : kind.tone;
+  const actorName = n.actor_name || (typeof n.data?.from_username === 'string' ? n.data.from_username : null);
+
+  if (n.type === 'lfg_interest_received' && actorName) {
+    return <span aria-hidden style={{ width: px, height: px }} className="flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1b1b1f]">
+      {n.actor_avatar_url && !logoFailed ? <img src={n.actor_avatar_url} alt="" className="h-full w-full object-cover" onError={() => setLogoFailed(true)} /> : <Monogram name={actorName} px={px} className="rounded-full" />}
+    </span>;
+  }
 
   if (subject.kind === 'glyph') {
     return (

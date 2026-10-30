@@ -27,4 +27,16 @@ describe('conversation realtime delivery', () => {
     expect(hub.off).toHaveBeenCalledWith('MessageReceived', handler);
     expect(hub.invoke).toHaveBeenCalledWith('LeaveConversation', 'conversation-a');
   });
+  it('refreshes read receipts when another participant reads', () => {
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { unmount } = renderHook(() => useConversationRealtime('conversation-a', vi.fn()), { wrapper });
+    const handler = hub.on.mock.calls.filter(call => call[0] === 'MessagesRead').at(-1)?.[1] as () => void;
+    act(() => handler());
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['conversations', 'list'] });
+    unmount();
+    expect(hub.off).toHaveBeenCalledWith('MessagesRead', handler);
+  });
+
 });

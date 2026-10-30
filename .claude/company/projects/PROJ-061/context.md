@@ -1,5 +1,59 @@
 # PROJ-061 - Current context
 
+## HUD manager product completion — 18 October 2026
+
+Current approval removes all manual mixer Take/Cut/Hold controls and web operator workspaces. The running JSX renderer now owns the direct-Air preparation journey and native HUD workspace; scene automation defaults off and is independent from native HUD automation. Added revisioned optional production details/brackets, pinned artwork/recovery, account-bound draft/proposal/metadata sync, crew invitations, official result review and legacy saved-record/report access. Operator web URLs hand off to Air; backend records and admin/public tools remain.
+
+Fresh local evidence: Air 275 tests, renderer build, dormant TS check; native Electron fixture for linked and standalone workflows, visible isolated demo graphics and Program-preserving source creation; 83 focused web tests/build/scoped lint; Backend 51 Core tests, API/test builds and scoped SDK 9.0.314 formatting. Current implemented reference has 48 captures at three desktop sizes. PostgreSQL integration/replay, exact CI SDK 10.0.401, actual OBS/GEP/multi-PC, packaged/offline acceptance and user design acceptance remain open. No commit/push/deployment. [Current ledger, demo and release gates](hud-manager-product-completion-2026-10-18.md). Earlier mixer-studio and restored-console reports below are historical.
+
+
+## UI/UX master design brief prepared - 17 October 2026
+
+A complete creative-lead prompt now covers source-grounded discovery, three spatial concepts and one chosen direction, the Air-only operator journey, full high-fidelity screen/state coverage, controls and handoff acceptance. This is a design brief, not new implementation or user design acceptance. [Master prompt](air-uiux-master-prompt-2026-10-17.md). Also saved and read-back verified in Obsidian at `07-Projects/PROJ-061-Air-UIUX-Master-Prompt.md`, with a dated session handoff and Air/Current-Work/Session-Index links.
+
+
+## Consolidated Obsidian handoff saved - 17 October 2026
+
+The Obsidian connector was restored and a consolidated PROJ-061 handoff was saved, linked from Air/Backend/Frontend, Current-Work and Session-Index, and read back for verification. It captures the accepted Air-only flow, package and UI/control implementation, caching/observers, source paths, recorded 16 October checks, current local heads and unfinished work. No new application changes, product tests, git mutation or deployment in this consolidation. [Local handoff](handoffs/2026-10-17-consolidated-air-context.md). Vault note: `08-Sessions/2026-10-17-PROJ-061-Consolidated-Air-Handoff.md`.
+
+
+## Workstation, cached artwork and observer routing implemented locally - 16 October 2026
+
+Settings now has dedicated appearance, shortcuts, artwork/storage, production, workstation and help sections, with reduced motion and fewer duplicate navigation controls. Ten configurable HUD actions execute against the live match without changing drafts. Public game/match images use account-separated, atomic verified local caching; prewarm/readiness/retry are visible. Production chooses one primary observer, preserving auxiliary player data without mixing match-wide observer feeds. Capture-only PCs explicitly accept authenticated production match requests before opt-in capture. Video transport and automatic camera/HUD association remain outside this implementation.
+
+Fresh evidence: 185 Air tests/build, expanded direct-account native flow, existing 58-check regression, native capture-only handoff, local two-observer network fixtures, one real public artwork download and 198-screen gallery verification passed. No commit/push/deployment, physical multi-PC/OBS/GEP performance, installer, independent QA or user design acceptance. This artwork cache does not finish immutable package asset manifests, signed/unsupported image formats or all offline/package lifecycle work. [Implementation, boundaries and next action](workstation-cache-observers-2026-10-16.md).
+
+
+## Production studio refinement implemented locally — 16 October 2026
+
+The Air-only production path now opens a focused studio: dominant actual OBS Program, independently selected preview, match-bound scene bank, Cut/Fade/Stinger, source-aware shortcuts, quick live HUD layers, graphics/activity and contextual recovery. Any prepared screen can be taken or revisited through actual tally confirmation. End production retains prepared scenes and OBS output; a new session reuses access/readiness checks. A correct dedicated BRB overlay replaces the generic holding default for newly prepared Break screens. Existing immutable versions are not modified; reprepare while idle to receive the new default.
+
+Fresh evidence: 173 Air tests/build, native direct preview/backward/Cut/Fade/keyboard/HUD/graphics/end-restart/Studio Mode flow and existing 58-check regression; Backend Core 262 and scoped SDK 10.0.401 format passed. Sole A–Z reference now has 191 screens with gallery/overflow verification. Native services are synthetic, not real OBS/GEP acceptance. No commit/push/deployment. Full offline asset pinning, direct optional branding/brackets, package update/session/metadata delivery and live/operator/installer acceptance remain open. [Implementation, demo and limits](production-studio-2026-10-16.md).
+
+## Air-only vertical slice implemented locally — 16 October 2026
+
+Direct account/device-authorized discovery and preparation now work without web Broadcast setup or pairing. Air opens one match desk: Choose match, Preview broadcast, Check connections, Send to OBS, Produce. Valorant automatically gets Opening, Match Introduction, one integrated Gameplay HUD, Break and Results. Unsupported games cannot prepare; played/unresolved/unpublished matches are excluded. Private immutable JSON package versions and verified account/origin-separated local caching are implemented. OBS streaming/recording prevents loading another match. Styling follows the web identity with bundled official artwork/fonts, white primary actions, rose cue and charcoal/light surfaces.
+
+Fresh evidence: 137 Air/Broadcast API PostgreSQL integration tests including six new package tests, migration replay, CI SDK 10.0.401 scoped format, 163 Air tests/build, native direct first-take flow and existing 58-check/15-capture regression passed. Supported-size horizontal-overflow checks passed. Single implemented reference now includes eight new native captures (189 total); historical 53-requirement counts were not reassessed. Local source only, no commit/push/deployment, actual OBS/GEP/staging/installer or user/independent acceptance.
+
+Complete pinned offline assets, direct-package sponsors/talent/crew/brackets, deep links, package update-at-break/session lifecycle and metadata upload remain open; cached JSON is not a fully self-contained package. Direct official-result review is disabled with a clear recovery message; local HUD corrections preserve official results. [Implementation, demo and next phase](air-first-implementation-2026-10-16.md).
+
+## Accepted Air-only production MVP — 16 October 2026
+
+CEO now explicitly prefers no web Broadcast preparation step for the MVP; it can be added later if useful. Air signs in, directly fetches authorized tournament matches from the existing backend, prepares the game-specific HUD/default scenes, supports customization/sponsors, sends scenes to OBS and runs production. Start streaming explicitly in OBS. The same backend owns permissions, normalized data and immutable package preparation. Web tournament management stays authoritative; this does not add full tournament administration to Air or delete existing web Broadcast routes. This accepted direction supersedes earlier proposed/mandatory-web entry points below, while implementation gaps remain. [Current MVP brief](broadcast-package-mvp-2026-10-16.md).
+
+## Air-first system proposal and readiness audit — 16 October 2026
+
+CEO asks whether web Broadcast preparation is necessary and rejects the current desktop operational/visual hierarchy. Recommendation: authenticated Air directly lists owned/assigned tournament matches, requests backend package preparation and runs one evolving match desk; web coordination/launch shortcuts are optional. This is a proposal pending acceptance, not a newly shipped or accepted change to the earlier web-first direction. Existing match-day.js consumes delivered show configuration; direct account-scoped operator discovery, game-pack selection, immutable/full offline packages and safe-break activation remain unfinished. The build is a functional prototype rather than an accepted MVP. Current workspace.css still contains legacy violet/System-font tokens, conflicting with canonical web brand roles.
+
+[Source-backed readiness and system proposal](air-first-system-design-2026-10-16.md). Requested project-local Claude skill added at `.claude/skills/esportra-system-design/SKILL.md`; quick_validate.py passed. It requires journey, authority/state, permission, recovery and hierarchy design before implementation. No application source changed or product tests/commits/deployment performed for this audit. Obsidian session 2026-10-16-PROJ-061-Air-First-System-Audit and Air/Frontend/Current-Work/Session-Index updates were saved/read-back verified.
+
+## Match-first game-aware package MVP — 16 October 2026
+
+CEO narrows the primary MVP to select a tournament match, automatically load its game-specific HUD/default scenes, Send to Air, connect/push scenes to OBS, Start production in Air and stream explicitly in OBS. Reuse Valorant's integrated ingame HUD and existing layer control panel; no mandatory scene for each widget. Product is multigame; only the Valorant pack exists today and unsupported games must fail clearly. Preserve preview/customization before push, standalone support and package safety. This refines the earlier mandatory four/eight-step primary path. [Canonical implementation brief](broadcast-package-mvp-2026-10-16.md).
+
+Frontend aa2cfa013127f15cd0080f219bf9208230fd979e and Air e60fb40309ad1546823e6005c6de909e69ff76b6 are now committed locally on staging; neither was pushed/deployed. Earlier uncommitted statements below are historical for these scopes. Prior checks remain separate from live/operator acceptance. No new package implementation or tests in this planning checkpoint. Obsidian connector restored: MVP direction, local-commit evidence, product notes, Current-Work and Session-Index saved/read back under 2026-10-16-PROJ-061-Package-MVP-and-Local-Commits.
+
 ## Web broadcast redesign — 16 October 2026
 
 Implemented locally: shared left sidebar without global top navigation in Broadcast/Air and the tournament Broadcast tab; explicit/resumable eligible-match choice, match-led preparation, visible HUD settings with step-change unsaved-edit guard, existing-work-first tournament entry and immediate publication-to-desktop handoff. Full frontend 651 tests/111 files, lint/build and final 15 focused tests passed. Existing unrelated TypeScript failures remain. This web scope does not implement the proposed desktop match desk. No new commit/push/deployment; user/live acceptance pending. Obsidian update pending because its connector became unavailable. See [current web handoff](web-broadcast-redesign-2026-10-16.md) and `docs/audits/2026-10-16-broadcast-web-ux.md`.

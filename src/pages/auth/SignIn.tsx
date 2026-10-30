@@ -37,7 +37,8 @@ const SignIn = () => {
   const { signIn, signInWithGoogle, signInWithDiscord, loading: authLoading, user, profile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect');
+  const requestedRedirect = searchParams.get('redirect') || searchParams.get('returnTo');
+  const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//') && !requestedRedirect.includes('\\') && !Array.from(requestedRedirect).some(char => char.charCodeAt(0) < 32) ? requestedRedirect : null;
   const { toast } = useToast();
   const [isAlreadySignedIn, setIsAlreadySignedIn] = useState(false);
   const [wasRevoked, setWasRevoked] = useState(false);

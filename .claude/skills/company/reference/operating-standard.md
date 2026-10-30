@@ -5,6 +5,17 @@ Every agent in the company follows this standard. Role files add to it; they nev
 
 ---
 
+## User communication and token budget — 13 October 2026
+
+This policy reflects the user's explicit request to reduce company overhead and deeply integrate `i-have-adhd` and `caveman`. It takes precedence over default routing below; security, truthful verification, existing scope approvals and git/deployment consent remain intact.
+
+- Load `i-have-adhd` and `caveman` once per session from the local skill paths. Keep both active until the user disables them. ADHD shapes the working set; caveman compresses wording. Clarity wins. System-required progress updates remain concise. Code, durable documentation and exact technical terms use normal, accurate prose.
+- Routine audits, debugging, fixes, documentation and already-authorized continuations use one owning agent by default. Do not start executive analysis, a new proposal or another role round merely because work is for Esportra or already has a project number. The full pipeline below applies to explicitly requested company/multi-role work or materially new initiatives requiring its gates.
+- No automatic delegation. Use a specialist only when authorized and when it resolves a concrete gap. Supply a focused brief of at most 200 words plus evidence paths; no conversation fork, whole skill map or repeated startup retrieval. Preserve independence whenever independent review is actually required; never rename self-checks as independent approval.
+- Reuse the current context and completed decisions. Read changed or missing sources only. Search with bounded output; do not dump logs, entire instructions, unchanged files or unrelated git status. Make one precise memory checkpoint, not repeated copies of the same report.
+- User updates: current step, concrete result and next action, normally 1–3 short sentences. Number multi-step actions; one step active. Final answer normally has at most five items. Include exact failures, meaningful limits and artifact links. Do not burden the user with optional implementation decisions or repeated confirmation.
+- Test the changed behavior and necessary regression paths. No redundant review loops or repeated full suites without a new failure/change. Report unverified work explicitly. No unrequested commits, pushes or deployment; never weaken authorization or security to save tokens.
+
 ## 1. Understand first, then build
 
 Every agent runs `discovery-first` before analysis, design or implementation. The work of every role has two halves:
@@ -172,3 +183,46 @@ Answers recorded:
 ```
 
 Only the CPO and Creative Lead were re-dispatched (their analyses changed); the CFO's was unaffected.
+
+---
+
+## 12. Shared contracts lifecycle
+
+Any feature touching both a backend engineer and a frontend engineer — or any DB schema change that surfaces in the UI — requires a shared contract file before either engineer starts building.
+
+### What it is
+
+The Senior Software Architect produces `shared-contracts/types.md` as part of their HANDOFF, before the CTO dispatches any engineer. It contains:
+
+- All shared enums with their **exact string values** — DB enum, backend validation list, and frontend constants must be identical sets
+- All API request/response shapes (field names, types, optionality)
+- DB column names referenced by both layers
+
+The CTO does not dispatch engineers until this file exists.
+
+### How engineers use it
+
+1. Read `shared-contracts/types.md` before writing any type, enum, or constant.
+2. Add a **Contract compliance** table to your HANDOFF:
+
+| Contract item | Your implementation | Status |
+|---|---|---|
+| `LfgIntent` enum values | `looking_for_team \| looking_for_player \| duo \| group` | ✅ matches |
+| `POST /api/competitive/lfg` body shape | `{ gameSlug, intent, ... }` | ✅ matches |
+
+3. A HANDOFF without this table is incomplete. The CTO rejects it and returns `CHANGE_REQUEST`.
+
+### CTO audit cross-check (mandatory, blocking)
+
+After receiving backend and frontend HANDOFFs, the CTO must:
+
+1. Diff every enum / constant in both HANDOFFs against `shared-contracts/types.md`
+2. `grep` each enum value in both codebases and confirm identical sets
+3. Confirm the DB migration's enum values match the contract
+4. Confirm each API route shape matches between the hook call and the endpoint definition
+
+Any mismatch → blocking `CHANGE_REQUEST` before QA starts. This step is not optional even if both engineers say their work matches.
+
+### SendMessage for mid-flight contract updates
+
+When the architect revises the contract after an engineer is already `IN_PROGRESS`, the CTO uses `SendMessage` to push the updated file path to the live engineer agent rather than restarting it. The engineer reads the delta, updates their work, and notes the revision in their HANDOFF.

@@ -51,8 +51,8 @@ export function useSendMessage(conversationId: string) {
 export function useMarkRead(conversationId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      apiClient.put(`/api/conversations/${conversationId}/read`, {}),
+    mutationFn: (through?: string) =>
+      apiClient.put(`/api/conversations/${conversationId}/read${through ? `?through=${encodeURIComponent(through)}` : ''}`, {}),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: messagingKeys.list() });
     },
@@ -82,12 +82,15 @@ export function useConversationRealtime(
       void qc.invalidateQueries({ queryKey: messagingKeys.list() });
       if (conversationId) void qc.invalidateQueries({ queryKey: messagingKeys.messages(conversationId) });
     };
+    const onRead = () => { void qc.invalidateQueries({ queryKey: messagingKeys.list() }); };
+    conn.on('MessagesRead', onRead);
     conn.on('MessageReceived', handler);
     conn.on('MessageEdited', onMutation);
     conn.on('MessageDeleted', onMutation);
     if (conversationId) conn.invoke('JoinConversation', conversationId).catch(() => {});
 
     return () => {
+      conn.off('MessagesRead', onRead);
       conn.off('MessageReceived', handler);
       conn.off('MessageEdited', onMutation);
       conn.off('MessageDeleted', onMutation);

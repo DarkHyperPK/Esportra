@@ -569,27 +569,19 @@ const AppContent = React.memo(() => {
                 <Route path="/competitive" element={<ProductLayout />}>
                   <Route path="discover" element={<DiscoverPage />} />
                   <Route path="find-teammates" element={<LegacyLfgRedirect kind="players" />} />
-                  <Route path="looking-for-team" element={
-                    <ProtectedRoute>
-                      <LegacyLfgRedirect kind="players" />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="looking-for-team" element={<LegacyLfgRedirect kind="players" />} />
                   <Route path="looking-for-team/create" element={
                     <ProtectedRoute>
                       <LegacyLfgCreateRedirect type="lft" />
                     </ProtectedRoute>
                   } />
-                  <Route path="looking-for-player" element={
-                    <ProtectedRoute>
-                      <LegacyLfgRedirect kind="teams" />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="looking-for-player" element={<LegacyLfgRedirect kind="teams" />} />
                   <Route path="looking-for-player/create" element={
                     <ProtectedRoute>
                       <LegacyLfgCreateRedirect type="lfp" />
                     </ProtectedRoute>
                   } />
-                  <Route path="lfg" element={<ProtectedRoute><LfgDiscoveryPage /></ProtectedRoute>} />
+                  <Route path="lfg" element={<LfgDiscoveryPage />} />
                   <Route path="lfg/requests" element={<ProtectedRoute><LfgRequestsPage /></ProtectedRoute>} />
                   <Route path="lfg/create" element={
                     <ProtectedRoute>

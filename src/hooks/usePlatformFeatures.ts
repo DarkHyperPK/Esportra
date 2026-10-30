@@ -39,7 +39,9 @@ export function usePlatformFeatures() {
     (query.data?.features ?? []).filter(f => f.enabled).map(f => f.key),
   );
 
-  const localOverrides: Set<FeatureKey> = new Set();
+  const localOverrides: Set<FeatureKey> = new Set(
+    import.meta.env.DEV ? (['nav_v2', 'competitive_profiles', 'lfg', 'recruitment', 'tryouts', 'scrims', 'scouting'] as FeatureKey[]) : []
+  );
 
   return {
     features: query.data?.features ?? [],

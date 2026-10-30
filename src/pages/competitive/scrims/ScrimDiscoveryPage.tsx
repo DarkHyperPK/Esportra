@@ -160,7 +160,8 @@ export default function ScrimDiscoveryPage() {
   function updateFilter(key: 'mode' | 'region', value: string) {
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      value ? p.set(key, value) : p.delete(key);
+      if (value) p.set(key, value);
+      else p.delete(key);
       return p;
     });
   }

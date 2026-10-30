@@ -12,9 +12,9 @@ import { LfgAvatar } from './LfgAvatar';
 import { LfgRoster } from './LfgRoster';
 import { LfgRankRange } from './LfgRankRange';
 
-export function LfgListingCard({ listing, roles, selected, onSelect, onSave, savePending, isOwn, preview = false, priority = false }: {
+export function LfgListingCard({ listing, roles, selected, onSelect, onSave, savePending, isOwn, preview = false, priority = false, viewerScope }: {
   listing: LfgListing; roles: CatalogGameRole[]; artwork?: string | null; selected: boolean;
-  onSelect: () => void; onSave: () => void; savePending: boolean; isOwn: boolean; preview?: boolean; priority?: boolean;
+  onSelect: () => void; onSave: () => void; savePending: boolean; isOwn: boolean; preview?: boolean; priority?: boolean; viewerScope?: string;
 }) {
   const team = listing.intent !== 'looking_for_team';
   const name = (team ? listing.teamName : listing.username) || (team ? 'Team' : 'Player');
@@ -37,7 +37,7 @@ export function LfgListingCard({ listing, roles, selected, onSelect, onSave, sav
         {!!listing.preferredRoles?.length && <div className="lfg-card-roles">{listing.preferredRoles.map(key => <LfgRole key={key} game={listing.gameSlug} roleKey={key} roles={roles} />)}</div>}
       </div>
       {!team && <LfgMetrics listing={listing} />}
-      {team && <LfgRoster listing={listing} compact />}
+      {team && <LfgRoster listing={listing} compact viewerScope={viewerScope} />}
       {agentIds.length > 0 && <div className="lfg-compact-agent-section"><span className="lfg-compact-agent-label">Agents · WR / K/D</span><div className="lfg-compact-agents" aria-label="Preferred agents">{agentIds.map(id => { const data = played.find(item => item.agentId.toLowerCase() === id.toLowerCase()); const asset = catalog.data?.[id.toLowerCase()]; const fallback = resolveAgent(id); const agentName = asset?.displayName || fallback?.displayName || data?.displayName || 'Agent'; const icon = getValorantAgentIcon(id, asset?.displayIcon || fallback?.iconUrl || data?.iconUrl); return <div key={id} role="img" className="lfg-compact-agent" title={`${agentName}: ${data?.gamesPlayed ? `${data.gamesPlayed} games` : listing.statsSyncStatus === 'complete' ? 'No recorded matches' : 'Stats unavailable'}`} aria-label={`${agentName}: ${data?.gamesPlayed ? `${Math.round(data.wins / data.gamesPlayed * 100)}% win rate, ${data.kdRatio != null ? Number(data.kdRatio).toFixed(2) : 'unavailable'} K/D` : listing.statsSyncStatus === 'complete' ? 'No recorded matches' : 'Stats unavailable'}`}>{icon ? <img src={icon} alt="" width={36} height={36} decoding="async" /> : <span>{agentName.slice(0, 2)}</span>}<small>{data?.gamesPlayed ? `${Math.round(data.wins / data.gamesPlayed * 100)}%` : '—'}<br />{data?.kdRatio != null ? Number(data.kdRatio).toFixed(2) : '—'}</small></div>; })}</div></div>}
       <p className="lfg-description lfg-compact-description">{listing.description || 'No description provided.'}</p>
       <div className="lfg-compact-bottom"><span>{[listing.regionDisplayName || listing.regionKey, languages.join(' / ')].filter(Boolean).join(' · ') || 'Any region'}</span>{listing.viewerInterestStatus && <span>Request: {listing.viewerInterestStatus}</span>}{!preview && <button className="lfg-compact-expand" type="button" aria-haspopup="dialog" aria-expanded={selected} onClick={onSelect}>More details <ChevronRight size={15} /></button>}</div>

@@ -4,6 +4,8 @@ export interface Notification {
   id: string;
   user_id: string;
   type: string;
+  actor_name?: string | null;
+  actor_avatar_url?: string | null;
   title: string;
   message: string;
   reason?: string;

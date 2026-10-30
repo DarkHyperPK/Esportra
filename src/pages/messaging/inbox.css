@@ -45,3 +45,5 @@
 }
 @media (prefers-reduced-motion:reduce) { .inbox-workspace * { transition:none!important; animation:none!important; } }
 html[data-reduce-motion=true] .inbox-workspace * { transition:none!important; animation:none!important; }
+
+.inbox-read-receipt { display: block; color: #a1a1aa; font-size: 11px; margin-top: 2px; overflow-wrap: anywhere; }

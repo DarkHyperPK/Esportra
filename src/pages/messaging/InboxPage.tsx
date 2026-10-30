@@ -5,7 +5,7 @@ import { ArrowDown, ArrowLeft, MessageSquare, Search, Send, X } from 'lucide-rea
 import { useInboxScroll } from '@/hooks/useInboxScroll';
 import { useAuth } from '@/hooks/useAuth';
 import { messagingKeys, useConversationMessages, useConversationRealtime, useConversations, useMarkRead, useSendMessage } from '@/hooks/useMessaging';
-import type { Conversation, ConversationMessage } from '@/types/messaging';
+import type { Conversation } from '@/types/messaging';
 import { LfgMessageReference } from './LfgMessageReference';
 import './inbox.css';
 
@@ -56,16 +56,25 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
   const rows = messages.data?.pages.slice().reverse().flat() ?? [];
   const { scroll, nearBottom, showLatest, jumpToLatest, onScroll } = useInboxScroll(rows.at(-1)?.id, messages.isSuccess);
 
-  useEffect(() => { if (id && messages.isSuccess && document.visibilityState === 'visible') markRead.mutate(); }, [id, messages.isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
-  const refetchMessages = messages.refetch;
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') void refetchMessages(); };
+    const latest = rows.at(-1);
+    if (id && messages.isSuccess && latest && document.visibilityState === 'visible' && nearBottom.current) markRead.mutate(latest.id);
+  }, [id, messages.isSuccess, rows.at(-1)?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const refetchMessages = messages.refetch;
+  const latestMessageId = rows.at(-1)?.id;
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        if (nearBottom.current && latestMessageId) markRead.mutate(latestMessageId);
+        void refetchMessages();
+      }
+    };
     document.addEventListener('visibilitychange', refresh);
     return () => document.removeEventListener('visibilitychange', refresh);
-  }, [refetchMessages]);
-  useConversationRealtime(id, (message: ConversationMessage) => {
+  }, [refetchMessages, latestMessageId, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useConversationRealtime(id, () => {
     void queryClient.invalidateQueries({ queryKey: messagingKeys.messages(id) });
-    if (message.senderId !== userId && document.visibilityState === 'visible' && nearBottom.current) markRead.mutate();
+    // Mark read only after the new message has rendered in the visible thread.
   });
 
   async function submit() {
@@ -85,10 +94,16 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
     requestAnimationFrame(() => { if (node) node.scrollTop += node.scrollHeight - height; });
   }
   const name = conversation ? displayName(conversation, userId) : 'Conversation';
+  const seenByMessage = new Map<string, string[]>();
+  for (const participant of conversation?.participants ?? []) {
+    if (participant.userId === userId || !participant.lastReadAt) continue;
+    const seen = [...rows].reverse().find(message => message.senderId === userId && message.messageType === 'text' && Date.parse(message.createdAt) <= Date.parse(participant.lastReadAt!));
+    if (seen) seenByMessage.set(seen.id, [...(seenByMessage.get(seen.id) ?? []), participant.user?.username || participant.user?.fullName || 'Player']);
+  }
   return <section className="inbox-thread" aria-label={`Conversation with ${name}`}>
     <header className="inbox-thread-header"><Link to="/inbox" className="inbox-back" aria-label="Back to inbox"><ArrowLeft size={18} /></Link><ConversationAvatar conversation={conversation} userId={userId} name={name} /><div><h2>{name}</h2><p>{conversation?.type === 'group' ? 'Group conversation' : 'Direct conversation'}</p></div></header>
     <div className="inbox-message-stage">
-    <div className="inbox-messages" data-lenis-prevent ref={scroll} tabIndex={0} aria-label="Message history" onScroll={() => { onScroll(); if (nearBottom.current && showLatest && !markRead.isPending) markRead.mutate(); }}>
+    <div className="inbox-messages" data-lenis-prevent ref={scroll} tabIndex={0} aria-label="Message history" onScroll={() => { onScroll(); if (nearBottom.current && showLatest && !markRead.isPending) markRead.mutate(rows.at(-1)?.id); }}>
       {messages.isLoading ? <div className="inbox-thread-state">Loading messages…</div> : messages.isError && !messages.data ? <div className="inbox-thread-state" role="alert">Messages could not load. <button type="button" onClick={() => void messages.refetch()}>Try again</button></div> : <>
         {messages.hasNextPage && <button type="button" className="inbox-older" disabled={messages.isFetchingNextPage} onClick={() => void older()}>{messages.isFetchingNextPage ? 'Loading…' : 'Load earlier messages'}</button>}
         {messages.isFetchNextPageError && <div className="inbox-thread-state" role="alert">Earlier messages could not load. Try again.</div>}
@@ -96,12 +111,12 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
           {(index === 0 || new Date(message.createdAt).toDateString() !== new Date(rows[index - 1].createdAt).toDateString()) && <div className="inbox-date"><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time></div>}
           <div className={`inbox-message ${message.senderId === userId ? 'own' : ''} ${message.listingReference ? 'has-listing' : ''}`}>
           {message.listingReference && <LfgMessageReference reference={message.listingReference} />}
-          <div className="inbox-message-bubble">{message.content}</div><time dateTime={message.createdAt}>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>
+          <div className="inbox-message-bubble">{message.content}</div><time dateTime={message.createdAt}>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>{seenByMessage.has(message.id) && <span className="inbox-read-receipt">{conversation?.type === 'group' ? `Seen by ${seenByMessage.get(message.id)!.join(', ')}` : 'Seen'}</span>}
         </div></Fragment>) : <div className="inbox-thread-state">Start the conversation.</div>}
       </>}
     </div>
     <span className="sr-only" role="status">{showLatest ? 'New messages arrived. Use the New messages button to jump to the latest reply.' : ''}</span>
-    {showLatest && <button type="button" className="inbox-jump" onClick={() => { jumpToLatest(); markRead.mutate(); }}><ArrowDown size={14} aria-hidden /> New messages</button>}
+    {showLatest && <button type="button" className="inbox-jump" onClick={() => { jumpToLatest(); markRead.mutate(rows.at(-1)?.id); }}><ArrowDown size={14} aria-hidden /> New messages</button>}
     </div>
     <div className="inbox-compose">{error && <p className="inbox-error" role="alert">{error}</p>}<div className="inbox-compose-row"><textarea aria-label="Message" placeholder="Write a message…" value={draft} maxLength={5000} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submit(); } }} rows={2} /><button type="button" onClick={() => void submit()} disabled={!draft.trim() || send.isPending || (messages.isError && !messages.data)} aria-label="Send message"><Send size={17} aria-hidden /><span>{send.isPending ? 'Sending…' : 'Send'}</span></button></div><p>Enter to send · Shift + Enter for a new line</p></div>
   </section>;
