@@ -3,9 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
+import { ScrimCheckinPanel, ScrimCheckinSkeleton } from '@/components/competitive/scrims/ScrimCheckinPanel';
+import { ScrimVetoSection } from '@/components/competitive/scrims/ScrimVetoSection';
+import { ScrimDisputeBanner } from '@/components/competitive/scrims/ScrimDisputeBanner';
 import {
   useScrimSession,
-  useCheckInSession,
   useUpdateSessionLobby,
   useReportScrimResult,
   useConfirmScrimResult,
@@ -40,25 +42,6 @@ function formatSessionTime(iso: string | null): string {
   return `${date} · ${time}`;
 }
 
-function checkInWindowOpen(scheduledAt: string | null, durationMinutes: number | null): boolean {
-  if (!scheduledAt) return false;
-  const now = Date.now();
-  const start = new Date(scheduledAt).getTime();
-  return now >= start - 30 * 60_000 && now <= start + (durationMinutes ?? 90) * 60_000;
-}
-
-function beforeCheckInWindow(scheduledAt: string | null): boolean {
-  if (!scheduledAt) return false;
-  return Date.now() < new Date(scheduledAt).getTime() - 30 * 60_000;
-}
-
-function checkInOpenTime(scheduledAt: string | null): string {
-  if (!scheduledAt) return '';
-  return new Date(new Date(scheduledAt).getTime() - 30 * 60_000).toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 function getLobbyFieldValues(s: ScrimSession) {
   return s.gameSlug === 'cs2'
@@ -68,19 +51,19 @@ function getLobbyFieldValues(s: ScrimSession) {
 
 function fieldsToPayload(gameSlug: string | null, f1: string, f2: string) {
   return gameSlug === 'cs2'
-    ? { serverInfo: f1 || null, lobbyCode: f2 || null }
-    : { lobbyCode: f1 || null, serverInfo: f2 || null };
+    ? { serverInfo: f1 || undefined, lobbyCode: f2 || undefined }
+    : { lobbyCode: f1 || undefined, serverInfo: f2 || undefined };
 }
 
 // ── Small building blocks ─────────────────────────────────────────────────────
 
 function SessionSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse px-4 lg:px-8 pt-8">
-      <div className="h-4 w-24 bg-white/[0.06]" />
-      <div className="h-32 bg-white/[0.04] border border-white/[0.06]" />
-      <div className="h-24 bg-white/[0.04] border border-white/[0.06]" />
-      <div className="h-24 bg-white/[0.04] border border-white/[0.06]" />
+    <div className="space-y-6 px-4 lg:px-8 pt-8">
+      <div className="h-4 w-24 bg-white/[0.06] animate-pulse" />
+      <div className="h-32 bg-white/[0.04] border border-white/[0.06] animate-pulse" />
+      <ScrimCheckinSkeleton />
+      <div className="h-24 bg-white/[0.04] border border-white/[0.06] animate-pulse" />
     </div>
   );
 }
@@ -160,68 +143,6 @@ function FaceOffLockup({ session, myTeamSide }: { session: ScrimSession; myTeamS
       <div className="flex justify-center">
         <StatusPill label={session.status.replace('_', ' ').toUpperCase()} tone={STATUS_TONE[session.status]} />
       </div>
-    </div>
-  );
-}
-
-// ── CheckInPanel ──────────────────────────────────────────────────────────────
-
-function CheckInPanel({ session, myTeamSide }: { session: ScrimSession; myTeamSide: 1 | 2 | null }) {
-  const checkIn = useCheckInSession(session.id);
-  const reduce = useReducedMotion();
-  const t1Name = session.team1Name ?? 'Team 1';
-  const t2Name = session.team2Name ?? 'Team 2';
-  const t1In = !!session.team1CheckedInAt;
-  const t2In = !!session.team2CheckedInAt;
-  const myIn = (myTeamSide === 1 && t1In) || (myTeamSide === 2 && t2In);
-  const bothIn = t1In && t2In;
-  const opponentName = myTeamSide === 1 ? t2Name : t1Name;
-  const windowOpen = checkInWindowOpen(session.scheduledAt, session.durationMinutes);
-  const beforeWindow = beforeCheckInWindow(session.scheduledAt);
-  const fadeIn = reduce ? {} : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.18 } };
-
-  return (
-    <div className={PANEL}>
-      <p className={EYEBROW}>Check-in</p>
-      <div className="space-y-2">
-        {[{ name: t1Name, in: t1In }, { name: t2Name, in: t2In }].map((t) => (
-          <div key={t.name} className="flex items-center justify-between">
-            <p className="text-[13px] text-white">{t.name}</p>
-            <p className={`text-[12px] ${t.in ? 'text-emerald-400' : 'text-white/35'}`}>{t.in ? 'Checked in' : 'Waiting'}</p>
-          </div>
-        ))}
-      </div>
-      {myTeamSide !== null && (
-        <div className="space-y-2">
-          {bothIn ? (
-            <AnimatePresence><motion.div key="both" {...fadeIn}><InlineNotice tone="success">Both teams checked in. Good luck.</InlineNotice></motion.div></AnimatePresence>
-          ) : myIn ? (
-            <AnimatePresence><motion.div key="mine" {...fadeIn}><InlineNotice tone="success">You&apos;re checked in. Waiting for {opponentName}.</InlineNotice></motion.div></AnimatePresence>
-          ) : windowOpen ? (
-            <motion.button
-              onClick={() => checkIn.mutate()} disabled={checkIn.isPending}
-              whileTap={reduce ? {} : { scale: 0.97 }} transition={{ duration: 0.12 }}
-              className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[14px] font-medium px-6 py-2.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-              style={{ boxShadow: '0 0 12px 0 rgba(255,45,85,0.35)' }}
-            >
-              {checkIn.isPending ? 'Checking in…' : 'Check in'}
-            </motion.button>
-          ) : beforeWindow ? (
-            <div className="space-y-1">
-              <button disabled className="w-full sm:w-auto border border-white/[0.08] text-white/30 text-[14px] px-6 py-2.5 rounded-none cursor-not-allowed">Check in</button>
-              <p className="text-[11px] text-white/35">Check-in opens at {checkInOpenTime(session.scheduledAt)}</p>
-            </div>
-          ) : (
-            <InlineNotice tone="critical">
-              Check-in expired. Only one team checked in.
-              <br /><span className="text-white/55 text-[12px]">Contact the organizer if you believe this is wrong.</span>
-            </InlineNotice>
-          )}
-          {checkIn.isError && (
-            <p role="alert" className="text-[12px] text-red-300">{getApiErrorMessage(checkIn.error, 'Could not check in. Try again.')}</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -537,15 +458,47 @@ export default function ScrimSessionPage() {
           <FaceOffLockup session={session} myTeamSide={myTeamSide} />
         </motion.div>
 
+        {/* Surface 4: Dispute banner — top of content, below face-off */}
+        {session.dispute && (
+          <motion.div {...arrive(0)}>
+            <ScrimDisputeBanner
+              dispute={session.dispute}
+              callerTeamId={myTeamId ?? ''}
+              sessionTeam1Id={session.team1Id}
+              sessionId={session.id}
+              isCaptain={myTeamSide !== null}
+              onEvidenceSubmitted={() => sessionQuery.refetch()}
+            />
+          </motion.div>
+        )}
+
         {cancelled && (
           <motion.div {...arrive(0.06)}>
             <InlineNotice tone="neutral">This session was cancelled.</InlineNotice>
           </motion.div>
         )}
 
+        {/* Surface 1: Check-in panel */}
         {!cancelled && (
           <motion.div {...arrive(0.06)}>
-            <CheckInPanel session={session} myTeamSide={myTeamSide} />
+            <ScrimCheckinPanel
+              session={session}
+              callerTeamId={myTeamId ?? ''}
+              isCaptain={myTeamSide !== null}
+              onCheckinSuccess={() => sessionQuery.refetch()}
+            />
+          </motion.div>
+        )}
+
+        {/* Surface 2: Veto section — between check-in and lobby */}
+        {!cancelled && (
+          <motion.div {...arrive(0.09)}>
+            <ScrimVetoSection
+              vetoSessionId={session.vetoSessionId ?? null}
+              vetoMyToken={session.vetoMyToken ?? null}
+              gameSlug={session.gameSlug}
+              sessionStatus={session.status}
+            />
           </motion.div>
         )}
 

@@ -1,12 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
+import { apiClient as rawApiClient } from '@/lib/apiClient';
 import type {
   ScrimListing,
   ScrimOffer,
   ScrimSession,
+  ScrimSlot,
+  ScrimDispute,
+  AdminScrimDisputeRow,
+  ScrimDisputeOutcome,
   PracticeSession,
   PracticeAttendance,
 } from '@/types/competitive';
+import { ApiError } from '@/lib/apiClient';
 
 // --- Query keys ---
 
@@ -17,6 +23,10 @@ export const scrimKeys = {
   myOffers: (teamId: string) => ['scrims', 'offers-mine', teamId] as const,
   teamSessions: (teamId: string) => ['scrims', 'sessions', teamId] as const,
   session: (id: string) => ['scrims', 'session', id] as const,
+  // PROJ-078
+  slots: (listingId: string) => ['scrims', 'slots', listingId] as const,
+  sessionDispute: (sessionId: string) => ['scrims', 'dispute', sessionId] as const,
+  adminDisputes: (status: string, page: number) => ['admin', 'scrims', 'disputes', status, page] as const,
 };
 
 export const practiceKeys = {
@@ -50,6 +60,7 @@ interface MakeOfferReq {
   proposedAt?: string;
   proposedDurationMinutes?: number;
   notes?: string;
+  slotId?: string;
 }
 
 interface ReportResultReq {
@@ -224,6 +235,7 @@ export function useMakeOffer(listingId: string) {
         proposed_at: req.proposedAt,
         proposed_duration_minutes: req.proposedDurationMinutes,
         notes: req.notes,
+        slot_id: req.slotId,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: scrimKeys.listingOffers(listingId) });
@@ -442,6 +454,119 @@ export function useUpdateOwnAttendance(attendanceId: string) {
       apiClient.put<PracticeAttendance>(`/api/practice/attendance/${attendanceId}`, { status }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['practice', 'attendance'] });
+    },
+  });
+}
+
+// ── PROJ-078 — Check-in, slots, disputes ─────────────────────────────────────
+
+/**
+ * useScrimCheckin — wraps the check-in mutation with 409 (window not open)
+ * detection. Returns `isWindowNotOpen: boolean` alongside standard mutation state.
+ */
+export function useScrimCheckin(sessionId: string) {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiClient.post<ScrimSession>(`/api/scrims/sessions/${sessionId}/checkin`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
+      qc.invalidateQueries({ queryKey: ['scrims', 'sessions'] });
+    },
+  });
+
+  const isWindowNotOpen =
+    mutation.isError && mutation.error instanceof ApiError && mutation.error.status === 409;
+
+  return { ...mutation, isWindowNotOpen };
+}
+
+/** Fetch available/booked slots for a recurring listing. */
+export function useScrimSlots(listingId: string, enabled = true) {
+  return useQuery({
+    queryKey: scrimKeys.slots(listingId),
+    queryFn: () => apiClient.get<ScrimSlot[]>(`/api/scrims/listings/${listingId}/slots`),
+    enabled: enabled && !!listingId,
+    staleTime: 30_000,
+  });
+}
+
+interface BookSlotReq {
+  offeringTeamId: string;
+  slotId: string;
+  proposedAt: string;
+  proposedDurationMinutes?: number;
+}
+
+/** Create an offer tied to a specific slot on a recurring listing. */
+export function useBookScrimSlot(listingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: BookSlotReq) =>
+      apiClient.post<ScrimOffer>(`/api/scrims/listings/${listingId}/offer`, {
+        offeringTeamId: req.offeringTeamId,
+        proposedAt: req.proposedAt,
+        proposedDurationMinutes: req.proposedDurationMinutes,
+        slotId: req.slotId,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: scrimKeys.slots(listingId) });
+      qc.invalidateQueries({ queryKey: ['scrims', 'offers-mine'] });
+    },
+  });
+}
+
+/** Submit responder evidence for an open dispute. */
+export function useSubmitDisputeEvidence(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (evidenceUrls: string[]) =>
+      apiClient.post<ScrimDispute>(
+        `/api/scrims/sessions/${sessionId}/dispute/evidence`,
+        { evidenceUrls },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
+    },
+  });
+}
+
+interface AdminDisputeListResponse {
+  items: AdminScrimDisputeRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Paginated admin list of scrim disputes. */
+export function useAdminScrimDisputes(status: string, page: number, enabled: boolean) {
+  return useQuery({
+    queryKey: scrimKeys.adminDisputes(status, page),
+    queryFn: () =>
+      rawApiClient.get<AdminDisputeListResponse>(
+        `/api/admin/scrims/disputes?status=${encodeURIComponent(status)}&page=${page}&pageSize=20`,
+      ),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+interface ResolveDisputeReq {
+  outcome: ScrimDisputeOutcome;
+  resolutionNotes?: string;
+}
+
+/** Resolve a scrim dispute (staff only). */
+export function useResolveScrimDispute(disputeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: ResolveDisputeReq) =>
+      rawApiClient.post<unknown>(`/api/admin/scrims/disputes/${disputeId}/resolve`, {
+        outcome: req.outcome,
+        resolution_notes: req.resolutionNotes,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'scrims', 'disputes'] });
     },
   });
 }

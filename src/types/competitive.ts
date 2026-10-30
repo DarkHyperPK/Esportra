@@ -869,12 +869,72 @@ export interface ScrimSession {
   // T2 check-in timestamps (added PROJ-077 T13)
   team1CheckedInAt?: string | null;
   team2CheckedInAt?: string | null;
+  // PROJ-078 check-in window + veto fields
+  checkinWindowOpenedAt?: string | null;
+  vetoSessionId?: string | null;
+  vetoMyToken?: string | null;
+  // PROJ-078 embedded dispute (null when no dispute)
+  dispute?: ScrimDispute | null;
   createdAt: string;
   updatedAt: string;
   team1Name?: string | null;
   team1Logo?: string | null;
   team2Name?: string | null;
   team2Logo?: string | null;
+}
+
+// ── PROJ-078 — Dispute + Slot types ──────────────────────────────────────────
+
+export type ScrimDisputeStatus = 'open' | 'escalated' | 'resolved';
+export type ScrimDisputeOutcome = 'team1_wins' | 'team2_wins' | 'no_contest';
+
+export interface ScrimDispute {
+  id: string;
+  sessionId: string;
+  raisedByTeamId: string;
+  reason: string;
+  status: ScrimDisputeStatus;
+  createdAt: string;
+  updatedAt: string;
+  evidenceUrls: string[] | null;
+  responderEvidenceUrls: string[] | null;
+  responderNotes: string | null;
+  resolvedBy: string | null;
+  outcome: ScrimDisputeOutcome | null;
+  resolutionNotes: string | null;
+  resolvedAt: string | null;
+}
+
+export type ScrimSlotStatus = 'available' | 'booked' | 'cancelled';
+
+export interface ScrimSlot {
+  id: string;
+  listingId: string;
+  startsAt: string;
+  endsAt: string;
+  status: ScrimSlotStatus;
+  createdAt: string;
+  bookedByTeamId?: string | null;
+  sessionId?: string | null;
+}
+
+export interface AdminScrimDisputeRow {
+  id: string;
+  sessionId: string;
+  team1Name: string | null;
+  team2Name: string | null;
+  gameSlug: string | null;
+  scheduledAt: string | null;
+  raisedByTeamId: string;
+  raisedByTeamName: string | null;
+  status: ScrimDisputeStatus;
+  reason: string;
+  evidenceUrls: string[] | null;
+  responderEvidenceUrls: string[] | null;
+  outcome: ScrimDisputeOutcome | null;
+  resolutionNotes: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
 }
 
 export interface ScrimResultReport {

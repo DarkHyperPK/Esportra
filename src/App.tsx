@@ -25,7 +25,6 @@ import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import React from 'react';
-import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
@@ -96,6 +95,7 @@ const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrim
 const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
 const ScrimSessionPage = lazyWithRetry(() => import("./pages/competitive/ScrimSessionPage"));
 const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/PracticeCalendarPage"));
+const ScrimDisputeAdminPage = lazyWithRetry(() => import("./pages/admin/tools/ScrimDisputeAdminPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
 
@@ -301,7 +301,6 @@ const AppContent = React.memo(() => {
       <AvatarFeatureAnnouncement />
       {!isChromelessRoute && !isAdminRoute && (
         <>
-          <Navbar />
           <BetaNoticeBanner />
           <EmailVerificationBanner />
         </>
@@ -440,6 +439,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/gdpr" element={<AdminRouteGuard requiredPermission="gdpr:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GdprCompliance /></AdminRouteGuard>} />
                   <Route path="tools/anomaly-detection" element={<AdminRouteGuard requiredPermission="system:audit" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AnomalyDetection /></AdminRouteGuard>} />
                   <Route path="tools/public-veto" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><PublicVetoSessions /></AdminRouteGuard>} />
+                  <Route path="tools/scrim-disputes" element={<AdminRouteGuard requiredPermission="disputes:view" requiredRoles={ADMIN_ROLE_SETS.disputes}><ScrimDisputeAdminPage /></AdminRouteGuard>} />
                   <Route path="tools/avatar-pool" element={<AdminRouteGuard requiredPermission="system:config_view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AvatarPoolManagement /></AdminRouteGuard>} />
 
                   {/* System */}

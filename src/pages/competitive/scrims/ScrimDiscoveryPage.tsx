@@ -19,6 +19,7 @@ import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { GlowCard, StatusPill } from '@/components/competitive/GlowCard';
 import { ScrimOfferForm } from '@/components/competitive/scrims/ScrimOfferForm';
+import { ScrimSlotCalendar } from '@/components/competitive/scrims/ScrimSlotCalendar';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { formatPreferredDays } from '@/services/scrimUtils';
 import {
@@ -702,8 +703,29 @@ export default function ScrimDiscoveryPage() {
                     )}
                   </AnimatePresence>
 
-                  {/* Offer form — below card / below slot timeline */}
-                  {isOfferOpen && (
+                  {/* Offer form / slot calendar — below card / below slot timeline */}
+                  {isOfferOpen && listing.scheduleType === 'recurring' ? (
+                    <div className="border border-white/10 bg-black/40 p-4 mt-1">
+                      <ScrimSlotCalendar
+                        listing={listing}
+                        onSlotSelected={() => {
+                          setActiveOfferId(null);
+                          setOfferPrefilledAt(undefined);
+                        }}
+                      />
+                      <div className="mt-3 border-t border-white/[0.06] pt-3">
+                        <button
+                          onClick={() => {
+                            setActiveOfferId(null);
+                            setOfferPrefilledAt(undefined);
+                          }}
+                          className="text-[13px] text-white/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : isOfferOpen ? (
                     <ScrimOfferForm
                       listingId={listing.id}
                       gameSlug={listing.gameSlug}
@@ -713,7 +735,7 @@ export default function ScrimDiscoveryPage() {
                         setOfferPrefilledAt(undefined);
                       }}
                     />
-                  )}
+                  ) : null}
                 </div>
               );
             })}
