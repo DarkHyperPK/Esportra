@@ -24,7 +24,7 @@ import type { ScrimListing, ScrimOffer, ScrimSession } from '@/types/competitive
 interface TeamSummary {
   id: string;
   name: string;
-  primaryGameSlug?: string | null;
+  primary_game_slug?: string | null;
 }
 
 // ── Tone maps ─────────────────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ export default function ScrimWorkspacePage() {
 
   const resolvedTeamId = selectedTeamId || urlTeamId || teams[0]?.id || '';
   const activeTeam = teams.find((t) => t.id === resolvedTeamId) ?? teams[0] ?? null;
-  const gameSlug = activeTeam?.primaryGameSlug ?? null;
+  const gameSlug = activeTeam?.primary_game_slug ?? null;
 
   const listingsQuery = useScrimListings(resolvedTeamId);
   const myOffersQuery = useMyOffers(resolvedTeamId);
@@ -273,7 +273,7 @@ export default function ScrimWorkspacePage() {
             >
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name}{t.primaryGameSlug ? ` · ${t.primaryGameSlug.toUpperCase().slice(0, 3)}` : ''}
+                  {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
                 </option>
               ))}
             </select>
@@ -348,7 +348,7 @@ export default function ScrimWorkspacePage() {
               >
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}{t.primaryGameSlug ? ` · ${t.primaryGameSlug.toUpperCase().slice(0, 3)}` : ''}
+                    {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
                   </option>
                 ))}
               </select>
