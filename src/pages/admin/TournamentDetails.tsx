@@ -38,6 +38,7 @@ const TournamentDetails = () => {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', prizePool: '', maxTeams: '', startDate: '' });
   const [saving, setSaving] = useState(false);
+  const [orgProBusy, setOrgProBusy] = useState(false);
 
   const fetchTournament = useCallback(async () => {
     setLoading(true);
@@ -121,6 +122,22 @@ const TournamentDetails = () => {
       toast({ title: 'Error', description: err.message || 'Failed to save.', variant: 'destructive' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleOrganizerPro = async (enable: boolean) => {
+    setOrgProBusy(true);
+    try {
+      await apiClient.post(`/api/admin/tournaments/${id}/organizer-pro`, { enabled: enable });
+      await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
+        action: enable ? 'organizer_pro_enabled' : 'organizer_pro_disabled',
+      });
+      toast({ title: enable ? 'Organizer Pro enabled' : 'Organizer Pro disabled' });
+      await fetchTournament();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update.', variant: 'destructive' });
+    } finally {
+      setOrgProBusy(false);
     }
   };
 
@@ -263,6 +280,32 @@ const TournamentDetails = () => {
         ) : (
           <p className="text-sm text-zinc-500">Click Edit to modify tournament name, prize pool, max teams or start date.</p>
         )}
+      </CommandSection>
+
+      {/* Organizer Pro */}
+      <CommandSection>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className={EYEBROW_CLASS}>Organizer Pro</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Unlocks veto, broadcast, Discord integration and the public veto tool for this event.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className={cn('font-mono text-[10px] font-bold uppercase tracking-[0.3em]', tournament.has_organizer_pro ? 'text-emerald-400' : 'text-zinc-500')}>
+              {tournament.has_organizer_pro ? 'Active' : 'Inactive'}
+            </span>
+            {tournament.has_organizer_pro ? (
+              <CommandButton variant="warning" size="sm" disabled={orgProBusy} onClick={() => handleToggleOrganizerPro(false)}>
+                {orgProBusy ? 'Saving…' : 'Revoke'}
+              </CommandButton>
+            ) : (
+              <CommandButton variant="primary" size="sm" disabled={orgProBusy} onClick={() => handleToggleOrganizerPro(true)}>
+                {orgProBusy ? 'Saving…' : 'Grant Pro'}
+              </CommandButton>
+            )}
+          </div>
+        </div>
       </CommandSection>
 
       {/* Participants */}
