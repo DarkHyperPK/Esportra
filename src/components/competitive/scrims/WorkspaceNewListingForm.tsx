@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Field, InlineNotice } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { GameCatalogContext } from '@/contexts/game-catalog-context';
@@ -36,7 +37,8 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const prefersReducedMotion = useReducedMotion();
   const createMutation = useCreateScrimListing();
 
-  const game = catalog.games.find((g) => g.slug === gameSlug) ?? null;
+  const [localGameSlug, setLocalGameSlug] = useState<string>(gameSlug ?? '');
+  const game = catalog.games.find((g) => g.slug === localGameSlug) ?? null;
   const gameModes = game?.modes ?? [];
 
   const [scheduleType, setScheduleType] = useState<'one_off' | 'recurring'>('one_off');
@@ -64,7 +66,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
     try {
       await createMutation.mutateAsync({
         teamId,
-        gameSlug: gameSlug ?? undefined,
+        gameSlug: localGameSlug || undefined,
         modeKey: modeKey || undefined,
         regionKey: regionKey || undefined,
         preferredDays: selectedDays.length ? selectedDays : undefined,
@@ -95,14 +97,20 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         POST A LISTING
       </p>
 
-      {/* Game display */}
-      {gameSlug ? (
-        <p className="text-[13px] text-white/55">{game?.name ?? gameSlug}</p>
-      ) : (
-        <InlineNotice tone="neutral">
-          Select a game-aware team above to post a listing.
-        </InlineNotice>
-      )}
+      {/* Game selector */}
+      <Field label="Game" htmlFor="nl-game">
+        <Select value={localGameSlug || '_'} onValueChange={(v) => { setLocalGameSlug(v === '_' ? '' : v); setModeKey(''); }}>
+          <SelectTrigger id="nl-game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+            <SelectValue placeholder="Select game" />
+          </SelectTrigger>
+          <SelectContent>
+            {catalog.games.length === 0 && <SelectItem value="_">Loading…</SelectItem>}
+            {catalog.games.map((g) => (
+              <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
       {/* Schedule type toggle */}
       <div className="space-y-1.5">
@@ -255,7 +263,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createMutation.isPending || !gameSlug}
+          disabled={createMutation.isPending || !localGameSlug}
           className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-5 text-[13px] [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}

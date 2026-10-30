@@ -259,10 +259,6 @@ export default function ScrimWorkspacePage() {
       <div className="flex min-h-[100dvh]">
         {/* ── Left panel (desktop) ── */}
         <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-6">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-            YOUR SCRIMS
-          </p>
-
           {/* Team selector */}
           {teams.length > 1 ? (
             <select

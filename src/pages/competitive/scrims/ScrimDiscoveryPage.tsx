@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Crosshair, SlidersHorizontal, CalendarDays, ChevronDown, X } from 'lucide-react';
 import { PageIntro, EYEBROW_CLASS } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -271,8 +272,9 @@ function ScrimCard({
 
 // ─── FilterSelectGroup ────────────────────────────────────────────────────────
 
+const NONE = '_';
+
 interface FilterSelectGroupProps {
-  id: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -280,35 +282,21 @@ interface FilterSelectGroupProps {
   placeholder: string;
 }
 
-function FilterSelectGroup({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-}: FilterSelectGroupProps) {
+function FilterSelectGroup({ label, value, onChange, options, placeholder }: FilterSelectGroupProps) {
   return (
-    <div className="flex flex-col gap-1">
-      <label
-        htmlFor={id}
-        className={EYEBROW_CLASS}
-      >
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 border border-white/10 bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-1 min-w-[130px]">
+      <p className={EYEBROW_CLASS}>{label}</p>
+      <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? '' : v)}>
+        <SelectTrigger className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NONE}>{placeholder}</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -428,7 +416,6 @@ export default function ScrimDiscoveryPage() {
   const filterSelects = (
     <>
       <FilterSelectGroup
-        id="filter-game"
         label="GAME"
         value={activeGame}
         onChange={handleGameChange}
@@ -436,7 +423,6 @@ export default function ScrimDiscoveryPage() {
         placeholder="Select game"
       />
       <FilterSelectGroup
-        id="filter-mode"
         label="MODE"
         value={modeFilter}
         onChange={setModeFilter}
@@ -444,7 +430,6 @@ export default function ScrimDiscoveryPage() {
         placeholder="Any mode"
       />
       <FilterSelectGroup
-        id="filter-region"
         label="REGION"
         value={regionFilter}
         onChange={setRegionFilter}
@@ -452,7 +437,6 @@ export default function ScrimDiscoveryPage() {
         placeholder="Any region"
       />
       <FilterSelectGroup
-        id="filter-min-rank"
         label="MIN RANK"
         value={minRankKey}
         onChange={setMinRankKey}
@@ -460,7 +444,6 @@ export default function ScrimDiscoveryPage() {
         placeholder="Any"
       />
       <FilterSelectGroup
-        id="filter-max-rank"
         label="MAX RANK"
         value={maxRankKey}
         onChange={setMaxRankKey}
