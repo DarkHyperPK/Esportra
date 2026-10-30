@@ -2,7 +2,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductSidebar } from '@/components/navigation/ProductSidebar';
 import { AppBottomNav } from '@/components/navigation/AppBottomNav';
-import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
 import { useAuth } from '@/hooks/useAuth';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
@@ -38,17 +37,15 @@ function isChromelessPath(pathname: string): boolean {
  * No max-w-* or mx-auto on any shell container (layout-viewport rule).
  */
 export function AppShell() {
-  const { isEnabled } = usePlatformFeatures();
   const { user } = useAuth();
   const location = useLocation();
   const { pathname } = location;
   const prefersReducedMotion = useReducedMotion();
 
-  const navV2 = isEnabled(FEATURES.navV2);
   const isAdmin = pathname.startsWith('/admin');
   const isChromeless = isChromelessPath(pathname);
 
-  if (!navV2 || isAdmin || isChromeless) {
+  if (isAdmin || isChromeless) {
     return <Outlet />;
   }
 
