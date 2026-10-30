@@ -39,6 +39,7 @@ const TournamentDetails = () => {
   const [editForm, setEditForm] = useState({ name: '', prizePool: '', maxTeams: '', startDate: '' });
   const [saving, setSaving] = useState(false);
   const [orgProBusy, setOrgProBusy] = useState(false);
+  const [hasOrganizerPro, setHasOrganizerPro] = useState(false);
 
   const fetchTournament = useCallback(async () => {
     setLoading(true);
@@ -74,11 +75,19 @@ const TournamentDetails = () => {
     } catch { /* silent */ }
   }, [id]);
 
+  const fetchOrganizerPro = useCallback(async () => {
+    try {
+      const resp = await apiClient.get<{ hasOrganizerPro: boolean }>(`/api/admin/tournaments/${id}/organizer-pro`);
+      setHasOrganizerPro(resp?.hasOrganizerPro ?? false);
+    } catch { /* silent — may not exist yet */ }
+  }, [id]);
+
   useEffect(() => {
     void fetchTournament();
     void fetchParticipants();
     void fetchBans();
-  }, [fetchTournament, fetchParticipants, fetchBans]);
+    void fetchOrganizerPro();
+  }, [fetchTournament, fetchParticipants, fetchBans, fetchOrganizerPro]);
 
   const handleMarkFinished = async () => {
     try {
@@ -133,7 +142,7 @@ const TournamentDetails = () => {
         action: enable ? 'organizer_pro_enabled' : 'organizer_pro_disabled',
       });
       toast({ title: enable ? 'Organizer Pro enabled' : 'Organizer Pro disabled' });
-      await fetchTournament();
+      await fetchOrganizerPro();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to update.', variant: 'destructive' });
     } finally {
@@ -292,10 +301,10 @@ const TournamentDetails = () => {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className={cn('font-mono text-[10px] font-bold uppercase tracking-[0.3em]', tournament.has_organizer_pro ? 'text-emerald-400' : 'text-zinc-500')}>
-              {tournament.has_organizer_pro ? 'Active' : 'Inactive'}
+            <span className={cn('font-mono text-[10px] font-bold uppercase tracking-[0.3em]', hasOrganizerPro ? 'text-emerald-400' : 'text-zinc-500')}>
+              {hasOrganizerPro ? 'Active' : 'Inactive'}
             </span>
-            {tournament.has_organizer_pro ? (
+            {hasOrganizerPro ? (
               <CommandButton variant="warning" size="sm" disabled={orgProBusy} onClick={() => handleToggleOrganizerPro(false)}>
                 {orgProBusy ? 'Saving…' : 'Revoke'}
               </CommandButton>
