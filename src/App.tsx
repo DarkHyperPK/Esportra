@@ -24,6 +24,8 @@ import { ProfilePeekSheet } from "@/components/profile/peek/ProfilePeekSheet";
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
+import { FEATURES } from "@/hooks/usePlatformFeatures";
 import React from 'react';
 import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
@@ -94,6 +96,7 @@ const TryoutSessionDetailPage = lazyWithRetry(() => import("./pages/competitive/
 const MyTryoutInvitesPage = lazyWithRetry(() => import("./pages/competitive/tryouts/MyTryoutInvitesPage"));
 const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDiscoveryPage"));
 const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
+const ScrimSessionPage = lazyWithRetry(() => import("./pages/competitive/ScrimSessionPage"));
 const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/PracticeCalendarPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
@@ -637,12 +640,23 @@ const AppContent = React.memo(() => {
                   } />
                   <Route path="scrims" element={
                     <ProtectedRoute>
-                      <ScrimDiscoveryPage />
+                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
+                        <ScrimDiscoveryPage />
+                      </FeatureFlagGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="scrims/workspace" element={
                     <ProtectedRoute>
-                      <ScrimWorkspacePage />
+                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
+                        <ScrimWorkspacePage />
+                      </FeatureFlagGuard>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="scrims/sessions/:id" element={
+                    <ProtectedRoute>
+                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
+                        <ScrimSessionPage />
+                      </FeatureFlagGuard>
                     </ProtectedRoute>
                   } />
                   <Route path="practice" element={

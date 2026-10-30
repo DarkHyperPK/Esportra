@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ScrimListing } from '@/types/competitive';
+import { formatPreferredDays } from '@/services/scrimUtils';
 import { GlowCard, StatusPill } from './GlowCard';
 import type { StatusTone } from './GlowCard';
 
@@ -25,9 +26,6 @@ function formatRankRange(min: string | null, max: string | null): string {
   return 'Any rank';
 }
 
-function formatDayAbbrevs(days: string[]): string {
-  return days.map(d => d.slice(0, 3)).join(', ');
-}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -51,7 +49,8 @@ export function ScrimListingCard({ listing, isOwner, onMakeOffer }: ScrimListing
   const metaParts: string[] = [];
   if (listing.modeKey) metaParts.push(listing.modeKey);
   metaParts.push(formatRankRange(listing.minRankKey, listing.maxRankKey));
-  if (listing.preferredDays?.length) metaParts.push(formatDayAbbrevs(listing.preferredDays));
+  const dayAbbrevs = formatPreferredDays(listing.preferredDays);
+  if (dayAbbrevs.length) metaParts.push(dayAbbrevs.join(', '));
   if (listing.preferredTimeStart && listing.preferredTimeEnd) {
     metaParts.push(`${listing.preferredTimeStart}–${listing.preferredTimeEnd}`);
   }

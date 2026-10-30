@@ -18,6 +18,7 @@ export const FEATURES = {
   competitiveProfiles: 'competitive_profiles',
   lfg: 'lfg',
   navV2: 'nav_v2',
+  scrims: 'scrims',
 } as const;
 
 export type FeatureKey = (typeof FEATURES)[keyof typeof FEATURES];

@@ -820,12 +820,16 @@ export interface ScrimListing {
   regionKey: string | null;
   minRankKey: string | null;
   maxRankKey: string | null;
-  preferredDays: string[] | null;
+  preferredDays: number[] | null;
   preferredTimeStart: string | null;
   preferredTimeEnd: string | null;
   timezone: string | null;
   notes: string | null;
   status: ScrimListingStatus;
+  // T9 — recurring schedule fields
+  scheduleType: 'one_off' | 'recurring';
+  scheduleUntil: string | null;
+  slotDurationMinutes: number | null;
   createdAt: string;
   updatedAt: string;
   teamName?: string | null;
@@ -862,12 +866,28 @@ export interface ScrimSession {
   resultReportedByTeam2: boolean;
   team1Score: number | null;
   team2Score: number | null;
+  // T2 check-in timestamps (added PROJ-077 T13)
+  team1CheckedInAt?: string | null;
+  team2CheckedInAt?: string | null;
   createdAt: string;
   updatedAt: string;
   team1Name?: string | null;
   team1Logo?: string | null;
   team2Name?: string | null;
   team2Logo?: string | null;
+}
+
+export interface ScrimResultReport {
+  id: string;
+  sessionId: string;
+  reportingTeamId: string;
+  reportingTeamName?: string | null;
+  team1Score: number;
+  team2Score: number;
+  notes?: string | null;
+  // T9 — result confirmation fields
+  confirmedByTeamId: string | null;
+  confirmedAt: string | null;
 }
 
 export interface PracticeSession {

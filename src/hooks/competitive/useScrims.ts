@@ -34,11 +34,15 @@ interface CreateScrimListingReq {
   regionKey?: string;
   minRankKey?: string;
   maxRankKey?: string;
-  preferredDays?: string[];
+  preferredDays?: number[];
   preferredTimeStart?: string;
   preferredTimeEnd?: string;
   timezone?: string;
   notes?: string;
+  // T9 — recurring schedule fields
+  scheduleType?: 'one_off' | 'recurring';
+  scheduleUntil?: string;
+  slotDurationMinutes?: number;
 }
 
 interface MakeOfferReq {
@@ -153,6 +157,9 @@ export function useCreateScrimListing() {
         preferred_time_end: req.preferredTimeEnd,
         timezone: req.timezone,
         notes: req.notes,
+        schedule_type: req.scheduleType,
+        schedule_until: req.scheduleUntil,
+        slot_duration_minutes: req.slotDurationMinutes,
       }),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: scrimKeys.teamListings(variables.teamId) });
@@ -435,6 +442,43 @@ export function useUpdateOwnAttendance(attendanceId: string) {
       apiClient.put<PracticeAttendance>(`/api/practice/attendance/${attendanceId}`, { status }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['practice', 'attendance'] });
+    },
+  });
+}
+
+// --- T9/T11 session action hooks ---
+
+export function useUpdateSessionLobby(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (req: { lobbyCode?: string; serverInfo?: string }) =>
+      apiClient.patch<ScrimSession>(`/api/scrims/sessions/${sessionId}/lobby`, req),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scrims', 'sessions'] });
+      qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
+    },
+  });
+}
+
+export function useCheckInSession(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.post<ScrimSession>(`/api/scrims/sessions/${sessionId}/checkin`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scrims', 'sessions'] });
+      qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
+    },
+  });
+}
+
+export function useConfirmScrimResult(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiClient.post<ScrimSession>(`/api/scrims/sessions/${sessionId}/confirm-result`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scrims', 'sessions'] });
+      qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
     },
   });
 }

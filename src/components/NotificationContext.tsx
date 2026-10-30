@@ -96,6 +96,21 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         void fetchNotifications();
       }
 
+      if (
+        stub.type === 'scrim_offer_received' ||
+        stub.type === 'scrim_offer_accepted' ||
+        stub.type === 'scrim_offer_declined' ||
+        stub.type === 'scrim_offer_withdrawn' ||
+        stub.type === 'scrim_result_submitted' ||
+        stub.type === 'scrim_dispute_raised' ||
+        stub.type === 'scrim_result_confirmed' ||
+        stub.type === 'scrim_checkin_updated' ||
+        stub.type === 'scrim_session_started' ||
+        stub.type === 'scrim_lobby_updated'
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['scrims'] });
+      }
+
       // Being removed is high-signal — surface it immediately, not just as a badge
       if (stub.type === 'team_member_removed') {
         toast({
