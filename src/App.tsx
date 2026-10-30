@@ -24,8 +24,6 @@ import { ProfilePeekSheet } from "@/components/profile/peek/ProfilePeekSheet";
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
-import { FEATURES } from "@/hooks/usePlatformFeatures";
 import React from 'react';
 import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
@@ -642,23 +640,17 @@ const AppContent = React.memo(() => {
                   } />
                   <Route path="scrims" element={
                     <ProtectedRoute>
-                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
-                        <ScrimDiscoveryPage />
-                      </FeatureFlagGuard>
+                      <ScrimDiscoveryPage />
                     </ProtectedRoute>
                   } />
                   <Route path="scrims/workspace" element={
                     <ProtectedRoute>
-                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
-                        <ScrimWorkspacePage />
-                      </FeatureFlagGuard>
+                      <ScrimWorkspacePage />
                     </ProtectedRoute>
                   } />
                   <Route path="scrims/sessions/:id" element={
                     <ProtectedRoute>
-                      <FeatureFlagGuard flagKey={FEATURES.scrims}>
-                        <ScrimSessionPage />
-                      </FeatureFlagGuard>
+                      <ScrimSessionPage />
                     </ProtectedRoute>
                   } />
                   <Route path="practice" element={
