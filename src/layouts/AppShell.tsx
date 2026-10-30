@@ -56,7 +56,7 @@ export function AppShell() {
     <>
       <div className="flex">
         <ProductSidebar />
-        <main className="flex-1 min-w-0">
+        <main className={`flex-1 min-w-0 ${!user && !pathname.startsWith('/auth/') ? 'pb-14 lg:pb-0' : ''}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -70,7 +70,7 @@ export function AppShell() {
           </AnimatePresence>
         </main>
       </div>
-      {user && <AppBottomNav />}
+      {(user || !pathname.startsWith('/auth/')) && <AppBottomNav />}
     </>
   );
 }

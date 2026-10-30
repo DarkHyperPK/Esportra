@@ -18,6 +18,17 @@ function setup() {
 describe('LFG integration hooks', () => {
   beforeEach(() => vi.resetAllMocks());
 
+  it('keeps guest and authenticated discovery caches separate', async () => {
+    api.get.mockResolvedValueOnce([{ id: 'guest' }]).mockResolvedValueOnce([{ id: 'signed-in', isSaved: true }]);
+    const { wrapper } = setup();
+    const { result, rerender } = renderHook(({ viewer }) => useInfiniteLfg({ game: 'valorant' }, viewer), { wrapper, initialProps: { viewer: 'guest' } });
+    await waitFor(() => expect(result.current.data?.pages[0][0].id).toBe('guest'));
+    rerender({ viewer: 'user-id' });
+    await waitFor(() => expect(result.current.data?.pages[0][0].id).toBe('signed-in'));
+    rerender({ viewer: 'guest' });
+    expect(result.current.data?.pages[0][0].id).toBe('guest');
+  });
+
   it('refreshes LFG listings after a queued stats sync completes', async () => {
     api.get.mockResolvedValueOnce({ syncStatus: 'pending' }).mockResolvedValueOnce({ syncStatus: 'complete', popularAgents: [{ agentId: 'jett', gamesPlayed: 5 }] });
     const { client, wrapper } = setup();

@@ -251,15 +251,16 @@ async function fetchWithAuth(
  * return the same parsed-JSON promise instead of firing a new request.
  * Applies toCamelCaseDeep transform on the parsed JSON response.
  */
-function fetchGetDeduped<T>(path: string): Promise<T> {
-  const existing = inflightGets.get(path);
+function fetchGetDeduped<T>(path: string, dedupeScope?: string): Promise<T> {
+  const key = dedupeScope ? `${path}::${dedupeScope}` : path;
+  const existing = inflightGets.get(key);
   if (existing) return existing as unknown as Promise<T>;
 
   const promise = fetchWithAuth(path)
     .then((res) => res.json())
-    .finally(() => inflightGets.delete(path));
+    .finally(() => inflightGets.delete(key));
 
-  inflightGets.set(path, promise);
+  inflightGets.set(key, promise);
   return promise as unknown as Promise<T>;
 }
 
@@ -267,8 +268,8 @@ function fetchGetDeduped<T>(path: string): Promise<T> {
 
 export const apiClient = {
   /** GET /api/{path} → parsed JSON (deduplicated) */
-  async get<T>(path: string): Promise<T> {
-    return fetchGetDeduped<T>(path);
+  async get<T>(path: string, dedupeScope?: string): Promise<T> {
+    return fetchGetDeduped<T>(path, dedupeScope);
   },
 
   /** POST with explicit token (bypasses ghost mode, used for ghost exit) */

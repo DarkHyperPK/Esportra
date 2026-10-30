@@ -72,6 +72,7 @@ export function useInfiniteLfg(filters: LfgSearchFilters, viewerScope?: string) 
     queryFn: async ({ pageParam }) => {
       const data = await apiClient.get<LfgListing[]>(
         `/api/competitive/lfg?${buildLfgSearchParams({ ...filters, limit, offset: pageParam })}`,
+        viewerScope,
       );
       return enrichListings(data);
     },

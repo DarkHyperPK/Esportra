@@ -135,6 +135,10 @@ const DesktopNav = ({
             {activeBar(isActive(["/leaderboards"]))}
           </Link>
 
+          {!user && <Link to="/competitive/lfg" className={linkClass(isActive(["/competitive/lfg", "/competitive/find-teammates"]))}>
+            <Swords className="h-4 w-4" /> Find Teammates {activeBar(isActive(["/competitive/lfg", "/competitive/find-teammates"]))}
+          </Link>}
+
           {/* Competitive — only for logged-in users on the marketing shell */}
           {user && (
             <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">

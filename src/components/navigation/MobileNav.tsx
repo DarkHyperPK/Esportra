@@ -167,6 +167,10 @@ const MobileNav = ({
                 </span>
               </Link>
 
+              {!user && <Link to="/competitive/lfg" className={linkClass(isActive(["/competitive/lfg", "/competitive/find-teammates"]))} onClick={onClose}>
+                <span className="flex items-center gap-2"><Swords className="h-4 w-4" /> Find Teammates</span>
+              </Link>}
+
               {/* Competitive — suppressed in app shell (AppBottomNav handles it) */}
               {user && !isAppShell && (
                 <div>

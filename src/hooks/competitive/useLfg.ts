@@ -105,7 +105,7 @@ export function useMyGameStats(game: string) {
 export function useLfgRoster(listingId: string, enabled: boolean, viewerScope?: string) {
   return useQuery({
     queryKey: [...lfgKeys.detail(listingId), 'roster', viewerScope],
-    queryFn: () => apiClient.get<LfgRoster>(`/api/competitive/lfg/${listingId}/roster`),
+    queryFn: () => apiClient.get<LfgRoster>(`/api/competitive/lfg/${listingId}/roster`, viewerScope),
     enabled: enabled && !!listingId && listingId !== 'preview',
     staleTime: 60_000,
   });
@@ -142,7 +142,7 @@ export function useSaveLfgDraft() {
 export function useMyLfgListings(enabled = true, viewerScope?: string) {
   return useQuery({
     queryKey: [...lfgKeys.mine(), viewerScope],
-    queryFn: () => apiClient.get<LfgListing[]>('/api/competitive/lfg/mine'),
+    queryFn: () => apiClient.get<LfgListing[]>('/api/competitive/lfg/mine', viewerScope),
     enabled,
     staleTime: 30_000,
   });
@@ -151,7 +151,7 @@ export function useMyLfgListings(enabled = true, viewerScope?: string) {
 export function useLfgListing(id: string, viewerScope?: string) {
   return useQuery({
     queryKey: [...lfgKeys.detail(id), viewerScope],
-    queryFn: () => apiClient.get<LfgListing>(`/api/competitive/lfg/${id}`),
+    queryFn: () => apiClient.get<LfgListing>(`/api/competitive/lfg/${id}`, viewerScope),
     enabled: !!id,
     staleTime: 30_000,
   });
