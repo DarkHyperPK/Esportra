@@ -3,6 +3,7 @@ import { withLfgStaffRoles } from '@/lib/lfgRoles';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyLfgListings, useDeleteLfgListing, usePublishLfgListing, usePauseLfgListing } from '@/hooks/competitive/useLfg';
+import { LfgStatsSync } from '@/components/competitive/LfgStatsSync';
 import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
 import { LfgListingCard } from '@/components/competitive/LfgListingCard';
 import { useCatalogGameRoles } from '@/hooks/competitive/useCatalog';
@@ -35,7 +36,7 @@ function ListingRow({ listing }: { listing: LfgListing }) {
 
 export default function LfgMyListingsPage() {
   const listings = useMyLfgListings();
-  return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / My listings</div><h1>Your place on the board.</h1><p>Keep your listings current and review requests.</p></div></header><div className="lfg-page">
+  return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / My listings</div><h1>Your place on the board.</h1><p>Keep your listings current and review requests.</p></div>{listings.data?.some(item => item.gameSlug === 'valorant') && <LfgStatsSync syncedAt={listings.data.find(item => item.gameSlug === 'valorant')?.riotSyncedAt} />}</header><div className="lfg-page">
     {listings.isLoading ? <div className="lfg-panel lfg-empty">Loading listings…</div> : listings.isError ? <div className="lfg-panel lfg-empty"><strong>Listings could not load.</strong><button className="lfg-button" type="button" onClick={() => void listings.refetch()}>Try again</button></div> : !listings.data?.length ? <div className="lfg-panel lfg-empty"><strong>No listings yet.</strong><Link className="lfg-button lfg-button-primary" to="/competitive/lfg/create">Create listing</Link></div> : <div className="lfg-owned-grid">{listings.data.map(listing => <ListingRow key={listing.id} listing={listing} />)}</div>}
   </div></LfgWorkspace>;
 }

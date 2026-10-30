@@ -22,6 +22,7 @@ export const lfgKeys = {
   /** Interests on a listing (owner-only) */
   interests: (listingId: string) => ['lfg', 'interests', listingId] as const,
   inbox: (direction: string, game?: string) => ['lfg', 'inbox', direction, game] as const,
+  syncState: (listingId?: string) => ['lfg', 'sync-state', listingId || 'me'] as const,
   saved: (game?: string) => ['lfg', 'saved', game] as const,
 };
 

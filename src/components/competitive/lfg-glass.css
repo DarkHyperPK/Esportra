@@ -254,3 +254,9 @@ html[data-reduce-motion=true] .lfg-mobile-detail, html[data-reduce-motion=true] 
 @media (max-width:700px) { .lfg-filter-chip { min-height:40px; } }
 
 .lfg-request-filter { display:flex; align-items:center; gap:10px; margin-left:auto; color:#a1a1aa; font-size:12px; }.lfg-request-filter .lfg-input { width:auto; min-width:140px; }
+
+.lfg-sync-control { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; margin-top:12px; }
+.lfg-sync-control .lfg-sync-button { width:auto; min-height:36px; margin:0; padding:7px 11px; font-size:11px; }
+.lfg-sync-control .lfg-sub { max-width:300px; font-size:11px; }
+.lfg-sync-button:disabled { opacity:.65; }
+@media (max-width:700px) { .lfg-sync-control .lfg-sync-button { min-height:44px; } }

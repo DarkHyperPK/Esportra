@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LfgCreateWizardPage from './LfgCreateWizardPage';
 import LfgEditPage from './LfgEditPage';
@@ -28,10 +29,10 @@ vi.mock('@/components/competitive/LfgLanguagePicker', () => ({ LfgLanguagePicker
 vi.mock('@/components/competitive/LfgRankSelect', () => ({ LfgRankSelect: ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => <label>{label}<select value={value} onChange={event => onChange(event.target.value)}><option value="">Any</option><option value="4">Silver 2</option><option value="7">Gold 2</option></select></label> }));
 
 function create(type: 'lft' | 'lfp') {
-  render(<MemoryRouter initialEntries={[`/competitive/lfg/create?type=${type}`]}><Routes><Route path="/competitive/lfg/create" element={<LfgCreateWizardPage />} /><Route path="/competitive/lfg/mine" element={<p>Saved</p>} /></Routes></MemoryRouter>);
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[`/competitive/lfg/create?type=${type}`]}><Routes><Route path="/competitive/lfg/create" element={<LfgCreateWizardPage />} /><Route path="/competitive/lfg/mine" element={<p>Saved</p>} /></Routes></MemoryRouter></QueryClientProvider>);
 }
 function edit() {
-  render(<MemoryRouter initialEntries={['/competitive/lfg/listing/edit']}><Routes><Route path="/competitive/lfg/:id/edit" element={<LfgEditPage />} /><Route path="/competitive/lfg/:id" element={<p>Saved</p>} /></Routes></MemoryRouter>);
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/competitive/lfg/listing/edit']}><Routes><Route path="/competitive/lfg/:id/edit" element={<LfgEditPage />} /><Route path="/competitive/lfg/:id" element={<p>Saved</p>} /></Routes></MemoryRouter></QueryClientProvider>);
 }
 beforeEach(() => { vi.clearAllMocks(); state.intent = 'looking_for_team'; state.linked = true; state.save.mockResolvedValue({}); state.update.mockResolvedValue({}); });
 

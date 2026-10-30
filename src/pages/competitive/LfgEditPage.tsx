@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useCatalogGameRoles, useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useLfgListing, useUpdateLfgListing, useMyGameStats } from '@/hooks/competitive/useLfg';
+import { LfgStatsSync } from '@/components/competitive/LfgStatsSync';
 import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
 import { LfgLanguagePicker } from '@/components/competitive/LfgLanguagePicker';
 import { LfgAgentPicker } from '@/components/competitive/LfgAgentPicker';
@@ -59,7 +60,7 @@ export default function LfgEditPage() {
   return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / Edit listing</div><h1>Update your listing.</h1><p>Game remains fixed for this listing.</p></div></header><div className="lfg-page">
     {listing.isLoading ? <div className="lfg-panel lfg-empty">Loading listing…</div> : listing.isError || !listing.data || listing.data.userId !== user?.id ? <div className="lfg-panel lfg-empty"><strong>Listing is unavailable.</strong><Link className="lfg-button" to="/competitive/lfg/mine">My listings</Link></div> : <div className="lfg-panel" style={{ maxWidth:760, padding:24 }}>
       <p className="lfg-sub" style={{ marginBottom:20 }}>{catalog.games.find(item => item.slug === game)?.name || game} · {listing.data.status}</p>
-      {!isTeam && <div className="lfg-row-actions" style={{ marginBottom:20 }}><LfgCurrentRank game={game} rank={stats.data ?? listing.data} /></div>}
+      {!isTeam && <div className="lfg-row-actions" style={{ marginBottom:20 }}><LfgCurrentRank game={game} rank={stats.data ?? listing.data} />{game === 'valorant' && <LfgStatsSync listingId={id} syncedAt={listing.data.riotSyncedAt} />}</div>}
       {!!roles.length && <div className="lfg-field">Roles<LfgRolePicker game={game} roles={roles} value={role} onChange={setRole} /></div>}
       {game === 'valorant' && listing.data.intent === 'looking_for_team' && <LfgAgentPicker value={agents} onChange={setAgents} stats={stats.data?.popularAgents} syncStatus={stats.data?.syncStatus} />}
       {!!regions.length && <label className="lfg-field">Region<select className="lfg-input" value={region} onChange={event => setRegion(event.target.value)}><option value="">Any region</option>{regions.map(item => <option key={item.id} value={item.regionKey}>{item.displayName}</option>)}</select></label>}
