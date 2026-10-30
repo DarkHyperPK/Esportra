@@ -101,7 +101,7 @@ describe('ScrimCheckinPanel', () => {
       />,
       { wrapper },
     );
-    expect(screen.getByText(/your captain checks the team in/i)).toBeInTheDocument();
+    expect(screen.getByText(/your captain or manager checks the team in/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /check in your team/i })).not.toBeInTheDocument();
   });
 
