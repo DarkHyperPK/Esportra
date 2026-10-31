@@ -863,6 +863,7 @@ export interface ScrimTeamMemberDetail {
   winRate: number | null;
   kdRatio: number | null;
   hsPct: number | null;
+  playerCardId?: string | null;
 }
 
 export interface ScrimListingDetail {

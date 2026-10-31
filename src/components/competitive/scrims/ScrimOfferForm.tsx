@@ -17,6 +17,7 @@ interface ScrimOfferFormProps {
   listingId: string;
   gameSlug: string | null;
   prefilledProposedAt?: string;
+  slotId?: string;
   onClose: () => void;
 }
 
@@ -24,6 +25,7 @@ export function ScrimOfferForm({
   listingId,
   gameSlug,
   prefilledProposedAt,
+  slotId,
   onClose,
 }: ScrimOfferFormProps) {
   const offerMutation = useMakeOffer(listingId);
@@ -59,6 +61,7 @@ export function ScrimOfferForm({
         proposedAt: proposedAt || undefined,
         proposedDurationMinutes: duration ? parseInt(duration, 10) : undefined,
         notes: notes.trim() || undefined,
+        slotId: slotId || undefined,
       });
       onClose();
     } catch (err) {

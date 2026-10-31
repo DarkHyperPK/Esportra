@@ -223,6 +223,7 @@ function ScrimCard({
             listingId={listing.id}
             teamName={listing.teamName ?? 'Team'}
             teamLogoUrl={listing.teamLogoUrl}
+            gameSlug={listing.gameSlug}
           >
             <button type="button" className="lfg-compact-expand">
               More details <ChevronRight size={15} />

@@ -4,6 +4,7 @@ import { Field, InlineNotice } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
+import { useCatalogRankTiers } from '@/hooks/competitive/useCatalog';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { GameCatalogContext } from '@/contexts/game-catalog-context';
 
@@ -50,6 +51,10 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   });
   const [modeKey, setModeKey] = useState('');
   const [regionKey, setRegionKey] = useState('');
+  const [minRankKey, setMinRankKey] = useState('');
+  const [maxRankKey, setMaxRankKey] = useState('');
+  const rankTiersQuery = useCatalogRankTiers(localGameSlug);
+  const rankTiers = rankTiersQuery.data ?? [];
   const [scheduleUntil, setScheduleUntil] = useState('');
   const [slotDurationMinutes, setSlotDurationMinutes] = useState('');
   const [notes, setNotes] = useState('');
@@ -69,6 +74,8 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         gameSlug: localGameSlug || undefined,
         modeKey: modeKey || undefined,
         regionKey: regionKey || undefined,
+        minRankKey: minRankKey || undefined,
+        maxRankKey: maxRankKey || undefined,
         preferredDays: selectedDays.length ? selectedDays : undefined,
         preferredTimeStart: timeStart || undefined,
         preferredTimeEnd: timeEnd || undefined,
@@ -208,6 +215,38 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
           className={INPUT_CLASS}
         />
       </Field>
+
+      {/* Rank range */}
+      {rankTiers.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Min rank" htmlFor="nl-min-rank" optional>
+            <select
+              id="nl-min-rank"
+              value={minRankKey}
+              onChange={(e) => setMinRankKey(e.target.value)}
+              className={INPUT_CLASS}
+            >
+              <option value="">Any</option>
+              {rankTiers.map((t) => (
+                <option key={t.tierKey} value={t.tierKey}>{t.displayName}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Max rank" htmlFor="nl-max-rank" optional>
+            <select
+              id="nl-max-rank"
+              value={maxRankKey}
+              onChange={(e) => setMaxRankKey(e.target.value)}
+              className={INPUT_CLASS}
+            >
+              <option value="">Any</option>
+              {rankTiers.map((t) => (
+                <option key={t.tierKey} value={t.tierKey}>{t.displayName}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
 
       {/* Recurring fields */}
       {scheduleType === 'recurring' && (
