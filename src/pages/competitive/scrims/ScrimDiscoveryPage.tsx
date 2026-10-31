@@ -125,7 +125,7 @@ function ScrimCard({
   return (
     <GlowCard accentTop={isOpen}>
       {/* Row 1 — identity + status */}
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           {listing.teamLogoUrl ? (
             <img
@@ -165,7 +165,7 @@ function ScrimCard({
       </div>
 
       {/* Row 2 — game + mode + rank range */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
         {listing.gameSlug && (
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">
             {gameAbbrev(listing.gameSlug)}
@@ -229,7 +229,7 @@ function ScrimCard({
       )}
 
       {/* Row 5 — meta strip */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3 mb-2">
         {age && (
           <span className="text-[11px] text-white/30">Listed {age}</span>
         )}
@@ -261,7 +261,7 @@ function ScrimCard({
             transition={{ duration: 0.12 }}
             onClick={isOfferOpen ? undefined : onRequestScrim}
             aria-pressed={isOfferOpen}
-            className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)] focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
           >
             Request Scrim
           </motion.button>
@@ -428,35 +428,35 @@ export default function ScrimDiscoveryPage() {
   const filterSelects = (
     <>
       <FilterSelectGroup
-        label="GAME"
+        label="Game"
         value={activeGame}
         onChange={handleGameChange}
         options={gameOptions}
         placeholder="Select game"
       />
       <FilterSelectGroup
-        label="MODE"
+        label="Mode"
         value={modeFilter}
         onChange={setModeFilter}
         options={modeOptions}
         placeholder="Any mode"
       />
       <FilterSelectGroup
-        label="REGION"
+        label="Region"
         value={regionFilter}
         onChange={setRegionFilter}
         options={regionOptions}
         placeholder="Any region"
       />
       <FilterSelectGroup
-        label="MIN RANK"
+        label="Min rank"
         value={minRankKey}
         onChange={setMinRankKey}
         options={rankOptions}
         placeholder="Any"
       />
       <FilterSelectGroup
-        label="MAX RANK"
+        label="Max rank"
         value={maxRankKey}
         onChange={setMaxRankKey}
         options={rankOptions}
@@ -515,8 +515,8 @@ export default function ScrimDiscoveryPage() {
       {/* Page intro */}
       <div className="px-4 pt-8 pb-4 lg:px-8">
         <PageIntro
-          eyebrow="SCRIMS"
-          title="Find a scrim."
+          eyebrow="Scrims"
+          title="Find a scrim"
           className="mb-6"
           aside={
             <Link
@@ -617,7 +617,7 @@ export default function ScrimDiscoveryPage() {
             </p>
             <Link
               to="/competitive/scrims/workspace"
-              className="px-4 py-2 text-[13px] font-medium bg-rose-500 hover:bg-rose-600 text-white transition-colors [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+              className="px-4 py-2 text-[13px] font-medium bg-rose-500 hover:bg-rose-600 text-white transition-colors"
             >
               Post a listing
             </Link>

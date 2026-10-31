@@ -83,8 +83,8 @@ function ReportResultForm({
 
   return (
     <div className="border-t border-white/[0.06] pt-3 space-y-3">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-        REPORT RESULT
+      <p className="text-[11px] font-medium text-white/35">
+        Report result
       </p>
       <div className="grid grid-cols-2 gap-3">
         <Field label={session.team1Name ?? 'Team 1 score'} htmlFor={`rs-t1-${session.id}`}>
@@ -159,8 +159,8 @@ function DisputeForm({
 
   return (
     <div className="border-t border-white/[0.06] pt-3 space-y-3">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-        RAISE DISPUTE
+      <p className="text-[11px] font-medium text-white/35">
+        Raise dispute
       </p>
       <Field label="Reason" htmlFor={`dr-${session.id}`}>
         <textarea

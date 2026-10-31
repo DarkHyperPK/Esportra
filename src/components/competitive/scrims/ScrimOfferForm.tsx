@@ -68,7 +68,7 @@ export function ScrimOfferForm({
 
   return (
     <div className="border border-white/10 bg-black/40 p-4 space-y-3 mt-1">
-      <p className={EYEBROW_CLASS}>SEND SCRIM OFFER</p>
+      <p className="text-[11px] font-medium text-white/35">Send scrim offer</p>
       {teams.length > 1 && (
         <Field label="Your team" htmlFor={`oti-${listingId}`}>
           <select

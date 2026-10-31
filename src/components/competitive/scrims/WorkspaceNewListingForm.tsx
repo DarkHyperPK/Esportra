@@ -93,8 +93,8 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
   return (
     <motion.div {...arriveProps} className="border border-white/10 bg-white/[0.03] p-4 space-y-4">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-        POST A LISTING
+      <p className="text-[11px] font-medium text-white/35">
+        Post a listing
       </p>
 
       {/* Game selector */}
@@ -267,7 +267,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         <Button
           onClick={handleSubmit}
           disabled={createMutation.isPending || !localGameSlug}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-5 text-[13px] [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-5 text-[13px]"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}
         </Button>

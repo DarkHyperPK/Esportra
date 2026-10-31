@@ -51,8 +51,8 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
 
   return (
     <div className="mt-3 border border-white/10 bg-black/30 p-3 space-y-3">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">
-        EDIT LISTING
+      <p className="text-[11px] font-medium text-white/35">
+        Edit listing
       </p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Mode" htmlFor={`elm-${listing.id}`} optional>
@@ -123,8 +123,8 @@ function RecurringSlotExpansion({ listing }: { listing: ScrimListing }) {
     <div className="mt-2 border-t border-white/[0.06] pt-3 space-y-2">
       {accepted.length > 0 ? (
         <div className="space-y-1">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/25">
-            BOOKED SLOTS
+          <p className="text-[11px] font-medium text-white/25">
+            Booked slots
           </p>
           {accepted.map((offer) => (
             <p key={offer.id} className="text-[12px] text-white/55">
@@ -141,7 +141,7 @@ function RecurringSlotExpansion({ listing }: { listing: ScrimListing }) {
           ))}
         </div>
       ) : (
-        <p className="text-[12px] text-white/35">No slots booked yet.</p>
+        <p className="text-[12px] text-white/35">No slots booked yet</p>
       )}
       {untilDate && listing.slotDurationMinutes && (
         <p className="text-[12px] text-white/35">
@@ -184,8 +184,8 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
             <span className="font-mono text-[11px] text-white/35">{listing.regionKey}</span>
           )}
           {isRecurring && (
-            <span className="font-mono text-[10px] bg-white/[0.05] text-white/40 px-1.5 py-0.5">
-              RECURRING
+            <span className="text-[10px] bg-white/[0.05] text-white/40 px-1.5 py-0.5">
+              Recurring
             </span>
           )}
         </div>

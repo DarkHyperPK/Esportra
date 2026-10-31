@@ -50,7 +50,7 @@ function formatProposedSlot(offer: ScrimOffer): string {
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const base = `${weekday} ${date} · ${time}`;
   return offer.proposedDurationMinutes
-    ? `${base} · ${offer.proposedDurationMinutes}-min block`
+    ? `${base} · ${offer.proposedDurationMinutes} min`
     : base;
 }
 
@@ -264,7 +264,7 @@ export default function ScrimWorkspacePage() {
     <CompetitivePageShell>
       <div className="flex min-h-[100dvh]">
         {/* ── Left panel (desktop) ── */}
-        <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-6">
+        <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-4">
           {/* Team selector */}
           {teams.length > 1 ? (
             <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
@@ -297,37 +297,38 @@ export default function ScrimWorkspacePage() {
             </Select>
           )}
 
-          {/* Post a listing CTA */}
-          <Button
-            onClick={() => setShowNewListing((v) => !v)}
-            className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px] w-full [box-shadow:0_0_12px_0_rgba(255,45,85,0.35)]"
-          >
-            {showNewListing ? 'Cancel' : 'Post a listing'}
-          </Button>
+          {/* CTA + stats group */}
+          <div className="space-y-3">
+            <Button
+              onClick={() => setShowNewListing((v) => !v)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px] w-full"
+            >
+              {showNewListing ? 'Cancel' : 'Post a listing'}
+            </Button>
 
-          {/* Stats block */}
-          <div className="space-y-2 border-t border-white/[0.06] pt-4">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-white/40">Active listings</span>
-              <span className="text-white/70 tabular-nums">
-                {listings.filter((l) => l.status === 'open').length}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-white/40">Pending offers</span>
-              <span
-                className={
-                  pendingOfferCount > 0
-                    ? 'text-rose-400 font-semibold tabular-nums'
-                    : 'text-white/70 tabular-nums'
-                }
-              >
-                {pendingOfferCount}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-white/40">Upcoming sessions</span>
-              <span className="text-white/70 tabular-nums">{upcomingSessions.length}</span>
+            <div className="space-y-2 border-t border-white/[0.06] pt-3">
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-white/40">Active listings</span>
+                <span className="text-white/70 tabular-nums">
+                  {listings.filter((l) => l.status === 'open').length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-white/40">Pending offers</span>
+                <span
+                  className={
+                    pendingOfferCount > 0
+                      ? 'text-rose-400 font-semibold tabular-nums'
+                      : 'text-white/70 tabular-nums'
+                  }
+                >
+                  {pendingOfferCount}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-white/40">Upcoming sessions</span>
+                <span className="text-white/70 tabular-nums">{upcomingSessions.length}</span>
+              </div>
             </div>
           </div>
 
@@ -344,7 +345,7 @@ export default function ScrimWorkspacePage() {
         <div className="flex-1 px-4 lg:px-8 pt-8 pb-8 space-y-4">
           {/* Mobile header */}
           <div className="flex items-start justify-between gap-4 lg:hidden">
-            <PageIntro eyebrow="YOUR SCRIMS" title="Your Scrims" />
+            <PageIntro eyebrow="Your scrims" title="Your Scrims" />
             <Button
               onClick={() => setShowNewListing((v) => !v)}
               className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
@@ -389,7 +390,7 @@ export default function ScrimWorkspacePage() {
 
           {/* Desktop title */}
           <div className="hidden lg:block">
-            <PageIntro eyebrow="YOUR SCRIMS" title="Your Scrims" />
+            <PageIntro eyebrow="Your scrims" title="Your Scrims" />
           </div>
 
           {/* New listing form */}
@@ -468,13 +469,13 @@ export default function ScrimWorkspacePage() {
             {/* Offers tab */}
             <TabsContent value="offers" className="mt-4 focus-visible:outline-none space-y-6">
               <div>
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 mb-3">
-                  RECEIVED
+                <p className="text-[11px] font-medium text-white/35 mb-3">
+                  Received
                 </p>
                 {listingsQuery.isLoading ? (
                   <div className="h-8 bg-white/[0.03] animate-pulse" />
                 ) : listings.length === 0 ? (
-                  <p className="text-[13px] text-white/35">No offers received yet.</p>
+                  <p className="text-[13px] text-white/35">No offers received yet</p>
                 ) : (
                   <div className="space-y-4">
                     {listings.map((listing) => (
@@ -483,8 +484,8 @@ export default function ScrimWorkspacePage() {
                           {[listing.modeKey, listing.regionKey].filter(Boolean).join(' · ') ||
                             'Any mode / region'}
                           {listing.scheduleType === 'recurring' && (
-                            <span className="ml-2 font-mono text-[10px] text-white/30">
-                              RECURRING
+                            <span className="ml-2 text-[10px] text-white/30">
+                              Recurring
                             </span>
                           )}
                         </p>
@@ -496,13 +497,13 @@ export default function ScrimWorkspacePage() {
               </div>
 
               <div>
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 mb-3">
-                  OUTGOING
+                <p className="text-[11px] font-medium text-white/35 mb-3">
+                  Outgoing
                 </p>
                 {myOffersQuery.isLoading ? (
                   <div className="h-8 bg-white/[0.03] animate-pulse" />
                 ) : myOffers.length === 0 ? (
-                  <p className="text-[13px] text-white/35">No outgoing offers.</p>
+                  <p className="text-[13px] text-white/35">No outgoing offers</p>
                 ) : (
                   <div className="space-y-1.5">
                     {myOffers.map((offer) => (
@@ -549,8 +550,8 @@ export default function ScrimWorkspacePage() {
                 <div className="space-y-6">
                   {upcomingSessions.length > 0 && (
                     <div>
-                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 mb-3">
-                        UPCOMING ({upcomingSessions.length})
+                      <p className="text-[11px] font-medium text-white/35 mb-3">
+                        Upcoming ({upcomingSessions.length})
                       </p>
                       <div className="space-y-2">
                         {upcomingSessions.map((s) => (
@@ -562,8 +563,8 @@ export default function ScrimWorkspacePage() {
 
                   {pastSessions.length > 0 && (
                     <div>
-                      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35 mb-3">
-                        PAST ({pastSessions.length})
+                      <p className="text-[11px] font-medium text-white/35 mb-3">
+                        Past ({pastSessions.length})
                       </p>
                       <PastSessionsList sessions={pastSessions} teamId={resolvedTeamId} />
                     </div>
