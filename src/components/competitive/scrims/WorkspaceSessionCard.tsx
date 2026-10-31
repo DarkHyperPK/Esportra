@@ -357,7 +357,7 @@ export function WorkspaceSessionCard({
     (session.status === 'scheduled' || session.status === 'in_progress');
 
   const gameAbbrev = session.gameSlug?.toUpperCase().slice(0, 3) ?? null;
-  const durationLabel = session.durationMinutes ? `${session.durationMinutes}-min block` : null;
+  const durationLabel = session.durationMinutes ? `${session.durationMinutes} min` : null;
 
   return (
     <div className="border border-white/[0.06] bg-white/[0.03] p-4 space-y-3">

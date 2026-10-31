@@ -145,7 +145,7 @@ function RecurringSlotExpansion({ listing }: { listing: ScrimListing }) {
       )}
       {untilDate && listing.slotDurationMinutes && (
         <p className="text-[12px] text-white/35">
-          Available until {untilDate} · {listing.slotDurationMinutes}-min blocks
+          Available until {untilDate} · {listing.slotDurationMinutes}-min sessions
         </p>
       )}
     </div>

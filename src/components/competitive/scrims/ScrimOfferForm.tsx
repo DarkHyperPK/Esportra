@@ -2,7 +2,7 @@
  * ScrimOfferForm.tsx
  *
  * Inline offer form that expands below a ScrimDiscoveryCard (PROJ-077 T10).
- * Upgraded copy: "Block length (min)", "Message to team", "Request Scrim".
+ * Upgraded copy: "Session duration (min)", "Message to team", "Request Scrim".
  * Game-aware team filter: only shows teams whose gameSlug matches the listing.
  */
 
@@ -111,7 +111,7 @@ export function ScrimOfferForm({
             />
           )}
         </Field>
-        <Field label="Block length (min)" htmlFor={`odm-${listingId}`} optional>
+        <Field label="Session duration (min)" htmlFor={`odm-${listingId}`} optional>
           <input
             id={`odm-${listingId}`}
             type="number"

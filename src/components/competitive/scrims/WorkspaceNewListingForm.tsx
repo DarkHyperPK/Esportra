@@ -224,7 +224,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               Your listing stays open for new slots until this date.
             </p>
           </Field>
-          <Field label="Block length (minutes)" htmlFor="nl-slot-dur" optional>
+          <Field label="Session duration (minutes)" htmlFor="nl-slot-dur" optional>
             <input
               id="nl-slot-dur"
               type="number"
@@ -235,6 +235,9 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               placeholder="e.g. 90"
               className={INPUT_CLASS}
             />
+            <p className="text-[11px] text-white/30 mt-1">
+              How long each scrim session lasts. Slots are generated from your availability.
+            </p>
           </Field>
         </>
       )}
