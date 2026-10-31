@@ -540,7 +540,7 @@ const TournamentManagementTool = () => {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-white">{tournament.name}</p>
-                              <p className="font-mono text-[10px] text-zinc-500">{tournament.id.slice(0, 8)}…</p>
+                              <p className="font-mono text-[10px] text-zinc-500">{tournament.organizer_name || tournament.id.slice(0, 8)}</p>
                             </div>
                           </div>
                         </td>
