@@ -191,6 +191,7 @@ const TournamentDetails = () => {
 
   const rows: [string, ReactNode][] = [
     ['Name', tournament.name],
+    ['Organizer', tournament.organizer_name || '—'],
     ['Date', tournament.date],
     ['Time', tournament.time],
     [
