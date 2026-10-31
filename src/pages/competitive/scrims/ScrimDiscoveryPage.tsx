@@ -79,6 +79,7 @@ interface ScrimCardProps {
   rankTierMap: Map<string, string>;
   isOfferOpen: boolean;
   slotExpanded: boolean;
+  hasTeam: boolean;
   onRequestScrim: () => void;
   onToggleSlots: () => void;
 }
@@ -89,6 +90,7 @@ function ScrimCard({
   rankTierMap,
   isOfferOpen,
   slotExpanded,
+  hasTeam,
   onRequestScrim,
   onToggleSlots,
 }: ScrimCardProps) {
@@ -252,7 +254,7 @@ function ScrimCard({
           >
             Manage
           </Link>
-        ) : isOpen ? (
+        ) : isOpen && hasTeam ? (
           <motion.button
             type="button"
             whileTap={!reduced ? { scale: 0.97 } : undefined}
@@ -263,6 +265,13 @@ function ScrimCard({
           >
             Request Scrim
           </motion.button>
+        ) : isOpen && !hasTeam ? (
+          <Link
+            to="/teams"
+            className="px-3 py-1.5 text-[12px] border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors duration-150"
+          >
+            Join a team to request
+          </Link>
         ) : (
           <span className="text-[12px] text-white/30">Closed</span>
         )}
@@ -386,6 +395,8 @@ export default function ScrimDiscoveryPage() {
     setMinRankKey('');
     setMaxRankKey('');
   }
+
+  const hasTeam = (teamsQuery.data ?? []).length > 0;
 
   function handleRequestScrim(listingId: string, prefilledAt?: string) {
     if (!user) { navigate(signIn(location.pathname + location.search)); return; }
@@ -652,6 +663,7 @@ export default function ScrimDiscoveryPage() {
                     rankTierMap={rankTierMap}
                     isOfferOpen={isOfferOpen}
                     slotExpanded={isSlotExpanded}
+                    hasTeam={hasTeam}
                     onRequestScrim={() => handleRequestScrim(listing.id)}
                     onToggleSlots={() => handleToggleSlots(listing.id)}
                   />
@@ -704,7 +716,7 @@ export default function ScrimDiscoveryPage() {
                   </AnimatePresence>
 
                   {/* Offer form / slot calendar — below card / below slot timeline */}
-                  {isOfferOpen && listing.scheduleType === 'recurring' ? (
+                  {isOfferOpen && hasTeam && listing.scheduleType === 'recurring' ? (
                     <div className="border border-white/10 bg-black/40 p-4 mt-1">
                       <ScrimSlotCalendar
                         listing={listing}
@@ -725,7 +737,7 @@ export default function ScrimDiscoveryPage() {
                         </button>
                       </div>
                     </div>
-                  ) : isOfferOpen ? (
+                  ) : isOfferOpen && hasTeam ? (
                     <ScrimOfferForm
                       listingId={listing.id}
                       gameSlug={listing.gameSlug}
