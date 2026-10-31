@@ -105,7 +105,7 @@ const UserMenu = ({
   const sessionRoleHint = user?.id ? getStoredSessionRole(user.id) : null;
   const hasApprovedLicense = deriveHasApprovedLicense(meRoles)
     || (!meRolesReady && (sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner'));
-  const hasOrganization = userRole === 'organizer' && deriveHasOrganization(meRoles);
+  const hasOrganization = deriveHasOrganization(meRoles);
 
   useEffect(() => {
     setAvatarFailed(false);
@@ -306,7 +306,7 @@ const UserMenu = ({
               </>
             )}
 
-            {!admin.isAdmin && userRole !== "organizer" && (
+            {!admin.isAdmin && userRole !== "organizer" && !hasOrganization && (
               <>
                 <JackMenuDivider />
                 <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
