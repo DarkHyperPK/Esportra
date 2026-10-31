@@ -850,6 +850,27 @@ export interface ScrimMemberPreview {
   rank_tier_key: string | null;
 }
 
+export interface ScrimTeamMemberDetail {
+  username: string | null;
+  avatarSeed: string | null;
+  avatarStyle: string | null;
+  role: string | null;
+  rankTierKey: string | null;
+  rankDisplayName: string | null;
+  rankIconUrl: string | null;
+  competitiveTier: number | null;
+  competitiveTierName: string | null;
+  winRate: number | null;
+  kdRatio: number | null;
+  hsPct: number | null;
+}
+
+export interface ScrimListingDetail {
+  listing: ScrimListing;
+  members: ScrimTeamMemberDetail[];
+  slots: ScrimSlot[];
+}
+
 export interface ScrimOffer {
   id: string;
   listingId: string;

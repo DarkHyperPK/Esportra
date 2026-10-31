@@ -15,6 +15,7 @@ import type {
   ScrimHistoryPrivacy,
   ScrimScreenshotParseResult,
   ScrimRecentMatch,
+  ScrimListingDetail,
 } from '@/types/competitive';
 import { ApiError } from '@/lib/apiClient';
 
@@ -27,6 +28,7 @@ export const scrimKeys = {
   myOffers: (teamId: string) => ['scrims', 'offers-mine', teamId] as const,
   teamSessions: (teamId: string) => ['scrims', 'sessions', teamId] as const,
   session: (id: string) => ['scrims', 'session', id] as const,
+  listingDetail: (id: string) => ['scrims', 'listing-detail', id] as const,
   // PROJ-078
   slots: (listingId: string) => ['scrims', 'slots', listingId] as const,
   sessionDispute: (sessionId: string) => ['scrims', 'dispute', sessionId] as const,
@@ -106,6 +108,15 @@ export function useDiscoverScrims(game: string) {
     queryFn: () => apiClient.get<ScrimListing[]>(`/api/scrims/discover?game=${game}`),
     enabled: !!game,
     staleTime: 30_000,
+  });
+}
+
+export function useScrimListingDetail(id: string, enabled = false) {
+  return useQuery({
+    queryKey: scrimKeys.listingDetail(id),
+    queryFn: () => apiClient.get<ScrimListingDetail>(`/api/scrims/listings/${id}/detail`),
+    enabled: enabled && !!id,
+    staleTime: 60_000,
   });
 }
 

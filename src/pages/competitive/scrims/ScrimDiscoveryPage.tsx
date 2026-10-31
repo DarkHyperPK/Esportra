@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Crosshair, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronRight, Crosshair, SlidersHorizontal, X } from 'lucide-react';
 import { PageIntro, EYEBROW_CLASS } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { ScrimOfferForm } from '@/components/competitive/scrims/ScrimOfferForm';
 import { ScrimSlotCalendar } from '@/components/competitive/scrims/ScrimSlotCalendar';
+import { ScrimListingDetailSheet } from '@/components/competitive/scrims/ScrimListingDetailSheet';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { formatPreferredDays } from '@/services/scrimUtils';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
@@ -117,8 +118,11 @@ function ScrimCard({
 
   return (
     <article className={`lfg-card lfg-panel lfg-compact-card lfg-team-card${isOpen ? ' selected' : ''}`}>
-      {/* Hero area — team logo as banner or gradient fallback */}
-      <div className="lfg-compact-hero no-art">
+      {/* Hero area with banner */}
+      <div className={`lfg-compact-hero ${listing.teamLogoUrl ? 'has-art' : 'no-art'}`}>
+        {listing.teamLogoUrl && (
+          <img className="lfg-compact-banner" src={listing.teamLogoUrl} alt="" loading="lazy" decoding="async" style={{ objectFit: 'cover', filter: 'blur(8px) brightness(0.6)', transform: 'scale(1.15)' }} />
+        )}
         <div className="lfg-compact-top">
           <div className="lfg-identity">
             <span className="lfg-avatar team">
@@ -205,7 +209,7 @@ function ScrimCard({
           <p className="lfg-description lfg-compact-description">{listing.notes}</p>
         )}
 
-        {/* Bottom row — meta + action */}
+        {/* Bottom row — meta + details + action */}
         <div className="lfg-compact-bottom">
           <span>
             {[
@@ -215,8 +219,21 @@ function ScrimCard({
             ].filter(Boolean).join(' · ') || listing.regionKey?.toUpperCase() || ''}
           </span>
 
+          <ScrimListingDetailSheet
+            listingId={listing.id}
+            teamName={listing.teamName ?? 'Team'}
+            teamLogoUrl={listing.teamLogoUrl}
+          >
+            <button type="button" className="lfg-compact-expand">
+              More details <ChevronRight size={15} />
+            </button>
+          </ScrimListingDetailSheet>
+        </div>
+
+        {/* CTA row */}
+        <div style={{ marginTop: 10 }}>
           {isOwner ? (
-            <Link to="/competitive/scrims/workspace" className="lfg-compact-expand">
+            <Link to="/competitive/scrims/workspace" className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}>
               Manage
             </Link>
           ) : isOpen && hasTeam ? (
@@ -227,16 +244,18 @@ function ScrimCard({
               onClick={isOfferOpen ? undefined : onRequestScrim}
               aria-pressed={isOfferOpen}
               className="lfg-button lfg-button-primary"
-              style={{ borderRadius: 10, fontSize: 12, minHeight: 36, padding: '6px 14px' }}
+              style={{ width: '100%', borderRadius: 10, fontSize: 12, minHeight: 40, justifyContent: 'center' }}
             >
               Request Scrim
             </motion.button>
           ) : isOpen && !hasTeam ? (
-            <Link to="/teams" className="lfg-compact-expand">
-              Join a team
+            <Link to="/teams" className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}>
+              Join a team to request
             </Link>
           ) : (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Closed</span>
+            <span className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center', opacity: 0.3, cursor: 'default' }}>
+              Closed
+            </span>
           )}
         </div>
       </div>
