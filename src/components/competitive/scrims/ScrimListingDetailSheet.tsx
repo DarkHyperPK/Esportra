@@ -298,7 +298,8 @@ export function ScrimListingDetailSheet({ listingId, teamName, teamLogoUrl, game
               <button
                 type="button"
                 onClick={handleGeneralRequest}
-                className="w-full py-2.5 text-[13px] font-semibold text-white bg-rose-500/15 border border-rose-500/25 hover:bg-rose-500/25 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500"
+                className="lfg-button lfg-button-primary w-full"
+                style={{ borderRadius: 0, justifyContent: 'center', fontSize: 13 }}
               >
                 Request Scrim
               </button>
