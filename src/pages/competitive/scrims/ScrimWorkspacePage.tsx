@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
-import { PageIntro, InlineNotice, StatusPill } from '@/components/ui/kit';
+import { InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -264,80 +264,77 @@ export default function ScrimWorkspacePage() {
     <CompetitivePageShell>
       <div className="flex min-h-[100dvh]">
         {/* ── Left panel (desktop) ── */}
-        <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-4">
-          {/* Team selector */}
-          {teams.length > 1 ? (
-            <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
-              <SelectTrigger aria-label="Select team" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {teams.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-[13px] text-white/70">{activeTeam?.name ?? '—'}</p>
-          )}
+        <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6">
+          {/* Team identity */}
+          <div className="mb-5">
+            {teams.length > 1 ? (
+              <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger aria-label="Select team" className="h-auto py-0 border-none bg-transparent px-0 text-left focus:ring-0 shadow-none text-[18px] font-bold text-white [font-family:var(--font-heading)] truncate">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-[18px] font-bold text-white [font-family:var(--font-heading)] truncate leading-tight">
+                {activeTeam?.name ?? '—'}
+              </p>
+            )}
 
-          {/* Game selector */}
-          {catalog.games.length > 0 && (
-            <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
-              <SelectTrigger aria-label="Select game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
-                <SelectValue placeholder="Select game" />
-              </SelectTrigger>
-              <SelectContent>
-                {catalog.games.map((g) => (
-                  <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* CTA + stats group */}
-          <div className="space-y-3">
-            <Button
-              onClick={() => setShowNewListing((v) => !v)}
-              className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[13px] w-full"
-            >
-              {showNewListing ? 'Cancel' : 'Post a listing'}
-            </Button>
-
-            <div className="space-y-2 border-t border-white/[0.06] pt-3">
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-white/40">Active listings</span>
-                <span className="text-white/70 tabular-nums">
-                  {listings.filter((l) => l.status === 'open').length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-white/40">Pending offers</span>
-                <span
-                  className={
-                    pendingOfferCount > 0
-                      ? 'text-rose-400 font-semibold tabular-nums'
-                      : 'text-white/70 tabular-nums'
-                  }
-                >
-                  {pendingOfferCount}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-white/40">Upcoming sessions</span>
-                <span className="text-white/70 tabular-nums">{upcomingSessions.length}</span>
-              </div>
-            </div>
+            {/* Game badge */}
+            {catalog.games.length > 0 && (
+              <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
+                <SelectTrigger aria-label="Select game" className="h-auto py-0 border-none bg-transparent px-0 mt-1 focus:ring-0 shadow-none text-[11px] font-mono tracking-widest text-white/35 w-auto">
+                  <SelectValue placeholder="Select game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {catalog.games.map((g) => (
+                    <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
+          {/* Stat grid */}
+          <div className="grid grid-cols-3 gap-px bg-white/[0.06] border border-white/[0.06] mb-5">
+            {[
+              { value: listings.filter((l) => l.status === 'open').length, label: 'Listings' },
+              { value: pendingOfferCount, label: 'Offers', accent: pendingOfferCount > 0 },
+              { value: upcomingSessions.length, label: 'Sessions' },
+            ].map(({ value, label, accent }) => (
+              <div key={label} className="bg-[#0f0f14] flex flex-col items-center justify-center py-3 gap-0.5">
+                <span className={`text-[22px] font-bold tabular-nums leading-none [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white'}`}>
+                  {value}
+                </span>
+                <span className="text-[10px] font-mono tracking-widest text-white/25 uppercase">{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <Button
+            onClick={() => setShowNewListing((v) => !v)}
+            className={`w-full rounded-none text-[13px] font-semibold tracking-wide mb-5 ${
+              showNewListing
+                ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
+                : 'bg-rose-500 hover:bg-rose-600 text-white'
+            }`}
+          >
+            {showNewListing ? 'Cancel' : 'Post a listing'}
+          </Button>
 
           {/* Find a scrim link */}
           <Link
             to="/competitive/scrims"
-            className="text-[12px] text-white/40 hover:text-white/70 transition-colors"
+            className="text-[11px] font-mono tracking-[0.15em] text-white/25 hover:text-white/50 transition-colors uppercase mt-auto"
           >
-            Find a scrim
+            Browse listings →
           </Link>
         </aside>
 
@@ -345,7 +342,10 @@ export default function ScrimWorkspacePage() {
         <div className="flex-1 px-4 lg:px-8 pt-8 pb-8 space-y-4">
           {/* Mobile header */}
           <div className="flex items-start justify-between gap-4 lg:hidden">
-            <PageIntro eyebrow="Your scrims" title="Your Scrims" />
+            <div>
+              <p className="text-[10px] font-mono tracking-[0.18em] text-white/25 uppercase mb-1">Your scrims</p>
+              <p className="text-[20px] font-bold text-white [font-family:var(--font-heading)] leading-tight">{activeTeam?.name ?? 'Your Scrims'}</p>
+            </div>
             <Button
               onClick={() => setShowNewListing((v) => !v)}
               className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
@@ -389,8 +389,9 @@ export default function ScrimWorkspacePage() {
           )}
 
           {/* Desktop title */}
-          <div className="hidden lg:block">
-            <PageIntro eyebrow="Your scrims" title="Your Scrims" />
+          <div className="hidden lg:block mb-2">
+            <p className="text-[10px] font-mono tracking-[0.18em] text-white/25 uppercase mb-1">Your scrims</p>
+            <p className="text-[26px] font-bold text-white [font-family:var(--font-heading)] leading-tight">{activeTeam?.name ?? 'Scrims'}</p>
           </div>
 
           {/* New listing form */}

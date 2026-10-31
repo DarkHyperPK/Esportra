@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { StatusPill, Field, InlineNotice } from '@/components/ui/kit';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import {
   useListingOffers,
@@ -11,8 +12,6 @@ import {
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { formatPreferredDays } from '@/services/scrimUtils';
 import type { ScrimListing } from '@/types/competitive';
-
-const LISTING_TONE = { open: 'accent', paused: 'neutral', closed: 'neutral' } as const;
 
 function formatTimeWindow(start: string | null, end: string | null): string {
   if (!start && !end) return '';
@@ -50,8 +49,8 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
   }
 
   return (
-    <div className="mt-1 border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
-      <p className="text-[11px] font-medium text-white/35">Edit listing</p>
+    <div className="border border-white/[0.06] border-t-0 bg-[#0d0d12] p-4 space-y-3">
+      <p className="text-[11px] font-mono tracking-widest text-white/25 uppercase">Edit listing</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Mode" htmlFor={`elm-${listing.id}`} optional>
           <input
@@ -118,37 +117,34 @@ function RecurringSlotExpansion({ listing }: { listing: ScrimListing }) {
     : null;
 
   return (
-    <div className="mt-3 border-t border-white/[0.06] pt-3 space-y-2">
+    <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1.5">
       {accepted.length > 0 ? (
-        <div className="space-y-1">
-          <p className="text-[11px] font-medium text-white/25">Booked slots</p>
-          {accepted.map((offer) => (
-            <p key={offer.id} className="text-[12px] text-white/55">
-              {offer.proposedAt
-                ? new Date(offer.proposedAt).toLocaleString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })
-                : offer.offeringTeamName ?? offer.offeringTeamId.slice(0, 8)}
-            </p>
-          ))}
-        </div>
+        accepted.map((offer) => (
+          <p key={offer.id} className="text-[12px] text-white/50">
+            {offer.proposedAt
+              ? new Date(offer.proposedAt).toLocaleString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })
+              : offer.offeringTeamName ?? offer.offeringTeamId.slice(0, 8)}
+          </p>
+        ))
       ) : (
-        <p className="text-[12px] text-white/35">No slots booked yet</p>
+        <p className="text-[12px] text-white/30">No slots booked yet</p>
       )}
       {untilDate && listing.slotDurationMinutes && (
-        <p className="text-[12px] text-white/35">
-          Available until {untilDate} · {listing.slotDurationMinutes}-min sessions
+        <p className="text-[12px] text-white/25">
+          Until {untilDate} · {listing.slotDurationMinutes}-min sessions
         </p>
       )}
     </div>
   );
 }
 
-// ── Main card ─────────────────────────────────────────────────────────────────
+// ── Card ──────────────────────────────────────────────────────────────────────
 
 export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
   const pauseMutation = usePauseListing(listing.id);
@@ -167,130 +163,172 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
   const timeWindow = formatTimeWindow(listing.preferredTimeStart, listing.preferredTimeEnd);
   const isRecurring = listing.scheduleType === 'recurring';
   const isOpen = listing.status === 'open';
+  const isPaused = listing.status === 'paused';
   const hasSchedule = days.length > 0 || !!timeWindow;
+
+  const accentColor = isOpen ? '#f43f5e' : isPaused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)';
+  const statusLabel = listing.status.toUpperCase();
+  const statusTextClass = isOpen
+    ? 'text-rose-400'
+    : isPaused
+    ? 'text-amber-400/70'
+    : 'text-white/25';
 
   return (
     <>
       <article
-        className={`bg-white/[0.03] border border-white/[0.06] hover:border-white/20 hover:bg-white/[0.05] transition-colors duration-150 p-4${isOpen ? ' border-t-2 border-t-[#FF2D55]' : ''}`}
+        className={`relative overflow-hidden border border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.04] transition-colors duration-150 ${showEdit ? '' : 'hover:border-white/[0.12]'}`}
+        style={{ borderLeft: `3px solid ${accentColor}` }}
       >
-        {/* Row 1 — status + meta chips */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <StatusPill label={listing.status} tone={LISTING_TONE[listing.status]} />
-            {listing.modeKey && (
-              <span className="text-[13px] text-white/55">{listing.modeKey}</span>
-            )}
-            {listing.regionKey && (
-              <span className="font-mono text-[10px] tracking-[0.2em] text-white/40 bg-white/[0.05] px-1.5 py-0.5">
-                {listing.regionKey.toUpperCase()}
+        <div className="pl-4 pr-4 pt-4 pb-3.5">
+          {/* Row 1 — status + mode/region + offers badge */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+              <span className={`text-[10px] font-mono tracking-[0.18em] font-semibold ${statusTextClass}`}>
+                {statusLabel}
               </span>
-            )}
-            {isRecurring && (
-              <span className="text-[10px] bg-white/[0.05] text-white/40 px-1.5 py-0.5">
-                Recurring
-              </span>
+
+              {listing.modeKey && (
+                <span className="text-[14px] font-semibold text-white [font-family:var(--font-heading)]">
+                  {listing.modeKey}
+                </span>
+              )}
+
+              {listing.regionKey && (
+                <span className="font-mono text-[10px] tracking-[0.15em] text-white/40 bg-white/[0.06] px-1.5 py-0.5">
+                  {listing.regionKey.toUpperCase()}
+                </span>
+              )}
+
+              {isRecurring && (
+                <span className="text-[10px] text-white/30 bg-white/[0.05] px-1.5 py-0.5">
+                  Recurring
+                </span>
+              )}
+            </div>
+
+            {pendingOfferCount > 0 && (
+              <div className="shrink-0 flex items-center gap-1 bg-rose-500/15 px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-rose-400 font-semibold text-[12px] tabular-nums">
+                  {pendingOfferCount} offer{pendingOfferCount !== 1 ? 's' : ''}
+                </span>
+              </div>
             )}
           </div>
-          {pendingOfferCount > 0 && (
-            <span className="bg-rose-500/15 text-rose-400 font-mono text-[11px] px-2 py-0.5 shrink-0 tabular-nums">
-              {pendingOfferCount} offer{pendingOfferCount !== 1 ? 's' : ''}
-            </span>
+
+          {/* Row 2 — schedule */}
+          {hasSchedule && (
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+              {days.map((d) => (
+                <span
+                  key={d}
+                  className="px-1.5 py-0.5 bg-white/[0.07] font-mono text-[10px] text-white/75 font-semibold tracking-wider"
+                >
+                  {d.toUpperCase()}
+                </span>
+              ))}
+              {timeWindow && (
+                <span className="text-[13px] font-medium text-white/55">
+                  {days.length > 0 ? '· ' : ''}{timeWindow}
+                </span>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* Row 2 — schedule as visual anchor */}
-        {hasSchedule && (
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            {days.map((d) => (
-              <span
-                key={d}
-                className="inline-flex px-2 py-0.5 bg-white/[0.07] font-mono text-[11px] text-white/80 font-semibold"
-              >
-                {d.toUpperCase()}
+          {/* Row 3 — rank requirement */}
+          {(listing.minRankDisplayName || listing.maxRankDisplayName) && (
+            <div className="flex items-center gap-1.5 mb-3">
+              {listing.minRankIconUrl && (
+                <img src={listing.minRankIconUrl} alt="" className="h-4 w-4 object-contain" />
+              )}
+              <span className="text-[12px] text-white/40">
+                {listing.minRankDisplayName && listing.maxRankDisplayName && listing.minRankDisplayName !== listing.maxRankDisplayName
+                  ? `${listing.minRankDisplayName} – ${listing.maxRankDisplayName}`
+                  : listing.minRankDisplayName ?? listing.maxRankDisplayName}
               </span>
-            ))}
-            {timeWindow && (
-              <span className="text-[14px] font-semibold text-white [font-family:var(--font-heading)]">
-                {timeWindow}
-              </span>
-            )}
-          </div>
-        )}
+              {listing.maxRankIconUrl && listing.maxRankIconUrl !== listing.minRankIconUrl && (
+                <img src={listing.maxRankIconUrl} alt="" className="h-4 w-4 object-contain" />
+              )}
+            </div>
+          )}
 
-        {/* Row 3 — recurring slot summary */}
-        {isRecurring && (
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[12px] text-white/40 tabular-nums">{bookedCount} booked</span>
-            <button
-              type="button"
-              onClick={() => setShowSlots((v) => !v)}
-              className="text-[12px] text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
-            >
-              {showSlots ? 'Hide slots' : 'View slots'}
-            </button>
-          </div>
-        )}
+          {/* Row 4 — notes */}
+          {listing.notes && (
+            <p className="text-[12px] text-white/35 line-clamp-1 mb-3 italic">"{listing.notes}"</p>
+          )}
 
-        {/* Bottom row — meta + actions */}
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <span className="text-[11px] text-white/25">
-            Created{' '}
-            {new Date(listing.createdAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </span>
+          {/* Recurring slot summary */}
+          {isRecurring && (
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[11px] text-white/30 tabular-nums">{bookedCount} booked</span>
+              <button
+                type="button"
+                onClick={() => setShowSlots((v) => !v)}
+                className="inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/60 transition-colors"
+              >
+                {showSlots ? 'Hide' : 'Slots'}
+                {showSlots ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </div>
+          )}
 
-          <div className="flex gap-2 shrink-0">
-            {(listing.status === 'open' || listing.status === 'paused') && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowEdit((v) => !v)}
-                className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-              >
-                Edit
-              </Button>
-            )}
-            {listing.status === 'open' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => pauseMutation.mutate()}
-                disabled={isPending}
-                className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-              >
-                {pauseMutation.isPending ? '…' : 'Pause'}
-              </Button>
-            )}
-            {listing.status === 'paused' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => reopenMutation.mutate()}
-                disabled={isPending}
-                className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
-              >
-                {reopenMutation.isPending ? '…' : 'Reopen'}
-              </Button>
-            )}
-            {listing.status !== 'closed' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => closeMutation.mutate()}
-                disabled={isPending}
-                className="text-[12px] text-red-300/70 hover:text-red-300 rounded-none"
-              >
-                {closeMutation.isPending ? '…' : 'Close'}
-              </Button>
-            )}
+          {/* Bottom row — date + actions */}
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/[0.05]">
+            <span className="text-[10px] text-white/20 tabular-nums tracking-wide font-mono">
+              {new Date(listing.createdAt).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {(listing.status === 'open' || listing.status === 'paused') && (
+                <button
+                  type="button"
+                  onClick={() => setShowEdit((v) => !v)}
+                  className="px-2.5 py-1 text-[11px] text-white/40 hover:text-white border border-white/[0.07] hover:border-white/20 transition-colors"
+                >
+                  Edit
+                </button>
+              )}
+              {listing.status === 'open' && (
+                <button
+                  type="button"
+                  onClick={() => pauseMutation.mutate()}
+                  disabled={isPending}
+                  className="px-2.5 py-1 text-[11px] text-white/40 hover:text-white border border-white/[0.07] hover:border-white/20 transition-colors disabled:opacity-30"
+                >
+                  {pauseMutation.isPending ? '…' : 'Pause'}
+                </button>
+              )}
+              {listing.status === 'paused' && (
+                <button
+                  type="button"
+                  onClick={() => reopenMutation.mutate()}
+                  disabled={isPending}
+                  className="px-2.5 py-1 text-[11px] text-rose-400/70 hover:text-rose-400 border border-rose-500/20 hover:border-rose-500/40 transition-colors disabled:opacity-30"
+                >
+                  {reopenMutation.isPending ? '…' : 'Reopen'}
+                </button>
+              )}
+              {listing.status !== 'closed' && (
+                <button
+                  type="button"
+                  onClick={() => closeMutation.mutate()}
+                  disabled={isPending}
+                  className="px-2.5 py-1 text-[11px] text-red-400/50 hover:text-red-400 transition-colors disabled:opacity-30"
+                >
+                  {closeMutation.isPending ? '…' : 'Close'}
+                </button>
+              )}
+            </div>
           </div>
+
+          {showSlots && isRecurring && <RecurringSlotExpansion listing={listing} />}
         </div>
-
-        {showSlots && isRecurring && <RecurringSlotExpansion listing={listing} />}
       </article>
+
       {showEdit && <EditListingForm listing={listing} onClose={() => setShowEdit(false)} />}
     </>
   );
