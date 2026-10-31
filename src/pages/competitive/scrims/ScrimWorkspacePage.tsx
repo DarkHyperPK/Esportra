@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
+import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { PageIntro, InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -213,7 +214,10 @@ export default function ScrimWorkspacePage() {
 
   const resolvedTeamId = selectedTeamId || urlTeamId || teams[0]?.id || '';
   const activeTeam = teams.find((t) => t.id === resolvedTeamId) ?? teams[0] ?? null;
-  const gameSlug = activeTeam?.primary_game_slug ?? null;
+
+  const catalog = useGameCatalogContext();
+  const [selectedGame, setSelectedGame] = useState<string>('');
+  const gameSlug = selectedGame || activeTeam?.primary_game_slug || catalog.games[0]?.slug || null;
 
   const listingsQuery = useScrimListings(resolvedTeamId);
   const myOffersQuery = useMyOffers(resolvedTeamId);
@@ -279,6 +283,20 @@ export default function ScrimWorkspacePage() {
             <p className="text-[13px] text-white/70">{activeTeam?.name ?? '—'}</p>
           )}
 
+          {/* Game selector */}
+          {catalog.games.length > 0 && (
+            <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
+              <SelectTrigger aria-label="Select game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+                <SelectValue placeholder="Select game" />
+              </SelectTrigger>
+              <SelectContent>
+                {catalog.games.map((g) => (
+                  <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {/* Post a listing CTA */}
           <Button
             onClick={() => setShowNewListing((v) => !v)}
@@ -337,7 +355,7 @@ export default function ScrimWorkspacePage() {
 
           {/* Mobile team selector */}
           {teams.length > 1 && (
-            <div className="lg:hidden px-0 mb-4">
+            <div className="lg:hidden px-0 mb-2">
               <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
                 <SelectTrigger aria-label="Select team" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
                   <SelectValue />
@@ -347,6 +365,22 @@ export default function ScrimWorkspacePage() {
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
                     </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Mobile game selector */}
+          {catalog.games.length > 0 && (
+            <div className="lg:hidden px-0 mb-4">
+              <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
+                <SelectTrigger aria-label="Select game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+                  <SelectValue placeholder="Select game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {catalog.games.map((g) => (
+                    <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
