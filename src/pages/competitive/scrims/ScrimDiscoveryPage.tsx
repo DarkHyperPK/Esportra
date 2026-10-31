@@ -17,7 +17,7 @@ import { useDiscoverScrimsFiltered } from '@/hooks/competitive/useScrimDiscovery
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
-import { GlowCard, StatusPill } from '@/components/competitive/GlowCard';
+import { StatusPill } from '@/components/competitive/GlowCard';
 import { ScrimOfferForm } from '@/components/competitive/scrims/ScrimOfferForm';
 import { ScrimSlotCalendar } from '@/components/competitive/scrims/ScrimSlotCalendar';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
@@ -123,33 +123,35 @@ function ScrimCard({
     .toUpperCase();
 
   return (
-    <GlowCard accentTop={isOpen}>
+    <article
+      className={`bg-white/[0.03] border border-white/[0.06] hover:border-white/20 hover:bg-white/[0.05] transition-colors duration-150 p-4${isOpen ? ' border-t-2 border-t-[#FF2D55]' : ''}`}
+    >
       {/* Row 1 — identity + status */}
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           {listing.teamLogoUrl ? (
             <img
               src={listing.teamLogoUrl}
               alt=""
-              className="h-8 w-8 object-cover shrink-0"
+              className="h-12 w-12 object-cover shrink-0"
               aria-hidden="true"
             />
           ) : (
             <span
-              className="h-8 w-8 flex items-center justify-center bg-white/[0.08] font-mono text-[11px] text-white/55 shrink-0"
+              className="h-12 w-12 flex items-center justify-center bg-white/[0.08] font-mono text-[13px] text-white/55 shrink-0"
               aria-hidden="true"
             >
               {initials}
             </span>
           )}
-          <span className="font-heading text-[15px] font-bold text-white truncate">
-            {listing.teamName ?? 'Unknown Team'}
-          </span>
-          {listing.teamTag && (
-            <span className="text-[12px] text-white/45 shrink-0">
-              [{listing.teamTag}]
-            </span>
-          )}
+          <div className="min-w-0">
+            <p className="font-heading text-[15px] font-bold text-white truncate">
+              {listing.teamName ?? 'Unknown Team'}
+            </p>
+            {listing.teamTag && (
+              <p className="text-[12px] text-white/45">[{listing.teamTag}]</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {listing.regionKey && (
@@ -164,18 +166,24 @@ function ScrimCard({
         </div>
       </div>
 
-      {/* Row 2 — game + mode + rank range */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-        {listing.gameSlug && (
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">
-            {gameAbbrev(listing.gameSlug)}
-          </span>
-        )}
-        {listing.modeKey && (
-          <span className="text-[12px] text-white/40">{listing.modeKey}</span>
-        )}
+      {/* Row 2 — rank range as visual anchor + game / mode */}
+      <div className="mb-3">
         {rankRange && (
-          <span className="text-[12px] text-white/55 font-medium">{rankRange}</span>
+          <p className="text-[16px] font-semibold text-white [font-family:var(--font-heading)] mb-1">
+            {rankRange}
+          </p>
+        )}
+        {(listing.gameSlug || listing.modeKey) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {listing.gameSlug && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">
+                {gameAbbrev(listing.gameSlug)}
+              </span>
+            )}
+            {listing.modeKey && (
+              <span className="text-[12px] text-white/40">{listing.modeKey}</span>
+            )}
+          </div>
         )}
       </div>
 
@@ -228,55 +236,55 @@ function ScrimCard({
         </div>
       )}
 
-      {/* Row 5 — meta strip */}
-      <div className="flex items-center gap-3 mb-2">
-        {age && (
-          <span className="text-[11px] text-white/30">Listed {age}</span>
-        )}
-        {(listing.scrimsCompleted ?? 0) > 0 && (
-          <span className="text-[11px] text-white/30">
-            {listing.scrimsCompleted} scrims
-          </span>
-        )}
-        {!hasSchedule && listing.notes && (
-          <span className="text-[13px] text-white/45 line-clamp-1">
-            {listing.notes}
-          </span>
-        )}
+      {/* Bottom row — meta + action */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-3 min-w-0">
+          {age && (
+            <span className="text-[11px] text-white/30">Listed {age}</span>
+          )}
+          {(listing.scrimsCompleted ?? 0) > 0 && (
+            <span className="text-[11px] text-white/30">
+              {listing.scrimsCompleted} scrims
+            </span>
+          )}
+          {!hasSchedule && listing.notes && (
+            <span className="text-[13px] text-white/45 truncate">
+              {listing.notes}
+            </span>
+          )}
+        </div>
+        <div className="shrink-0">
+          {isOwner ? (
+            <Link
+              to="/competitive/scrims/workspace"
+              className="px-3 py-1.5 text-[13px] border border-white/[0.12] text-white/55 hover:text-white hover:border-white/25 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            >
+              Manage
+            </Link>
+          ) : isOpen && hasTeam ? (
+            <motion.button
+              type="button"
+              whileTap={!reduced ? { scale: 0.97 } : undefined}
+              transition={{ duration: 0.12 }}
+              onClick={isOfferOpen ? undefined : onRequestScrim}
+              aria-pressed={isOfferOpen}
+              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            >
+              Request Scrim
+            </motion.button>
+          ) : isOpen && !hasTeam ? (
+            <Link
+              to="/teams"
+              className="px-3 py-1.5 text-[12px] border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors duration-150"
+            >
+              Join a team to request
+            </Link>
+          ) : (
+            <span className="text-[12px] text-white/30">Closed</span>
+          )}
+        </div>
       </div>
-
-      {/* Row 6 — action strip */}
-      <div className="flex items-center justify-end gap-3">
-        {isOwner ? (
-          <Link
-            to="/competitive/scrims/workspace"
-            className="px-3 py-1.5 text-[13px] border border-white/[0.12] text-white/55 hover:text-white hover:border-white/25 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
-          >
-            Manage
-          </Link>
-        ) : isOpen && hasTeam ? (
-          <motion.button
-            type="button"
-            whileTap={!reduced ? { scale: 0.97 } : undefined}
-            transition={{ duration: 0.12 }}
-            onClick={isOfferOpen ? undefined : onRequestScrim}
-            aria-pressed={isOfferOpen}
-            className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[13px] focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
-          >
-            Request Scrim
-          </motion.button>
-        ) : isOpen && !hasTeam ? (
-          <Link
-            to="/teams"
-            className="px-3 py-1.5 text-[12px] border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors duration-150"
-          >
-            Join a team to request
-          </Link>
-        ) : (
-          <span className="text-[12px] text-white/30">Closed</span>
-        )}
-      </div>
-    </GlowCard>
+    </article>
   );
 }
 
