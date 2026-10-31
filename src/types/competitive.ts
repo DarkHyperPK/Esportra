@@ -835,6 +835,19 @@ export interface ScrimListing {
   teamName?: string | null;
   teamLogoUrl?: string | null;
   teamTag?: string | null;
+  activeMemberCount?: number | null;
+  minRankDisplayName?: string | null;
+  minRankIconUrl?: string | null;
+  maxRankDisplayName?: string | null;
+  maxRankIconUrl?: string | null;
+  membersPreview?: ScrimMemberPreview[] | null;
+  scrimsCompleted?: number | null;
+}
+
+export interface ScrimMemberPreview {
+  username: string;
+  avatar_seed: string | null;
+  rank_tier_key: string | null;
 }
 
 export interface ScrimOffer {
