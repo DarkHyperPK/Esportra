@@ -52,9 +52,21 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   payment_rejected: kind(XCircle, 'warning', 'tournaments', 'Payment'),
   ban: kind(ShieldAlert, 'critical', 'tournaments', 'Banned'),
   kick: kind(ShieldAlert, 'warning', 'tournaments', 'Removed'),
-  // Competitive
+  // Competitive — LFG
   lfg_interest_received: kind(Users, 'accent', 'competitive', 'LFG Interest'),
   lfg_interest_accepted: kind(CheckCircle2, 'success', 'competitive', 'LFG accepted'),
+  // Competitive — Scrims
+  scrim_offer_received: kind(Swords, 'accent', 'competitive', 'Scrim offer'),
+  scrim_offer_accepted: kind(CheckCircle2, 'success', 'competitive', 'Scrim accepted'),
+  scrim_offer_declined: kind(XCircle, 'neutral', 'competitive', 'Scrim declined'),
+  scrim_offer_withdrawn: kind(XCircle, 'neutral', 'competitive', 'Scrim withdrawn'),
+  scrim_result_submitted: kind(FileText, 'warning', 'competitive', 'Scrim result'),
+  scrim_result_confirmed: kind(CheckCircle2, 'success', 'competitive', 'Result confirmed'),
+  scrim_dispute_raised: kind(ShieldAlert, 'critical', 'competitive', 'Scrim dispute'),
+  scrim_dispute_resolved: kind(CheckCircle2, 'success', 'competitive', 'Dispute resolved'),
+  scrim_checkin_updated: kind(Calendar, 'accent', 'competitive', 'Check-in'),
+  scrim_session_started: kind(Swords, 'accent', 'competitive', 'Scrim started'),
+  scrim_lobby_updated: kind(Info, 'neutral', 'competitive', 'Lobby update'),
   // Staff
   staff_invite: kind(Shield, 'accent', 'staff', 'Staff invite'),
   // System
@@ -90,6 +102,7 @@ export async function resolveNotificationDestination(n: Notification): Promise<s
   if (direct) return direct;
   if (n.type === 'team_invite') return '/player/teams';
   if (n.type === 'staff_invite') return '/staff/dashboard';
+  if (n.type?.startsWith('scrim_')) return '/competitive/scrims/workspace';
   if (n.type === 'tournament_invite') {
     const invite = getTournamentInviteFromNotification(n);
     if (invite?.data.code) return buildRedeemInvitePath(invite.data.code, invite.data.tournament_id ?? null);
