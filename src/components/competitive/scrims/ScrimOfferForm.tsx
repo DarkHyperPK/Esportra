@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { InlineNotice, Field, EYEBROW_CLASS } from '@/components/ui/kit';
+import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { useMakeOffer } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
