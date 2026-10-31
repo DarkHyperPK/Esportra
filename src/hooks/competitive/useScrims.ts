@@ -11,6 +11,10 @@ import type {
   ScrimDisputeOutcome,
   PracticeSession,
   PracticeAttendance,
+  ScrimHistoryPage,
+  ScrimHistoryPrivacy,
+  ScrimScreenshotParseResult,
+  ScrimRecentMatch,
 } from '@/types/competitive';
 import { ApiError } from '@/lib/apiClient';
 
@@ -604,6 +608,76 @@ export function useConfirmScrimResult(sessionId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scrims', 'sessions'] });
       qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
+    },
+  });
+}
+
+// ── Scrim history ─────────────────────────────────────────────────────────────
+
+export const scrimHistoryKeys = {
+  page: (teamId: string, page: number, pageSize: number) =>
+    ['scrims', 'history', teamId, page, pageSize] as const,
+  privacy: (teamId: string) => ['scrims', 'history-privacy', teamId] as const,
+  recentMatches: (sessionId: string) => ['scrims', 'recent-matches', sessionId] as const,
+};
+
+export function useScrimHistory(teamId: string, page: number, pageSize: number) {
+  return useQuery({
+    queryKey: scrimHistoryKeys.page(teamId, page, pageSize),
+    queryFn: () =>
+      apiClient.get<ScrimHistoryPage>(
+        `/api/scrims/teams/${teamId}/history?page=${page}&pageSize=${pageSize}`,
+      ),
+    enabled: !!teamId,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function useScrimHistoryPrivacy(teamId: string, enabled = true) {
+  return useQuery({
+    queryKey: scrimHistoryKeys.privacy(teamId),
+    queryFn: () =>
+      apiClient.get<ScrimHistoryPrivacy>(`/api/scrims/teams/${teamId}/history/privacy`),
+    enabled: enabled && !!teamId,
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdateScrimHistoryPrivacy(teamId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (isPublic: boolean) =>
+      apiClient.patch<ScrimHistoryPrivacy>(`/api/scrims/teams/${teamId}/history/privacy`, { isPublic }),
+    onSuccess: (updated) => {
+      qc.setQueryData(scrimHistoryKeys.privacy(teamId), updated);
+    },
+  });
+}
+
+/** Recent Riot matches for the session's game. Triggered manually via refetch(). */
+export function useScrimRecentMatches(sessionId: string) {
+  return useQuery({
+    queryKey: scrimHistoryKeys.recentMatches(sessionId),
+    queryFn: () =>
+      apiClient.get<ScrimRecentMatch[]>(`/api/scrims/sessions/${sessionId}/recent-matches`),
+    enabled: false,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+}
+
+/** Parse a scoreboard screenshot for a scrim session. Returns score + confidence. */
+export function useScrimParseScreenshot(sessionId: string) {
+  return useMutation({
+    mutationFn: async (file: File): Promise<ScrimScreenshotParseResult> => {
+      const form = new FormData();
+      form.append('file', file);
+      return rawApiClient.upload<ScrimScreenshotParseResult>(
+        `/api/scrims/sessions/${sessionId}/reports/parse-screenshot`,
+        form,
+      );
     },
   });
 }

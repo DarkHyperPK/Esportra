@@ -6,6 +6,8 @@ import { CompetitivePageShell } from '@/components/competitive/CompetitivePageSh
 import { ScrimCheckinPanel, ScrimCheckinSkeleton } from '@/components/competitive/scrims/ScrimCheckinPanel';
 import { ScrimVetoSection } from '@/components/competitive/scrims/ScrimVetoSection';
 import { ScrimDisputeBanner } from '@/components/competitive/scrims/ScrimDisputeBanner';
+import { ScrimRiotMatchPicker } from '@/components/competitive/scrims/ScrimRiotMatchPicker';
+import { ScrimOcrUpload } from '@/components/competitive/scrims/ScrimOcrUpload';
 import {
   useScrimSession,
   useUpdateSessionLobby,
@@ -210,9 +212,9 @@ function LobbyInfoPanel({ session }: { session: ScrimSession }) {
 // ── ReportForm ────────────────────────────────────────────────────────────────
 
 function ReportForm({
-  sessionId, myTeamId, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
+  sessionId, gameSlug, myTeamId, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
 }: {
-  sessionId: string; myTeamId: string | null;
+  sessionId: string; gameSlug: string | null; myTeamId: string | null;
   t1Name: string; t2Name: string; defaultT1: string; defaultT2: string;
   onSuccess: () => void; onCancel: () => void;
 }) {
@@ -220,6 +222,12 @@ function ReportForm({
   const [s1, setS1] = useState(defaultT1);
   const [s2, setS2] = useState(defaultT2);
   const [notes, setNotes] = useState('');
+  const isValorant = gameSlug === 'valorant';
+
+  function fillScores(team1Score: number, team2Score: number) {
+    setS1(String(team1Score));
+    setS2(String(team2Score));
+  }
 
   async function submit() {
     if (!myTeamId) return;
@@ -232,21 +240,47 @@ function ReportForm({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label htmlFor="rs1" className="block text-[11px] text-white/55">{t1Name} Score</label>
-          <input id="rs1" type="number" min={0} value={s1} onChange={(e) => setS1(e.target.value)} className={FIELD} />
+    <div className="space-y-4">
+      {/* Riot match picker — Valorant only */}
+      {isValorant && (
+        <div className="border border-white/[0.05] bg-black/20 p-3 space-y-2">
+          <ScrimRiotMatchPicker
+            sessionId={sessionId}
+            isValorant={isValorant}
+            onFill={fillScores}
+          />
+        </div>
+      )}
+
+      {/* Screenshot OCR upload */}
+      <div className="border border-white/[0.05] bg-black/20 p-3">
+        <ScrimOcrUpload
+          sessionId={sessionId}
+          t1Name={t1Name}
+          t2Name={t2Name}
+          onFill={fillScores}
+        />
+      </div>
+
+      {/* Manual score inputs */}
+      <div className="space-y-3">
+        <p className={EYEBROW}>Manual entry</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label htmlFor="rs1" className="block text-[11px] text-white/55">{t1Name} Score</label>
+            <input id="rs1" type="number" min={0} value={s1} onChange={(e) => setS1(e.target.value)} className={FIELD} />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="rs2" className="block text-[11px] text-white/55">{t2Name} Score</label>
+            <input id="rs2" type="number" min={0} value={s2} onChange={(e) => setS2(e.target.value)} className={FIELD} />
+          </div>
         </div>
         <div className="space-y-1">
-          <label htmlFor="rs2" className="block text-[11px] text-white/55">{t2Name} Score</label>
-          <input id="rs2" type="number" min={0} value={s2} onChange={(e) => setS2(e.target.value)} className={FIELD} />
+          <label htmlFor="rnotes" className="block text-[11px] text-white/55">Notes</label>
+          <textarea id="rnotes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white focus:outline-none focus:border-white/30 transition-colors resize-none" />
         </div>
       </div>
-      <div className="space-y-1">
-        <label htmlFor="rnotes" className="block text-[11px] text-white/55">Notes</label>
-        <textarea id="rnotes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white focus:outline-none focus:border-white/30 transition-colors resize-none" />
-      </div>
+
       {report.isError && <InlineNotice tone="critical">{getApiErrorMessage(report.error, 'Could not submit result. Try again.')}</InlineNotice>}
       <div className="flex gap-3">
         <button onClick={onCancel} className={GHOST}>Cancel</button>
@@ -363,7 +397,7 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ReportForm sessionId={session.id} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -378,7 +412,7 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ReportForm sessionId={session.id} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>

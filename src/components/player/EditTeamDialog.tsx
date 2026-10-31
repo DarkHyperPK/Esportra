@@ -8,6 +8,36 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Check, Loader2, Upload, X } from 'lucide-react';
 import BannerEditor from '@/components/organizer/BannerEditor';
+import { ToggleRow } from '@/components/ui/kit';
+import {
+    useScrimHistoryPrivacy,
+    useUpdateScrimHistoryPrivacy,
+} from '@/hooks/competitive/useScrims';
+
+// ── ScrimHistoryPrivacyToggle ─────────────────────────────────────────────────
+
+function ScrimHistoryPrivacyToggle({ teamId }: { teamId: string }) {
+    const privacyQuery = useScrimHistoryPrivacy(teamId);
+    const updatePrivacy = useUpdateScrimHistoryPrivacy(teamId);
+    const isPublic = privacyQuery.data?.isPublic ?? false;
+
+    const handleChange = (checked: boolean) => {
+        updatePrivacy.mutate(checked);
+    };
+
+    return (
+        <ToggleRow
+            id="scrim-history-public"
+            title="Make scrim history public"
+            description="Your completed scrim results will be visible on your team profile."
+            checked={isPublic}
+            onCheckedChange={handleChange}
+            disabled={privacyQuery.isLoading || updatePrivacy.isPending}
+        />
+    );
+}
+
+// ── EditTeamDialog ────────────────────────────────────────────────────────────
 
 interface EditTeamDialogProps {
     team: Team | null;
@@ -184,6 +214,14 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                                 <Input value={tag} onChange={e => setTag(e.target.value)} className="bg-white/5 border-white/10" />
                             </div>
                         </div>
+
+                        {/* Scrim History Privacy */}
+                        {team && (
+                            <div className="mt-6">
+                                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-3">Scrim Settings</p>
+                                <ScrimHistoryPrivacyToggle teamId={team.id} />
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-4 border-t border-white/10 bg-[#050507] flex justify-end gap-3 mt-auto">

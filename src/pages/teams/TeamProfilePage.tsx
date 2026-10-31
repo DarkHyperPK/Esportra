@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Edit2, Trophy, Target, Calendar, ChevronLeft, Swords } from 'lucide-react';
+import { Edit2, Trophy, Target, Calendar, ChevronLeft, Swords, Shield } from 'lucide-react';
 import { MatchHistoryItem } from '@/components/profile/history/MatchHistoryItem';
 import type { MatchHistoryEntryDto } from '@/types/profile';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/apiClient';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import PlayerCard from '@/components/player/PlayerCard';
 import { PlayerHandle } from '@/components/profile/PlayerHandle';
+import { ScrimHistoryList } from '@/components/competitive/scrims/ScrimHistoryList';
 
 interface TeamMember {
     id: string;
@@ -112,6 +113,24 @@ function HistoryRow({ entry }: { entry: TournamentEntry }) {
 
     return <div className={rowClass}>{inner}</div>;
 }
+
+// ── ScrimHistorySection ───────────────────────────────────────────────────────
+// Renders only when the team's scrim history is public.
+// silentOnError hides the section on 403 (private) without showing an error.
+
+function ScrimHistorySection({ teamId }: { teamId: string }) {
+    return (
+        <section>
+            <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5" />
+                Scrim History
+            </h2>
+            <ScrimHistoryList teamId={teamId} silentOnError />
+        </section>
+    );
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function Skeleton() {
     return (
@@ -354,6 +373,9 @@ export default function TeamProfilePage() {
                                 );
                             })()}
                         </section>
+
+                        {/* Scrim History — only shown when team has made it public */}
+                        <ScrimHistorySection teamId={team.id} />
 
                         {/* Member since */}
                         <div className="flex items-center gap-2 text-xs text-zinc-700 pt-2">

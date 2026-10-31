@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { PageIntro, InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   useScrimListings,
@@ -17,6 +18,7 @@ import { CompetitivePageShell } from '@/components/competitive/CompetitivePageSh
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
 import { WorkspaceListingCard } from '@/components/competitive/scrims/WorkspaceListingCard';
 import { WorkspaceSessionCard } from '@/components/competitive/scrims/WorkspaceSessionCard';
+import { ScrimHistoryList } from '@/components/competitive/scrims/ScrimHistoryList';
 import type { ScrimListing, ScrimOffer, ScrimSession } from '@/types/competitive';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -116,7 +118,7 @@ function OffersForListing({ listing }: { listing: ScrimListing }) {
     return <div className="h-8 bg-white/[0.03] animate-pulse" />;
   }
   if (offers.length === 0) {
-    return <p className="text-[13px] text-white/35">No offers received yet.</p>;
+    return <p className="text-[13px] text-white/35">No offers received yet</p>;
   }
   return (
     <div className="space-y-1.5">
@@ -261,18 +263,18 @@ export default function ScrimWorkspacePage() {
         <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6 gap-6">
           {/* Team selector */}
           {teams.length > 1 ? (
-            <select
-              value={resolvedTeamId}
-              onChange={(e) => setSelectedTeamId(e.target.value)}
-              aria-label="Select team"
-              className="h-9 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30"
-            >
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
-                </option>
-              ))}
-            </select>
+            <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
+              <SelectTrigger aria-label="Select team" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <p className="text-[13px] text-white/70">{activeTeam?.name ?? '—'}</p>
           )}
@@ -336,18 +338,18 @@ export default function ScrimWorkspacePage() {
           {/* Mobile team selector */}
           {teams.length > 1 && (
             <div className="lg:hidden px-0 mb-4">
-              <select
-                value={resolvedTeamId}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
-                aria-label="Select team"
-                className="h-9 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30"
-              >
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
-                  </option>
-                ))}
-              </select>
+              <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger aria-label="Select team" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -393,6 +395,9 @@ export default function ScrimWorkspacePage() {
                   <span className="ml-1 font-mono text-[10px] inline-flex items-center px-1.5 text-white/30">
                     {upcomingSessions.length}
                   </span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className={TAB_CLASS}>
+                  History
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -472,6 +477,15 @@ export default function ScrimWorkspacePage() {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* History tab */}
+            <TabsContent value="history" className="mt-4 focus-visible:outline-none">
+              {resolvedTeamId ? (
+                <ScrimHistoryList teamId={resolvedTeamId} />
+              ) : (
+                <p className="text-[14px] text-white/40 py-6">Select a team to view history.</p>
+              )}
             </TabsContent>
 
             {/* Sessions tab */}

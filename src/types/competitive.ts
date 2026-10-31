@@ -1031,6 +1031,59 @@ export interface CompetitiveRecord {
   }>;
 }
 
+// ── Scrim history ─────────────────────────────────────────────────────────────
+
+export type ScrimHistoryResult = 'win' | 'loss' | 'draw';
+
+/** One row in GET /api/scrims/teams/{teamId}/history */
+export interface ScrimHistoryEntry {
+  sessionId: string;
+  opponentTeamId: string;
+  opponentTeamName: string | null;
+  opponentTeamLogo: string | null;
+  scheduledAt: string | null;
+  gameSlug: string | null;
+  myScore: number | null;
+  opponentScore: number | null;
+  result: ScrimHistoryResult;
+  mapName: string | null;
+}
+
+export interface ScrimHistoryPage {
+  items: ScrimHistoryEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Server-side privacy status for the team's scrim history. */
+  isPublic: boolean;
+}
+
+export interface ScrimHistoryPrivacy {
+  isPublic: boolean;
+}
+
+/** Response from POST /api/scrims/sessions/{id}/reports/parse-screenshot */
+export interface ScrimScreenshotParseResult {
+  team1Score: number | null;
+  team2Score: number | null;
+  confidence: number | null;
+  message: string | null;
+}
+
+/** One candidate from GET /api/scrims/sessions/{id}/recent-matches */
+export interface ScrimRecentMatch {
+  id: string;
+  map: string;
+  mapId?: string | null;
+  startTime: number;
+  team1Score: number;
+  team2Score: number;
+  result: 'win' | 'loss' | 'draw';
+  durationMs?: number | null;
+  agent?: string | null;
+  kda?: string | null;
+}
+
 // ── Scouting ──────────────────────────────────────────────────────────────────
 
 export interface ScoutingShortlist {
