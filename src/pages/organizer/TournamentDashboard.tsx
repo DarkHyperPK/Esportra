@@ -112,6 +112,7 @@ const TournamentDashboard = () => {
     admin.loading,
     inOrganizerSession,
     hasTournamentStaffAccess,
+    isSuperAdmin,
     slug,
     navigate,
     toast,
