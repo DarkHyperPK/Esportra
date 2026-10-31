@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Crosshair, SlidersHorizontal, Users, X } from 'lucide-react';
+import { Crosshair, SlidersHorizontal, X } from 'lucide-react';
 import { PageIntro, EYEBROW_CLASS } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,11 +17,12 @@ import { useDiscoverScrimsFiltered } from '@/hooks/competitive/useScrimDiscovery
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
-import { StatusPill } from '@/components/competitive/GlowCard';
 import { ScrimOfferForm } from '@/components/competitive/scrims/ScrimOfferForm';
 import { ScrimSlotCalendar } from '@/components/competitive/scrims/ScrimSlotCalendar';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { formatPreferredDays } from '@/services/scrimUtils';
+import { resolveLfgAvatar } from '@/lib/lfgAvatar';
+import '@/components/competitive/lfg-glass.css';
 import {
   gameAbbrev,
   formatTimeWindow,
@@ -30,31 +31,18 @@ import {
 } from '@/services/scrimDiscoveryUtils';
 import type { ScrimMemberPreview } from '@/types/competitive';
 
-// ─── Status maps ──────────────────────────────────────────────────────────────
-
-const SCRIM_STATUS_LABELS: Record<string, string> = {
-  open: 'Open',
-  paused: 'Paused',
-  closed: 'Closed',
-};
-
-const SCRIM_STATUS_TONE: Record<string, 'accent' | 'neutral'> = {
-  open: 'accent',
-  paused: 'neutral',
-  closed: 'neutral',
-};
-
-// ─── Member avatar ───────────────────────────────────────────────────────────
+// ─── Member avatar (reuses LFG avatar resolution) ───────────────────────────
 
 function MemberAvatar({ member }: { member: ScrimMemberPreview }) {
+  const src = resolveLfgAvatar(null, member.avatar_seed, null);
   const initials = (member.username ?? '?').slice(0, 2).toUpperCase();
   return (
-    <div className="flex flex-col items-center gap-1 min-w-0" title={member.username}>
-      <span className="h-8 w-8 flex items-center justify-center bg-white/[0.08] font-mono text-[10px] text-white/55 shrink-0">
-        {initials}
+    <span className="lfg-roster-preview-member" title={member.username ?? 'Player'}>
+      <span className="lfg-roster-avatar">
+        {src ? <img src={src} alt="" /> : initials}
       </span>
-      <span className="text-[10px] text-white/40 truncate max-w-[48px]">{member.username}</span>
-    </div>
+      <span>{member.username ?? 'Player'}</span>
+    </span>
   );
 }
 
@@ -62,22 +50,22 @@ function MemberAvatar({ member }: { member: ScrimMemberPreview }) {
 
 function SkeletonCard() {
   return (
-    <div className="border border-white/[0.06] bg-white/[0.02] p-4 space-y-3 opacity-50 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 bg-white/[0.06]" />
-        <div className="space-y-1.5 flex-1">
-          <div className="h-4 w-28 bg-white/[0.06]" />
-          <div className="h-3 w-16 bg-white/[0.04]" />
+    <div className="lfg-card lfg-panel overflow-hidden opacity-50 animate-pulse">
+      <div className="lfg-compact-hero no-art" />
+      <div className="lfg-compact-content space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-white/[0.06]" />
+          <div className="space-y-1.5 flex-1">
+            <div className="h-4 w-28 bg-white/[0.06] rounded" />
+            <div className="h-3 w-16 bg-white/[0.04] rounded" />
+          </div>
         </div>
+        <div className="h-5 w-32 bg-white/[0.04] rounded" />
+        <div className="flex gap-2">
+          {[1, 2, 3].map((i) => <div key={i} className="h-7 w-7 rounded-full bg-white/[0.04]" />)}
+        </div>
+        <div className="h-10 w-full bg-white/[0.04] rounded-xl" />
       </div>
-      <div className="h-5 w-32 bg-white/[0.04]" />
-      <div className="flex gap-2">
-        <div className="h-8 w-8 bg-white/[0.04]" />
-        <div className="h-8 w-8 bg-white/[0.04]" />
-        <div className="h-8 w-8 bg-white/[0.04]" />
-      </div>
-      <div className="h-3 w-full bg-white/[0.04]" />
-      <div className="h-8 w-full bg-white/[0.04]" />
     </div>
   );
 }
@@ -128,162 +116,129 @@ function ScrimCard({
   }, [listing.membersPreview]);
 
   return (
-    <article
-      className={`bg-white/[0.03] border border-white/[0.06] hover:border-white/20 hover:bg-white/[0.05] transition-colors duration-150 p-4 flex flex-col${isOpen ? ' border-t-2 border-t-[#FF2D55]' : ''}`}
-    >
-      {/* Identity — logo + name + status */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          {listing.teamLogoUrl ? (
-            <img
-              src={listing.teamLogoUrl}
-              alt=""
-              className="h-12 w-12 object-cover shrink-0"
-              aria-hidden="true"
-            />
-          ) : (
-            <span
-              className="h-12 w-12 flex items-center justify-center bg-white/[0.08] font-mono text-[13px] text-white/55 shrink-0"
-              aria-hidden="true"
-            >
-              {initials}
+    <article className={`lfg-card lfg-panel lfg-compact-card lfg-team-card${isOpen ? ' selected' : ''}`}>
+      {/* Hero area — team logo as banner or gradient fallback */}
+      <div className="lfg-compact-hero no-art">
+        <div className="lfg-compact-top">
+          <div className="lfg-identity">
+            <span className="lfg-avatar team">
+              {listing.teamLogoUrl ? (
+                <img src={listing.teamLogoUrl} alt="" />
+              ) : initials}
             </span>
-          )}
-          <div className="min-w-0">
-            <p className="font-heading text-[15px] font-bold text-white truncate">
-              {listing.teamName ?? 'Unknown Team'}
-            </p>
-            <p className="text-[11px] text-white/40">
-              {listing.teamTag ? `[${listing.teamTag}]` : ''}
-              {listing.teamTag && listing.regionKey ? ' · ' : ''}
-              {listing.regionKey?.toUpperCase() ?? ''}
-            </p>
+            <div className="lfg-compact-name">
+              <h2 className="lfg-name">{listing.teamName ?? 'Unknown Team'}</h2>
+              <p className="lfg-sub">
+                {listing.teamTag ?? ''}
+                {listing.teamTag && listing.regionKey ? ' · ' : ''}
+                {listing.regionKey?.toUpperCase() ?? ''}
+              </p>
+            </div>
           </div>
         </div>
-        <StatusPill
-          label={SCRIM_STATUS_LABELS[listing.status] ?? listing.status}
-          tone={SCRIM_STATUS_TONE[listing.status] ?? 'neutral'}
-        />
       </div>
 
-      {/* Rank range — visual anchor */}
-      {rankRange && (
-        <div className="flex items-center gap-2 mb-3">
-          {listing.minRankIconUrl && (
-            <img src={listing.minRankIconUrl} alt="" className="h-6 w-6 object-contain" />
+      {/* Card content */}
+      <div className="lfg-compact-content">
+        {/* Rank + game/mode summary */}
+        <div className="lfg-compact-summary lfg-team-summary">
+          {rankRange ? (
+            <div className="flex items-center gap-1.5">
+              {listing.minRankIconUrl && (
+                <img src={listing.minRankIconUrl} alt="" className="h-5 w-5 object-contain" />
+              )}
+              <strong>{rankRange}</strong>
+              {listing.maxRankIconUrl && listing.maxRankIconUrl !== listing.minRankIconUrl && (
+                <img src={listing.maxRankIconUrl} alt="" className="h-5 w-5 object-contain" />
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px] text-white/30">Any rank</span>
           )}
-          <p className="text-[15px] font-semibold text-white [font-family:var(--font-heading)]">
-            {rankRange}
-          </p>
-          {listing.maxRankIconUrl && listing.maxRankIconUrl !== listing.minRankIconUrl && (
-            <img src={listing.maxRankIconUrl} alt="" className="h-6 w-6 object-contain" />
+          {listing.modeKey && (
+            <span className="lfg-compact-role">{listing.modeKey}</span>
           )}
-        </div>
-      )}
-
-      {/* Game + mode */}
-      {(listing.gameSlug || listing.modeKey) && (
-        <div className="flex items-center gap-2 mb-2">
           {listing.gameSlug && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">
+            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' as const, color: '#a1a1aa' }}>
               {gameAbbrev(listing.gameSlug)}
             </span>
           )}
-          {listing.modeKey && (
-            <span className="text-[12px] text-white/40">{listing.modeKey}</span>
-          )}
         </div>
-      )}
 
-      {/* Team members preview */}
-      {members.length > 0 && (
-        <div className="flex items-center gap-3 mb-3 py-2 border-y border-white/[0.06]">
-          <div className="flex gap-2 flex-wrap">
-            {members.slice(0, 5).map((m, i) => (
-              <MemberAvatar key={m.username ?? i} member={m} />
-            ))}
-          </div>
-          {(listing.activeMemberCount ?? 0) > 5 && (
-            <span className="text-[10px] text-white/30">
-              +{(listing.activeMemberCount ?? 0) - 5}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Schedule */}
-      {hasSchedule && (
-        <div className="flex flex-wrap items-center gap-1.5 mb-3">
-          {dayAbbrevs.map((day) => (
-            <span
-              key={day}
-              className="inline-flex px-1.5 py-0.5 bg-white/[0.07] font-mono text-[10px] text-white/80 font-semibold"
-            >
-              {day.toUpperCase()}
-            </span>
-          ))}
-          {listing.preferredTimeStart && listing.preferredTimeEnd && (
-            <span className="text-[12px] text-white/70 font-medium">
-              {dayAbbrevs.length > 0 ? '· ' : ''}
-              {formatTimeWindow(
-                listing.preferredTimeStart,
-                listing.preferredTimeEnd,
-                listing.timezone ?? null,
+        {/* Roster preview */}
+        {members.length > 0 && (
+          <div className="lfg-roster-preview" aria-label="Team roster">
+            <span className="lfg-roster-label">Roster</span>
+            <div>
+              {members.slice(0, 5).map((m, i) => (
+                <MemberAvatar key={m.username ?? i} member={m} />
+              ))}
+              {(listing.activeMemberCount ?? 0) > 5 && (
+                <span className="lfg-sub">+{(listing.activeMemberCount ?? 0) - 5}</span>
               )}
-            </span>
+            </div>
+          </div>
+        )}
+
+        {/* Schedule */}
+        {hasSchedule && (
+          <div className="flex flex-wrap items-center gap-1.5" style={{ margin: '8px 0' }}>
+            {dayAbbrevs.map((day) => (
+              <span
+                key={day}
+                style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.07)', fontFamily: 'ui-monospace, monospace', fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600, borderRadius: 7 }}
+              >
+                {day.toUpperCase()}
+              </span>
+            ))}
+            {listing.preferredTimeStart && listing.preferredTimeEnd && (
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                {dayAbbrevs.length > 0 ? '· ' : ''}
+                {formatTimeWindow(listing.preferredTimeStart, listing.preferredTimeEnd, listing.timezone ?? null)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Notes */}
+        {listing.notes && (
+          <p className="lfg-description lfg-compact-description">{listing.notes}</p>
+        )}
+
+        {/* Bottom row — meta + action */}
+        <div className="lfg-compact-bottom">
+          <span>
+            {[
+              (listing.activeMemberCount ?? 0) > 0 ? `${listing.activeMemberCount} players` : null,
+              (listing.scrimsCompleted ?? 0) > 0 ? `${listing.scrimsCompleted} scrims` : null,
+              age,
+            ].filter(Boolean).join(' · ') || listing.regionKey?.toUpperCase() || ''}
+          </span>
+
+          {isOwner ? (
+            <Link to="/competitive/scrims/workspace" className="lfg-compact-expand">
+              Manage
+            </Link>
+          ) : isOpen && hasTeam ? (
+            <motion.button
+              type="button"
+              whileTap={!reduced ? { scale: 0.97 } : undefined}
+              transition={{ duration: 0.12 }}
+              onClick={isOfferOpen ? undefined : onRequestScrim}
+              aria-pressed={isOfferOpen}
+              className="lfg-button lfg-button-primary"
+              style={{ borderRadius: 10, fontSize: 12, minHeight: 36, padding: '6px 14px' }}
+            >
+              Request Scrim
+            </motion.button>
+          ) : isOpen && !hasTeam ? (
+            <Link to="/teams" className="lfg-compact-expand">
+              Join a team
+            </Link>
+          ) : (
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Closed</span>
           )}
         </div>
-      )}
-
-      {/* Notes */}
-      {listing.notes && (
-        <p className="text-[12px] text-white/40 line-clamp-2 mb-3">{listing.notes}</p>
-      )}
-
-      {/* Meta row */}
-      <div className="flex items-center gap-3 text-[10px] text-white/30 mb-3 mt-auto">
-        {(listing.activeMemberCount ?? 0) > 0 && (
-          <span className="inline-flex items-center gap-1">
-            <Users className="h-3 w-3" aria-hidden="true" />
-            {listing.activeMemberCount}
-          </span>
-        )}
-        {(listing.scrimsCompleted ?? 0) > 0 && (
-          <span>{listing.scrimsCompleted} scrims</span>
-        )}
-        {age && <span>{age}</span>}
-      </div>
-
-      {/* Action */}
-      <div className="mt-auto">
-        {isOwner ? (
-          <Link
-            to="/competitive/scrims/workspace"
-            className="block w-full text-center px-3 py-2 text-[13px] border border-white/[0.12] text-white/55 hover:text-white hover:border-white/25 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
-          >
-            Manage
-          </Link>
-        ) : isOpen && hasTeam ? (
-          <motion.button
-            type="button"
-            whileTap={!reduced ? { scale: 0.97 } : undefined}
-            transition={{ duration: 0.12 }}
-            onClick={isOfferOpen ? undefined : onRequestScrim}
-            aria-pressed={isOfferOpen}
-            className="w-full px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
-          >
-            Request Scrim
-          </motion.button>
-        ) : isOpen && !hasTeam ? (
-          <Link
-            to="/teams"
-            className="block w-full text-center px-3 py-2 text-[12px] border border-white/[0.08] text-white/40 hover:text-white/70 transition-colors duration-150"
-          >
-            Join a team to request
-          </Link>
-        ) : (
-          <span className="block text-center text-[12px] text-white/30 py-2">Closed</span>
-        )}
       </div>
     </article>
   );
@@ -509,7 +464,7 @@ export default function ScrimDiscoveryPage() {
 
         {/* States */}
         {discoverQuery.isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="lfg-grid">
             {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : discoverQuery.isError ? (
@@ -545,7 +500,7 @@ export default function ScrimDiscoveryPage() {
             initial={reduced ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+            className="lfg-grid"
             role="list"
             aria-label="Scrim listings"
           >
