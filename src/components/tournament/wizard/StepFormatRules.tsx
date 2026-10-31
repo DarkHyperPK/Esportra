@@ -165,7 +165,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 ? `One lobby fits ${unitsPerLobby} ${brUnits.many}${(data.teamSize ?? 1) > 1 ? ` of ${data.teamSize} players` : ''}. Lobby sizes can be tuned per stage later.`
                                 : undefined}
                         >
-                            <Select value={String(data.maxTeams)} onValueChange={(v) => updateData({ maxTeams: parseInt(v, 10) })} disabled={isEditMode}>
+                            <Select value={String(data.maxTeams)} onValueChange={(v) => updateData({ maxTeams: parseInt(v, 10) })} disabled={isEditMode && data.status !== 'draft'}>
                                 <SelectTrigger id="br-max" className={cn(CONTROL_CLASS, errors.maxTeams && CONTROL_ERROR_CLASS)}>
                                     <SelectValue placeholder={`Choose a limit`} />
                                 </SelectTrigger>
@@ -198,7 +198,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     <FormSection title="Size">
                         <div className="grid gap-5 sm:grid-cols-2">
                             <Field label="Maximum teams" htmlFor="max-teams" hint="If fewer sign up, the bracket shrinks to fit.">
-                                <Select value={String(data.maxTeams)} onValueChange={handleMaxTeams} disabled={isEditMode}>
+                                <Select value={String(data.maxTeams)} onValueChange={handleMaxTeams} disabled={isEditMode && data.status !== 'draft'}>
                                     <SelectTrigger id="max-teams" className={CONTROL_CLASS}><SelectValue placeholder="Choose a limit" /></SelectTrigger>
                                     <SelectContent>
                                         {BRACKET_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>)}
