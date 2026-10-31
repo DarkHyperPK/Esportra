@@ -44,7 +44,7 @@ const TournamentDetails = () => {
   const fetchTournament = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get<any>(`/api/tournaments/${id}`);
+      const response = await apiClient.get<any>(`/api/admin/tournaments/${id}`);
       const data = response?.tournament || response;
       setTournament(data);
       setParticipants(response?.participants || data?.participants || []);

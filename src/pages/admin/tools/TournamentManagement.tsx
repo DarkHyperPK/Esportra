@@ -575,12 +575,6 @@ const TournamentManagementTool = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild className="-none text-zinc-300 focus:bg-white/[0.06] focus:text-white">
                                 <Link to={`/admin/tournaments/${tournament.id}`}>
-                                  <Trophy className="mr-2 h-4 w-4" />
-                                  Admin Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild className="-none text-zinc-300 focus:bg-white/[0.06] focus:text-white">
-                                <Link to={`/organizer/tournament/${tournament.slug}`}>
                                   <Settings className="mr-2 h-4 w-4" />
                                   Manage Tournament
                                 </Link>
