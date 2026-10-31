@@ -95,7 +95,7 @@ const TournamentDashboard = () => {
   // Redirect player sessions unless they have staff access
   useEffect(() => {
     if (dashboardLoading || accessLoading || roleLoading || admin.loading) return;
-    if (inOrganizerSession || hasTournamentStaffAccess) return;
+    if (inOrganizerSession || hasTournamentStaffAccess || isSuperAdmin) return;
     if (slug) {
       toast({
         title: 'Organizer mode required',
