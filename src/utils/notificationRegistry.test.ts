@@ -46,7 +46,7 @@ describe('notificationRegistry', () => {
 
   it('keeps accent for act-now types only', () => {
     const accent = Object.entries(NOTIFICATION_KINDS).filter(([, k]) => k.tone === 'accent').map(([t]) => t).sort();
-    expect(accent).toEqual(['lfg_interest_received', 'match_ready', 'staff_invite', 'team_invite', 'tournament_invite', 'veto_your_turn']);
+    expect(accent).toEqual(['lfg_interest_received', 'match_ready', 'scrim_checkin_updated', 'scrim_offer_received', 'scrim_session_started', 'staff_invite', 'team_invite', 'tournament_invite', 'veto_your_turn']);
   });
 
   it('detects synthetic invite rows', () => {
