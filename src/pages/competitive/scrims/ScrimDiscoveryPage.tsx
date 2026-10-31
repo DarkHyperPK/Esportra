@@ -286,26 +286,47 @@ function ScrimCard({
 
 const NONE = '_';
 
+interface FilterOption {
+  value: string;
+  label: string;
+  iconUrl?: string | null;
+}
+
 interface FilterSelectGroupProps {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: FilterOption[];
   placeholder: string;
 }
 
 function FilterSelectGroup({ label, value, onChange, options, placeholder }: FilterSelectGroupProps) {
+  const selected = options.find((o) => o.value === value);
   return (
     <div className="flex flex-col gap-1 min-w-[130px]">
       <p className={EYEBROW_CLASS}>{label}</p>
       <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? '' : v)}>
         <SelectTrigger className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
-          <SelectValue placeholder={placeholder} />
+          {selected?.iconUrl ? (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <img src={selected.iconUrl} alt="" className="h-4 w-4 object-contain shrink-0" />
+              <span className="truncate">{selected.label}</span>
+            </div>
+          ) : (
+            <SelectValue placeholder={placeholder} />
+          )}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NONE}>{placeholder}</SelectItem>
           {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            <SelectItem key={o.value} value={o.value}>
+              {o.iconUrl ? (
+                <div className="flex items-center gap-2">
+                  <img src={o.iconUrl} alt="" className="h-4 w-4 object-contain shrink-0" />
+                  <span>{o.label}</span>
+                </div>
+              ) : o.label}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -412,6 +433,7 @@ export default function ScrimDiscoveryPage() {
   const rankOptions = rankTiers.map((t) => ({
     value: t.tierKey,
     label: t.displayName,
+    iconUrl: t.iconUrl,
   }));
   const gameOptions = catalog.games.map((g) => ({
     value: g.slug,
@@ -428,12 +450,12 @@ export default function ScrimDiscoveryPage() {
     </>
   );
 
-  interface ChipDef { key: string; label: string; onDismiss: () => void }
+  interface ChipDef { key: string; label: string; iconUrl?: string | null; onDismiss: () => void }
   const activeChips: ChipDef[] = [
     ...(modeFilter ? [{ key: 'mode', label: modeOptions.find((o) => o.value === modeFilter)?.label ?? modeFilter, onDismiss: () => setModeFilter('') }] : []),
     ...(regionFilter ? [{ key: 'region', label: regionOptions.find((o) => o.value === regionFilter)?.label ?? regionFilter, onDismiss: () => setRegionFilter('') }] : []),
-    ...(minRankKey ? [{ key: 'min-rank', label: `Min: ${rankTierMap.get(minRankKey) ?? minRankKey}`, onDismiss: () => setMinRankKey('') }] : []),
-    ...(maxRankKey ? [{ key: 'max-rank', label: `Max: ${rankTierMap.get(maxRankKey) ?? maxRankKey}`, onDismiss: () => setMaxRankKey('') }] : []),
+    ...(minRankKey ? [{ key: 'min-rank', label: `Min: ${rankTierMap.get(minRankKey) ?? minRankKey}`, iconUrl: rankTiers.find((t) => t.tierKey === minRankKey)?.iconUrl, onDismiss: () => setMinRankKey('') }] : []),
+    ...(maxRankKey ? [{ key: 'max-rank', label: `Max: ${rankTierMap.get(maxRankKey) ?? maxRankKey}`, iconUrl: rankTiers.find((t) => t.tierKey === maxRankKey)?.iconUrl, onDismiss: () => setMaxRankKey('') }] : []),
   ];
 
   return (
@@ -491,6 +513,7 @@ export default function ScrimDiscoveryPage() {
           <div className="flex flex-wrap gap-2 mb-4">
             {activeChips.map((chip) => (
               <span key={chip.key} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white/[0.07] text-[12px] text-white/60">
+                {chip.iconUrl && <img src={chip.iconUrl} alt="" className="h-3.5 w-3.5 object-contain shrink-0" />}
                 {chip.label}
                 <button type="button" onClick={chip.onDismiss} aria-label={`Remove ${chip.label} filter`} className="hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none">
                   <X className="h-3 w-3" aria-hidden="true" />

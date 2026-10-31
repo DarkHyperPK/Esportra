@@ -35,11 +35,11 @@ function MemberRow({ member }: { member: ScrimTeamMemberDetail }) {
             <span style={{ fontSize: 9, color: '#a1a1aa', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Manager</span>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-1.5 mt-0.5">
           {member.rankIconUrl && (
-            <img src={member.rankIconUrl} alt="" className="h-4 w-4 object-contain" />
+            <img src={member.rankIconUrl} alt="" className="h-5 w-5 object-contain" />
           )}
-          <span className="text-[11px] text-white/50">
+          <span className="text-[12px] font-medium text-white/70">
             {member.rankDisplayName ?? member.competitiveTierName ?? 'Unranked'}
           </span>
         </div>
