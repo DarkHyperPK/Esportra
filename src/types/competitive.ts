@@ -842,6 +842,7 @@ export interface ScrimListing {
   maxRankIconUrl?: string | null;
   membersPreview?: ScrimMemberPreview[] | null;
   scrimsCompleted?: number | null;
+  captainCardUrl?: string | null;
 }
 
 export interface ScrimMemberPreview {

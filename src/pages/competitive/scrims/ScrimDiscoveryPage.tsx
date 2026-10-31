@@ -119,10 +119,26 @@ function ScrimCard({
   return (
     <article className={`lfg-card lfg-panel lfg-compact-card lfg-team-card${isOpen ? ' selected' : ''}`}>
       {/* Hero area with banner */}
-      <div className={`lfg-compact-hero ${listing.teamLogoUrl ? 'has-art' : 'no-art'}`}>
-        {listing.teamLogoUrl && (
-          <img className="lfg-compact-banner" src={listing.teamLogoUrl} alt="" loading="lazy" decoding="async" style={{ objectFit: 'cover', filter: 'blur(8px) brightness(0.6)', transform: 'scale(1.15)' }} />
-        )}
+      {(() => {
+        const bannerUrl = listing.captainCardUrl ?? listing.teamLogoUrl ?? null;
+        const isCaptainCard = !!listing.captainCardUrl;
+        return (
+          <div className={`lfg-compact-hero ${bannerUrl ? 'has-art' : 'no-art'}`}>
+            {bannerUrl && (
+              <img
+                className="lfg-compact-banner"
+                src={bannerUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                style={{
+                  objectFit: 'cover',
+                  filter: isCaptainCard ? 'brightness(0.7) saturate(1.2)' : 'blur(8px) brightness(0.6)',
+                  transform: isCaptainCard ? 'scale(1.0)' : 'scale(1.15)',
+                  opacity: isCaptainCard ? 0.3 : 1,
+                }}
+              />
+            )}
         <div className="lfg-compact-top">
           <div className="lfg-identity">
             <span className="lfg-avatar team">
@@ -140,7 +156,9 @@ function ScrimCard({
             </div>
           </div>
         </div>
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Card content */}
       <div className="lfg-compact-content">
@@ -206,7 +224,7 @@ function ScrimCard({
 
         {/* Notes */}
         {listing.notes && (
-          <p className="lfg-description lfg-compact-description">{listing.notes}</p>
+          <p className="lfg-description lfg-compact-description line-clamp-2 overflow-hidden break-words">{listing.notes}</p>
         )}
 
         {/* Bottom row — meta + details + action */}
