@@ -67,7 +67,7 @@ function ReceivedOfferRow({ offer }: { offer: ScrimOffer }) {
   const isPending = acceptMutation.isPending || declineMutation.isPending;
 
   return (
-    <div className="border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[14px] font-semibold text-white truncate">
@@ -134,7 +134,7 @@ function OutgoingOfferRow({ offer }: { offer: ScrimOffer }) {
   const withdrawMutation = useWithdrawOffer(offer.id);
 
   return (
-    <div className="border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[14px] font-semibold text-white truncate">
@@ -302,13 +302,13 @@ export default function ScrimWorkspacePage() {
           </div>
 
           {/* Stat grid */}
-          <div className="grid grid-cols-3 gap-px bg-white/[0.06] border border-white/[0.06] mb-5">
+          <div className="grid grid-cols-3 gap-2 mb-5">
             {[
               { value: listings.filter((l) => l.status === 'open').length, label: 'Listings' },
               { value: pendingOfferCount, label: 'Offers', accent: pendingOfferCount > 0 },
               { value: upcomingSessions.length, label: 'Sessions' },
             ].map(({ value, label, accent }) => (
-              <div key={label} className="bg-[#0f0f14] flex flex-col items-center justify-center py-3 gap-0.5">
+              <div key={label} className="rounded-xl bg-white/[0.04] border border-white/[0.06] flex flex-col items-center justify-center py-3 gap-0.5">
                 <span className={`text-[22px] font-bold tabular-nums leading-none [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white'}`}>
                   {value}
                 </span>
@@ -320,7 +320,7 @@ export default function ScrimWorkspacePage() {
           {/* CTA */}
           <Button
             onClick={() => setShowNewListing((v) => !v)}
-            className={`w-full rounded-none text-[13px] font-semibold tracking-wide mb-5 ${
+            className={`w-full rounded-xl text-[13px] font-semibold tracking-wide mb-5 ${
               showNewListing
                 ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
                 : 'bg-rose-500 hover:bg-rose-600 text-white'

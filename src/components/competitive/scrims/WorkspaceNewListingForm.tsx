@@ -7,6 +7,9 @@ import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { useCatalogRankTiers } from '@/hooks/competitive/useCatalog';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { GameCatalogContext } from '@/contexts/game-catalog-context';
+import type { CatalogRankTier } from '@/types/competitive';
+
+const NONE = '__none__';
 
 const DAYS = [
   { label: 'Mon', value: 1 },
@@ -19,12 +22,59 @@ const DAYS = [
 ] as const;
 
 const INPUT_CLASS =
-  'h-9 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white ' +
-  'placeholder:text-zinc-600 focus:outline-none focus:border-white/30';
+  'h-10 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white ' +
+  'placeholder:text-zinc-600 focus:outline-none focus:border-white/30 rounded-xl';
 
-const TOGGLE_BASE = 'px-4 py-2 text-[13px] border transition-colors';
-const TOGGLE_ACTIVE = 'bg-white/[0.10] text-white border-white/[0.20]';
-const TOGGLE_IDLE = 'text-white/55 border-white/[0.08] hover:text-white hover:border-white/[0.15]';
+// ── Rank tier select ──────────────────────────────────────────────────────────
+
+function RankTierSelect({
+  id,
+  label,
+  value,
+  onChange,
+  tiers,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  tiers: CatalogRankTier[];
+}) {
+  const selected = tiers.find((t) => t.tierKey === value) ?? null;
+  return (
+    <Field label={label} htmlFor={id} optional>
+      <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? '' : v)}>
+        <SelectTrigger id={id} className="h-10 text-[13px] rounded-xl border-white/10 bg-black/30">
+          {selected ? (
+            <div className="flex items-center gap-2 min-w-0">
+              {selected.iconUrl && (
+                <img src={selected.iconUrl} alt="" className="h-4 w-4 object-contain shrink-0" />
+              )}
+              <span className="truncate">{selected.displayName}</span>
+            </div>
+          ) : (
+            <SelectValue placeholder="Any" />
+          )}
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NONE}>Any</SelectItem>
+          {tiers.map((t) => (
+            <SelectItem key={t.tierKey} value={t.tierKey}>
+              <div className="flex items-center gap-2">
+                {t.iconUrl && (
+                  <img src={t.iconUrl} alt="" className="h-4 w-4 object-contain shrink-0" />
+                )}
+                <span>{t.displayName}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+}
+
+// ── Form ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   teamId: string;
@@ -96,18 +146,18 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
   const arriveProps = prefersReducedMotion
     ? {}
-    : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0, transition: { duration: 0.18 } } };
+    : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0, transition: { duration: 0.2 } } };
 
   return (
-    <motion.div {...arriveProps} className="border border-white/10 bg-white/[0.03] p-4 space-y-4">
-      <p className="text-[11px] font-medium text-white/35">
-        Post a listing
+    <motion.div {...arriveProps} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-5">
+      <p className="text-[13px] font-semibold text-white/60 [font-family:var(--font-heading)]">
+        New listing
       </p>
 
-      {/* Game selector */}
+      {/* Game */}
       <Field label="Game" htmlFor="nl-game">
         <Select value={localGameSlug || '_'} onValueChange={(v) => { setLocalGameSlug(v === '_' ? '' : v); setModeKey(''); }}>
-          <SelectTrigger id="nl-game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
+          <SelectTrigger id="nl-game" className="h-10 text-[13px] rounded-xl border-white/10 bg-black/30">
             <SelectValue placeholder="Select game" />
           </SelectTrigger>
           <SelectContent>
@@ -119,16 +169,20 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </Select>
       </Field>
 
-      {/* Schedule type toggle */}
-      <div className="space-y-1.5">
-        <p className="text-[13px] font-medium text-zinc-200">Schedule type</p>
+      {/* Schedule type */}
+      <div className="space-y-2">
+        <p className="text-[12px] font-medium text-white/40 uppercase tracking-wider font-mono">Schedule type</p>
         <div className="flex gap-2">
           {(['one_off', 'recurring'] as const).map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setScheduleType(type)}
-              className={`${TOGGLE_BASE} ${scheduleType === type ? TOGGLE_ACTIVE : TOGGLE_IDLE}`}
+              className={`px-4 py-2 text-[13px] rounded-xl border transition-colors ${
+                scheduleType === type
+                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  : 'text-white/45 border-white/[0.08] hover:text-white hover:border-white/20'
+              }`}
             >
               {type === 'one_off' ? 'One-off' : 'Recurring'}
             </button>
@@ -137,8 +191,8 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
       </div>
 
       {/* Preferred days */}
-      <div className="space-y-1.5">
-        <p className="text-[13px] font-medium text-zinc-200">Preferred days</p>
+      <div className="space-y-2">
+        <p className="text-[12px] font-medium text-white/40 uppercase tracking-wider font-mono">Preferred days</p>
         <div className="flex gap-1.5 flex-wrap">
           {DAYS.map(({ label, value }) => (
             <button
@@ -146,8 +200,10 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               type="button"
               onClick={() => toggleDay(value)}
               aria-pressed={selectedDays.includes(value)}
-              className={`px-3 py-1 text-[12px] font-mono border transition-colors ${
-                selectedDays.includes(value) ? TOGGLE_ACTIVE : TOGGLE_IDLE
+              className={`px-3 py-1.5 text-[12px] font-mono rounded-lg border transition-colors ${
+                selectedDays.includes(value)
+                  ? 'bg-white/[0.12] text-white border-white/[0.25]'
+                  : 'text-white/45 border-white/[0.08] hover:text-white hover:border-white/[0.18]'
               }`}
             >
               {label}
@@ -156,9 +212,9 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </div>
       </div>
 
-      {/* Available window */}
+      {/* Time window */}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Available window" htmlFor="nl-time-start">
+        <Field label="Available from" htmlFor="nl-time-start">
           <input
             id="nl-time-start"
             type="time"
@@ -167,7 +223,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
             className={`${INPUT_CLASS} [color-scheme:dark]`}
           />
         </Field>
-        <Field label="To" htmlFor="nl-time-end">
+        <Field label="Until" htmlFor="nl-time-end">
           <input
             id="nl-time-end"
             type="time"
@@ -181,19 +237,17 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
       {/* Mode */}
       <Field label="Mode" htmlFor="nl-mode" optional>
         {gameModes.length > 0 ? (
-          <select
-            id="nl-mode"
-            value={modeKey}
-            onChange={(e) => setModeKey(e.target.value)}
-            className={INPUT_CLASS}
-          >
-            <option value="">Any mode</option>
-            {gameModes.map((m) => (
-              <option key={m.key ?? m.value} value={m.key ?? m.value}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          <Select value={modeKey || NONE} onValueChange={(v) => setModeKey(v === NONE ? '' : v)}>
+            <SelectTrigger id="nl-mode" className="h-10 text-[13px] rounded-xl border-white/10 bg-black/30">
+              <SelectValue placeholder="Any mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Any mode</SelectItem>
+              {gameModes.map((m) => (
+                <SelectItem key={m.key ?? m.value} value={m.key ?? m.value}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           <input
             id="nl-mode"
@@ -216,35 +270,11 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         />
       </Field>
 
-      {/* Rank range */}
+      {/* Rank range — Radix Select with tier icons */}
       {rankTiers.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Min rank" htmlFor="nl-min-rank" optional>
-            <select
-              id="nl-min-rank"
-              value={minRankKey}
-              onChange={(e) => setMinRankKey(e.target.value)}
-              className={INPUT_CLASS}
-            >
-              <option value="">Any</option>
-              {rankTiers.map((t) => (
-                <option key={t.tierKey} value={t.tierKey}>{t.displayName}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Max rank" htmlFor="nl-max-rank" optional>
-            <select
-              id="nl-max-rank"
-              value={maxRankKey}
-              onChange={(e) => setMaxRankKey(e.target.value)}
-              className={INPUT_CLASS}
-            >
-              <option value="">Any</option>
-              {rankTiers.map((t) => (
-                <option key={t.tierKey} value={t.tierKey}>{t.displayName}</option>
-              ))}
-            </select>
-          </Field>
+          <RankTierSelect id="nl-min-rank" label="Min rank" value={minRankKey} onChange={setMinRankKey} tiers={rankTiers} />
+          <RankTierSelect id="nl-max-rank" label="Max rank" value={maxRankKey} onChange={setMaxRankKey} tiers={rankTiers} />
         </div>
       )}
 
@@ -259,7 +289,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               onChange={(e) => setScheduleUntil(e.target.value)}
               className={`${INPUT_CLASS} [color-scheme:dark]`}
             />
-            <p className="text-[11px] text-white/30 mt-1">
+            <p className="text-[11px] text-white/30 mt-1.5">
               Your listing stays open for new slots until this date.
             </p>
           </Field>
@@ -274,14 +304,14 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               placeholder="e.g. 90"
               className={INPUT_CLASS}
             />
-            <p className="text-[11px] text-white/30 mt-1">
-              How long each scrim session lasts. Slots are generated from your availability.
+            <p className="text-[11px] text-white/30 mt-1.5">
+              How long each scrim session lasts.
             </p>
           </Field>
         </>
       )}
 
-      {/* Message to teams */}
+      {/* Notes */}
       <Field label="Message to teams" htmlFor="nl-notes" optional>
         <textarea
           id="nl-notes"
@@ -289,7 +319,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
           onChange={(e) => setNotes(e.target.value.slice(0, 500))}
           placeholder="Preferred playstyle, requirements…"
           rows={2}
-          className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
         />
       </Field>
 
@@ -299,14 +329,14 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         <Button
           variant="ghost"
           onClick={onCancel}
-          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+          className="text-[13px] text-white/50 hover:text-white rounded-xl border border-white/[0.08] px-4"
         >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={createMutation.isPending || !localGameSlug}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-5 text-[13px]"
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-6 text-[13px] font-semibold"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}
         </Button>

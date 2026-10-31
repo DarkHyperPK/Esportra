@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,7 +49,7 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
   }
 
   return (
-    <div className="border border-white/[0.06] border-t-0 bg-[#0d0d12] p-4 space-y-3">
+    <div className="mx-px rounded-b-2xl border border-t-0 border-white/[0.08] bg-[#0a0a10] p-4 space-y-3">
       <p className="text-[11px] font-mono tracking-widest text-white/25 uppercase">Edit listing</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Mode" htmlFor={`elm-${listing.id}`} optional>
@@ -58,7 +58,7 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
             value={mode}
             onChange={(e) => setMode(e.target.value)}
             placeholder="e.g. competitive"
-            className="h-9 w-full border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+            className="h-9 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
           />
         </Field>
         <Field label="Region" htmlFor={`elr-${listing.id}`} optional>
@@ -67,7 +67,7 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
             value={region}
             onChange={(e) => setRegion(e.target.value)}
             placeholder="e.g. EU, NA"
-            className="h-9 w-full border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
+            className="h-9 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
           />
         </Field>
       </div>
@@ -77,7 +77,7 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
           value={notes}
           onChange={(e) => setNotes(e.target.value.slice(0, 500))}
           rows={2}
-          className="w-full border border-white/[0.08] bg-black/30 px-3 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+          className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
         />
       </Field>
       {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
@@ -85,14 +85,14 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
         <Button
           variant="ghost"
           onClick={onClose}
-          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+          className="text-[13px] text-white/50 hover:text-white rounded-lg border border-white/[0.08]"
         >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={updateMutation.isPending}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-4 text-[13px]"
+          className="bg-rose-500 hover:bg-rose-600 text-white rounded-lg px-4 text-[13px]"
         >
           {updateMutation.isPending ? 'Saving…' : 'Save'}
         </Button>
@@ -105,8 +105,7 @@ function EditListingForm({ listing, onClose }: { listing: ScrimListing; onClose:
 
 function RecurringSlotExpansion({ listing }: { listing: ScrimListing }) {
   const offersQuery = useListingOffers(listing.id);
-  const offers = offersQuery.data ?? [];
-  const accepted = offers.filter((o) => o.status === 'accepted');
+  const accepted = (offersQuery.data ?? []).filter((o) => o.status === 'accepted');
 
   const untilDate = listing.scheduleUntil
     ? new Date(listing.scheduleUntil).toLocaleDateString(undefined, {
@@ -166,50 +165,66 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
   const isPaused = listing.status === 'paused';
   const hasSchedule = days.length > 0 || !!timeWindow;
 
-  const accentColor = isOpen ? '#f43f5e' : isPaused ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)';
-  const statusLabel = listing.status.toUpperCase();
-  const statusTextClass = isOpen
-    ? 'text-rose-400'
-    : isPaused
-    ? 'text-amber-400/70'
-    : 'text-white/25';
-
   return (
-    <>
-      <article
-        className={`relative overflow-hidden border border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.04] transition-colors duration-150 ${showEdit ? '' : 'hover:border-white/[0.12]'}`}
-        style={{ borderLeft: `3px solid ${accentColor}` }}
-      >
-        <div className="pl-4 pr-4 pt-4 pb-3.5">
-          {/* Row 1 — status + mode/region + offers badge */}
-          <div className="flex items-start justify-between gap-3 mb-3">
+    <div>
+      <article className={`relative overflow-hidden rounded-2xl border transition-all duration-200 group ${
+        showEdit ? 'rounded-b-none border-b-0' : ''
+      } ${
+        isOpen
+          ? 'bg-white/[0.04] border-white/[0.1] hover:border-rose-500/30 hover:bg-white/[0.055]'
+          : isPaused
+          ? 'bg-white/[0.03] border-white/[0.07] hover:border-amber-500/20'
+          : 'bg-white/[0.02] border-white/[0.05] opacity-75 hover:opacity-90'
+      }`}>
+        {/* Top accent line */}
+        {isOpen && (
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose-500 via-rose-400/60 to-transparent" />
+        )}
+        {isPaused && (
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500/50 via-amber-400/25 to-transparent" />
+        )}
+
+        <div className="p-5">
+          {/* Row 1 — status pill + mode + region + offers badge */}
+          <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-              <span className={`text-[10px] font-mono tracking-[0.18em] font-semibold ${statusTextClass}`}>
-                {statusLabel}
+              {/* Status pill */}
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold shrink-0 ${
+                isOpen
+                  ? 'bg-rose-500/15 text-rose-400'
+                  : isPaused
+                  ? 'bg-amber-500/10 text-amber-400/70'
+                  : 'bg-white/[0.05] text-white/25'
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  isOpen ? 'bg-rose-500' : isPaused ? 'bg-amber-500/60' : 'bg-white/20'
+                }`} />
+                {listing.status.toUpperCase()}
               </span>
 
               {listing.modeKey && (
-                <span className="text-[14px] font-semibold text-white [font-family:var(--font-heading)]">
+                <span className="text-[16px] font-bold text-white [font-family:var(--font-heading)] leading-none">
                   {listing.modeKey}
                 </span>
               )}
 
               {listing.regionKey && (
-                <span className="font-mono text-[10px] tracking-[0.15em] text-white/40 bg-white/[0.06] px-1.5 py-0.5">
+                <span className="rounded-full bg-white/[0.07] px-2.5 py-0.5 font-mono text-[10px] tracking-widest text-white/40">
                   {listing.regionKey.toUpperCase()}
                 </span>
               )}
 
               {isRecurring && (
-                <span className="text-[10px] text-white/30 bg-white/[0.05] px-1.5 py-0.5">
+                <span className="rounded-full bg-white/[0.05] px-2.5 py-0.5 text-[10px] text-white/30">
                   Recurring
                 </span>
               )}
             </div>
 
+            {/* Offers badge */}
             {pendingOfferCount > 0 && (
-              <div className="shrink-0 flex items-center gap-1 bg-rose-500/15 px-2.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <div className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 px-3 py-1">
+                <Zap className="h-3 w-3 text-rose-400" />
                 <span className="text-rose-400 font-semibold text-[12px] tabular-nums">
                   {pendingOfferCount} offer{pendingOfferCount !== 1 ? 's' : ''}
                 </span>
@@ -219,17 +234,14 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
 
           {/* Row 2 — schedule */}
           {hasSchedule && (
-            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5 mb-4">
               {days.map((d) => (
-                <span
-                  key={d}
-                  className="px-1.5 py-0.5 bg-white/[0.07] font-mono text-[10px] text-white/75 font-semibold tracking-wider"
-                >
-                  {d.toUpperCase()}
+                <span key={d} className="rounded-lg bg-white/[0.08] px-2.5 py-1 font-mono text-[11px] font-semibold text-white/70">
+                  {d}
                 </span>
               ))}
               {timeWindow && (
-                <span className="text-[13px] font-medium text-white/55">
+                <span className="text-[13px] font-medium text-white/50">
                   {days.length > 0 ? '· ' : ''}{timeWindow}
                 </span>
               )}
@@ -238,7 +250,7 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
 
           {/* Row 3 — rank requirement */}
           {(listing.minRankDisplayName || listing.maxRankDisplayName) && (
-            <div className="flex items-center gap-1.5 mb-3">
+            <div className="flex items-center gap-1.5 mb-4">
               {listing.minRankIconUrl && (
                 <img src={listing.minRankIconUrl} alt="" className="h-4 w-4 object-contain" />
               )}
@@ -253,41 +265,44 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
             </div>
           )}
 
-          {/* Row 4 — notes */}
-          {listing.notes && (
-            <p className="text-[12px] text-white/35 line-clamp-1 mb-3 italic">"{listing.notes}"</p>
-          )}
-
           {/* Recurring slot summary */}
           {isRecurring && (
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-4">
               <span className="text-[11px] text-white/30 tabular-nums">{bookedCount} booked</span>
               <button
                 type="button"
                 onClick={() => setShowSlots((v) => !v)}
                 className="inline-flex items-center gap-1 text-[11px] text-white/35 hover:text-white/60 transition-colors"
               >
-                {showSlots ? 'Hide' : 'Slots'}
-                {showSlots ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {showSlots ? (
+                  <><ChevronUp className="h-3 w-3" /> Hide slots</>
+                ) : (
+                  <><ChevronDown className="h-3 w-3" /> View slots</>
+                )}
               </button>
             </div>
           )}
 
-          {/* Bottom row — date + actions */}
-          <div className="flex items-center justify-between gap-3 pt-1 border-t border-white/[0.05]">
-            <span className="text-[10px] text-white/20 tabular-nums tracking-wide font-mono">
+          {/* Notes */}
+          {listing.notes && (
+            <p className="text-[12px] text-white/35 line-clamp-1 mb-4 italic">"{listing.notes}"</p>
+          )}
+
+          {/* Bottom row — date + actions (actions fade in on hover) */}
+          <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/[0.06]">
+            <span className="text-[11px] text-white/20 font-mono tabular-nums">
               {new Date(listing.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
               })}
             </span>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity duration-150">
               {(listing.status === 'open' || listing.status === 'paused') && (
                 <button
                   type="button"
                   onClick={() => setShowEdit((v) => !v)}
-                  className="px-2.5 py-1 text-[11px] text-white/40 hover:text-white border border-white/[0.07] hover:border-white/20 transition-colors"
+                  className="rounded-lg px-3 py-1 text-[11px] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors"
                 >
                   Edit
                 </button>
@@ -297,7 +312,7 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
                   type="button"
                   onClick={() => pauseMutation.mutate()}
                   disabled={isPending}
-                  className="px-2.5 py-1 text-[11px] text-white/40 hover:text-white border border-white/[0.07] hover:border-white/20 transition-colors disabled:opacity-30"
+                  className="rounded-lg px-3 py-1 text-[11px] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-30"
                 >
                   {pauseMutation.isPending ? '…' : 'Pause'}
                 </button>
@@ -307,7 +322,7 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
                   type="button"
                   onClick={() => reopenMutation.mutate()}
                   disabled={isPending}
-                  className="px-2.5 py-1 text-[11px] text-rose-400/70 hover:text-rose-400 border border-rose-500/20 hover:border-rose-500/40 transition-colors disabled:opacity-30"
+                  className="rounded-lg px-3 py-1 text-[11px] text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-30"
                 >
                   {reopenMutation.isPending ? '…' : 'Reopen'}
                 </button>
@@ -317,7 +332,7 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
                   type="button"
                   onClick={() => closeMutation.mutate()}
                   disabled={isPending}
-                  className="px-2.5 py-1 text-[11px] text-red-400/50 hover:text-red-400 transition-colors disabled:opacity-30"
+                  className="rounded-lg px-3 py-1 text-[11px] text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30"
                 >
                   {closeMutation.isPending ? '…' : 'Close'}
                 </button>
@@ -330,6 +345,6 @@ export function WorkspaceListingCard({ listing }: { listing: ScrimListing }) {
       </article>
 
       {showEdit && <EditListingForm listing={listing} onClose={() => setShowEdit(false)} />}
-    </>
+    </div>
   );
 }
