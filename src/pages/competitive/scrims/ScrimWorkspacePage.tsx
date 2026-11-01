@@ -151,7 +151,7 @@ function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: s
 
   return (
     <div
-      className={`flex items-stretch min-h-[80px] overflow-hidden rounded-xl border border-white/[0.07] border-l-[3px] bg-white/[0.02] transition-colors hover:bg-white/[0.04] ${border}`}
+      className={`flex items-stretch min-h-[80px] overflow-hidden rounded-xl border border-white/[0.12] border-l-[3px] bg-[#131418] transition-colors hover:bg-[#17181d] ${border}`}
     >
       {/* Game thumbnail */}
       <div className={`w-[72px] shrink-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
@@ -244,7 +244,7 @@ function StatCard({
   iconClass: string;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">
+    <div className="flex items-center gap-4 rounded-xl border border-white/[0.12] bg-[#131418] px-5 py-4">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
         <Icon className="h-5 w-5" aria-hidden />
       </div>
@@ -547,10 +547,10 @@ export default function ScrimWorkspacePage() {
             <Button
               onClick={() => setShowNewListing((v) => !v)}
               aria-expanded={showNewListing}
-              className={`h-9 shrink-0 px-4 text-[13px] font-semibold ${
+              className={`h-9 shrink-0 px-4 text-[13px] font-semibold transition-shadow ${
                 showNewListing
                   ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
-                  : 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'bg-rose-500 text-white shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:bg-rose-600 hover:shadow-[0_0_24px_rgba(225,29,72,0.45)]'
               }`}
             >
               {showNewListing ? 'Cancel' : '+ New Scrim'}
@@ -596,10 +596,10 @@ export default function ScrimWorkspacePage() {
             <Button
               onClick={() => setShowNewListing((v) => !v)}
               aria-expanded={showNewListing}
-              className={`h-9 w-full text-[13px] font-semibold ${
+              className={`h-9 w-full text-[13px] font-semibold transition-shadow ${
                 showNewListing
                   ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
-                  : 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'bg-rose-500 text-white shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:bg-rose-600 hover:shadow-[0_0_24px_rgba(225,29,72,0.45)]'
               }`}
             >
               {showNewListing ? 'Cancel' : '+ New Scrim'}
@@ -643,22 +643,6 @@ export default function ScrimWorkspacePage() {
                 <p className="max-w-sm text-[14px] text-white/40">
                   Create, manage and track your scrims all in one place.
                 </p>
-              </div>
-              <div className="hidden flex-col items-end gap-2 lg:flex">
-                <Button
-                  onClick={() => setShowNewListing(true)}
-                  className="h-10 gap-2 bg-rose-500 px-5 text-[13px] font-semibold text-white hover:bg-rose-600"
-                >
-                  <CalendarDays className="h-4 w-4" aria-hidden />
-                  Create Scrim →
-                </Button>
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 text-[12px] text-white/35 transition-colors hover:text-white/60"
-                >
-                  <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-                  View Calendar
-                </button>
               </div>
             </div>
           </div>
