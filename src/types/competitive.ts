@@ -885,7 +885,10 @@ export interface ScrimOffer {
   status: ScrimOfferStatus;
   createdAt: string;
   updatedAt: string;
+  slotId?: string | null;
   offeringTeamName?: string | null;
+  offeringTeamLogo?: string | null;
+  listingGameSlug?: string | null;
   listingTeamName?: string | null;
 }
 

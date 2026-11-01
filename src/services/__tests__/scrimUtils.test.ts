@@ -3,6 +3,8 @@ import {
   BEST_OF_OPTIONS,
   bestOfLabel,
   bestOfLongLabel,
+  findOverlappingListings,
+  findOverlappingSessions,
   formatPreferredDays,
   isLegalSeriesScore,
   seriesOutcomeHint,
@@ -56,5 +58,63 @@ describe('series format helpers', () => {
     expect(isLegalSeriesScore(1, 0, 0)).toBe(false);
     expect(isLegalSeriesScore(5, 3, 2)).toBe(true);
     expect(seriesOutcomeHint(3)).toBe('First to 2 wins');
+  });
+});
+
+describe('findOverlappingSessions', () => {
+  it('flags sessions whose time ranges intersect', () => {
+    const overlaps = findOverlappingSessions([
+      { id: 'a', scheduledAt: '2026-11-01T19:00:00Z', durationMinutes: 90 },
+      { id: 'b', scheduledAt: '2026-11-01T20:00:00Z', durationMinutes: 90 },
+    ]);
+    expect(overlaps.get('a')).toEqual(['b']);
+    expect(overlaps.get('b')).toEqual(['a']);
+  });
+
+  it('does not flag back-to-back or different-day sessions', () => {
+    const overlaps = findOverlappingSessions([
+      { id: 'a', scheduledAt: '2026-11-01T19:00:00Z', durationMinutes: 60 },
+      { id: 'b', scheduledAt: '2026-11-01T20:00:00Z', durationMinutes: 60 },
+      { id: 'c', scheduledAt: '2026-11-02T19:30:00Z', durationMinutes: 60 },
+    ]);
+    expect(overlaps.size).toBe(0);
+  });
+
+  it('falls back to the default duration and ignores untimed sessions', () => {
+    const overlaps = findOverlappingSessions([
+      { id: 'a', scheduledAt: '2026-11-01T19:00:00Z' },
+      { id: 'b', scheduledAt: '2026-11-01T20:00:00Z' },
+      { id: 'c', scheduledAt: null },
+    ]);
+    expect(overlaps.get('a')).toEqual(['b']);
+    expect(overlaps.has('c')).toBe(false);
+  });
+});
+
+describe('findOverlappingListings', () => {
+  it('flags listings sharing a day and overlapping window', () => {
+    const overlaps = findOverlappingListings([
+      { id: 'a', preferredDays: [1, 3], preferredTimeStart: '19:00', preferredTimeEnd: '21:00' },
+      { id: 'b', preferredDays: [3, 5], preferredTimeStart: '20:00', preferredTimeEnd: '22:00' },
+    ]);
+    expect(overlaps.get('a')).toEqual(['b']);
+    expect(overlaps.get('b')).toEqual(['a']);
+  });
+
+  it('ignores disjoint days or non-overlapping windows', () => {
+    const overlaps = findOverlappingListings([
+      { id: 'a', preferredDays: [1], preferredTimeStart: '19:00', preferredTimeEnd: '21:00' },
+      { id: 'b', preferredDays: [2], preferredTimeStart: '19:00', preferredTimeEnd: '21:00' },
+      { id: 'c', preferredDays: [1], preferredTimeStart: '21:00', preferredTimeEnd: '23:00' },
+    ]);
+    expect(overlaps.size).toBe(0);
+  });
+
+  it('treats a missing window as all day', () => {
+    const overlaps = findOverlappingListings([
+      { id: 'a', preferredDays: [4], preferredTimeStart: '19:00', preferredTimeEnd: '21:00' },
+      { id: 'b', preferredDays: [4], preferredTimeStart: null, preferredTimeEnd: null },
+    ]);
+    expect(overlaps.get('a')).toEqual(['b']);
   });
 });
