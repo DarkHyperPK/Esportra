@@ -133,7 +133,9 @@ function FaceOffLockup({ session, myTeamSide }: { session: ScrimSession; myTeamS
             {session.gameSlug.toUpperCase()}
           </span>
         )}
-        {session.modeKey && <span className="text-[12px] text-white/45">{session.modeKey}</span>}
+        <span className="rounded-md border border-white/[0.07] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-white/55">
+          5v5
+        </span>
         <span
           className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.16em] text-white/55"
           aria-label={`${bestOfLongLabel(bo)} series`}
