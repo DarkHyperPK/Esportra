@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
 import type {
@@ -677,6 +677,30 @@ export function useScrimRecentMatches(sessionId: string) {
     gcTime: 0,
     retry: false,
   });
+}
+
+// ── usePendingReceivedOffers ──────────────────────────────────────────────────
+
+/**
+ * Aggregate all pending received offers across all of a team's listings.
+ * Uses useQueries to fetch each listing's offers in parallel, then filters
+ * for status === 'pending' and flattens into a single array.
+ */
+export function usePendingReceivedOffers(listings: ScrimListing[]) {
+  const results = useQueries({
+    queries: listings.map((l) => ({
+      queryKey: scrimKeys.listingOffers(l.id),
+      queryFn: () => apiClient.get<ScrimOffer[]>(`/api/scrims/listings/${l.id}/offers`),
+      enabled: !!l.id,
+    })),
+  });
+
+  const isLoading = results.some((r) => r.isLoading);
+  const offers = results
+    .flatMap((r) => r.data ?? [])
+    .filter((o) => o.status === 'pending');
+
+  return { offers, isLoading };
 }
 
 /** Parse a scoreboard screenshot for a scrim session. Returns score + confidence. */

@@ -1,26 +1,26 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   useScrimListings,
-  useListingOffers,
   useMyOffers,
   useTeamScrimSessions,
   useAcceptOffer,
   useDeclineOffer,
   useWithdrawOffer,
+  usePendingReceivedOffers,
 } from '@/hooks/competitive/useScrims';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
 import { WorkspaceListingCard } from '@/components/competitive/scrims/WorkspaceListingCard';
 import { WorkspaceSessionCard } from '@/components/competitive/scrims/WorkspaceSessionCard';
 import { ScrimHistoryList } from '@/components/competitive/scrims/ScrimHistoryList';
-import type { ScrimListing, ScrimOffer, ScrimSession } from '@/types/competitive';
+import type { ScrimOffer } from '@/types/competitive';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,11 +53,6 @@ function formatProposedSlot(offer: ScrimOffer): string {
     ? `${base} · ${offer.proposedDurationMinutes} min`
     : base;
 }
-
-const TAB_CLASS =
-  'bg-transparent text-[13px] font-medium text-white/55 ' +
-  'data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-rose-500 ' +
-  'rounded-none pb-1 h-full data-[state=active]:bg-transparent';
 
 // ── Offer rows ────────────────────────────────────────────────────────────────
 
@@ -105,31 +100,6 @@ function ReceivedOfferRow({ offer }: { offer: ScrimOffer }) {
   );
 }
 
-function OffersForListing({ listing }: { listing: ScrimListing }) {
-  const offersQuery = useListingOffers(listing.id);
-  const rawOffers = offersQuery.data ?? [];
-  // pending first
-  const offers = [...rawOffers].sort((a, b) => {
-    if (a.status === 'pending' && b.status !== 'pending') return -1;
-    if (b.status === 'pending' && a.status !== 'pending') return 1;
-    return 0;
-  });
-
-  if (offersQuery.isLoading) {
-    return <div className="h-8 bg-white/[0.03] animate-pulse" />;
-  }
-  if (offers.length === 0) {
-    return <p className="text-[13px] text-white/35">No offers received yet</p>;
-  }
-  return (
-    <div className="space-y-1.5">
-      {offers.map((offer) => (
-        <ReceivedOfferRow key={offer.id} offer={offer} />
-      ))}
-    </div>
-  );
-}
-
 function OutgoingOfferRow({ offer }: { offer: ScrimOffer }) {
   const withdrawMutation = useWithdrawOffer(offer.id);
 
@@ -159,43 +129,14 @@ function OutgoingOfferRow({ offer }: { offer: ScrimOffer }) {
   );
 }
 
-// ── Past sessions expand ──────────────────────────────────────────────────────
+// ── Skeletons ─────────────────────────────────────────────────────────────────
 
-const PAST_COLLAPSE_THRESHOLD = 5;
-
-function PastSessionsList({
-  sessions,
-  teamId,
-}: {
-  sessions: ScrimSession[];
-  teamId: string;
-}) {
-  const [expanded, setExpanded] = useState(sessions.length <= PAST_COLLAPSE_THRESHOLD);
-
-  const visible = expanded ? sessions : sessions.slice(0, 0);
-
+function TwoRowSkeleton({ height }: { height: string }) {
   return (
-    <div className="space-y-2">
-      {!expanded && (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="text-[13px] text-white/40 hover:text-white/70 transition-colors"
-        >
-          Show {sessions.length} past session{sessions.length !== 1 ? 's' : ''}
-        </button>
-      )}
-      {expanded &&
-        visible.map((s) => <WorkspaceSessionCard key={s.id} session={s} teamId={teamId} />)}
-      {expanded && sessions.length > PAST_COLLAPSE_THRESHOLD && (
-        <button
-          type="button"
-          onClick={() => setExpanded(false)}
-          className="text-[13px] text-white/40 hover:text-white/70 transition-colors"
-        >
-          Collapse
-        </button>
-      )}
+    <div className="space-y-2 animate-pulse">
+      {[1, 2].map((i) => (
+        <div key={i} className={`${height} bg-white/[0.04] border border-white/[0.06]`} />
+      ))}
     </div>
   );
 }
@@ -205,6 +146,7 @@ function PastSessionsList({
 export default function ScrimWorkspacePage() {
   const [searchParams] = useSearchParams();
   const [showNewListing, setShowNewListing] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const teamsQuery = useMyTeamsSummary();
   const teams = (teamsQuery.data ?? []) as TeamSummary[];
@@ -227,7 +169,6 @@ export default function ScrimWorkspacePage() {
   const myOffers = myOffersQuery.data ?? [];
   const sessions = sessionsQuery.data ?? [];
 
-  const pendingOfferCount = myOffers.filter((o) => o.status === 'pending').length;
   const upcomingSessions = sessions
     .filter((s) => s.status === 'scheduled' || s.status === 'in_progress')
     .sort((a, b) => new Date(a.scheduledAt ?? 0).getTime() - new Date(b.scheduledAt ?? 0).getTime());
@@ -235,62 +176,72 @@ export default function ScrimWorkspacePage() {
     .filter((s) => s.status === 'completed' || s.status === 'cancelled' || s.status === 'disputed')
     .sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime());
 
-  // loading state
-  if (teamsQuery.isLoading) {
-    return (
-      <CompetitivePageShell>
+  const { offers: pendingReceivedOffers, isLoading: isOffersLoading } = usePendingReceivedOffers(listings);
+
+  const isCountersLoading = listingsQuery.isLoading || sessionsQuery.isLoading || isOffersLoading;
+
+  const openListingsCount = listings.filter((l) => l.status === 'open').length;
+  const pendingReceivedCount = pendingReceivedOffers.length;
+  const upcomingSessionsCount = upcomingSessions.length;
+
+  const statCounters = [
+    { value: isCountersLoading ? '—' : openListingsCount, label: 'LISTINGS', accent: false },
+    { value: isCountersLoading ? '—' : pendingReceivedCount, label: 'OFFERS', accent: !isCountersLoading && pendingReceivedCount > 0 },
+    { value: isCountersLoading ? '—' : upcomingSessionsCount, label: 'SESSIONS', accent: false },
+  ];
+
+  return (
+    <CompetitivePageShell>
+      {teamsQuery.isLoading && (
         <div className="px-4 py-8 space-y-4 animate-pulse">
           <div className="h-8 w-48 bg-white/[0.06]" />
           <div className="h-4 w-64 bg-white/[0.04]" />
         </div>
-      </CompetitivePageShell>
-    );
-  }
+      )}
 
-  // no team
-  if (!resolvedTeamId) {
-    return (
-      <CompetitivePageShell>
-        <div className="px-4 py-8">
-          <InlineNotice tone="neutral">
-            You need to be on a team to use Your Scrims.
-          </InlineNotice>
+      {!teamsQuery.isLoading && !resolvedTeamId && (
+        <div className="px-6 py-8">
+          <InlineNotice tone="neutral">You need to be on a team to use Scrims.</InlineNotice>
         </div>
-      </CompetitivePageShell>
-    );
-  }
+      )}
 
-  return (
-    <CompetitivePageShell>
-      <div className="flex min-h-[100dvh]">
-        {/* ── Left panel (desktop) ── */}
-        <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-white/[0.06] px-5 pt-8 pb-6">
-          {/* Team identity */}
-          <div className="mb-5">
+      {!teamsQuery.isLoading && resolvedTeamId && (
+        <div className="min-h-[100dvh]">
+
+          {/* ── Header strip — desktop ─────────────────────────────────────── */}
+          <div className="hidden lg:flex items-center gap-4 px-6 py-4 border-b border-white/[0.08]">
+            {/* Logo placeholder */}
+            <div className="h-8 w-8 bg-white/[0.06] shrink-0" aria-hidden />
+
+            {/* Team name — static or Select */}
             {teams.length > 1 ? (
               <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
-                <SelectTrigger aria-label="Select team" className="h-auto py-0 border-none bg-transparent px-0 text-left focus:ring-0 shadow-none text-[18px] font-bold text-white [font-family:var(--font-heading)] truncate">
+                <SelectTrigger
+                  aria-label="Select team"
+                  className="h-auto py-0 border-none bg-transparent px-0 focus:ring-0 shadow-none text-[18px] font-bold text-white/90 [font-family:var(--font-heading)] truncate max-w-[200px]"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : (
-              <p className="text-[18px] font-bold text-white [font-family:var(--font-heading)] truncate leading-tight">
+              <p className="text-[18px] font-bold text-white/90 [font-family:var(--font-heading)] truncate">
                 {activeTeam?.name ?? '—'}
               </p>
             )}
 
             {/* Game badge */}
-            {catalog.games.length > 0 && (
+            {catalog.games.length > 1 ? (
               <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
-                <SelectTrigger aria-label="Select game" className="h-auto py-0 border-none bg-transparent px-0 mt-1 focus:ring-0 shadow-none text-[11px] font-mono tracking-widest text-white/35 w-auto">
-                  <SelectValue placeholder="Select game" />
+                <SelectTrigger
+                  aria-label="Select game"
+                  className="h-auto py-0.5 px-2.5 border-none bg-white/[0.08] rounded-full font-mono text-[11px] tracking-widest text-white/50 uppercase focus:ring-0 shadow-none w-auto"
+                >
+                  <SelectValue placeholder="Game" />
                 </SelectTrigger>
                 <SelectContent>
                   {catalog.games.map((g) => (
@@ -298,166 +249,202 @@ export default function ScrimWorkspacePage() {
                   ))}
                 </SelectContent>
               </Select>
-            )}
-          </div>
+            ) : gameSlug ? (
+              <span className="inline-flex items-center rounded-full bg-white/[0.08] px-2.5 py-0.5 font-mono text-[11px] tracking-widest text-white/50 uppercase shrink-0">
+                {catalog.games.find((g) => g.slug === gameSlug)?.name ?? gameSlug.toUpperCase()}
+              </span>
+            ) : null}
 
-          {/* Stat grid */}
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            {[
-              { value: listings.filter((l) => l.status === 'open').length, label: 'Listings' },
-              { value: pendingOfferCount, label: 'Offers', accent: pendingOfferCount > 0 },
-              { value: upcomingSessions.length, label: 'Sessions' },
-            ].map(({ value, label, accent }) => (
-              <div key={label} className="rounded-xl bg-white/[0.04] border border-white/[0.06] flex flex-col items-center justify-center py-3 gap-0.5">
-                <span className={`text-[22px] font-bold tabular-nums leading-none [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white'}`}>
-                  {value}
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Stat counters */}
+            <div className="flex items-center gap-6" role="group" aria-label="Workspace summary">
+              {statCounters.map(({ value, label, accent }) => (
+                <span
+                  key={label}
+                  aria-label={`${value} ${label.toLowerCase()}`}
+                  className="flex items-baseline gap-1.5"
+                >
+                  <span
+                    aria-hidden
+                    className={`text-[15px] font-bold tabular-nums [font-family:var(--font-heading)] leading-none ${accent ? 'text-rose-400' : 'text-white/60'}`}
+                  >
+                    {value}
+                  </span>
+                  <span aria-hidden className="text-[10px] font-mono tracking-widest text-white/30 uppercase">
+                    {label}
+                  </span>
                 </span>
-                <span className="text-[10px] font-mono tracking-widest text-white/25 uppercase">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <Button
-            onClick={() => setShowNewListing((v) => !v)}
-            className={`w-full rounded-xl text-[13px] font-semibold tracking-wide mb-5 ${
-              showNewListing
-                ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
-                : 'bg-rose-500 hover:bg-rose-600 text-white'
-            }`}
-          >
-            {showNewListing ? 'Cancel' : 'Post a listing'}
-          </Button>
-
-          {/* Find a scrim link */}
-          <Link
-            to="/competitive/scrims"
-            className="text-[11px] font-mono tracking-[0.15em] text-white/25 hover:text-white/50 transition-colors uppercase mt-auto"
-          >
-            Browse listings →
-          </Link>
-        </aside>
-
-        {/* ── Main panel ── */}
-        <div className="flex-1 px-4 lg:px-8 pt-8 pb-8 space-y-4">
-          {/* Mobile header */}
-          <div className="flex items-start justify-between gap-4 lg:hidden">
-            <div>
-              <p className="text-[10px] font-mono tracking-[0.18em] text-white/25 uppercase mb-1">Your scrims</p>
-              <p className="text-[20px] font-bold text-white [font-family:var(--font-heading)] leading-tight">{activeTeam?.name ?? 'Your Scrims'}</p>
+              ))}
             </div>
+
+            {/* New Listing button */}
             <Button
               onClick={() => setShowNewListing((v) => !v)}
-              className="bg-rose-500 hover:bg-rose-600 text-white rounded-none shrink-0 text-[13px]"
+              aria-expanded={showNewListing}
+              className={`h-9 px-4 text-[13px] font-semibold shrink-0 ${
+                showNewListing
+                  ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
+                  : 'bg-rose-500 hover:bg-rose-600 text-white'
+              }`}
             >
-              {showNewListing ? 'Cancel' : 'Post a listing'}
+              {showNewListing ? 'Cancel' : 'New Listing'}
             </Button>
           </div>
 
-          {/* Mobile team selector */}
-          {teams.length > 1 && (
-            <div className="lg:hidden px-0 mb-2">
-              <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
-                <SelectTrigger aria-label="Select team" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}{t.primary_game_slug ? ` · ${t.primary_game_slug.toUpperCase().slice(0, 3)}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* ── Header strip — mobile ──────────────────────────────────────── */}
+          <div className="lg:hidden flex flex-col gap-2 px-4 py-3 border-b border-white/[0.08]">
+            {/* Row 1: logo + team name + game badge */}
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 bg-white/[0.06] shrink-0" aria-hidden />
+              {teams.length > 1 ? (
+                <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
+                  <SelectTrigger
+                    aria-label="Select team"
+                    className="h-auto py-0 border-none bg-transparent px-0 focus:ring-0 shadow-none text-[16px] font-bold text-white/90 [font-family:var(--font-heading)] truncate min-w-0"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-[16px] font-bold text-white/90 [font-family:var(--font-heading)] truncate min-w-0">
+                  {activeTeam?.name ?? '—'}
+                </p>
+              )}
+              {catalog.games.length > 1 ? (
+                <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
+                  <SelectTrigger
+                    aria-label="Select game"
+                    className="h-auto py-0.5 px-2.5 border-none bg-white/[0.08] rounded-full font-mono text-[11px] tracking-widest text-white/50 uppercase focus:ring-0 shadow-none w-auto shrink-0"
+                  >
+                    <SelectValue placeholder="Game" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {catalog.games.map((g) => (
+                      <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : gameSlug ? (
+                <span className="inline-flex items-center rounded-full bg-white/[0.08] px-2.5 py-0.5 font-mono text-[11px] tracking-widest text-white/50 uppercase shrink-0">
+                  {catalog.games.find((g) => g.slug === gameSlug)?.name ?? gameSlug.toUpperCase()}
+                </span>
+              ) : null}
             </div>
-          )}
 
-          {/* Mobile game selector */}
-          {catalog.games.length > 0 && (
-            <div className="lg:hidden px-0 mb-4">
-              <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
-                <SelectTrigger aria-label="Select game" className="h-9 text-[13px] rounded-none border-white/10 bg-black/30">
-                  <SelectValue placeholder="Select game" />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalog.games.map((g) => (
-                    <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Row 2: stat counters */}
+            <div className="flex items-center gap-4 pl-9" role="group" aria-label="Workspace summary">
+              {statCounters.map(({ value, label, accent }) => (
+                <span
+                  key={label}
+                  aria-label={`${value} ${label.toLowerCase()}`}
+                  className="flex items-baseline gap-1"
+                >
+                  <span
+                    aria-hidden
+                    className={`text-[14px] font-bold tabular-nums [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white/60'}`}
+                  >
+                    {value}
+                  </span>
+                  <span aria-hidden className="text-[10px] font-mono tracking-widest text-white/30 uppercase">
+                    {label}
+                  </span>
+                </span>
+              ))}
             </div>
-          )}
 
-          {/* Desktop title */}
-          <div className="hidden lg:block mb-2">
-            <p className="text-[10px] font-mono tracking-[0.18em] text-white/25 uppercase mb-1">Your scrims</p>
-            <p className="text-[26px] font-bold text-white [font-family:var(--font-heading)] leading-tight">{activeTeam?.name ?? 'Scrims'}</p>
+            {/* Row 3: New Listing button full-width */}
+            <Button
+              onClick={() => setShowNewListing((v) => !v)}
+              aria-expanded={showNewListing}
+              className={`w-full h-9 text-[13px] font-semibold ${
+                showNewListing
+                  ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
+                  : 'bg-rose-500 hover:bg-rose-600 text-white'
+              }`}
+            >
+              {showNewListing ? 'Cancel' : 'New Listing'}
+            </Button>
           </div>
 
-          {/* New listing form */}
-          {showNewListing && (
-            <WorkspaceNewListingForm
-              teamId={resolvedTeamId}
-              gameSlug={gameSlug}
-              onSuccess={() => setShowNewListing(false)}
-              onCancel={() => setShowNewListing(false)}
-            />
-          )}
+          {/* ── New Listing form ───────────────────────────────────────────── */}
+          <AnimatePresence>
+            {showNewListing && (
+              <div key="new-listing-form" className="border-b border-white/[0.06] px-6 py-4">
+                <WorkspaceNewListingForm
+                  teamId={resolvedTeamId}
+                  gameSlug={gameSlug}
+                  onSuccess={() => setShowNewListing(false)}
+                  onCancel={() => setShowNewListing(false)}
+                />
+              </div>
+            )}
+          </AnimatePresence>
 
-          {/* Tabs */}
-          <Tabs defaultValue="listings">
-            <div className="border-b border-white/[0.08]">
-              <TabsList className="bg-transparent p-0 h-10 gap-6">
-                <TabsTrigger value="listings" className={TAB_CLASS}>
-                  Listings{' '}
-                  <span className="ml-1 font-mono text-[10px] inline-flex items-center px-1.5 text-white/30">
-                    {listings.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="offers" className={TAB_CLASS}>
-                  Offers{' '}
-                  <span
-                    className={`ml-1 font-mono text-[10px] inline-flex items-center px-1.5 ${
-                      pendingOfferCount > 0
-                        ? 'bg-rose-500/20 text-rose-400'
-                        : 'text-white/30'
-                    }`}
-                  >
-                    {pendingOfferCount > 0 ? pendingOfferCount : myOffers.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="sessions" className={TAB_CLASS}>
-                  Sessions{' '}
-                  <span className="ml-1 font-mono text-[10px] inline-flex items-center px-1.5 text-white/30">
-                    {upcomingSessions.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className={TAB_CLASS}>
-                  History
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            {/* Listings tab */}
-            <TabsContent value="listings" className="mt-4 focus-visible:outline-none">
-              {listingsQuery.isLoading ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="h-14 bg-white/[0.04] border border-white/[0.06]" />
+          {/* ── Attention strip ────────────────────────────────────────────── */}
+          <AnimatePresence>
+            {pendingReceivedOffers.length > 0 && (
+              <motion.section
+                key="attention-strip"
+                aria-label="Pending offers"
+                initial={prefersReducedMotion ? false : { opacity: 0, height: 0, overflow: 'hidden' }}
+                animate={{ opacity: 1, height: 'auto', overflow: 'visible' }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, height: 0, overflow: 'hidden' }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="border-l-[3px] border-rose-500 bg-rose-500/[0.04] px-6 py-4"
+              >
+                <div className="space-y-2">
+                  {pendingReceivedOffers.map((offer) => (
+                    <ReceivedOfferRow key={offer.id} offer={offer} />
                   ))}
                 </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+
+          {/* ── Content sections ──────────────────────────────────────────── */}
+          <div className="px-6 pt-6 pb-12 space-y-10">
+
+            {/* Active Listings */}
+            <section aria-labelledby="section-active-listings">
+              <h2
+                id="section-active-listings"
+                className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-3"
+              >
+                ACTIVE LISTINGS
+              </h2>
+              {listingsQuery.isLoading ? (
+                <TwoRowSkeleton height="h-[88px]" />
               ) : listingsQuery.isError ? (
-                <Button
-                  variant="outline"
-                  onClick={() => listingsQuery.refetch()}
-                  className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
-                >
-                  Retry
-                </Button>
+                <div className="py-4 space-y-2">
+                  <p className="text-[13px] text-white/40">Could not load listings.</p>
+                  <button
+                    type="button"
+                    onClick={() => listingsQuery.refetch()}
+                    className="text-[13px] text-white/55 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : listings.length === 0 ? (
-                <p className="text-[14px] text-white/40 py-6">
-                  No listings yet. Post one to start finding scrims.
-                </p>
+                <div className="py-6">
+                  <p className="text-[14px] text-white/40">
+                    No active listings. Post one to start finding scrims.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewListing(true)}
+                    className="mt-3 text-[13px] text-white/55 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors"
+                  >
+                    New Listing
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {listings.map((l) => (
@@ -465,117 +452,94 @@ export default function ScrimWorkspacePage() {
                   ))}
                 </div>
               )}
-            </TabsContent>
+            </section>
 
-            {/* Offers tab */}
-            <TabsContent value="offers" className="mt-4 focus-visible:outline-none space-y-6">
-              <div>
-                <p className="text-[11px] font-medium text-white/35 mb-3">
-                  Received
-                </p>
-                {listingsQuery.isLoading ? (
-                  <div className="h-8 bg-white/[0.03] animate-pulse" />
-                ) : listings.length === 0 ? (
-                  <p className="text-[13px] text-white/35">No offers received yet</p>
-                ) : (
-                  <div className="space-y-4">
-                    {listings.map((listing) => (
-                      <div key={listing.id}>
-                        <p className="text-[12px] text-white/40 mb-1.5">
-                          {[listing.modeKey, listing.regionKey].filter(Boolean).join(' · ') ||
-                            'Any mode / region'}
-                          {listing.scheduleType === 'recurring' && (
-                            <span className="ml-2 text-[10px] text-white/30">
-                              Recurring
-                            </span>
-                          )}
-                        </p>
-                        <OffersForListing listing={listing} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className="text-[11px] font-medium text-white/35 mb-3">
-                  Outgoing
-                </p>
-                {myOffersQuery.isLoading ? (
-                  <div className="h-8 bg-white/[0.03] animate-pulse" />
-                ) : myOffers.length === 0 ? (
-                  <p className="text-[13px] text-white/35">No outgoing offers</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {myOffers.map((offer) => (
-                      <OutgoingOfferRow key={offer.id} offer={offer} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* History tab */}
-            <TabsContent value="history" className="mt-4 focus-visible:outline-none">
-              {resolvedTeamId ? (
-                <ScrimHistoryList teamId={resolvedTeamId} />
-              ) : (
-                <p className="text-[14px] text-white/40 py-6">Select a team to view history.</p>
-              )}
-            </TabsContent>
-
-            {/* Sessions tab */}
-            <TabsContent value="sessions" className="mt-4 focus-visible:outline-none">
-              {sessionsQuery.isLoading ? (
-                <div className="space-y-2 animate-pulse">
+            {/* Outgoing Offers */}
+            <section aria-labelledby="section-outgoing-offers">
+              <h2
+                id="section-outgoing-offers"
+                className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-3"
+              >
+                OUTGOING OFFERS
+              </h2>
+              {myOffersQuery.isLoading ? (
+                <div className="space-y-1.5 animate-pulse">
                   {[1, 2].map((i) => (
-                    <div key={i} className="h-16 bg-white/[0.04] border border-white/[0.06]" />
+                    <div key={i} className="h-[72px] bg-white/[0.04] border border-white/[0.06]" />
                   ))}
                 </div>
-              ) : sessionsQuery.isError ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] text-white/40">Could not load sessions.</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => sessionsQuery.refetch()}
-                    className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+              ) : myOffersQuery.isError ? (
+                <div className="py-4 space-y-2">
+                  <p className="text-[13px] text-white/40">Could not load offers.</p>
+                  <button
+                    type="button"
+                    onClick={() => myOffersQuery.refetch()}
+                    className="text-[13px] text-white/55 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors"
                   >
                     Retry
-                  </Button>
+                  </button>
                 </div>
-              ) : sessions.length === 0 ? (
-                <p className="text-[14px] text-white/40 py-6">
-                  No sessions yet. Accept an offer to create one.
-                </p>
+              ) : myOffers.length === 0 ? (
+                <p className="py-4 text-[14px] text-white/40">No outgoing offers yet.</p>
               ) : (
-                <div className="space-y-6">
-                  {upcomingSessions.length > 0 && (
-                    <div>
-                      <p className="text-[11px] font-medium text-white/35 mb-3">
-                        Upcoming ({upcomingSessions.length})
-                      </p>
-                      <div className="space-y-2">
-                        {upcomingSessions.map((s) => (
-                          <WorkspaceSessionCard key={s.id} session={s} teamId={resolvedTeamId} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {pastSessions.length > 0 && (
-                    <div>
-                      <p className="text-[11px] font-medium text-white/35 mb-3">
-                        Past ({pastSessions.length})
-                      </p>
-                      <PastSessionsList sessions={pastSessions} teamId={resolvedTeamId} />
-                    </div>
-                  )}
+                <div className="space-y-1.5">
+                  {myOffers.map((offer) => (
+                    <OutgoingOfferRow key={offer.id} offer={offer} />
+                  ))}
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
+            </section>
+
+            {/* Scheduled Scrims */}
+            <section aria-labelledby="section-scheduled-scrims">
+              <h2
+                id="section-scheduled-scrims"
+                className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-3"
+              >
+                SCHEDULED SCRIMS
+              </h2>
+              {sessionsQuery.isLoading ? (
+                <TwoRowSkeleton height="h-[96px]" />
+              ) : sessionsQuery.isError ? (
+                <div className="py-4 space-y-2">
+                  <p className="text-[13px] text-white/40">Could not load sessions.</p>
+                  <button
+                    type="button"
+                    onClick={() => sessionsQuery.refetch()}
+                    className="text-[13px] text-white/55 hover:text-white border border-white/[0.08] px-4 py-2 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : upcomingSessions.length === 0 ? (
+                <p className="py-4 text-[14px] text-white/40">
+                  No scheduled scrims yet. Accept an offer to create one.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {upcomingSessions.map((s) => (
+                    <WorkspaceSessionCard key={s.id} session={s} teamId={resolvedTeamId} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Recent Results — only rendered when data is loaded and past sessions exist */}
+            {!sessionsQuery.isLoading && pastSessions.length > 0 && (
+              <section aria-labelledby="section-recent-results">
+                <h2
+                  id="section-recent-results"
+                  className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/40 mb-3"
+                >
+                  RECENT RESULTS
+                </h2>
+                <ScrimHistoryList teamId={resolvedTeamId} />
+              </section>
+            )}
+
+          </div>
         </div>
-      </div>
+      )}
     </CompetitivePageShell>
   );
 }
