@@ -46,7 +46,6 @@ export const practiceKeys = {
 interface CreateScrimListingReq {
   teamId: string;
   gameSlug?: string;
-  modeKey?: string;
   regionKey?: string;
   minRankKey?: string;
   maxRankKey?: string;
@@ -176,7 +175,6 @@ export function useCreateScrimListing() {
       apiClient.post<ScrimListing>('/api/scrims/listings', {
         team_id: req.teamId,
         game_slug: req.gameSlug,
-        mode_key: req.modeKey,
         region_key: req.regionKey,
         min_rank_key: req.minRankKey,
         max_rank_key: req.maxRankKey,
@@ -202,7 +200,6 @@ export function useUpdateScrimListing(id: string) {
     mutationFn: (req: Partial<CreateScrimListingReq>) =>
       apiClient.put<ScrimListing>(`/api/scrims/listings/${id}`, {
         game_slug: req.gameSlug,
-        mode_key: req.modeKey,
         region_key: req.regionKey,
         notes: req.notes,
         best_of: req.bestOf,
@@ -237,6 +234,16 @@ export function useCloseListing(listingId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => apiClient.post<ScrimListing>(`/api/scrims/listings/${listingId}/close`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scrims', 'listings'] });
+    },
+  });
+}
+
+export function useDeleteScrimListing(listingId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.delete(`/api/scrims/listings/${listingId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scrims', 'listings'] });
     },
