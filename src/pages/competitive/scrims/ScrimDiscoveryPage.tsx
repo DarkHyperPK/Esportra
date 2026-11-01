@@ -4,7 +4,7 @@ import { PageIntro, EYEBROW_CLASS } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Sheet,
@@ -17,15 +17,13 @@ import { useDiscoverScrimsFiltered } from '@/hooks/competitive/useScrimDiscovery
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
-import { ScrimOfferForm } from '@/components/competitive/scrims/ScrimOfferForm';
-import { ScrimSlotCalendar } from '@/components/competitive/scrims/ScrimSlotCalendar';
-import { ScrimListingDetailSheet } from '@/components/competitive/scrims/ScrimListingDetailSheet';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
+import { ScrimDetailModal } from '@/components/competitive/scrims/ScrimDetailModal';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
-import { formatPreferredDays } from '@/services/scrimUtils';
+import { bestOfLabel, formatPreferredDays } from '@/services/scrimUtils';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 import '@/components/competitive/lfg-glass.css';
 import {
-  gameAbbrev,
   formatTimeWindow,
   listingAge,
   type ScrimListingEnriched,
@@ -52,10 +50,10 @@ function MemberAvatar({ member }: { member: ScrimMemberPreview }) {
 function SkeletonCard() {
   return (
     <div className="lfg-card lfg-panel overflow-hidden opacity-50 animate-pulse">
-      <div className="lfg-compact-hero no-art" />
+      <div className="h-[132px] bg-white/[0.04]" />
       <div className="lfg-compact-content space-y-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-white/[0.06]" />
+          <div className="h-12 w-12 rounded-full bg-white/[0.06]" />
           <div className="space-y-1.5 flex-1">
             <div className="h-4 w-28 bg-white/[0.06] rounded" />
             <div className="h-3 w-16 bg-white/[0.04] rounded" />
@@ -76,25 +74,21 @@ function SkeletonCard() {
 interface ScrimCardProps {
   listing: ScrimListingEnriched;
   isOwner: boolean;
-  isOfferOpen: boolean;
   hasTeam: boolean;
-  onRequestScrim: () => void;
+  onOpen: () => void;
 }
 
-function ScrimCard({
-  listing,
-  isOwner,
-  isOfferOpen,
-  hasTeam,
-  onRequestScrim,
-}: ScrimCardProps) {
+function ScrimCard({ listing, isOwner, hasTeam, onOpen }: ScrimCardProps) {
   const reduced = useReducedMotion() ?? false;
+  const catalog = useGameCatalogContext();
   const isOpen = listing.status === 'open';
   const dayAbbrevs = formatPreferredDays(listing.preferredDays);
   const hasSchedule =
     dayAbbrevs.length > 0 ||
     (!!listing.preferredTimeStart && !!listing.preferredTimeEnd);
   const age = listingAge(listing.createdAt);
+
+  const catalogGame = catalog.games.find((g) => g.slug === listing.gameSlug);
 
   const rankRange =
     listing.minRankDisplayName && listing.maxRankDisplayName &&
@@ -116,53 +110,85 @@ function ScrimCard({
     catch { return []; }
   }, [listing.membersPreview]);
 
+  const bannerUrl = listing.captainCardUrl ?? listing.teamLogoUrl ?? null;
+  const isCaptainCard = !!listing.captainCardUrl;
+
   return (
     <article className={`lfg-card lfg-panel lfg-compact-card lfg-team-card${isOpen ? ' selected' : ''}`}>
-      {/* Hero area with banner */}
-      {(() => {
-        const bannerUrl = listing.captainCardUrl ?? listing.teamLogoUrl ?? null;
-        const isCaptainCard = !!listing.captainCardUrl;
-        return (
-          <div className={`lfg-compact-hero ${bannerUrl ? 'has-art' : 'no-art'}`}>
-            {bannerUrl && (
-              <img
-                className="lfg-compact-banner"
-                src={bannerUrl}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                style={{
-                  objectFit: 'cover',
-                  filter: isCaptainCard ? 'brightness(0.7) saturate(1.2)' : 'blur(8px) brightness(0.6)',
-                  transform: isCaptainCard ? 'scale(1.0)' : 'scale(1.15)',
-                  opacity: isCaptainCard ? 0.3 : 1,
-                }}
-              />
-            )}
-        <div className="lfg-compact-top">
-          <div className="lfg-identity">
-            <span className="lfg-avatar team">
-              {listing.teamLogoUrl ? (
-                <img src={listing.teamLogoUrl} alt="" />
-              ) : initials}
-            </span>
-            <div className="lfg-compact-name">
-              <h2 className="lfg-name">{listing.teamName ?? 'Unknown Team'}</h2>
-              <p className="lfg-sub">
-                {listing.teamTag ?? ''}
-                {listing.teamTag && listing.regionKey ? ' · ' : ''}
-                {listing.regionKey?.toUpperCase() ?? ''}
-              </p>
-            </div>
+      {/* Hero — art-forward, game crest top-left, larger team crest */}
+      <div className="relative h-[132px] overflow-hidden bg-[#1b1b21]">
+        {bannerUrl && (
+          <img
+            className="absolute inset-0 h-full w-full object-cover"
+            src={bannerUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={{
+              filter: isCaptainCard ? 'brightness(0.62) saturate(1.15)' : 'blur(8px) brightness(0.55)',
+              transform: isCaptainCard ? undefined : 'scale(1.15)',
+              opacity: isCaptainCard ? 0.6 : 0.85,
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#16161b] via-[#16161b]/55 to-transparent" />
+
+        {/* Game crest */}
+        <div className="absolute left-3 top-3 flex items-center gap-2 rounded-xl border border-white/[0.12] bg-black/55 px-2 py-1.5 backdrop-blur-md">
+          {listing.gameSlug ? (
+            <GameLogoImage
+              gameName={listing.gameSlug}
+              catalogLogo={catalogGame?.logo}
+              className="h-5 w-5 object-contain"
+            />
+          ) : (
+            <span className="h-5 w-5" />
+          )}
+          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/70">
+            {catalogGame?.name ?? listing.gameSlug ?? 'Scrim'}
+          </span>
+        </div>
+
+        {/* Status */}
+        <span
+          className={`absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] backdrop-blur-md ${
+            isOpen
+              ? 'border-rose-500/30 bg-black/50 text-rose-300'
+              : listing.status === 'paused'
+                ? 'border-amber-500/25 bg-black/50 text-amber-300/80'
+                : 'border-white/10 bg-black/50 text-white/35'
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isOpen ? 'bg-rose-500' : listing.status === 'paused' ? 'bg-amber-500/70' : 'bg-white/25'
+            }`}
+          />
+          {listing.status}
+        </span>
+
+        {/* Team identity */}
+        <div className="absolute inset-x-3.5 bottom-2.5 flex items-end gap-2.5">
+          <span
+            className="lfg-avatar team shrink-0 border border-white/[0.16] bg-white/[0.06]"
+            style={{ width: 48, height: 48, borderRadius: 13 }}
+          >
+            {listing.teamLogoUrl ? <img src={listing.teamLogoUrl} alt="" /> : initials}
+          </span>
+          <div className="min-w-0 pb-0.5">
+            <h2 className="lfg-name truncate text-[15px] font-bold text-white">
+              {listing.teamName ?? 'Unknown Team'}
+            </h2>
+            <p className="lfg-sub truncate">
+              {[listing.teamTag, listing.regionKey?.toUpperCase()].filter(Boolean).join(' · ')}
+            </p>
           </div>
         </div>
-          </div>
-        );
-      })()}
+      </div>
 
       {/* Card content */}
       <div className="lfg-compact-content">
-        {/* Rank + game/mode summary */}
+        {/* Rank + fixed 5v5 + series format */}
         <div className="lfg-compact-summary lfg-team-summary">
           {rankRange ? (
             <div className="flex items-center gap-1.5">
@@ -177,16 +203,14 @@ function ScrimCard({
           ) : (
             <span className="text-[10px] text-white/30">Any rank</span>
           )}
-          {listing.modeKey && (
-            <span className="lfg-compact-role">{listing.modeKey}</span>
-          )}
-          {listing.gameSlug && (
-            <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' as const, color: '#a1a1aa' }}>
-              {gameAbbrev(listing.gameSlug)}
-            </span>
-          )}
-          <span className="lfg-compact-role" aria-label={`Best of ${listing.bestOf ?? 1} series`}>
-            {`BO${listing.bestOf ?? 1}`}
+          <span className="rounded-md border border-white/[0.07] bg-white/[0.03] px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[0.12em] text-white/55">
+            5v5
+          </span>
+          <span
+            className="rounded-md border border-white/[0.07] bg-white/[0.03] px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[0.12em] text-white/55"
+            aria-label={`Best of ${listing.bestOf ?? 1} series`}
+          >
+            {bestOfLabel(listing.bestOf)}
           </span>
         </div>
 
@@ -207,19 +231,24 @@ function ScrimCard({
 
         {/* Schedule */}
         {hasSchedule && (
-          <div className="flex flex-wrap items-center gap-1.5" style={{ margin: '8px 0' }}>
+          <div className="my-2 flex flex-wrap items-center gap-1.5">
             {dayAbbrevs.map((day) => (
               <span
                 key={day}
-                style={{ padding: '2px 6px', background: 'rgba(255,255,255,0.07)', fontFamily: 'ui-monospace, monospace', fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600, borderRadius: 7 }}
+                className="rounded-md border border-white/[0.07] bg-white/[0.045] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
               >
-                {day.toUpperCase()}
+                {day}
               </span>
             ))}
             {listing.preferredTimeStart && listing.preferredTimeEnd && (
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+              <span className="text-[11px] font-medium tabular-nums text-white/60">
                 {dayAbbrevs.length > 0 ? '· ' : ''}
                 {formatTimeWindow(listing.preferredTimeStart, listing.preferredTimeEnd, listing.timezone ?? null)}
+              </span>
+            )}
+            {listing.scheduleType === 'recurring' && (
+              <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.14em] text-white/30">
+                Recurring
               </span>
             )}
           </div>
@@ -227,10 +256,12 @@ function ScrimCard({
 
         {/* Notes */}
         {listing.notes && (
-          <p className="lfg-description lfg-compact-description line-clamp-2 overflow-hidden break-words">{listing.notes}</p>
+          <p className="lfg-description lfg-compact-description line-clamp-2 overflow-hidden break-words">
+            {listing.notes}
+          </p>
         )}
 
-        {/* Bottom row — meta + details + action */}
+        {/* Meta + details */}
         <div className="lfg-compact-bottom">
           <span>
             {[
@@ -240,22 +271,19 @@ function ScrimCard({
             ].filter(Boolean).join(' · ') || listing.regionKey?.toUpperCase() || ''}
           </span>
 
-          <ScrimListingDetailSheet
-            listingId={listing.id}
-            teamName={listing.teamName ?? 'Team'}
-            teamLogoUrl={listing.teamLogoUrl}
-            gameSlug={listing.gameSlug}
-          >
-            <button type="button" className="lfg-compact-expand">
-              More details <ChevronRight size={15} />
-            </button>
-          </ScrimListingDetailSheet>
+          <button type="button" className="lfg-compact-expand" onClick={onOpen}>
+            More details <ChevronRight size={15} />
+          </button>
         </div>
 
         {/* CTA row */}
-        <div style={{ marginTop: 10 }}>
+        <div className="mt-2.5">
           {isOwner ? (
-            <Link to="/competitive/scrims/workspace" className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}>
+            <Link
+              to="/competitive/scrims/workspace"
+              className="lfg-button"
+              style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}
+            >
               Manage
             </Link>
           ) : isOpen && hasTeam ? (
@@ -263,19 +291,25 @@ function ScrimCard({
               type="button"
               whileTap={!reduced ? { scale: 0.97 } : undefined}
               transition={{ duration: 0.12 }}
-              onClick={isOfferOpen ? undefined : onRequestScrim}
-              aria-pressed={isOfferOpen}
+              onClick={onOpen}
               className="lfg-button lfg-button-primary"
               style={{ width: '100%', borderRadius: 10, fontSize: 12, minHeight: 40, justifyContent: 'center' }}
             >
-              Request Scrim
+              Request scrim
             </motion.button>
           ) : isOpen && !hasTeam ? (
-            <Link to="/teams" className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}>
+            <Link
+              to="/teams"
+              className="lfg-button"
+              style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center' }}
+            >
               Join a team to request
             </Link>
           ) : (
-            <span className="lfg-button" style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center', opacity: 0.3, cursor: 'default' }}>
+            <span
+              className="lfg-button"
+              style={{ width: '100%', borderRadius: 10, fontSize: 12, justifyContent: 'center', opacity: 0.3, cursor: 'default' }}
+            >
               Closed
             </span>
           )}
@@ -349,12 +383,10 @@ export default function ScrimDiscoveryPage() {
   const firstGame = catalog.games[0]?.slug ?? '';
 
   const [gameSlug, setGameSlug] = useState<string>('');
-  const [modeFilter, setModeFilter] = useState('');
   const [regionFilter, setRegionFilter] = useState('');
   const [minRankKey, setMinRankKey] = useState('');
   const [maxRankKey, setMaxRankKey] = useState('');
-  const [activeOfferId, setActiveOfferId] = useState<string | null>(null);
-  const [offerPrefilledAt, setOfferPrefilledAt] = useState<string | undefined>();
+  const [detailListing, setDetailListing] = useState<ScrimListingEnriched | null>(null);
 
   const activeGame = gameSlug || firstGame;
 
@@ -379,7 +411,6 @@ export default function ScrimDiscoveryPage() {
 
   const discoverQuery = useDiscoverScrimsFiltered({
     game: activeGame,
-    mode: modeFilter || undefined,
     region: regionFilter || undefined,
     minRankSortOrder,
     maxRankSortOrder,
@@ -391,27 +422,19 @@ export default function ScrimDiscoveryPage() {
   );
 
   const activeGameObj = catalog.games.find((g) => g.slug === activeGame);
-  const gameModes = (activeGameObj?.modes ?? activeGameObj?.formats ?? []) as Array<{
-    key?: string;
-    value: string;
-    name: string;
-  }>;
   const reduced = useReducedMotion() ?? false;
 
-  const hasFilters = !!(modeFilter || regionFilter || minRankKey || maxRankKey);
-  const activeFilterCount = [modeFilter, regionFilter, minRankKey, maxRankKey].filter(Boolean).length;
+  const hasFilters = !!(regionFilter || minRankKey || maxRankKey);
+  const activeFilterCount = [regionFilter, minRankKey, maxRankKey].filter(Boolean).length;
 
   function handleGameChange(slug: string) {
     setGameSlug(slug);
-    setModeFilter('');
     setRegionFilter('');
     setMinRankKey('');
     setMaxRankKey('');
-    setActiveOfferId(null);
   }
 
   function clearFilters() {
-    setModeFilter('');
     setRegionFilter('');
     setMinRankKey('');
     setMaxRankKey('');
@@ -419,16 +442,11 @@ export default function ScrimDiscoveryPage() {
 
   const hasTeam = (teamsQuery.data ?? []).length > 0;
 
-  function handleRequestScrim(listingId: string, prefilledAt?: string) {
+  function openListing(listing: ScrimListingEnriched) {
     if (!user) { navigate(signIn(location.pathname + location.search)); return; }
-    setActiveOfferId(activeOfferId === listingId ? null : listingId);
-    setOfferPrefilledAt(prefilledAt);
+    setDetailListing(listing);
   }
 
-  const modeOptions = gameModes.map((m) => ({
-    value: m.key ?? m.value,
-    label: m.name,
-  }));
   const regionOptions = regions.map((r) => ({
     value: r.regionKey,
     label: r.displayName,
@@ -446,7 +464,6 @@ export default function ScrimDiscoveryPage() {
   const filterSelects = (
     <>
       <FilterSelectGroup label="Game" value={activeGame} onChange={handleGameChange} options={gameOptions} placeholder="Select game" />
-      <FilterSelectGroup label="Mode" value={modeFilter} onChange={setModeFilter} options={modeOptions} placeholder="Any mode" />
       <FilterSelectGroup label="Region" value={regionFilter} onChange={setRegionFilter} options={regionOptions} placeholder="Any region" />
       <FilterSelectGroup label="Min rank" value={minRankKey} onChange={setMinRankKey} options={rankOptions} placeholder="Any" />
       <FilterSelectGroup label="Max rank" value={maxRankKey} onChange={setMaxRankKey} options={rankOptions} placeholder="Any" />
@@ -455,7 +472,6 @@ export default function ScrimDiscoveryPage() {
 
   interface ChipDef { key: string; label: string; iconUrl?: string | null; onDismiss: () => void }
   const activeChips: ChipDef[] = [
-    ...(modeFilter ? [{ key: 'mode', label: modeOptions.find((o) => o.value === modeFilter)?.label ?? modeFilter, onDismiss: () => setModeFilter('') }] : []),
     ...(regionFilter ? [{ key: 'region', label: regionOptions.find((o) => o.value === regionFilter)?.label ?? regionFilter, onDismiss: () => setRegionFilter('') }] : []),
     ...(minRankKey ? [{ key: 'min-rank', label: `Min: ${rankTierMap.get(minRankKey) ?? minRankKey}`, iconUrl: rankTiers.find((t) => t.tierKey === minRankKey)?.iconUrl, onDismiss: () => setMinRankKey('') }] : []),
     ...(maxRankKey ? [{ key: 'max-rank', label: `Max: ${rankTierMap.get(maxRankKey) ?? maxRankKey}`, iconUrl: rankTiers.find((t) => t.tierKey === maxRankKey)?.iconUrl, onDismiss: () => setMaxRankKey('') }] : []),
@@ -570,64 +586,30 @@ export default function ScrimDiscoveryPage() {
           >
             {listings.map((listing) => {
               const isOwner = listing.teamId ? myTeamIds.has(listing.teamId) : false;
-              const isOfferOpen = activeOfferId === listing.id;
 
               return (
                 <div key={listing.id} role="listitem" className="flex flex-col">
                   <ScrimCard
                     listing={listing}
                     isOwner={isOwner}
-                    isOfferOpen={isOfferOpen}
                     hasTeam={hasTeam}
-                    onRequestScrim={() => handleRequestScrim(listing.id)}
+                    onOpen={() => openListing(listing)}
                   />
-
-                  {/* Offer form — below the card */}
-                  <AnimatePresence>
-                    {isOfferOpen && hasTeam && listing.scheduleType === 'recurring' ? (
-                      <motion.div
-                        initial={reduced ? undefined : { height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={reduced ? undefined : { height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: 'easeOut' }}
-                        style={{ overflow: 'hidden' }}
-                      >
-                        <div className="border border-white/10 bg-black/40 p-4 mt-1">
-                          <ScrimSlotCalendar
-                            listing={listing}
-                            onSlotSelected={() => { setActiveOfferId(null); setOfferPrefilledAt(undefined); }}
-                          />
-                          <div className="mt-3 border-t border-white/[0.06] pt-3">
-                            <button onClick={() => { setActiveOfferId(null); setOfferPrefilledAt(undefined); }} className="text-[13px] text-white/40 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ) : isOfferOpen && hasTeam ? (
-                      <motion.div
-                        initial={reduced ? undefined : { height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={reduced ? undefined : { height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: 'easeOut' }}
-                        style={{ overflow: 'hidden' }}
-                      >
-                        <ScrimOfferForm
-                          listingId={listing.id}
-                          gameSlug={listing.gameSlug}
-                          bestOf={listing.bestOf}
-                          prefilledProposedAt={offerPrefilledAt}
-                          onClose={() => { setActiveOfferId(null); setOfferPrefilledAt(undefined); }}
-                        />
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
                 </div>
               );
             })}
           </motion.div>
         )}
       </main>
+
+      <ScrimDetailModal
+        listingId={detailListing?.id ?? null}
+        teamName={detailListing?.teamName}
+        teamLogoUrl={detailListing?.teamLogoUrl}
+        gameSlug={detailListing?.gameSlug}
+        isOwner={detailListing?.teamId ? myTeamIds.has(detailListing.teamId) : false}
+        onClose={() => setDetailListing(null)}
+      />
     </CompetitivePageShell>
   );
 }
