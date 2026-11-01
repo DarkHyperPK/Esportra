@@ -94,8 +94,20 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const createMutation = useCreateScrimListing();
 
   const [localGameSlug, setLocalGameSlug] = useState<string>(gameSlug ?? '');
-  const game = catalog.games.find((g) => g.slug === localGameSlug) ?? null;
-  const gameModes = game?.modes ?? [];
+
+  function defaultBookingUntil(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 28);
+    return d.toISOString().slice(0, 10);
+  }
+
+  /** Date input → inclusive end-of-day ISO, so the whole chosen day stays bookable. */
+  function toEndOfDayIso(value: string): string | undefined {
+    if (!value) return undefined;
+    const [y, m, day] = value.split('-').map(Number);
+    if (!y || !m || !day) return undefined;
+    return new Date(y, m - 1, day, 23, 59, 59).toISOString();
+  }
 
   const [scheduleType, setScheduleType] = useState<'one_off' | 'recurring'>('one_off');
   const [bestOf, setBestOf] = useState<BestOf>(3);
@@ -105,7 +117,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const [timezone] = useState(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; }
   });
-  const [modeKey, setModeKey] = useState('');
   const [regionKey, setRegionKey] = useState('');
   const [minRankKey, setMinRankKey] = useState('');
   const [maxRankKey, setMaxRankKey] = useState('');
@@ -123,11 +134,14 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
   async function handleSubmit() {
     setApiError('');
+    if (scheduleType === 'recurring' && !scheduleUntil) {
+      setApiError('Pick the last date you want to accept bookings.');
+      return;
+    }
     try {
       await createMutation.mutateAsync({
         teamId,
         gameSlug: localGameSlug || undefined,
-        modeKey: modeKey || undefined,
         regionKey: regionKey || undefined,
         minRankKey: minRankKey || undefined,
         maxRankKey: maxRankKey || undefined,
@@ -138,8 +152,10 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         notes: notes.trim() || undefined,
         scheduleType,
         bestOf,
-        // Recurring listings require a slot length server-side; individual matches still
-        // run their own length, so slots are a booking grid only — never shown as session minutes.
+        // Recurring listings require a booking window and a slot length server-side.
+        // Individual matches still run their own length; the grid is booking-only.
+        scheduleUntil:
+          scheduleType === 'recurring' ? toEndOfDayIso(scheduleUntil) : undefined,
         slotDurationMinutes:
           scheduleType === 'recurring' ? 90 : undefined,
       });
@@ -161,7 +177,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
       {/* Game */}
       <Field label="Game" htmlFor="nl-game">
-        <Select value={localGameSlug || '_'} onValueChange={(v) => { setLocalGameSlug(v === '_' ? '' : v); setModeKey(''); }}>
+        <Select value={localGameSlug || '_'} onValueChange={(v) => setLocalGameSlug(v === '_' ? '' : v)}>
           <SelectTrigger id="nl-game" className="h-10 text-[13px] rounded-xl border-white/10 bg-black/30">
             <SelectValue placeholder="Select game" />
           </SelectTrigger>
@@ -182,7 +198,12 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
             <button
               key={type}
               type="button"
-              onClick={() => setScheduleType(type)}
+              onClick={() => {
+                setScheduleType(type);
+                if (type === 'recurring' && !scheduleUntil) {
+                  setScheduleUntil(defaultBookingUntil());
+                }
+              }}
               className={`px-4 py-2 text-[13px] rounded-xl border transition-colors ${
                 scheduleType === type
                   ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
@@ -197,7 +218,12 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
       {/* Match format — fixed by the listing, shown to every offering team */}
       <div className="space-y-2">
-        <p className="text-[12px] font-medium text-white/40 uppercase tracking-wider font-mono">Match format</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[12px] font-medium text-white/40 uppercase tracking-wider font-mono">Match format</p>
+          <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[0.12em] text-white/50">
+            5v5
+          </span>
+        </div>
         <div className="flex gap-2">
           {BEST_OF_OPTIONS.map((n) => (
             <button
@@ -264,30 +290,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </Field>
       </div>
 
-      {/* Mode */}
-      <Field label="Mode" htmlFor="nl-mode" optional>
-        {gameModes.length > 0 ? (
-          <Select value={modeKey || NONE} onValueChange={(v) => setModeKey(v === NONE ? '' : v)}>
-            <SelectTrigger id="nl-mode" className="h-10 text-[13px] rounded-xl border-white/10 bg-black/30">
-              <SelectValue placeholder="Any mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Any mode</SelectItem>
-              {gameModes.map((m) => (
-                <SelectItem key={m.key ?? m.value} value={m.key ?? m.value}>{m.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <input
-            id="nl-mode"
-            value={modeKey}
-            onChange={(e) => setModeKey(e.target.value)}
-            placeholder="e.g. Competitive"
-            className={INPUT_CLASS}
-          />
-        )}
-      </Field>
+      {/* Mode is not configured — a scrim is 5v5 by definition. */}
 
       {/* Region */}
       <Field label="Region" htmlFor="nl-region" optional>
@@ -314,13 +317,19 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
           <input
             id="nl-until"
             type="date"
+            required
             value={scheduleUntil}
             onChange={(e) => setScheduleUntil(e.target.value)}
             className={`${INPUT_CLASS} [color-scheme:dark]`}
           />
           <p className="text-[11px] text-white/30 mt-1.5">
-            Your listing stays open for new slots until this date.
+            Your listing stays open for new slots through this date (defaults four weeks out).
           </p>
+          {(selectedDays.length === 0 || !timeStart || !timeEnd) && (
+            <p className="text-[11px] text-amber-300/70 mt-1.5">
+              Add at least one day and a time window so bookable slots can be generated.
+            </p>
+          )}
         </Field>
       )}
 

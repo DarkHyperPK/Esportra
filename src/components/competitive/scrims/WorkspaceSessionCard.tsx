@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Info } from 'lucide-react';
+import { Info, TriangleAlert } from 'lucide-react';
 import { StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
+import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import {
   useConfirmScrimResult,
   useCompleteScrimSession,
@@ -52,17 +54,23 @@ function formatSessionDate(iso: string | null): string {
 export function WorkspaceSessionCard({
   session,
   teamId,
+  overlappingWith = [],
 }: {
   session: ScrimSession;
   teamId: string;
+  /** Opponent names of other scrims whose times intersect this one. */
+  overlappingWith?: string[];
 }) {
   const completeMutation = useCompleteScrimSession(session.id);
   const cancelMutation = useCancelScrimSession(session.id);
   const confirmMutation = useConfirmScrimResult(session.id);
+  const catalog = useGameCatalogContext();
   const anyPending = completeMutation.isPending || cancelMutation.isPending;
 
   const iAmTeam1 = session.team1Id === teamId;
   const opponentName = (iAmTeam1 ? session.team2Name : session.team1Name) ?? 'Opponent';
+  const opponentLogo = (iAmTeam1 ? session.team2Logo : session.team1Logo) ?? null;
+  const catalogGame = catalog.games.find((g) => g.slug === session.gameSlug);
   const opponentReported = iAmTeam1
     ? session.resultReportedByTeam2
     : session.resultReportedByTeam1;
@@ -89,32 +97,61 @@ export function WorkspaceSessionCard({
       )}
 
       <div className="p-4 space-y-3">
-        {/* Header — status + format + game */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Header — game crest, fixed 5v5, series format, status */}
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.09] bg-black/40">
+            {session.gameSlug ? (
+              <GameLogoImage
+                gameName={session.gameSlug}
+                catalogLogo={catalogGame?.logo}
+                className="h-6 w-6 object-contain"
+              />
+            ) : (
+              <span className="font-mono text-[9px] text-white/30">—</span>
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+              5v5 <span className="text-white/15">·</span> {bestOfLabel(session.bestOf)}
+            </p>
+            <p className="truncate text-[11px] text-white/30">
+              {catalogGame?.name ?? session.gameSlug ?? 'Scrim'}
+            </p>
+          </div>
           <StatusPill
             label={session.status.replace('_', ' ')}
             tone={SESSION_TONE[session.status]}
           />
-          <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-white/50">
-            {bestOfLabel(session.bestOf).toUpperCase()}
-          </span>
-          {session.gameSlug && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/30">
-              {session.gameSlug}
-            </span>
-          )}
         </div>
 
         {/* Opponent + time */}
-        <div className="min-w-0">
-          <p className="text-[11px] font-mono uppercase tracking-[0.22em] text-white/30">vs</p>
-          <p className="font-heading text-[16px] font-bold text-white truncate leading-tight">
-            {opponentName}
-          </p>
-          <p className="text-[12px] text-white/50 tabular-nums mt-0.5">
-            {formatSessionDate(session.scheduledAt)}
-          </p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/[0.1] bg-white/[0.05] text-[11px] font-semibold text-white/60">
+            {opponentLogo ? (
+              <img src={opponentLogo} alt="" className="h-full w-full object-contain p-1" />
+            ) : (
+              opponentName.slice(0, 2).toUpperCase()
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-heading text-[15px] font-bold leading-tight text-white">
+              {opponentName}
+            </p>
+            <p className="mt-0.5 text-[12px] tabular-nums text-white/50">
+              {formatSessionDate(session.scheduledAt)}
+            </p>
+          </div>
         </div>
+
+        {/* Time collision */}
+        {overlappingWith.length > 0 && (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-2.5 py-2">
+            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/80" aria-hidden />
+            <p className="text-[11px] leading-snug text-amber-200/75">
+              Overlaps your scrim with {overlappingWith.join(', ')}.
+            </p>
+          </div>
+        )}
 
         {/* Opponent reported — quick confirm stays on the card (one tap to settle) */}
         {confirmPending && (

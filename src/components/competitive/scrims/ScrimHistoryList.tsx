@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
+import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useScrimHistory } from '@/hooks/competitive/useScrims';
+import { SCRIM_CARD_CLASS, SCRIM_EYEBROW } from './WorkspaceListingCard';
 import type { ScrimHistoryEntry, ScrimHistoryResult } from '@/types/competitive';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -24,22 +27,24 @@ const RESULT_LABEL: Record<ScrimHistoryResult, string> = {
 
 function HistorySkeleton() {
   return (
-    <div className="space-y-1 animate-pulse">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-pulse">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="h-12 bg-white/[0.04] border border-white/[0.06]" />
+        <div key={i} className="h-[104px] rounded-2xl border border-white/[0.06] bg-white/[0.04]" />
       ))}
     </div>
   );
 }
 
-// ── HistoryRow ────────────────────────────────────────────────────────────────
+// ── HistoryCard ───────────────────────────────────────────────────────────────
 
-function HistoryRow({ entry }: { entry: ScrimHistoryEntry }) {
+function HistoryCard({ entry }: { entry: ScrimHistoryEntry }) {
+  const catalog = useGameCatalogContext();
+  const catalogGame = catalog.games.find((g) => g.slug === entry.gameSlug);
+
   const date = entry.scheduledAt
     ? new Date(entry.scheduledAt).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
-        year: 'numeric',
       })
     : null;
 
@@ -48,40 +53,50 @@ function HistoryRow({ entry }: { entry: ScrimHistoryEntry }) {
       ? `${entry.myScore} – ${entry.opponentScore}`
       : '— – —';
 
+  const opponentInitials = (entry.opponentTeamName ?? 'TM').slice(0, 2).toUpperCase();
+
   return (
-    <div className="flex items-center gap-3 border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-[13px]">
-      {/* Opponent */}
-      <span className="flex-1 min-w-0 font-medium text-white truncate">
-        {entry.opponentTeamName ?? 'Unknown'}
-      </span>
-
-      {/* Date */}
-      {date && (
-        <span className="shrink-0 text-[12px] text-white/35 hidden sm:block">{date}</span>
-      )}
-
-      {/* Game slug badge */}
-      {entry.gameSlug && (
-        <span className="shrink-0 font-mono text-[10px] tracking-[0.18em] text-white/30 hidden md:block">
-          {entry.gameSlug.toUpperCase().slice(0, 3)}
+    <div className={`${SCRIM_CARD_CLASS} p-3.5`}>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.1] bg-black/40 text-[10px] font-semibold text-white/60">
+          {entry.opponentTeamLogo ? (
+            <img src={entry.opponentTeamLogo} alt="" className="h-full w-full object-contain p-1" />
+          ) : (
+            opponentInitials
+          )}
         </span>
-      )}
 
-      {/* Map name */}
-      {entry.mapName && (
-        <span className="shrink-0 text-[12px] text-white/40 hidden lg:block truncate max-w-[100px]">
-          {entry.mapName}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-white">
+            {entry.opponentTeamName ?? 'Unknown'}
+          </p>
+          <p className={`${SCRIM_EYEBROW} mt-0.5 flex items-center gap-1.5`}>
+            {entry.gameSlug && (
+              <GameLogoImage
+                gameName={entry.gameSlug}
+                catalogLogo={catalogGame?.logo}
+                className="h-3 w-3 object-contain"
+              />
+            )}
+            <span className="truncate">
+              {[date, catalogGame?.name ?? entry.gameSlug?.toUpperCase()]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </p>
+        </div>
+
+        <StatusPill label={RESULT_LABEL[entry.result]} tone={RESULT_TONE[entry.result]} />
+      </div>
+
+      <div className="mt-2.5 flex items-end justify-between gap-2 border-t border-white/[0.06] pt-2.5">
+        <span className="font-mono text-[17px] font-semibold tabular-nums leading-none text-white/85">
+          {score}
         </span>
-      )}
-
-      {/* Score */}
-      <span className="shrink-0 font-mono text-[13px] tabular-nums text-white/70">{score}</span>
-
-      {/* Result badge */}
-      <StatusPill
-        label={RESULT_LABEL[entry.result]}
-        tone={RESULT_TONE[entry.result]}
-      />
+        {entry.mapName && (
+          <span className="truncate text-[11px] text-white/35">{entry.mapName}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -98,7 +113,7 @@ interface Props {
 }
 
 /**
- * Paginated scrim history list. Shows opponent, date, game, score and result.
+ * Paginated scrim history — result cards (opponent crest, date, game, score).
  *
  * Usage:
  * - In workspace: `<ScrimHistoryList teamId={teamId} />`
@@ -142,10 +157,10 @@ export function ScrimHistoryList({ teamId, silentOnError = false }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1" role="list" aria-label="Scrim history">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="list" aria-label="Scrim history">
         {items.map((entry) => (
           <div key={entry.sessionId} role="listitem">
-            <HistoryRow entry={entry} />
+            <HistoryCard entry={entry} />
           </div>
         ))}
       </div>

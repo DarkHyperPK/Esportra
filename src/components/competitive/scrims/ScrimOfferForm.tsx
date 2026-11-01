@@ -22,9 +22,22 @@ interface ScrimOfferFormProps {
   gameSlug: string | null;
   /** Match format fixed by the listing; shown as a locked chip. */
   bestOf?: number | null;
+  /** ISO start time (from a picked slot) — sent as-is, displayed localised. */
   prefilledProposedAt?: string;
   slotId?: string;
   onClose: () => void;
+}
+
+function formatProposedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 export function ScrimOfferForm({
@@ -75,15 +88,17 @@ export function ScrimOfferForm({
   }
 
   return (
-    <div className="border border-white/10 bg-black/40 p-4 space-y-3 mt-1">
-      <p className="text-[11px] font-medium text-white/35">Send scrim offer</p>
+    <div className="space-y-3 rounded-xl border border-white/[0.08] bg-black/35 p-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/30">
+        Send scrim offer
+      </p>
       {teams.length > 1 && (
         <Field label="Your team" htmlFor={`oti-${listingId}`}>
           <select
             id={`oti-${listingId}`}
             value={offeringTeamId}
             onChange={(e) => setOfferingTeamId(e.target.value)}
-            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white focus:outline-none focus:border-white/30"
+            className="h-10 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30"
           >
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
@@ -92,7 +107,7 @@ export function ScrimOfferForm({
             ))}
           </select>
           {teamIdError && (
-            <p role="alert" className="text-xs text-red-300 mt-1">
+            <p role="alert" className="mt-1 text-xs text-red-300">
               {teamIdError}
             </p>
           )}
@@ -106,8 +121,8 @@ export function ScrimOfferForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label="Proposed start" htmlFor={`oat-${listingId}`} optional>
           {prefilledProposedAt ? (
-            <div className="h-10 flex items-center border border-white/10 bg-black/20 px-3 text-[14px] text-white/60">
-              {prefilledProposedAt}
+            <div className="flex h-10 items-center rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/70">
+              {formatProposedAt(prefilledProposedAt)}
             </div>
           ) : (
             <input
@@ -115,7 +130,7 @@ export function ScrimOfferForm({
               type="datetime-local"
               value={proposedAt}
               onChange={(e) => setProposedAt(e.target.value)}
-              className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
+              className="h-10 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
             />
           )}
         </Field>
@@ -123,7 +138,7 @@ export function ScrimOfferForm({
         <Field label="Match format" htmlFor={`obf-${listingId}`} optional>
           <div
             id={`obf-${listingId}`}
-            className="h-10 flex items-center gap-2 border border-white/10 bg-black/20 px-3 text-[14px] text-white/60"
+            className="flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/60"
           >
             <span className="font-mono text-[12px] font-semibold tracking-[0.14em] text-white/70">
               {bestOfLabel(bestOf).toUpperCase()}
@@ -141,7 +156,7 @@ export function ScrimOfferForm({
           onChange={(e) => setNotes(e.target.value.slice(0, 400))}
           placeholder="Message to the other team…"
           rows={2}
-          className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
+          className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 resize-none"
         />
       </Field>
       {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
@@ -149,16 +164,16 @@ export function ScrimOfferForm({
         <Button
           variant="ghost"
           onClick={onClose}
-          className="text-[13px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+          className="rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white"
         >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={offerMutation.isPending}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-none px-5 text-[13px]"
+          className="rounded-lg bg-rose-500 px-5 text-[13px] font-semibold text-white hover:bg-rose-600"
         >
-          {offerMutation.isPending ? 'Sending…' : 'Request Scrim'}
+          {offerMutation.isPending ? 'Sending…' : 'Send offer'}
         </Button>
       </div>
     </div>
