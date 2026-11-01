@@ -830,6 +830,8 @@ export interface ScrimListing {
   scheduleType: 'one_off' | 'recurring';
   scheduleUntil: string | null;
   slotDurationMinutes: number | null;
+  /** Match format fixed by the listing: 1 | 3 | 5 (best-of series). */
+  bestOf?: number | null;
   createdAt: string;
   updatedAt: string;
   teamName?: string | null;
@@ -920,6 +922,8 @@ export interface ScrimSession {
   team1Logo?: string | null;
   team2Name?: string | null;
   team2Logo?: string | null;
+  /** Series format inherited from the source listing: 1 | 3 | 5. */
+  bestOf?: number | null;
 }
 
 // ── PROJ-078 — Dispute + Slot types ──────────────────────────────────────────

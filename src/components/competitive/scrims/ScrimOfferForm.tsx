@@ -11,11 +11,17 @@ import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { useMakeOffer } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
+import {
+  bestOfLabel,
+  winsNeeded,
+} from '@/services/scrimUtils';
 import { getApiErrorMessage } from '@/lib/apiClient';
 
 interface ScrimOfferFormProps {
   listingId: string;
   gameSlug: string | null;
+  /** Match format fixed by the listing; shown as a locked chip. */
+  bestOf?: number | null;
   prefilledProposedAt?: string;
   slotId?: string;
   onClose: () => void;
@@ -24,6 +30,7 @@ interface ScrimOfferFormProps {
 export function ScrimOfferForm({
   listingId,
   gameSlug,
+  bestOf,
   prefilledProposedAt,
   slotId,
   onClose,
@@ -41,7 +48,6 @@ export function ScrimOfferForm({
 
   const [offeringTeamId, setOfferingTeamId] = useState('');
   const [proposedAt, setProposedAt] = useState(prefilledProposedAt ?? '');
-  const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [teamIdError, setTeamIdError] = useState('');
   const [apiError, setApiError] = useState('');
@@ -59,7 +65,6 @@ export function ScrimOfferForm({
       await offerMutation.mutateAsync({
         offeringTeamId: resolvedTeamId,
         proposedAt: proposedAt || undefined,
-        proposedDurationMinutes: duration ? parseInt(duration, 10) : undefined,
         notes: notes.trim() || undefined,
         slotId: slotId || undefined,
       });
@@ -99,7 +104,7 @@ export function ScrimOfferForm({
         </p>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Proposed date & time" htmlFor={`oat-${listingId}`} optional>
+        <Field label="Proposed start" htmlFor={`oat-${listingId}`} optional>
           {prefilledProposedAt ? (
             <div className="h-10 flex items-center border border-white/10 bg-black/20 px-3 text-[14px] text-white/60">
               {prefilledProposedAt}
@@ -114,17 +119,19 @@ export function ScrimOfferForm({
             />
           )}
         </Field>
-        <Field label="Session duration (min)" htmlFor={`odm-${listingId}`} optional>
-          <input
-            id={`odm-${listingId}`}
-            type="number"
-            min={15}
-            max={300}
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="e.g. 60"
-            className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30"
-          />
+        {/* Format is locked by the listing — shown plainly so the request is informed */}
+        <Field label="Match format" htmlFor={`obf-${listingId}`} optional>
+          <div
+            id={`obf-${listingId}`}
+            className="h-10 flex items-center gap-2 border border-white/10 bg-black/20 px-3 text-[14px] text-white/60"
+          >
+            <span className="font-mono text-[12px] font-semibold tracking-[0.14em] text-white/70">
+              {bestOfLabel(bestOf).toUpperCase()}
+            </span>
+            <span className="text-[11px] text-white/35">
+              first to {winsNeeded(bestOf)}, set by listing
+            </span>
+          </div>
         </Field>
       </div>
       <Field label="Message to team" htmlFor={`on-${listingId}`} optional>

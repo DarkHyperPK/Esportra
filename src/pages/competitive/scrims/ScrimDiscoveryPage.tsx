@@ -185,6 +185,9 @@ function ScrimCard({
               {gameAbbrev(listing.gameSlug)}
             </span>
           )}
+          <span className="lfg-compact-role" aria-label={`Best of ${listing.bestOf ?? 1} series`}>
+            {`BO${listing.bestOf ?? 1}`}
+          </span>
         </div>
 
         {/* Roster preview */}
@@ -612,6 +615,7 @@ export default function ScrimDiscoveryPage() {
                         <ScrimOfferForm
                           listingId={listing.id}
                           gameSlug={listing.gameSlug}
+                          bestOf={listing.bestOf}
                           prefilledProposedAt={offerPrefilledAt}
                           onClose={() => { setActiveOfferId(null); setOfferPrefilledAt(undefined); }}
                         />

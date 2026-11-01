@@ -59,6 +59,8 @@ interface CreateScrimListingReq {
   scheduleType?: 'one_off' | 'recurring';
   scheduleUntil?: string;
   slotDurationMinutes?: number;
+  /** Match format fixed by this listing: 1, 3 or 5. */
+  bestOf?: number;
 }
 
 interface MakeOfferReq {
@@ -186,6 +188,7 @@ export function useCreateScrimListing() {
         schedule_type: req.scheduleType,
         schedule_until: req.scheduleUntil,
         slot_duration_minutes: req.slotDurationMinutes,
+        best_of: req.bestOf,
       }),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: scrimKeys.teamListings(variables.teamId) });
@@ -202,6 +205,7 @@ export function useUpdateScrimListing(id: string) {
         mode_key: req.modeKey,
         region_key: req.regionKey,
         notes: req.notes,
+        best_of: req.bestOf,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scrims', 'listings'] });

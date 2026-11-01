@@ -17,7 +17,7 @@ import {
 } from '@/hooks/competitive/useScrims';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
-import { WorkspaceListingCard } from '@/components/competitive/scrims/WorkspaceListingCard';
+import { WorkspaceListingCard, SCRIM_CARD_CLASS, SCRIM_EYEBROW } from '@/components/competitive/scrims/WorkspaceListingCard';
 import { WorkspaceSessionCard } from '@/components/competitive/scrims/WorkspaceSessionCard';
 import { ScrimHistoryList } from '@/components/competitive/scrims/ScrimHistoryList';
 import type { ScrimOffer } from '@/types/competitive';
@@ -48,40 +48,38 @@ function formatProposedSlot(offer: ScrimOffer): string {
   const weekday = d.toLocaleDateString(undefined, { weekday: 'short' });
   const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const base = `${weekday} ${date} · ${time}`;
-  return offer.proposedDurationMinutes
-    ? `${base} · ${offer.proposedDurationMinutes} min`
-    : base;
+  return `${weekday} ${date} · ${time}`;
 }
 
-// ── Offer rows ────────────────────────────────────────────────────────────────
+// ── Offer cards ───────────────────────────────────────────────────────────────
 
-function ReceivedOfferRow({ offer }: { offer: ScrimOffer }) {
+function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
   const acceptMutation = useAcceptOffer(offer.id);
   const declineMutation = useDeclineOffer(offer.id);
   const isPending = acceptMutation.isPending || declineMutation.isPending;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex items-center gap-2 flex-wrap">
+    <div className={`${SCRIM_CARD_CLASS} border-rose-500/25 hover:border-rose-500/35 p-3.5 space-y-2`}>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <p className="text-[14px] font-semibold text-white truncate">
             {offer.offeringTeamName ?? offer.offeringTeamId.slice(0, 8)}
           </p>
-          <StatusPill label={offer.status.toUpperCase()} tone={OFFER_TONE[offer.status]} />
+          <p className={SCRIM_EYEBROW}>Wants a scrim</p>
         </div>
-        <p className="text-[12px] text-white/45">{formatProposedSlot(offer)}</p>
-        {offer.notes && (
-          <p className="text-[12px] text-white/40 line-clamp-1">Message: {offer.notes}</p>
-        )}
+        <StatusPill label={offer.status} tone={OFFER_TONE[offer.status]} />
       </div>
+      <p className="text-[13px] text-white/70 tabular-nums">{formatProposedSlot(offer)}</p>
+      {offer.notes && (
+        <p className="text-[12px] text-white/40 line-clamp-2 italic">"{offer.notes}"</p>
+      )}
       {offer.status === 'pending' && (
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 pt-1">
           <Button
             size="sm"
             onClick={() => acceptMutation.mutate()}
             disabled={isPending}
-            className="bg-rose-500 hover:bg-rose-600 text-white rounded-none text-[12px]"
+            className="bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[12px] h-8 px-4"
           >
             {acceptMutation.isPending ? '…' : 'Accept'}
           </Button>
@@ -90,7 +88,7 @@ function ReceivedOfferRow({ offer }: { offer: ScrimOffer }) {
             variant="ghost"
             onClick={() => declineMutation.mutate()}
             disabled={isPending}
-            className="text-[12px] text-white/55 hover:text-white rounded-none border border-white/[0.08]"
+            className="text-[12px] text-white/55 hover:text-white rounded-lg h-8 px-3 border border-white/[0.08]"
           >
             {declineMutation.isPending ? '…' : 'Decline'}
           </Button>
@@ -100,30 +98,33 @@ function ReceivedOfferRow({ offer }: { offer: ScrimOffer }) {
   );
 }
 
-function OutgoingOfferRow({ offer }: { offer: ScrimOffer }) {
+function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
   const withdrawMutation = useWithdrawOffer(offer.id);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 flex items-start gap-3">
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex items-center gap-2 flex-wrap">
+    <div className={`${SCRIM_CARD_CLASS} p-3.5 space-y-2`}>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <p className="text-[14px] font-semibold text-white truncate">
-            To: {offer.listingTeamName ?? offer.listingId.slice(0, 8)}
+            {offer.listingTeamName ?? offer.listingId.slice(0, 8)}
           </p>
-          <StatusPill label={offer.status.toUpperCase()} tone={OFFER_TONE[offer.status]} />
+          <p className={SCRIM_EYEBROW}>Your request · waiting on them</p>
         </div>
-        <p className="text-[12px] text-white/45">{formatProposedSlot(offer)}</p>
+        <StatusPill label={offer.status} tone={OFFER_TONE[offer.status]} />
       </div>
+      <p className="text-[13px] text-white/70 tabular-nums">{formatProposedSlot(offer)}</p>
       {offer.status === 'pending' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => withdrawMutation.mutate()}
-          disabled={withdrawMutation.isPending}
-          className="text-[12px] text-red-300/70 hover:text-red-300 rounded-none shrink-0"
-        >
-          {withdrawMutation.isPending ? '…' : 'Withdraw'}
-        </Button>
+        <div className="flex justify-end pt-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => withdrawMutation.mutate()}
+            disabled={withdrawMutation.isPending}
+            className="text-[12px] text-red-300/70 hover:text-red-300 rounded-lg h-8 px-3 border border-white/[0.08]"
+          >
+            {withdrawMutation.isPending ? '…' : 'Withdraw'}
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -399,9 +400,9 @@ export default function ScrimWorkspacePage() {
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="border-l-[3px] border-rose-500 bg-rose-500/[0.04] px-6 py-4"
               >
-                <div className="space-y-2">
+                <div className="grid gap-2 md:grid-cols-2">
                   {pendingReceivedOffers.map((offer) => (
-                    <ReceivedOfferRow key={offer.id} offer={offer} />
+                    <ReceivedOfferCard key={offer.id} offer={offer} />
                   ))}
                 </div>
               </motion.section>
@@ -446,7 +447,7 @@ export default function ScrimWorkspacePage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                   {listings.map((l) => (
                     <WorkspaceListingCard key={l.id} listing={l} />
                   ))}
@@ -463,9 +464,9 @@ export default function ScrimWorkspacePage() {
                 OUTGOING OFFERS
               </h2>
               {myOffersQuery.isLoading ? (
-                <div className="space-y-1.5 animate-pulse">
+                <div className="grid gap-3 xl:grid-cols-2 animate-pulse">
                   {[1, 2].map((i) => (
-                    <div key={i} className="h-[72px] bg-white/[0.04] border border-white/[0.06]" />
+                    <div key={i} className="h-[72px] bg-white/[0.04] border border-white/[0.06] rounded-2xl" />
                   ))}
                 </div>
               ) : myOffersQuery.isError ? (
@@ -482,9 +483,9 @@ export default function ScrimWorkspacePage() {
               ) : myOffers.length === 0 ? (
                 <p className="py-4 text-[14px] text-white/40">No outgoing offers yet.</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="grid gap-3 xl:grid-cols-2">
                   {myOffers.map((offer) => (
-                    <OutgoingOfferRow key={offer.id} offer={offer} />
+                    <OutgoingOfferCard key={offer.id} offer={offer} />
                   ))}
                 </div>
               )}
@@ -516,7 +517,7 @@ export default function ScrimWorkspacePage() {
                   No scheduled scrims yet. Accept an offer to create one.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                   {upcomingSessions.map((s) => (
                     <WorkspaceSessionCard key={s.id} session={s} teamId={resolvedTeamId} />
                   ))}

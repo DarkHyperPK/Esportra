@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { useCatalogRankTiers } from '@/hooks/competitive/useCatalog';
+import {
+  BEST_OF_OPTIONS,
+  type BestOf,
+  bestOfLongLabel,
+} from '@/services/scrimUtils';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { GameCatalogContext } from '@/contexts/game-catalog-context';
 import type { CatalogRankTier } from '@/types/competitive';
@@ -93,6 +98,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const gameModes = game?.modes ?? [];
 
   const [scheduleType, setScheduleType] = useState<'one_off' | 'recurring'>('one_off');
+  const [bestOf, setBestOf] = useState<BestOf>(3);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeStart, setTimeStart] = useState('');
   const [timeEnd, setTimeEnd] = useState('');
@@ -106,7 +112,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const rankTiersQuery = useCatalogRankTiers(localGameSlug);
   const rankTiers = rankTiersQuery.data ?? [];
   const [scheduleUntil, setScheduleUntil] = useState('');
-  const [slotDurationMinutes, setSlotDurationMinutes] = useState('');
   const [notes, setNotes] = useState('');
   const [apiError, setApiError] = useState('');
 
@@ -132,11 +137,11 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         timezone: timezone || undefined,
         notes: notes.trim() || undefined,
         scheduleType,
-        scheduleUntil: scheduleType === 'recurring' ? scheduleUntil || undefined : undefined,
+        bestOf,
+        // Recurring listings require a slot length server-side; individual matches still
+        // run their own length, so slots are a booking grid only — never shown as session minutes.
         slotDurationMinutes:
-          scheduleType === 'recurring'
-            ? parseInt(slotDurationMinutes, 10) || undefined
-            : undefined,
+          scheduleType === 'recurring' ? 90 : undefined,
       });
       onSuccess();
     } catch (err) {
@@ -188,6 +193,31 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Match format — fixed by the listing, shown to every offering team */}
+      <div className="space-y-2">
+        <p className="text-[12px] font-medium text-white/40 uppercase tracking-wider font-mono">Match format</p>
+        <div className="flex gap-2">
+          {BEST_OF_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={bestOf === n}
+              onClick={() => setBestOf(n)}
+              className={`px-4 py-2 text-[13px] font-semibold rounded-xl border transition-colors ${
+                bestOf === n
+                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  : 'text-white/45 border-white/[0.08] hover:text-white hover:border-white/20'
+              }`}
+            >
+              {`BO${n}`}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-white/30">
+          {bestOfLongLabel(bestOf)} series. Teams responding to this listing play this format.
+        </p>
       </div>
 
       {/* Preferred days */}
@@ -280,35 +310,18 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
       {/* Recurring fields */}
       {scheduleType === 'recurring' && (
-        <>
-          <Field label="Accept bookings until" htmlFor="nl-until">
-            <input
-              id="nl-until"
-              type="date"
-              value={scheduleUntil}
-              onChange={(e) => setScheduleUntil(e.target.value)}
-              className={`${INPUT_CLASS} [color-scheme:dark]`}
-            />
-            <p className="text-[11px] text-white/30 mt-1.5">
-              Your listing stays open for new slots until this date.
-            </p>
-          </Field>
-          <Field label="Session duration (minutes)" htmlFor="nl-slot-dur" optional>
-            <input
-              id="nl-slot-dur"
-              type="number"
-              min={15}
-              max={360}
-              value={slotDurationMinutes}
-              onChange={(e) => setSlotDurationMinutes(e.target.value)}
-              placeholder="e.g. 90"
-              className={INPUT_CLASS}
-            />
-            <p className="text-[11px] text-white/30 mt-1.5">
-              How long each scrim session lasts.
-            </p>
-          </Field>
-        </>
+        <Field label="Accept bookings until" htmlFor="nl-until">
+          <input
+            id="nl-until"
+            type="date"
+            value={scheduleUntil}
+            onChange={(e) => setScheduleUntil(e.target.value)}
+            className={`${INPUT_CLASS} [color-scheme:dark]`}
+          />
+          <p className="text-[11px] text-white/30 mt-1.5">
+            Your listing stays open for new slots until this date.
+          </p>
+        </Field>
       )}
 
       {/* Notes */}

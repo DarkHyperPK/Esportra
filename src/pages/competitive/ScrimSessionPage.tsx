@@ -18,6 +18,13 @@ import {
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { getLobbyFormat } from '@/services/gameLobbyFormat';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import {
+  bestOfLongLabel,
+  normalizeBestOf,
+  seriesOutcomeHint,
+  validSeriesOutcomes,
+  winsNeeded,
+} from '@/services/scrimUtils';
 import type { ScrimSession, ScrimSessionStatus } from '@/types/competitive';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -115,9 +122,11 @@ function FaceOffLockup({ session, myTeamSide }: { session: ScrimSession; myTeamS
     checkedIn: !!session.team2CheckedInAt, cancelled,
     label: myTeamSide === 2 ? 'Your team' : myTeamSide === 1 ? 'Opponent' : undefined,
   };
+  const bo = normalizeBestOf(session.bestOf);
+  const need = winsNeeded(bo);
 
   return (
-    <div className="py-8 space-y-4">
+    <div className="py-6 space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         {session.gameSlug && (
           <span className="font-mono text-[10px] tracking-[0.2em] text-white/35 bg-white/[0.05] px-1.5 py-0.5">
@@ -125,10 +134,15 @@ function FaceOffLockup({ session, myTeamSide }: { session: ScrimSession; myTeamS
           </span>
         )}
         {session.modeKey && <span className="text-[12px] text-white/45">{session.modeKey}</span>}
+        <span
+          className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.16em] text-white/55"
+          aria-label={`${bestOfLongLabel(bo)} series`}
+        >
+          {bestOfLongLabel(bo)} · FIRST TO {need}
+        </span>
         {session.scheduledAt && (
-          <span className="text-[13px] text-white/70 font-medium">{formatSessionTime(session.scheduledAt)}</span>
+          <span className="text-[13px] text-white/70 font-medium tabular-nums">{formatSessionTime(session.scheduledAt)}</span>
         )}
-        {session.durationMinutes && <span className="text-[12px] text-white/40">90-min block</span>}
       </div>
 
       <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center gap-6">
@@ -212,9 +226,10 @@ function LobbyInfoPanel({ session }: { session: ScrimSession }) {
 // ── ReportForm ────────────────────────────────────────────────────────────────
 
 function ReportForm({
-  sessionId, gameSlug, myTeamId, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
+  sessionId, gameSlug, bestOf, myTeamId, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
 }: {
-  sessionId: string; gameSlug: string | null; myTeamId: string | null;
+  sessionId: string; gameSlug: string | null; bestOf: number;
+  myTeamId: string | null;
   t1Name: string; t2Name: string; defaultT1: string; defaultT2: string;
   onSuccess: () => void; onCancel: () => void;
 }) {
@@ -222,6 +237,7 @@ function ReportForm({
   const [s1, setS1] = useState(defaultT1);
   const [s2, setS2] = useState(defaultT2);
   const [notes, setNotes] = useState('');
+  const [manual, setManual] = useState(false);
   const isValorant = gameSlug === 'valorant';
 
   function fillScores(team1Score: number, team2Score: number) {
@@ -238,6 +254,10 @@ function ReportForm({
       onSuccess();
     } catch { /* shown via report.isError */ }
   }
+
+  // Series presets — every legal outcome of the listing's format, one tap each.
+  const presets = validSeriesOutcomes(bestOf);
+  const need = winsNeeded(bestOf);
 
   return (
     <div className="space-y-4">
@@ -262,19 +282,46 @@ function ReportForm({
         />
       </div>
 
-      {/* Manual score inputs */}
+      {/* Series result — presets first, manual entry underneath */}
       <div className="space-y-3">
-        <p className={EYEBROW}>Manual entry</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label htmlFor="rs1" className="block text-[11px] text-white/55">{t1Name} Score</label>
-            <input id="rs1" type="number" min={0} value={s1} onChange={(e) => setS1(e.target.value)} className={FIELD} />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="rs2" className="block text-[11px] text-white/55">{t2Name} Score</label>
-            <input id="rs2" type="number" min={0} value={s2} onChange={(e) => setS2(e.target.value)} className={FIELD} />
-          </div>
+        <p className={EYEBROW}>
+          {bestOfLongLabel(bestOf).toUpperCase()} · {seriesOutcomeHint(bestOf).toUpperCase()}
+        </p>
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${presets.length}, minmax(0, 1fr))` }}>
+          {presets.map(([a, b]) => (
+            <button
+              key={`${a}-${b}`}
+              type="button"
+              aria-label={`${t1Name} ${a} – ${b} ${t2Name}`}
+              aria-pressed={s1 === String(a) && s2 === String(b)}
+              onClick={() => { setS1(String(a)); setS2(String(b)); }}
+              className={`border px-2 py-2.5 transition-colors ${
+                s1 === String(a) && s2 === String(b)
+                  ? 'border-rose-500/50 bg-rose-500/10'
+                  : 'border-white/[0.08] bg-black/30 hover:border-white/25'
+              }`}
+            >
+              <span className="font-mono text-[18px] font-bold text-white tabular-nums">
+                {a} – {b}
+              </span>
+            </button>
+          ))}
         </div>
+        <p className="text-[11px] text-white/30">
+          {t1Name} vs {t2Name}. The winner closes the series at {need} win{need === 1 ? '' : 's'}.
+        </p>
+        {manual && (
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1">
+              <label htmlFor="rs1" className="block text-[11px] text-white/55">{t1Name}</label>
+              <input id="rs1" type="number" min={0} value={s1} onChange={(e) => setS1(e.target.value)} className={FIELD} />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="rs2" className="block text-[11px] text-white/55">{t2Name}</label>
+              <input id="rs2" type="number" min={0} value={s2} onChange={(e) => setS2(e.target.value)} className={FIELD} />
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <label htmlFor="rnotes" className="block text-[11px] text-white/55">Notes</label>
           <textarea id="rnotes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="w-full border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white focus:outline-none focus:border-white/30 transition-colors resize-none" />
@@ -284,7 +331,14 @@ function ReportForm({
       {report.isError && <InlineNotice tone="critical">{getApiErrorMessage(report.error, 'Could not submit result. Try again.')}</InlineNotice>}
       <div className="flex gap-3">
         <button onClick={onCancel} className={GHOST}>Cancel</button>
-        <button onClick={submit} disabled={report.isPending || !s1 || !s2} className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+        {!manual && (
+          <button onClick={() => setManual(true)} className={GHOST}>Enter manually</button>
+        )}
+        <button
+          onClick={submit}
+          disabled={report.isPending || !s1 || !s2}
+          className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        >
           {report.isPending ? 'Submitting…' : 'Submit result'}
         </button>
       </div>
@@ -333,6 +387,7 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
 
   const t1Name = session.team1Name ?? 'Team 1';
   const t2Name = session.team2Name ?? 'Team 2';
+  const bo = normalizeBestOf(session.bestOf);
   const opponentName = myTeamSide === 1 ? t2Name : t1Name;
   const myReported = (myTeamSide === 1 && session.resultReportedByTeam1) || (myTeamSide === 2 && session.resultReportedByTeam2);
   const oppReported = (myTeamSide === 1 && session.resultReportedByTeam2) || (myTeamSide === 2 && session.resultReportedByTeam1);
@@ -350,9 +405,20 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
     );
   }
 
+  // Sub-state C: opponent reported a series score we haven't signed off yet.
+  const opponentReportScore =
+    oppReported && !myReported && session.team1Score != null && session.team2Score != null
+      ? `${session.team1Score} – ${session.team2Score}`
+      : null;
+
   return (
     <div className={PANEL}>
       <p className={EYEBROW}>Result</p>
+      {!bothReported && (
+        <p className="text-[12px] text-white/40">
+          {bestOfLongLabel(bo)} series — {seriesOutcomeHint(bo).toLowerCase()}
+        </p>
+      )}
 
       {/* Sub-state D */}
       {bothReported && (
@@ -365,8 +431,8 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
       {/* Sub-state C */}
       {!bothReported && oppReported && !myReported && (
         <div className="space-y-3">
-          <InlineNotice tone="warning">{opponentName} reported a result.</InlineNotice>
-          {score && <div className="space-y-1"><p className="text-[12px] text-white/40">Their report:</p><p className="font-mono text-[20px] text-white tabular-nums">{score}</p></div>}
+          <InlineNotice tone="warning">{opponentName} reported a series result.</InlineNotice>
+          {opponentReportScore && <div className="space-y-1"><p className="text-[12px] text-white/40">Their report:</p><p className="font-mono text-[20px] text-white tabular-nums">{opponentReportScore}</p></div>}
           {confirm.isError && <p role="alert" className="text-[12px] text-red-300">{getApiErrorMessage(confirm.error, 'Could not confirm. Try again.')}</p>}
           {!showDispute && (
             <div className="flex gap-3 flex-wrap">
@@ -397,7 +463,7 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -407,12 +473,12 @@ function ResultPanel({ session, myTeamId, myTeamSide }: { session: ScrimSession;
       {/* Sub-state A */}
       {!myReported && !oppReported && !bothReported && (
         <div className="space-y-3">
-          <p className="text-[13px] text-white/40">Report the result when your session ends.</p>
+          <p className="text-[13px] text-white/40">Report the series result when your session ends.</p>
           {!showReport && <button onClick={() => setShowReport(true)} className={GHOST}>Report result</button>}
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>

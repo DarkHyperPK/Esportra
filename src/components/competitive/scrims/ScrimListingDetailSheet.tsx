@@ -215,8 +215,16 @@ export function ScrimListingDetailSheet({ listingId, teamName, teamLogoUrl, game
                   <img src={listing.maxRankIconUrl} alt="" className="h-6 w-6 object-contain" />
                 )}
               </div>
-              <p className="text-[12px] text-white/40">
-                {[listing?.modeKey, listing?.gameSlug?.toUpperCase()].filter(Boolean).join(' · ')}
+              <p className="text-[12px] text-white/40 flex items-center gap-2">
+                <span>{[listing?.modeKey, listing?.gameSlug?.toUpperCase()].filter(Boolean).join(' · ')}</span>
+                {listing && (
+                  <span
+                    className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-white/60"
+                    aria-label={`Best of ${listing.bestOf ?? 1} series`}
+                  >
+                    {`BO${listing.bestOf ?? 1}`}
+                  </span>
+                )}
               </p>
             </div>
 
@@ -291,6 +299,7 @@ export function ScrimListingDetailSheet({ listingId, teamName, teamLogoUrl, game
               <ScrimOfferForm
                 listingId={listingId}
                 gameSlug={listing?.gameSlug ?? gameSlug ?? null}
+                bestOf={listing?.bestOf}
                 slotId={selectedSlotId}
                 onClose={closeRequest}
               />
