@@ -85,3 +85,111 @@ export function seriesOutcomeHint(bestOf: unknown): string {
   const need = winsNeeded(bestOf);
   return need === 1 ? 'First win closes it' : `First to ${need} wins`;
 }
+
+// ── Schedule-overlap detection ────────────────────────────────────────────────
+
+/** Fallback match length when a session row has no duration (matches slot length). */
+export const DEFAULT_SCRIM_MINUTES = 90;
+
+interface SessionTiming {
+  id: string;
+  scheduledAt: string | null;
+  durationMinutes?: number | null;
+}
+
+interface ListingAvailability {
+  id: string;
+  preferredDays: number[] | null;
+  preferredTimeStart: string | null;
+  preferredTimeEnd: string | null;
+}
+
+/** Parse `HH:MM` / `HH:MM:SS` into minutes since midnight. */
+function toMinutes(value: string | null): number | null {
+  if (!value) return null;
+  const match = /^(\d{1,2}):(\d{2})/.exec(value);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function addPair(map: Map<string, string[]>, a: string, b: string) {
+  if (!map.has(a)) map.set(a, []);
+  if (!map.has(b)) map.set(b, []);
+  map.get(a)!.push(b);
+  map.get(b)!.push(a);
+}
+
+/**
+ * Maps each scheduled session id to the ids of sessions whose time ranges intersect.
+ * Untimed sessions are ignored; missing durations fall back to the default slot length.
+ *
+ * @example findOverlappingSessions([
+ *   { id: 'a', scheduledAt: '2026-11-01T19:00:00Z', durationMinutes: 90 },
+ *   { id: 'b', scheduledAt: '2026-11-01T20:00:00Z', durationMinutes: 90 },
+ * ]) // Map { 'a' => ['b'], 'b' => ['a'] }
+ */
+export function findOverlappingSessions<T extends SessionTiming>(
+  sessions: readonly T[],
+): Map<string, string[]> {
+  const timed = sessions
+    .filter((s): s is T & { scheduledAt: string } => !!s.scheduledAt)
+    .map((s) => {
+      const start = Date.parse(s.scheduledAt);
+      const minutes = s.durationMinutes && s.durationMinutes > 0
+        ? s.durationMinutes
+        : DEFAULT_SCRIM_MINUTES;
+      return { id: s.id, start, end: start + minutes * 60_000 };
+    })
+    .filter((s) => Number.isFinite(s.start));
+
+  const overlaps = new Map<string, string[]>();
+  for (let i = 0; i < timed.length; i++) {
+    for (let j = i + 1; j < timed.length; j++) {
+      const a = timed[i];
+      const b = timed[j];
+      if (a.start < b.end && b.start < a.end) addPair(overlaps, a.id, b.id);
+    }
+  }
+  return overlaps;
+}
+
+/**
+ * Maps each listing id to the ids of listings whose availability windows intersect:
+ * at least one shared day, then overlapping time ranges (missing bounds count as
+ * open-ended, so a listing without times overlaps the whole day).
+ */
+export function findOverlappingListings<T extends ListingAvailability>(
+  listings: readonly T[],
+): Map<string, string[]> {
+  const overlaps = new Map<string, string[]>();
+
+  for (let i = 0; i < listings.length; i++) {
+    for (let j = i + 1; j < listings.length; j++) {
+      const a = listings[i];
+      const b = listings[j];
+
+      const daysA = a.preferredDays ?? [];
+      const daysB = b.preferredDays ?? [];
+      if (!daysA.some((d) => daysB.includes(d))) continue;
+
+      const aStart = toMinutes(a.preferredTimeStart);
+      const aEnd = toMinutes(a.preferredTimeEnd);
+      const bStart = toMinutes(b.preferredTimeStart);
+      const bEnd = toMinutes(b.preferredTimeEnd);
+
+      // A missing window means "all day" and therefore always intersects.
+      if (aStart == null && aEnd == null) { addPair(overlaps, a.id, b.id); continue; }
+      if (bStart == null && bEnd == null) { addPair(overlaps, a.id, b.id); continue; }
+
+      const startA = aStart ?? 0;
+      const endA = aEnd ?? 24 * 60;
+      const startB = bStart ?? 0;
+      const endB = bEnd ?? 24 * 60;
+
+      if (startA < endB && startB < endA) addPair(overlaps, a.id, b.id);
+    }
+  }
+
+  return overlaps;
+}
+
