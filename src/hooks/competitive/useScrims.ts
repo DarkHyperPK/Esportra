@@ -273,7 +273,8 @@ export function useMakeOffer(listingId: string) {
 export function useAcceptOffer(offerId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post<ScrimSession>(`/api/scrims/offers/${offerId}/accept`),
+    mutationFn: (body?: { scheduled_at?: string }) =>
+      apiClient.post<ScrimSession>(`/api/scrims/offers/${offerId}/accept`, body ?? {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scrims', 'listing-offers'] });
       qc.invalidateQueries({ queryKey: ['scrims', 'offers-mine'] });

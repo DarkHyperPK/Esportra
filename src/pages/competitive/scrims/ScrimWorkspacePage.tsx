@@ -310,6 +310,12 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
   const hasDays = (offer.listingPreferredDays?.length ?? 0) > 0;
   const hasWindow = !!(offer.listingPreferredTimeStart && offer.listingPreferredTimeEnd);
 
+  type MemberPreview = { username: string; avatar_seed: string | null; rank_tier_key: string | null };
+  const members: MemberPreview[] = (() => {
+    try { return offer.offeringMembersPreview ? JSON.parse(offer.offeringMembersPreview) : []; }
+    catch { return []; }
+  })();
+
   return (
     <div className={`${SCRIM_CARD_CLASS} border-rose-500/25 p-3.5 space-y-2.5`}>
       <div className="flex items-center gap-2.5">
@@ -321,15 +327,56 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold text-white">
-            {offer.offeringTeamName ?? offer.offeringTeamId.slice(0, 8)}
-          </p>
+          <div className="flex items-baseline gap-1.5">
+            <p className="truncate text-[13.5px] font-semibold text-white">
+              {offer.offeringTeamName ?? offer.offeringTeamId.slice(0, 8)}
+            </p>
+            {offer.offeringTeamTag && (
+              <span className="shrink-0 text-[11px] text-white/40">[{offer.offeringTeamTag}]</span>
+            )}
+          </div>
           <p className={`${SCRIM_EYEBROW} mt-0.5`}>
             {catalogGame?.name ?? offer.listingGameSlug?.toUpperCase() ?? 'Scrim'} · wants a scrim
           </p>
         </div>
         <StatusPill label={offer.status} tone={OFFER_TONE[offer.status]} />
       </div>
+
+      {/* Team snapshot */}
+      {(members.length > 0 || (offer.offeringActiveMemberCount ?? 0) > 0) && (
+        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className={SCRIM_EYEBROW}>Roster</p>
+            <span className="text-[11px] text-white/35 tabular-nums">
+              {offer.offeringActiveMemberCount ?? members.length} players
+              {(offer.offeringScrimsCompleted ?? 0) > 0 && (
+                <> · {offer.offeringScrimsCompleted} scrims</>
+              )}
+            </span>
+          </div>
+          {members.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {members.map((m, i) => {
+                const mi = (m.username ?? '?').slice(0, 2).toUpperCase();
+                return (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.07] text-[9px] font-semibold text-white/60">
+                      {mi}
+                    </span>
+                    <span className="text-[11.5px] text-white/70">{m.username}</span>
+                    {m.rank_tier_key && (
+                      <span className="rounded bg-white/[0.05] px-1 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-white/35">
+                        {m.rank_tier_key}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-black/30 px-2.5 py-1.5 text-[12px] font-medium tabular-nums text-white/70">
         <CalendarClock className="h-3.5 w-3.5 text-white/35" aria-hidden />
         {formatProposedSlot(offer)}

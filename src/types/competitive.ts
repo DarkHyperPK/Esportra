@@ -888,8 +888,16 @@ export interface ScrimOffer {
   slotId?: string | null;
   offeringTeamName?: string | null;
   offeringTeamLogo?: string | null;
+  offeringTeamTag?: string | null;
   listingGameSlug?: string | null;
   listingTeamName?: string | null;
+  listingPreferredDays?: number[] | null;
+  listingPreferredTimeStart?: string | null;
+  listingPreferredTimeEnd?: string | null;
+  listingTimezone?: string | null;
+  offeringActiveMemberCount?: number | null;
+  offeringMembersPreview?: string | null;
+  offeringScrimsCompleted?: number | null;
 }
 
 export interface ScrimSession {

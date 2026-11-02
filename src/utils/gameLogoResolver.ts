@@ -25,6 +25,7 @@ const IGDB_SLUG_ALIASES: Record<string, string> = {
 /** Seed JSON logo filenames that do not follow `{slug}-logo.png`. */
 const SEED_LOGO_OVERRIDES: Record<string, string> = {
   'rainbow-six-siege': '/games/r6s-logo.png',
+  'valorant': '/games/valorant-logo.svg',
 };
 
 function toPublicPath(path?: string | null): string | null {

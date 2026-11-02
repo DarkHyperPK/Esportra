@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { useMakeOffer } from '@/hooks/competitive/useScrims';
@@ -15,7 +16,7 @@ import {
   bestOfLabel,
   winsNeeded,
 } from '@/services/scrimUtils';
-import { getApiErrorMessage } from '@/lib/apiClient';
+import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
 
 interface ScrimOfferFormProps {
   listingId: string;
@@ -64,6 +65,7 @@ export function ScrimOfferForm({
   const [notes, setNotes] = useState('');
   const [teamIdError, setTeamIdError] = useState('');
   const [apiError, setApiError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const resolvedTeamId = offeringTeamId || teams[0]?.id || '';
 
@@ -81,10 +83,37 @@ export function ScrimOfferForm({
         notes: notes.trim() || undefined,
         slotId: slotId || undefined,
       });
-      onClose();
+      setSubmitted(true);
     } catch (err) {
-      setApiError(getApiErrorMessage(err, 'Could not send offer. Try again.'));
+      if (err instanceof ApiError && err.status === 403) {
+        setApiError('Only a team captain or manager can send a scrim offer.');
+      } else if (err instanceof ApiError && err.status === 400) {
+        setApiError(getApiErrorMessage(err, 'This listing is no longer open for offers.'));
+      } else {
+        setApiError(getApiErrorMessage(err, 'Could not send offer. Try again.'));
+      }
     }
+  }
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-6 text-center">
+        <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+        <div>
+          <p className="text-[14px] font-semibold text-white">Scrim request sent!</p>
+          <p className="mt-1 text-[12px] text-white/50">
+            Waiting for the other team to accept. We'll notify you once they respond.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          onClick={onClose}
+          className="mt-1 rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white"
+        >
+          Close
+        </Button>
+      </div>
+    );
   }
 
   return (
