@@ -983,6 +983,9 @@ export interface ScrimSession {
   team2Logo?: string | null;
   /** Series format inherited from the source listing: 1 | 3 | 5. */
   bestOf?: number | null;
+  /** checkin_timeout | cancelled_by_team | listing_closed | admin; null for legacy rows. */
+  cancelledReason?: string | null;
+  cancelledByTeamId?: string | null;
 }
 
 // ── PROJ-078 — Dispute + Slot types ──────────────────────────────────────────
