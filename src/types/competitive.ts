@@ -1251,6 +1251,9 @@ export interface ScrimGame {
   confirmedByTeamId: string | null;
   confirmedAt: string | null;
   disputedByTeamId: string | null;
+  /** When an unanswered report is confirmed automatically. */
+  acceptBy: string | null;
+  autoConfirmed: boolean;
 }
 
 export interface ScrimGamesResponse {

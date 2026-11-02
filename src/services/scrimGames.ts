@@ -20,6 +20,8 @@ export interface RawScrimGame {
   confirmed_by_team_id: string | null;
   confirmed_at: string | null;
   disputed_by_team_id: string | null;
+  accept_by: string | null;
+  auto_confirmed: boolean;
 }
 
 export interface RawScrimGames {
@@ -50,6 +52,8 @@ export function toScrimGame(raw: RawScrimGame): ScrimGame {
     confirmedByTeamId: raw.confirmed_by_team_id,
     confirmedAt: raw.confirmed_at,
     disputedByTeamId: raw.disputed_by_team_id,
+    acceptBy: raw.accept_by ?? null,
+    autoConfirmed: raw.auto_confirmed ?? false,
   };
 }
 

@@ -8,6 +8,7 @@ const game: ScrimGame = {
   gameNumber: 1, status: 'reported', mapName: 'Haven', mapId: null, team1Score: 13, team2Score: 9, winnerSlot: null,
   source: 'riot', riotMatchId: 'm', matchData: null, screenshotUrls: [], notes: null,
   reportedByTeamId: 't1', reportedAt: '2026-11-03T10:00:00Z', confirmedByTeamId: null, confirmedAt: null, disputedByTeamId: null,
+  acceptBy: null, autoConfirmed: false,
 };
 const team1 = { id: 't1', name: 'Apex' };
 const team2 = { id: 't2', name: 'Nova' };
@@ -44,6 +45,16 @@ describe('ScrimGameRow', () => {
   it('says other maps can continue while a map is disputed', () => {
     renderRow({ game: { ...game, status: 'disputed' } });
     expect(screen.getByText(/keep playing and reporting the other maps/)).toBeInTheDocument();
+  });
+
+  it('tells the team when an unanswered map confirms itself', () => {
+    renderRow({ game: { ...game, acceptBy: new Date(Date.now() + 3 * 3600_000).toISOString() } });
+    expect(screen.getByText(/confirms automatically in 3 hours/)).toBeInTheDocument();
+  });
+
+  it('labels a map that was confirmed automatically', () => {
+    renderRow({ game: { ...game, status: 'confirmed', autoConfirmed: true } });
+    expect(screen.getByText(/Confirmed automatically/)).toBeInTheDocument();
   });
 
   it('offers the scoreboard only when the map has match details', () => {

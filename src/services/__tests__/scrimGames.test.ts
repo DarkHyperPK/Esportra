@@ -6,6 +6,7 @@ const raw: RawScrimGame = {
   game_number: 2, status: 'reported', map_name: 'Haven', map_id: null, team1_score: 13, team2_score: 9, winner_slot: null,
   source: 'riot', riot_match_id: 'm-1', match_data: { players: [], source: 'riot' }, screenshot_urls: [], notes: null,
   reported_by_team_id: 't1', reported_at: '2026-11-03T10:00:00Z', confirmed_by_team_id: null, confirmed_at: null, disputed_by_team_id: null,
+  accept_by: '2026-11-03T12:00:00Z', auto_confirmed: false,
 };
 
 describe('toScrimGame', () => {

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { formatDistanceToNowStrict } from 'date-fns';
 import { InlineNotice } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { gameTurn } from '@/services/scrimGames';
@@ -15,6 +16,13 @@ const STATUS: Record<ScrimGameStatus, { label: string; tone: string }> = {
   resolved: { label: 'Resolved by staff', tone: 'text-sky-300' },
 };
 const SOURCE = { riot: 'Riot history', ocr: 'Screenshot', manual: 'Entered manually' } as const;
+
+/** When the unanswered map confirms itself, as a sentence for the notice. */
+function autoNote(game: ScrimGame): string | null {
+  if (!game.acceptBy) return null;
+  const at = new Date(game.acceptBy);
+  return at.getTime() <= Date.now() ? 'It confirms automatically any moment now.' : `It confirms automatically ${formatDistanceToNowStrict(at, { addSuffix: true })} if there is no answer.`;
+}
 
 interface Props {
   sessionId: string;
@@ -53,11 +61,15 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
         </p>
         <p className={cn('min-w-0 flex-1 truncate text-right text-[13px]', !w1 ? 'font-semibold text-white' : 'text-white/55')}>{team2.name}</p>
       </div>
-      <p className="text-[11px] text-zinc-500">Reported by {reporter} · {SOURCE[game.source]}</p>
+      <p className="text-[11px] text-zinc-500">
+        Reported by {reporter} · {SOURCE[game.source]}{game.autoConfirmed ? ' · Confirmed automatically' : ''}
+      </p>
 
       {turn === 'confirm' && isStaff && !disputing && (
         <div className="space-y-2">
-          <InlineNotice tone="warning">{reporter} reported this map. Check the score, then confirm or dispute it.</InlineNotice>
+          <InlineNotice tone="warning">
+            {reporter} reported this map. Check the score, then confirm or dispute it.{autoNote(game) ? ` ${autoNote(game)}` : ''}
+          </InlineNotice>
           {confirmError && <p role="alert" className="text-[12px] text-red-300">{confirmError}</p>}
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={onConfirm} disabled={confirming}
@@ -76,7 +88,7 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
       )}
       {turn === 'waiting' && (
         <div className="flex flex-wrap items-center gap-3">
-          <InlineNotice tone="neutral">Waiting for the other team to confirm.</InlineNotice>
+          <InlineNotice tone="neutral">Waiting for the other team to confirm.{autoNote(game) ? ` ${autoNote(game)}` : ''}</InlineNotice>
           {isStaff && <button type="button" onClick={onEdit} className="text-[12px] text-white/55 underline underline-offset-4 hover:text-white">Edit result</button>}
         </div>
       )}

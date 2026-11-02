@@ -52,3 +52,32 @@ export function withMapImages<E extends { mapId: string; mapImageUrl?: string | 
     return image && image !== entry.mapImageUrl ? { ...entry, mapImageUrl: image } : entry;
   });
 }
+
+/** One map from Riot's public catalog (valorant-api.com), reduced to what splash lookup needs. */
+export interface ValorantCatalogMap {
+  uuid: string;
+  displayName: string;
+  /** e.g. "/Game/Maps/Ascent/Ascent" */
+  mapUrl: string | null;
+  splash: string | null;
+}
+
+const lastSegment = (path: string | null | undefined) => (path ? path.split("/").filter(Boolean).pop()?.toLowerCase() ?? "" : "");
+
+/**
+ * The splash for a Riot game's map. Known maps resolve from the built-in table; a newer map (or code
+ * name) is found in Riot's catalog by display name or by the game's map path. Null when neither knows
+ * it, so the card shows no art rather than a broken image.
+ */
+export function resolveMapSplash(
+  mapName: string,
+  mapPath: string | null | undefined,
+  catalog: ValorantCatalogMap[] = [],
+): string | null {
+  const byName = valorantMapSplash(mapName) ?? valorantMapSplash(lastSegment(mapPath));
+  if (byName) return byName;
+  const name = mapName.trim().toLowerCase();
+  const tail = lastSegment(mapPath);
+  const found = catalog.find((m) => m.displayName.toLowerCase() === name || lastSegment(m.mapUrl) === tail || lastSegment(m.mapUrl) === name);
+  return found?.splash ?? (found ? `https://media.valorant-api.com/maps/${found.uuid}/splash.png` : null);
+}

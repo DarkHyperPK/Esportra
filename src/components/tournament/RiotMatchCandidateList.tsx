@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Clock, Swords } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { RiotMatchCandidate } from '@/types/riotMatchCandidate';
-import { MAP_THEMES, getAgentIcon, getMapSplash } from './fullScoreboardConstants';
+import { useValorantMapCatalog } from '@/hooks/useValorantMapCatalog';
+import { resolveMapSplash } from '@/services/maps/valorantMapAssets';
+import { MAP_THEMES, getAgentIcon } from './fullScoreboardConstants';
 
 interface RiotMatchCandidateListProps {
     candidates: RiotMatchCandidate[];
@@ -24,6 +26,7 @@ export const RiotMatchCandidateList: React.FC<RiotMatchCandidateListProps> = ({
     compact = false,
 }) => {
     const neutral = tone === 'neutral';
+    const catalog = useValorantMapCatalog(candidates.length > 0).data;
     const hoverBorder = neutral ? 'hover:border-white/30' : 'hover:border-rose-500/40 hover:shadow-rose-500/5';
     const tint = neutral ? 'from-white/10' : 'from-rose-500/10';
     const agentHover = neutral ? 'group-hover:border-white/30' : 'group-hover:border-rose-500/30';
@@ -35,7 +38,8 @@ export const RiotMatchCandidateList: React.FC<RiotMatchCandidateListProps> = ({
             <div className="grid gap-4 max-h-[500px] overflow-y-auto overscroll-contain px-2 -mx-2 py-2 pb-10 custom-scrollbar scroll-smooth" data-lenis-prevent>
                 <AnimatePresence mode="popLayout">
                     {candidates.map((match, idx) => {
-                        const theme = MAP_THEMES[match.map.toLowerCase()] || { color: 'text-zinc-400', bg: 'bg-zinc-800', id: '2bee0dc9-4ffe-519b-1cbd-7fbe763a6047' };
+                        const theme = MAP_THEMES[match.map.toLowerCase()] || { color: 'text-zinc-400', bg: 'bg-zinc-800', id: '' };
+                        const splash = resolveMapSplash(match.map, match.mapId, catalog);
                         return (
                             <motion.div
                                 key={match.id}
@@ -51,14 +55,18 @@ export const RiotMatchCandidateList: React.FC<RiotMatchCandidateListProps> = ({
                                 className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 backdrop-blur-md ${hoverBorder} transition-all duration-300 cursor-pointer shadow-xl ${submitting ? 'opacity-50 pointer-events-none' : ''}`}
                             >
                                 {/* Map Splash Background */}
-                                <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-700 pointer-events-none">
-                                    <img
-                                        src={getMapSplash(match.mapId?.split('/').pop() || theme.id)}
-                                        alt=""
-                                        className="w-full h-full object-cover grayscale brightness-200 scale-125 group-hover:scale-110 transition-transform duration-1000"
-                                    />
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${tint} via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
-                                </div>
+                                {splash && (
+                                    <div className="absolute inset-0 opacity-[0.07] group-hover:opacity-20 transition-opacity duration-700 pointer-events-none">
+                                        <img
+                                            src={splash}
+                                            alt=""
+                                            loading="lazy"
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                            className="w-full h-full object-cover grayscale brightness-150 scale-125 group-hover:scale-110 transition-transform duration-1000"
+                                        />
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${tint} via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                    </div>
+                                )}
 
                                 {/* Background Glow */}
                                 <div className={`absolute -right-8 -top-8 w-32 h-32 blur-[80px] opacity-0 group-hover:opacity-30 transition-opacity duration-500 ${match.result === 'Victory' ? 'bg-emerald-500' : 'bg-red-500'}`} />
