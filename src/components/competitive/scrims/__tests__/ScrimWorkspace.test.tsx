@@ -114,6 +114,15 @@ describe('AgendaRow', () => {
     expect(screen.getByRole('link', { name: 'Check in' })).toBeInTheDocument();
   });
 
+  it('does not repeat an action that is already listed under Needs you', () => {
+    const s = session({ scheduledAt: new Date(Date.now() + 5 * 60_000).toISOString(), checkinWindowOpenedAt: new Date().toISOString() });
+    const { rerender } = wrap(<ul><AgendaRow session={s} teamId="me" /></ul>);
+    expect(screen.getByRole('link', { name: 'Check in' })).toBeInTheDocument();
+    rerender(<MemoryRouter><ul><AgendaRow session={s} teamId="me" queued /></ul></MemoryRouter>);
+    expect(screen.queryByRole('link', { name: 'Check in' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open room' })).toBeInTheDocument();
+  });
+
   it('needs two steps to cancel, and Keep it backs out', async () => {
     wrap(<ul><AgendaRow session={session()} teamId="me" /></ul>);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -144,7 +153,7 @@ describe('AgendaRow', () => {
 });
 
 describe('ScrimAgenda', () => {
-  const base = { teamId: 'me', nowMs: Date.now(), isLoading: false, isError: false, onRetry: vi.fn(), onNewScrim: vi.fn() };
+  const base = { teamId: 'me', nowMs: Date.now(), queuedSessionIds: new Set<string>(), isLoading: false, isError: false, onRetry: vi.fn(), onNewScrim: vi.fn() };
 
   it('shows a busy state while loading', () => {
     wrap(<ScrimAgenda {...base} sessions={[]} isLoading />);
@@ -180,7 +189,7 @@ describe('ScrimAgenda', () => {
 
   it('turns an agenda row into Check in when the window opens, driven only by the clock', () => {
     const start = new Date(2026, 10, 9, 20, 0);
-    const s = session({ scheduledAt: start.toISOString() });
+    const s = session({ scheduledAt: start.toISOString(), checkinWindowOpenedAt: new Date(start.getTime() - 15 * 60_000).toISOString() });
     const { rerender } = wrap(<ul><AgendaRow session={s} teamId="me" nowMs={start.getTime() - 60 * 60_000} /></ul>);
     expect(screen.getByRole('link', { name: 'Open room' })).toBeInTheDocument();
     rerender(<MemoryRouter><ul><AgendaRow session={s} teamId="me" nowMs={start.getTime() - 10 * 60_000} /></ul></MemoryRouter>);

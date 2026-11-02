@@ -25,9 +25,11 @@ interface AgendaRowProps {
   teamId: string;
   /** Current time in ms; defaults to now when the row is used on its own. */
   nowMs?: number;
+  /** Already listed under "Needs you": keep this row a plain schedule entry so the action isn't shown twice. */
+  queued?: boolean;
 }
 
-export function AgendaRow({ session, teamId, nowMs = Date.now() }: AgendaRowProps) {
+export function AgendaRow({ session, teamId, nowMs = Date.now(), queued = false }: AgendaRowProps) {
   const catalog = useGameCatalogContext();
   const cancel = useCancelScrimSession(session.id);
   const [confirming, setConfirming] = useState(false);
@@ -40,8 +42,8 @@ export function AgendaRow({ session, teamId, nowMs = Date.now() }: AgendaRowProp
 
   const next = deriveScrimNextAction(session, teamId, nowMs);
   const view = describeNextStep(next, { opponent }, nowMs);
-  const needsMe = next.action === 'check_in' || next.action === 'report_result'
-    || next.action === 'confirm_result' || next.action === 'submit_evidence';
+  const needsMe = !queued && (next.action === 'check_in' || next.action === 'report_result'
+    || next.action === 'confirm_result' || next.action === 'submit_evidence');
   const canCancel = session.status === 'scheduled';
 
   async function onCancel() {
@@ -56,7 +58,7 @@ export function AgendaRow({ session, teamId, nowMs = Date.now() }: AgendaRowProp
 
   return (
     <li className={cn('relative border bg-white/[0.03]', needsMe ? 'border-white/[0.16]' : 'border-white/[0.08]')}>
-      {next.action === 'check_in' && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-rose-500" />}
+      {needsMe && next.action === 'check_in' && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-rose-500" />}
 
       <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:p-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -103,7 +105,7 @@ export function AgendaRow({ session, teamId, nowMs = Date.now() }: AgendaRowProp
                 : 'border border-white/[0.14] text-white/80 hover:border-white/30 hover:text-white',
             )}
           >
-            {actionLabel(next.action)}
+            {queued ? 'Open room' : actionLabel(next.action)}
           </Link>
         </div>
       </div>

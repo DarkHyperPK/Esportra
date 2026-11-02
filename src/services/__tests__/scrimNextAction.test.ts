@@ -44,6 +44,15 @@ describe('deriveScrimNextAction', () => {
     expect(r.deadline).toBe(at(CHECKIN_CLOSES_AFTER_MIN));
   });
 
+  it('follows the server flag, not just the clock, once the payload carries it', () => {
+    const inWindow = T - 5 * 60_000;
+    expect(deriveScrimNextAction(session({ checkinWindowOpenedAt: null }), 'a', inWindow))
+      .toMatchObject({ stage: 'checkin', action: 'wait', deadline: null });
+    expect(deriveScrimNextAction(session({ checkinWindowOpenedAt: at(-15) }), 'a', inWindow).action).toBe('check_in');
+    // Older payloads without the field keep the clock-based behaviour.
+    expect(deriveScrimNextAction(session(), 'a', inWindow).action).toBe('check_in');
+  });
+
   it('opens exactly at T-15 and closes after T+15', () => {
     expect(deriveScrimNextAction(session(), 'a', T - 15 * 60_000).action).toBe('check_in');
     expect(deriveScrimNextAction(session(), 'a', T - 15 * 60_000 - 1).action).toBe('wait');

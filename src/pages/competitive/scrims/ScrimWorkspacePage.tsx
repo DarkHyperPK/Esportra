@@ -69,6 +69,11 @@ export default function ScrimWorkspacePage() {
   const upNextQuery = useScrimUpNext(team?.id);
   const actionItems = (upNextQuery.data?.items ?? []).filter((i) => i.type !== 'offer_received');
 
+  const queuedSessionIds = useMemo(
+    () => new Set(actionItems.flatMap((i) => (i.sessionId ? [i.sessionId] : []))),
+    [actionItems],
+  );
+
   const { active, history } = useMemo(() => splitSessions(sessions), [sessions]);
   const needsCount = actionItems.length + receivedOffers.length;
   const summary = sessionsQuery.isLoading
@@ -145,6 +150,7 @@ export default function ScrimWorkspacePage() {
                 sessions={active}
                 teamId={teamId}
                 nowMs={nowMs}
+                queuedSessionIds={queuedSessionIds}
                 isLoading={sessionsQuery.isLoading}
                 isError={sessionsQuery.isError}
                 onRetry={() => void sessionsQuery.refetch()}

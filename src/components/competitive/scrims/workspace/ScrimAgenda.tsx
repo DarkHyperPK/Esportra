@@ -17,13 +17,15 @@ interface ScrimAgendaProps {
   teamId: string;
   /** Shared clock so every row re-evaluates its stage together. */
   nowMs: number;
+  /** Session ids already shown under "Needs you". */
+  queuedSessionIds: ReadonlySet<string>;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
   onNewScrim: () => void;
 }
 
-export function ScrimAgenda({ sessions, teamId, nowMs, isLoading, isError, onRetry, onNewScrim }: ScrimAgendaProps) {
+export function ScrimAgenda({ sessions, teamId, nowMs, queuedSessionIds, isLoading, isError, onRetry, onNewScrim }: ScrimAgendaProps) {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-2" aria-busy="true" aria-label="Loading agenda">
@@ -75,7 +77,7 @@ export function ScrimAgenda({ sessions, teamId, nowMs, isLoading, isError, onRet
         <div key={group.key} className="space-y-2">
           <h3 className={EYEBROW_CLASS}>{group.label}</h3>
           <ul className="space-y-2">
-            {group.sessions.map((s) => <AgendaRow key={s.id} session={s} teamId={teamId} nowMs={nowMs} />)}
+            {group.sessions.map((s) => <AgendaRow key={s.id} session={s} teamId={teamId} nowMs={nowMs} queued={queuedSessionIds.has(s.id)} />)}
           </ul>
         </div>
       ))}

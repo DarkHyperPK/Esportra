@@ -39,6 +39,13 @@ describe('describeNextStep', () => {
     expect(v.target).toBeNull();
   });
 
+  it('says check-in is opening, not "check in now", when the server has not opened it yet', () => {
+    const v = describeNextStep(next({ stage: 'checkin', action: 'wait' }), { opponent: 'Nova' }, NOW);
+    expect(v.headline).toBe('Check-in is opening');
+    expect(v.target).toBeNull();
+    expect(v.urgent).toBe(false);
+  });
+
   it('words waiting differently per stage', () => {
     expect(describeNextStep(next({ stage: 'checkin', action: 'wait_opponent' }), { opponent: 'Nova' }, NOW).headline)
       .toBe("You're checked in");

@@ -74,6 +74,9 @@ export function describeNextStep(next: ScrimNextAction, ctx: NextStepContext, no
 
   switch (next.action) {
     case 'wait':
+      if (next.stage === 'checkin') {
+        return view('Check-in is opening', 'It opens automatically at 15 minutes before the start. This page updates by itself.');
+      }
       return view(
         left ? `Check-in opens in ${left}` : 'Waiting for the start time',
         'Both captains check in from 15 minutes before the start. Be ready with your lineup.',

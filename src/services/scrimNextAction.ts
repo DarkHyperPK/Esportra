@@ -32,6 +32,12 @@ export interface NextActionSession {
   resultReportedByTeam2: boolean;
   team1CheckedInAt?: string | null;
   team2CheckedInAt?: string | null;
+  /**
+   * Set by the server's window job. The server rejects check-in until it is set, so when the
+   * field is present it, not the clock, decides whether check-in is open. Undefined = unknown
+   * (older payloads): fall back to the clock.
+   */
+  checkinWindowOpenedAt?: string | null;
   dispute?: {
     status: 'open' | 'escalated' | 'resolved';
     raisedByTeamId: string;
@@ -64,6 +70,9 @@ function deriveScheduled(s: NextActionSession, iAmTeam1: boolean, now: number): 
   if (now < opens) return result('scheduled', 'wait', new Date(opens).toISOString());
   if (now > closes) return result('checkin', 'wait_opponent');
   if (iCheckedIn) return result('checkin', 'wait_opponent', new Date(closes).toISOString());
+  const serverOpened = s.checkinWindowOpenedAt === undefined || s.checkinWindowOpenedAt !== null;
+  // In the window by the clock but not yet opened by the server: do not send anyone to a rejected check-in.
+  if (!serverOpened) return result('checkin', 'wait');
   return result('checkin', 'check_in', new Date(closes).toISOString());
 }
 
