@@ -2,7 +2,7 @@
 export function ScrimOpponentCardSkeleton() {
   return (
     <div className="animate-pulse overflow-hidden rounded-2xl border border-white/[0.06] bg-card" aria-hidden="true">
-      <div className="relative h-[136px] bg-white/[0.04]">
+      <div className="relative h-[96px] bg-white/[0.04]">
         <div className="absolute inset-x-4 bottom-3 flex items-end gap-3">
           <div className="h-14 w-14 rounded-full bg-white/[0.08]" />
           <div className="space-y-2 pb-1">

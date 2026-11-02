@@ -64,11 +64,11 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
         </a>
       )}
 
-      <div className="space-y-4 p-5">
-        <div className="flex items-start gap-3.5">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] bg-black/40">
+      <div className="space-y-3 p-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] bg-black/40">
             {listing.gameSlug && (
-              <GameLogoImage gameName={listing.gameSlug} catalogLogo={game?.logo} catalogIcon={game?.icon} className="h-7 w-7 object-contain" />
+              <GameLogoImage gameName={listing.gameSlug} catalogLogo={game?.logo} catalogIcon={game?.icon} className="h-6 w-6 object-contain" />
             )}
           </span>
           <div className="min-w-0 flex-1">
@@ -80,7 +80,7 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
           <StatusPill label={status.label} tone={status.tone} className="rounded-full" />
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <WeekDots days={listing.preferredDays} soft />
             {timeLabel && <span className="text-[12px] tabular-nums text-zinc-400">{timeLabel}</span>}
@@ -97,7 +97,7 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
         )}
       </div>
 
-      <div className="space-y-3 border-t border-white/[0.06] px-5 py-3.5">
+      <div className="space-y-2.5 border-t border-white/[0.06] px-4 py-3">
         <div className="flex items-center gap-3 text-[12px] text-zinc-500">
           <span className="tabular-nums">Posted {posted}</span>
           {recurring ? (

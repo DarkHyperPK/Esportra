@@ -1,4 +1,5 @@
 import { sessionPollInterval, teamSessionsPollInterval } from '@/services/scrimLive';
+import { toHistoryPage } from '@/services/scrimHistoryMapper';
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
@@ -655,9 +656,10 @@ export function useScrimHistory(teamId: string, page: number, pageSize: number) 
   return useQuery({
     queryKey: scrimHistoryKeys.page(teamId, page, pageSize),
     queryFn: () =>
-      apiClient.get<ScrimHistoryPage>(
+      apiClient.get<Parameters<typeof toHistoryPage>[0]>(
         `/api/scrims/teams/${teamId}/history?page=${page}&pageSize=${pageSize}`,
       ),
+    select: (raw): ScrimHistoryPage => toHistoryPage(raw, teamId),
     enabled: !!teamId,
     staleTime: 30_000,
     retry: false,
