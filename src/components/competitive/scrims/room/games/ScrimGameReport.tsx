@@ -18,13 +18,15 @@ interface Props {
   team2Logo?: string;
   isValorant: boolean;
   onDone: () => void;
+  /** Show a Close control (an edit of an already reported map). */
+  closable?: boolean;
 }
 
 const TAB = 'min-h-[36px] rounded-lg px-3.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
 
 /** Three ways to report one map: Riot history, a scoreboard screenshot, or typed in. */
 export function ScrimGameReport(props: Props) {
-  const { isValorant, gameNumber, onDone } = props;
+  const { isValorant, gameNumber, onDone, closable = false } = props;
   const [method, setMethod] = useState<Method>(isValorant ? 'riot' : 'manual');
   const options: Array<{ id: Method; label: string }> = isValorant
     ? [{ id: 'riot', label: 'Auto-fetch' }, { id: 'screenshot', label: 'Upload screenshot' }, { id: 'manual', label: 'Enter manually' }]
@@ -34,7 +36,7 @@ export function ScrimGameReport(props: Props) {
     <div className="space-y-4 rounded-lg border border-white/[0.08] bg-black/20 p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[14px] font-semibold text-white">Report game {gameNumber}</p>
-        <button type="button" onClick={onDone} className="text-[12px] text-white/45 hover:text-white">Close</button>
+        {closable && <button type="button" onClick={onDone} className="text-[12px] text-white/45 hover:text-white">Close</button>}
       </div>
       {options.length > 1 && (
         <div role="tablist" aria-label="How to report" className="flex flex-wrap gap-1.5">

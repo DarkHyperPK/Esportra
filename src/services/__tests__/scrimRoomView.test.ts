@@ -93,8 +93,8 @@ describe('formatRoomTime', () => {
 describe('actionLabel', () => {
   it('names the action, and falls back to opening the room', () => {
     expect(actionLabel('check_in')).toBe('Check in');
-    expect(actionLabel('report_result')).toBe('Report result');
-    expect(actionLabel('confirm_result')).toBe('Review result');
+    expect(actionLabel('report_result')).toBe('Report map');
+    expect(actionLabel('confirm_result')).toBe('Review map');
     expect(actionLabel('submit_evidence')).toBe('Add evidence');
     expect(actionLabel('wait')).toBe('Open room');
     expect(actionLabel('none')).toBe('Open room');

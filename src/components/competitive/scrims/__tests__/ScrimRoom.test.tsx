@@ -21,7 +21,7 @@ describe('ScrimStageRail', () => {
 
   it('shows a cancelled scrim as stopped with no current step', () => {
     render(<ScrimStageRail stage="cancelled" />);
-    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.getByText(/scrim was cancelled/i)).toBeInTheDocument();
     expect(screen.getAllByRole('listitem').some((s) => s.hasAttribute('aria-current'))).toBe(false);
   });
 

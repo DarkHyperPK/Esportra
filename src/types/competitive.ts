@@ -1025,6 +1025,8 @@ export interface ScrimDispute {
   outcome: ScrimDisputeOutcome | null;
   resolutionNotes: string | null;
   resolvedAt: string | null;
+  /** Set when the dispute is about one map of the series. */
+  gameNumber?: number | null;
 }
 
 export type ScrimSlotStatus = 'available' | 'booked' | 'cancelled';
@@ -1057,6 +1059,7 @@ export interface AdminScrimDisputeRow {
   resolutionNotes: string | null;
   resolvedAt: string | null;
   createdAt: string;
+  gameNumber?: number | null;
 }
 
 export interface ScrimResultReport {

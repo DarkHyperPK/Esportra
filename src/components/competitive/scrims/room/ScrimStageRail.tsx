@@ -2,11 +2,11 @@
  * ScrimStageRail
  *
  * Read-only progress tracker for a scrim: Scheduled → Check-in → Live → Result → Done.
- * Position comes from railState(); the connecting line fills to the active step.
+ * Position comes from railState(). Nodes are solid shapes with full-contrast labels and 2px
+ * connectors, so nothing depends on hairlines or faint text.
  */
 
-import { Check } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ROOM_STEPS, railState } from '@/services/scrimRoomView';
 import type { ScrimStage } from '@/services/scrimNextAction';
@@ -16,67 +16,49 @@ interface ScrimStageRailProps {
   className?: string;
 }
 
+const NODE = 'relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 text-[13px] font-bold tabular-nums';
+
 export function ScrimStageRail({ stage, className }: ScrimStageRailProps) {
-  const reduce = useReducedMotion();
   const { current, variant } = railState(stage);
   const stopped = variant === 'cancelled';
-  const lastIndex = ROOM_STEPS.length - 1;
-  // Fill reaches the active step's centre; a finished scrim fills the whole line.
-  const fill = stopped ? 0 : Math.min(Math.max(current, 0), lastIndex) / lastIndex;
 
   return (
     <nav aria-label="Scrim progress" className={className}>
-      <div className="relative">
-        <div aria-hidden="true" className="absolute left-[10%] right-[10%] top-[13px] h-px bg-white/[0.1]" />
-        <motion.div
-          aria-hidden="true"
-          className="absolute left-[10%] top-[13px] h-px w-[80%] origin-left bg-white/60"
-          initial={reduce ? false : { scaleX: 0 }}
-          animate={{ scaleX: fill }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-        />
-
-        <ol className="relative grid grid-cols-5">
-          {ROOM_STEPS.map((step, index) => {
-            const isCurrent = index === current;
-            const isDone = !stopped && index < current;
-            const isAlert = isCurrent && variant === 'disputed';
-            return (
-              <li
-                key={step.key}
-                aria-current={isCurrent ? 'step' : undefined}
-                className="flex flex-col items-center gap-2"
+      <ol className="grid grid-cols-5">
+        {ROOM_STEPS.map((step, index) => {
+          const isCurrent = !stopped && index === current;
+          const isDone = !stopped && index < current;
+          const isAlert = isCurrent && variant === 'disputed';
+          // A connector is lit when the step on its left has been reached.
+          const leftLit = !stopped && index <= current;
+          const rightLit = !stopped && index < current;
+          return (
+            <li key={step.key} aria-current={isCurrent ? 'step' : undefined} className="relative flex flex-col items-center gap-2">
+              {index > 0 && (
+                <span aria-hidden="true" className={cn('absolute left-0 right-1/2 top-[15px] h-0.5', leftLit ? 'bg-emerald-400/70' : 'bg-white/15')} />
+              )}
+              {index < ROOM_STEPS.length - 1 && (
+                <span aria-hidden="true" className={cn('absolute left-1/2 right-0 top-[15px] h-0.5', rightLit ? 'bg-emerald-400/70' : 'bg-white/15')} />
+              )}
+              <span
+                className={cn(
+                  NODE,
+                  isDone && 'border-emerald-400/70 bg-emerald-400/15 text-emerald-300',
+                  isCurrent && !isAlert && 'border-white bg-white text-black ring-4 ring-white/15',
+                  isAlert && 'border-amber-300 bg-amber-300 text-black ring-4 ring-amber-300/20',
+                  !isDone && !isCurrent && 'border-white/20 bg-[#0c0c0f] text-zinc-400',
+                )}
               >
-                <span
-                  className={cn(
-                    'flex h-[27px] w-[27px] items-center justify-center border bg-[#08080a] font-mono text-[11px] font-bold',
-                    isDone && 'border-white/30 text-white',
-                    isCurrent && !isAlert && 'border-white bg-white text-black',
-                    isAlert && 'border-amber-400/60 bg-amber-400/15 text-amber-200',
-                    !isDone && !isCurrent && 'border-white/10 text-zinc-600',
-                    stopped && 'border-white/10 text-zinc-700',
-                  )}
-                >
-                  {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}
-                </span>
-                <span
-                  className={cn(
-                    'text-center text-[11px] font-medium sm:text-[10px]',
-                    isCurrent ? 'font-semibold text-white' : isDone ? 'text-zinc-400' : 'text-zinc-600',
-                  )}
-                >
-                  {isAlert ? 'Disputed' : step.label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-      {stopped && (
-        <p className="mt-3 text-center text-[11px] font-medium text-zinc-500">
-          Cancelled
-        </p>
-      )}
+                {isDone ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" /> : stopped && index === 0 ? <X className="h-4 w-4" aria-hidden="true" /> : index + 1}
+              </span>
+              <span className={cn('text-center text-[13px] leading-tight', isCurrent ? 'font-semibold text-white' : isDone ? 'font-medium text-zinc-200' : 'font-medium text-zinc-400')}>
+                {isAlert ? 'Disputed' : step.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {stopped && <p className="mt-3 text-center text-[13px] font-medium text-zinc-400">This scrim was cancelled.</p>}
     </nav>
   );
 }

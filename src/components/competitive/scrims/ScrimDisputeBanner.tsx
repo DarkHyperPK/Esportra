@@ -15,6 +15,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import {InlineNotice} from '@/components/ui/kit';
 import { useSubmitDisputeEvidence } from '@/hooks/competitive/useScrims';
+import { DisputeEvidenceInput } from './room/DisputeEvidenceInput';
 import { formatDistanceToNow } from 'date-fns';
 import type { ScrimDispute, ScrimDisputeOutcome } from '@/types/competitive';
 
@@ -32,7 +33,6 @@ export interface ScrimDisputeBannerProps {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const EVIDENCE_WINDOW_MS = 48 * 60 * 60_000;
-const MAX_EVIDENCE_URLS = 5;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,32 +75,22 @@ function EvidenceChip({ submitted, closed }: { submitted: boolean; closed: boole
 
 function EvidenceForm({
   sessionId,
+  gameNumber,
   onSubmitted,
 }: {
   sessionId: string;
+  gameNumber?: number | null;
   onSubmitted: () => void;
 }) {
-  const submit = useSubmitDisputeEvidence(sessionId);
-  const [urls, setUrls] = useState<string[]>(['']);
+  const submit = useSubmitDisputeEvidence(sessionId, gameNumber);
+  const [urls, setUrls] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState(false);
-
-  function updateUrl(idx: number, val: string) {
-    setUrls((prev) => prev.map((u, i) => (i === idx ? val : u)));
-  }
-
-  function addUrl() {
-    if (urls.length < MAX_EVIDENCE_URLS) setUrls((prev) => [...prev, '']);
-  }
-
-  function removeUrl(idx: number) {
-    setUrls((prev) => prev.filter((_, i) => i !== idx));
-  }
 
   async function handleSubmit() {
     setSubmitError(false);
-    const validUrls = urls.map((u) => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
     try {
-      await submit.mutateAsync(validUrls);
+      await submit.mutateAsync(urls);
       onSubmitted();
     } catch {
       setSubmitError(true);
@@ -109,40 +99,8 @@ function EvidenceForm({
 
   return (
     <div className="mt-4 space-y-3">
-      <p className={SCRIM_LABEL}>YOUR EVIDENCE</p>
-
-      <div className="space-y-2">
-        {urls.map((url, idx) => (
-          <div key={idx} className="flex items-center gap-2">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => updateUrl(idx, e.target.value)}
-              placeholder="https://…"
-              aria-label={`Evidence URL ${idx + 1}`}
-              className="h-9 flex-1 border border-white/10 bg-black/30 px-3 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/30 transition-colors"
-            />
-            {urls.length > 1 && (
-              <button
-                onClick={() => removeUrl(idx)}
-                aria-label="Remove URL"
-                className="text-[12px] text-white/35 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {urls.length < MAX_EVIDENCE_URLS && (
-        <button
-          onClick={addUrl}
-          className="text-[12px] text-white/40 hover:text-white underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
-        >
-          Add another URL
-        </button>
-      )}
+      <p className={SCRIM_LABEL}>Your evidence</p>
+      <DisputeEvidenceInput sessionId={sessionId} urls={urls} onChange={setUrls} />
 
       {submitError && (
         <div role="alert">
@@ -152,9 +110,9 @@ function EvidenceForm({
 
       <button
         onClick={() => void handleSubmit()}
-        disabled={submit.isPending}
+        disabled={submit.isPending || urls.length === 0}
         aria-busy={submit.isPending}
-        className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50  text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
+        className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50 text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
       >
         {submit.isPending ? (
           <span className="inline-flex items-center gap-2">
@@ -268,7 +226,7 @@ export function ScrimDisputeBanner({
 
           {/* S4-2: Evidence form for responding captain within 48h */}
           {canSubmitEvidence && windowOpen && (
-            <EvidenceForm sessionId={sessionId} onSubmitted={onEvidenceSubmitted} />
+            <EvidenceForm sessionId={sessionId} gameNumber={dispute.gameNumber} onSubmitted={onEvidenceSubmitted} />
           )}
 
           {/* S4-3: Evidence window closed */}

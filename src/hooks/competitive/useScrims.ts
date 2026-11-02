@@ -551,13 +551,13 @@ export function useBookScrimSlot(listingId: string) {
 }
 
 /** Submit responder evidence for an open dispute. */
-export function useSubmitDisputeEvidence(sessionId: string) {
+export function useSubmitDisputeEvidence(sessionId: string, gameNumber?: number | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (evidenceUrls: string[]) =>
       apiClient.post<ScrimDispute>(
         `/api/scrims/sessions/${sessionId}/dispute/evidence`,
-        { evidenceUrls },
+        { evidenceUrls, gameNumber: gameNumber ?? undefined },
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: scrimKeys.session(sessionId) });
@@ -725,4 +725,13 @@ export function usePendingReceivedOffers(listings: ScrimListing[]) {
     .filter((o) => o.status === 'pending');
 
   return { offers, isLoading };
+}
+
+/** Platform staff clear a scrim's time at any stage (a stuck or mistaken schedule). */
+export function useAdminResetScrimTime(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => rawApiClient.post<unknown>(`/api/admin/scrims/sessions/${sessionId}/reset-time`, {}),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['scrims'] }); },
+  });
 }

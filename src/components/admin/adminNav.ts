@@ -108,7 +108,10 @@ export const adminNavGroups: AdminNavGroup[] = [
   },
   {
     label: 'Tools',
-    items: [{ label: 'Map Veto Sessions', href: '/admin/tools/public-veto', icon: Wrench, superOnly: true }],
+    items: [
+      { label: 'Map Veto Sessions', href: '/admin/tools/public-veto', icon: Wrench, superOnly: true },
+      { label: 'Scrim Disputes', href: '/admin/tools/scrim-disputes', icon: AlertTriangle, permission: 'disputes:view' },
+    ],
   },
   {
     label: 'Analytics',

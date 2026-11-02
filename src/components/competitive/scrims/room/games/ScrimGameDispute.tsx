@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { InlineNotice } from '@/components/ui/kit';
 import { useDisputeScrimGame } from '@/hooks/competitive/useScrimGames';
+import { DisputeEvidenceInput } from '../DisputeEvidenceInput';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { ROOM_GHOST } from '../roomStyles';
 
@@ -15,11 +16,12 @@ interface Props {
 export function ScrimGameDispute({ sessionId, gameNumber, myTeamId, onClose }: Props) {
   const dispute = useDisputeScrimGame(sessionId);
   const [reason, setReason] = useState('');
+  const [evidence, setEvidence] = useState<string[]>([]);
 
   async function submit() {
     if (!reason.trim()) return;
     try {
-      await dispute.mutateAsync({ gameNumber, raisedByTeamId: myTeamId, reason: reason.trim() });
+      await dispute.mutateAsync({ gameNumber, raisedByTeamId: myTeamId, reason: reason.trim(), evidenceUrls: evidence });
       onClose();
     } catch { /* shown below */ }
   }
@@ -38,6 +40,10 @@ export function ScrimGameDispute({ sessionId, gameNumber, myTeamId, onClose }: P
         placeholder="Wrong score, wrong map, wrong players…"
         className="w-full resize-none border border-white/10 bg-black/30 px-3 py-2 text-[14px] text-white focus:border-white/30 focus:outline-none"
       />
+      <div className="space-y-1">
+        <p className="text-[13px] text-white/70">Evidence (optional)</p>
+        <DisputeEvidenceInput sessionId={sessionId} urls={evidence} onChange={setEvidence} />
+      </div>
       {dispute.isError && (
         <InlineNotice tone="critical">{getApiErrorMessage(dispute.error, 'Could not open the dispute. Try again.')}</InlineNotice>
       )}

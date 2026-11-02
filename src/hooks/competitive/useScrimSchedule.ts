@@ -47,3 +47,21 @@ export function useDeclineTimeProposal(proposalId: string) {
     onSuccess: refresh,
   });
 }
+
+/** The proposing team takes its own pending proposal back (a mis-click, a wrong date). */
+export function useWithdrawTimeProposal(proposalId: string) {
+  const refresh = useRefreshScrims();
+  return useMutation({
+    mutationFn: () => apiClient.post<unknown>(`/api/scrims/time-proposals/${proposalId}/withdraw`),
+    onSuccess: refresh,
+  });
+}
+
+/** Clears an agreed time before check-in so the captains can start again. */
+export function useResetScrimTime(sessionId: string) {
+  const refresh = useRefreshScrims();
+  return useMutation({
+    mutationFn: () => apiClient.post<unknown>(`/api/scrims/sessions/${sessionId}/time/reset`),
+    onSuccess: refresh,
+  });
+}

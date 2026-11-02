@@ -9,7 +9,9 @@
 import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { InlineNotice } from '@/components/ui/kit';
-import { useAcceptTimeProposal, useDeclineTimeProposal, useProposeTime } from '@/hooks/competitive/useScrimSchedule';
+import {
+  useAcceptTimeProposal, useDeclineTimeProposal, useProposeTime, useResetScrimTime, useWithdrawTimeProposal,
+} from '@/hooks/competitive/useScrimSchedule';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { formatRoomTime } from '@/services/scrimRoomView';
 import type { ScrimSession } from '@/types/competitive';
@@ -32,6 +34,9 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
   const propose = useProposeTime(session.id);
   const accept = useAcceptTimeProposal(proposal?.id ?? '');
   const decline = useDeclineTimeProposal(proposal?.id ?? '');
+  const withdraw = useWithdrawTimeProposal(proposal?.id ?? '');
+  const reset = useResetScrimTime(session.id);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const [countering, setCountering] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,7 +44,7 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
   const checkInStarted = !!(session.team1CheckedInAt || session.team2CheckedInAt);
   const open = session.status === 'scheduled' && !checkInStarted && isStaff;
   const mine = !!proposal && proposal.proposedByTeamId === myTeamId;
-  const busy = propose.isPending || accept.isPending || decline.isPending;
+  const busy = propose.isPending || accept.isPending || decline.isPending || withdraw.isPending || reset.isPending;
 
   async function run(action: () => Promise<unknown>, fallback: string) {
     setError('');
@@ -99,8 +104,14 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
         <div className="space-y-3">
           <p className="text-[13px] text-zinc-400">You proposed. Waiting for {opponent} to answer.</p>
           <p className="font-heading text-[22px] font-black leading-tight text-white">{formatRoomTime(proposal.proposedAt)}</p>
+          {error && <InlineNotice tone="critical">{error}</InlineNotice>}
           {!countering ? (
-            <button type="button" onClick={() => setCountering(true)} className={ROOM_GHOST}>Propose a different time</button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy} onClick={() => setCountering(true)} className={ROOM_GHOST}>Propose a different time</button>
+              <button type="button" disabled={busy} onClick={() => run(() => withdraw.mutateAsync(), 'Could not withdraw. Try again.')} className={ROOM_GHOST}>
+                {withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
+              </button>
+            </div>
           ) : (
             <ProposeTimeForm onSubmit={send} isPending={propose.isPending} error={error} onCancel={() => setCountering(false)} submitLabel="Propose" />
           )}
@@ -113,9 +124,27 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
             <CalendarClock className="h-4 w-4 text-white/50" aria-hidden="true" />
             {formatRoomTime(session.scheduledAt)}
           </p>
-          {!countering ? (
-            <button type="button" onClick={() => setCountering(true)} className={ROOM_GHOST}>Change the time</button>
-          ) : (
+          {error && <InlineNotice tone="critical">{error}</InlineNotice>}
+          {!countering && !confirmingReset && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy} onClick={() => setCountering(true)} className={ROOM_GHOST}>Change the time</button>
+              <button type="button" disabled={busy} onClick={() => setConfirmingReset(true)} className={ROOM_GHOST}>Clear the time</button>
+            </div>
+          )}
+          {confirmingReset && (
+            <div className="space-y-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.05] p-3">
+              <p className="text-[13px] text-amber-100/90">
+                Clear this time? Check-in is cancelled and you both start again. {opponent} is told.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={() => run(async () => { await reset.mutateAsync(); setConfirmingReset(false); }, 'Could not clear the time. Try again.')} className={PRIMARY}>
+                  {reset.isPending ? 'Clearing…' : 'Yes, clear it'}
+                </button>
+                <button type="button" onClick={() => setConfirmingReset(false)} className={ROOM_GHOST}>Keep it</button>
+              </div>
+            </div>
+          )}
+          {countering && (
             <ProposeTimeForm onSubmit={send} isPending={propose.isPending} error={error} onCancel={() => setCountering(false)} submitLabel="Propose" />
           )}
         </div>

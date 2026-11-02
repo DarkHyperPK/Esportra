@@ -112,12 +112,12 @@ export function describeNextStep(next: ScrimNextAction, ctx: NextStepContext, no
       );
     case 'wait_opponent':
       return next.stage === 'result'
-        ? view(`Waiting for ${opp} to confirm`, 'They have your result. You will be told when they respond.')
+        ? view(`Waiting for ${opp} to confirm`, 'They have your map result. It confirms itself if they do not answer in time.')
         : view("You're checked in", `Waiting for ${opp} to check in${left ? `. Check-in closes in ${left}` : ''}.`);
     case 'report_result':
-      return view('Report the result', 'Your scrim is live. Report the final score when the series ends.', 'room-result');
+      return view('Report the map', 'Your scrim is live. Report each map when it finishes; the other team confirms it before the next one opens.', 'room-result');
     case 'confirm_result':
-      return view(`${opp} reported a result`, 'Confirm the score, or open a dispute if it is wrong.', 'room-result');
+      return view(`${opp} reported a map`, 'Confirm the score, or dispute that map if it is wrong. You can keep playing the next one.', 'room-result');
     case 'submit_evidence':
       return view('Add your evidence', `${opp} disputed the result. Add screenshots or notes so staff can rule.`, 'room-dispute');
     case 'wait_staff':
@@ -143,8 +143,8 @@ export function formatRoomTime(iso: string | null): string {
 export function actionLabel(action: ScrimNextAction['action']): string {
   switch (action) {
     case 'check_in': return 'Check in';
-    case 'report_result': return 'Report result';
-    case 'confirm_result': return 'Review result';
+    case 'report_result': return 'Report map';
+    case 'confirm_result': return 'Review map';
     case 'propose_time': return 'Pick a time';
     case 'respond_time': return 'Respond';
     case 'submit_evidence': return 'Add evidence';

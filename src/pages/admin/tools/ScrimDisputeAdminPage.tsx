@@ -9,17 +9,17 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
-import { useAdminScrimDisputes, useResolveScrimDispute } from '@/hooks/competitive/useScrims';
+import { useAdminResetScrimTime, useAdminScrimDisputes, useResolveScrimDispute } from '@/hooks/competitive/useScrims';
 import { InlineNotice } from '@/components/ui/kit';
 import { Loader2 } from 'lucide-react';
 import type { AdminScrimDisputeRow, ScrimDisputeOutcome } from '@/types/competitive';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const OUTCOME_OPTIONS: { value: ScrimDisputeOutcome; label: string }[] = [
-  { value: 'team1_wins', label: 'Team 1 wins' },
-  { value: 'team2_wins', label: 'Team 2 wins' },
-  { value: 'no_contest', label: 'No contest' },
+const outcomeOptions = (mapDispute: boolean): { value: ScrimDisputeOutcome; label: string }[] => [
+  { value: 'team1_wins', label: mapDispute ? 'Team 1 won this map' : 'Team 1 wins' },
+  { value: 'team2_wins', label: mapDispute ? 'Team 2 won this map' : 'Team 2 wins' },
+  { value: 'no_contest', label: mapDispute ? 'No contest — replay the map' : 'No contest' },
 ];
 
 const STATUS_TABS = ['open', 'escalated', 'resolved'] as const;
@@ -104,7 +104,7 @@ function ResolveModal({
             onChange={(e) => setOutcome(e.target.value as ScrimDisputeOutcome)}
             className="h-10 w-full border border-white/10 bg-black/30 px-3 text-[14px] text-white focus:outline-none focus:border-white/30 transition-colors"
           >
-            {OUTCOME_OPTIONS.map((opt) => (
+            {outcomeOptions(dispute.gameNumber != null).map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -160,6 +160,43 @@ function ResolveModal({
   );
 }
 
+function EvidenceLinks({ label, urls }: { label: string; urls: string[] | null }) {
+  if (!urls?.length) return null;
+  return (
+    <div className="text-[12px] text-zinc-400">
+      <span className="text-zinc-500">{label}: </span>
+      {urls.map((url, i) => (
+        <a key={url} href={url} target="_blank" rel="noreferrer noopener" className="mr-3 text-sky-300 underline underline-offset-2 hover:text-sky-200">
+          Item {i + 1}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/** Clears the scrim's agreed time (and check-ins) so the teams agree a new one. Asks first. */
+function ResetTimeButton({ sessionId }: { sessionId: string }) {
+  const reset = useAdminResetScrimTime(sessionId);
+  const [confirming, setConfirming] = useState(false);
+  if (reset.isSuccess) return <span className="px-2 py-1.5 text-[12px] text-emerald-300">Time cleared</span>;
+  if (!confirming) {
+    return (
+      <button onClick={() => setConfirming(true)} className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-3 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
+        Clear scrim time
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2 text-[12px] text-amber-200">
+      Clear time and check-ins?
+      <button onClick={() => reset.mutate(undefined, { onSettled: () => setConfirming(false) })} disabled={reset.isPending} className="border border-amber-400/40 px-2 py-1 text-amber-100 hover:bg-amber-400/10 disabled:opacity-50">
+        {reset.isPending ? 'Clearing…' : 'Yes'}
+      </button>
+      <button onClick={() => setConfirming(false)} className="px-2 py-1 text-white/55 hover:text-white">No</button>
+    </span>
+  );
+}
+
 // ── DisputeRow ────────────────────────────────────────────────────────────────
 
 function DisputeRow({
@@ -180,13 +217,20 @@ function DisputeRow({
           <span className="font-medium">{dispute.team1Name ?? '—'}</span>
           <span className="text-white/30">vs</span>
           <span className="font-medium">{dispute.team2Name ?? '—'}</span>
+          {dispute.gameNumber != null && (
+            <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-200">
+              Game {dispute.gameNumber}
+            </span>
+          )}
           {dispute.gameSlug && (
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35 bg-white/[0.05] px-1.5 py-0.5">
               {dispute.gameSlug.toUpperCase()}
             </span>
           )}
         </div>
-        <p className="text-[12px] text-zinc-400 line-clamp-1">{dispute.reason}</p>
+        <p className="text-[12px] text-zinc-400">{dispute.reason}</p>
+        <EvidenceLinks label={`${dispute.raisedByTeamName ?? 'Raised by'} evidence`} urls={dispute.evidenceUrls} />
+        <EvidenceLinks label="Other team evidence" urls={dispute.responderEvidenceUrls} />
         <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-500">
           <span>Raised by: {dispute.raisedByTeamName ?? dispute.raisedByTeamId.slice(0, 8)}</span>
           <span>Scheduled: {formatScheduledAt(dispute.scheduledAt)}</span>
@@ -195,12 +239,15 @@ function DisputeRow({
         </div>
       </div>
       {dispute.status !== 'resolved' && (
+        <div className="flex shrink-0 flex-wrap gap-2">
+        <ResetTimeButton sessionId={dispute.sessionId} />
         <button
           onClick={onResolve}
           className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-3 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors shrink-0"
         >
           Resolve
         </button>
+        </div>
       )}
       {dispute.status === 'resolved' && dispute.outcome && (
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">

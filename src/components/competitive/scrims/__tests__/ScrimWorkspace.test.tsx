@@ -158,7 +158,7 @@ describe('AgendaRow', () => {
   it('offers no cancel once a scrim is live', () => {
     wrap(<ul><AgendaRow session={session({ status: 'in_progress' })} teamId="me" /></ul>);
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Report result' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Report map' })).toBeInTheDocument();
   });
 });
 

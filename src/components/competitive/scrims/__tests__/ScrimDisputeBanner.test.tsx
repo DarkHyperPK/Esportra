@@ -137,7 +137,7 @@ describe('ScrimDisputeBanner', () => {
       />,
       { wrapper },
     );
-    expect(screen.getByText('YOUR EVIDENCE')).toBeInTheDocument();
+    expect(screen.getByText('Your evidence')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit evidence/i })).toBeInTheDocument();
   });
 
@@ -153,7 +153,7 @@ describe('ScrimDisputeBanner', () => {
       />,
       { wrapper },
     );
-    expect(screen.queryByText('YOUR EVIDENCE')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your evidence')).not.toBeInTheDocument();
   });
 
   it('clicking Expand shows Show less toggle', () => {

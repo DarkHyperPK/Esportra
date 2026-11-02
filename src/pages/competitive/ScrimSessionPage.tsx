@@ -8,6 +8,7 @@ import { ScrimDisputeBanner } from '@/components/competitive/scrims/ScrimDispute
 import { ScrimFaceOff } from '@/components/competitive/scrims/room/ScrimFaceOff';
 import { ScrimStageRail } from '@/components/competitive/scrims/room/ScrimStageRail';
 import { ScrimNextStepCard } from '@/components/competitive/scrims/room/ScrimNextStepCard';
+import { CheckinSummary } from '@/components/competitive/scrims/room/CheckinSummary';
 import { ScrimLobbyPanel } from '@/components/competitive/scrims/room/ScrimLobbyPanel';
 import { ScrimGamesPanel } from '@/components/competitive/scrims/room/games/ScrimGamesPanel';
 import { ScrimSchedulePanel } from '@/components/competitive/scrims/room/ScrimSchedulePanel';
@@ -106,6 +107,7 @@ export default function ScrimSessionPage() {
   const showSchedule = status === 'scheduled' || status === 'in_progress';
   const showResult = status === 'in_progress' || status === 'completed' || status === 'disputed';
   const showLobby = status === 'scheduled' || status === 'in_progress';
+  const bothCheckedIn = !!session.team1CheckedInAt && !!session.team2CheckedInAt;
   const score = session.team1Score != null && session.team2Score != null && status !== 'scheduled'
     ? `${session.team1Score} – ${session.team2Score}`
     : null;
@@ -155,8 +157,14 @@ export default function ScrimSessionPage() {
           </motion.div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0 space-y-6">
+        <div className={showResult ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start' : 'mx-auto max-w-[760px]'}>
+          {showResult && (
+            <motion.div {...arrive(0.12)} id="room-result" className="order-2 min-w-0 scroll-mt-6 lg:order-1">
+              <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
+            </motion.div>
+          )}
+
+          <div className="order-1 min-w-0 space-y-4 lg:order-2 lg:sticky lg:top-6">
             {showSchedule && (
               <motion.div {...arrive(0.06)} id="room-schedule" className="scroll-mt-6">
                 <ScrimSchedulePanel session={session} myTeamId={myTeamId} opponentName={opponent} isStaff={isCaptain} />
@@ -165,12 +173,16 @@ export default function ScrimSessionPage() {
 
             {canCheckIn && (
               <motion.div {...arrive(0.08)} id="room-checkin" className="scroll-mt-6">
-                <ScrimCheckinPanel
-                  session={session}
-                  callerTeamId={myTeamId ?? ''}
-                  isCaptain={isCaptain}
-                  onCheckinSuccess={() => sessionQuery.refetch()}
-                />
+                {bothCheckedIn ? (
+                  <CheckinSummary team1={session.team1Name ?? 'Team 1'} team2={session.team2Name ?? 'Team 2'} />
+                ) : (
+                  <ScrimCheckinPanel
+                    session={session}
+                    callerTeamId={myTeamId ?? ''}
+                    isCaptain={isCaptain}
+                    onCheckinSuccess={() => sessionQuery.refetch()}
+                  />
+                )}
               </motion.div>
             )}
 
@@ -186,23 +198,17 @@ export default function ScrimSessionPage() {
               </motion.div>
             )}
 
+            {showLobby && (
+              <motion.div {...arrive(0.14)} aria-label="Lobby">
+                <ScrimLobbyPanel session={session} />
+              </motion.div>
+            )}
+
             {status === 'cancelled' && (
               <InlineNotice tone="neutral">{nextView.body}</InlineNotice>
             )}
           </div>
-
-          {showLobby && (
-            <motion.aside {...arrive(0.14)} aria-label="Lobby" className="min-w-0 lg:sticky lg:top-6 lg:self-start">
-              <ScrimLobbyPanel session={session} />
-            </motion.aside>
-          )}
         </div>
-
-        {showResult && (
-          <motion.div {...arrive(0.12)} id="room-result" className="scroll-mt-6">
-            <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
-          </motion.div>
-        )}
       </div>
     </CompetitivePageShell>
   );
