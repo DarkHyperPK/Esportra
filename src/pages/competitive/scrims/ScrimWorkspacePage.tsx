@@ -27,6 +27,9 @@ import {
 } from '@/hooks/competitive/useScrims';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
+import { UpNextStrip } from '@/components/competitive/scrims/UpNextStrip';
+import { pickLead, withoutType } from '@/services/scrimUpNext';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
 import { WorkspaceListingCard, SCRIM_CARD_CLASS, SCRIM_EYEBROW } from '@/components/competitive/scrims/WorkspaceListingCard';
 import {
@@ -585,6 +588,10 @@ export default function ScrimWorkspacePage() {
 
   const { offers: pendingReceivedOffers } = usePendingReceivedOffers(listings);
 
+  // Offers already have their own strip below, so the queue leaves them out here.
+  const upNextQuery = useScrimUpNext(activeTeam?.id);
+  const { lead: upNextLead, more: upNextMore } = pickLead(withoutType(upNextQuery.data, 'offer_received'));
+
   // Session stat card counts
   const completedCount = sessions.filter((s) => s.status === 'completed').length;
   const upcomingCount = sessions.filter((s) => s.status === 'scheduled').length;
@@ -764,6 +771,13 @@ export default function ScrimWorkspacePage() {
               </div>
             </div>
           </div>
+
+          <UpNextStrip
+            lead={upNextLead}
+            more={upNextMore}
+            onDeadlinePassed={() => void upNextQuery.refetch()}
+            className="mx-6 mt-4"
+          />
 
           {/* ── Stat cards ──────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3 border-b border-white/[0.07] px-6 py-4 lg:grid-cols-4">

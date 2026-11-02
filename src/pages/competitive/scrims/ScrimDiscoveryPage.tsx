@@ -14,6 +14,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useDiscoverScrimsFiltered } from '@/hooks/competitive/useScrimDiscovery';
+import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
+import { UpNextStrip } from '@/components/competitive/scrims/UpNextStrip';
+import { pickLead } from '@/services/scrimUpNext';
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
@@ -394,6 +397,8 @@ export default function ScrimDiscoveryPage() {
   const rankTiersQuery = useCatalogRankTiers(activeGame);
   const regionsQuery = useCatalogRegions(activeGame);
   const teamsQuery = useMyTeamsSummary();
+  const upNextQuery = useScrimUpNext();
+  const { lead: upNextLead, more: upNextMore } = pickLead(upNextQuery.data);
 
   const rankTiers = rankTiersQuery.data ?? [];
   const regions = regionsQuery.data ?? [];
@@ -497,6 +502,13 @@ export default function ScrimDiscoveryPage() {
       </div>
 
       <main className="px-4 lg:px-8 pb-8">
+        <UpNextStrip
+          lead={upNextLead}
+          more={upNextMore}
+          onDeadlinePassed={() => void upNextQuery.refetch()}
+          className="mb-6"
+        />
+
         {/* Desktop filter bar */}
         <div className="hidden lg:flex flex-wrap gap-3 mb-4">{filterSelects}</div>
 

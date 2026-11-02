@@ -809,6 +809,51 @@ export interface TryoutInviteView {
 export type ScrimListingStatus = 'open' | 'paused' | 'closed';
 export type ScrimOfferStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'expired';
 export type ScrimSessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'disputed';
+
+/** Scrim record + reliability. Absent (null) when the team keeps its scrim history private. */
+export interface ScrimTeamRecord {
+  wins: number;
+  losses: number;
+  draws: number;
+  completed: number;
+  noShows: number;
+  /** completed / (completed + noShows), 0..1; null when there is nothing to base it on. */
+  showRate: number | null;
+  lastPlayedAt: string | null;
+  /** Most recent first. */
+  last5: Array<'W' | 'L' | 'D'>;
+  /** +n straight wins, -n straight losses, 0 otherwise. */
+  streak: number;
+}
+
+export type ScrimUpNextType =
+  | 'checkin_open'
+  | 'veto_ready'
+  | 'result_to_confirm'
+  | 'evidence_due'
+  | 'result_to_report'
+  | 'offer_received';
+
+/** One thing the caller's team must act on (GET /api/scrims/up-next). */
+export interface ScrimUpNextItem {
+  type: ScrimUpNextType;
+  teamId: string;
+  sessionId: string | null;
+  offerId: string | null;
+  listingId: string | null;
+  opponentName: string | null;
+  opponentLogo: string | null;
+  gameSlug: string | null;
+  scheduledAt: string | null;
+  /** When the action stops being possible; null if open-ended. */
+  deadline: string | null;
+}
+
+export interface ScrimUpNextResponse {
+  items: ScrimUpNextItem[];
+  /** Total before the response cap. */
+  total: number;
+}
 export type PracticeSessionStatus = 'scheduled' | 'completed' | 'cancelled';
 export type PracticeAttendanceStatus = 'invited' | 'confirmed' | 'attended' | 'absent' | 'excused';
 
@@ -844,6 +889,8 @@ export interface ScrimListing {
   maxRankIconUrl?: string | null;
   membersPreview?: ScrimMemberPreview[] | null;
   scrimsCompleted?: number | null;
+  /** null/absent = the team keeps its scrim history private. */
+  record?: ScrimTeamRecord | null;
   captainCardUrl?: string | null;
 }
 
@@ -898,6 +945,7 @@ export interface ScrimOffer {
   offeringActiveMemberCount?: number | null;
   offeringMembersPreview?: string | null;
   offeringScrimsCompleted?: number | null;
+  offeringRecord?: ScrimTeamRecord | null;
 }
 
 export interface ScrimSession {
