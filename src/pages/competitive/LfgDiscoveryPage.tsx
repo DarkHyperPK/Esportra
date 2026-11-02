@@ -76,10 +76,6 @@ export default function LfgDiscoveryPage() {
   useEffect(() => {
     if (!authLoading && !user && savedOnly) navigate(signIn(location.pathname + location.search), { replace: true });
   }, [authLoading, user, savedOnly, navigate, location.pathname, location.search]);
-  function changeGame(value: string) {
-    setRole(''); setRegion(''); setRank(''); setMaxRank(''); setLanguage(''); setQuery('');
-    change({ game: value, listing: null });
-  }
   function select(id: string) { drawerInput.current = document.documentElement.dataset.lfgInput || 'pointer'; returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; change({ listing: id }); }
   async function toggleSave(id: string, isSaved: boolean) {
     if (!user) { navigate(signIn(location.pathname + location.search)); return; }
@@ -89,7 +85,7 @@ export default function LfgDiscoveryPage() {
   }
   return <LfgWorkspace>
     <header className="lfg-heading"><div><div className="lfg-eyebrow">Esportra / Find a group</div><h1>{savedOnly ? 'Saved listings.' : 'Find your next team.'}</h1><p>{savedOnly ? 'Players and teams you saved, organized by game.' : 'Good people. Shared goals. A team worth showing up for.'}</p></div>
-      <label className="lfg-field">Your game<select className="lfg-input" value={game} onChange={event => changeGame(event.target.value)} disabled={!catalog.games.length}>{!catalog.games.length && <option value="">Game catalog unavailable</option>}{catalog.games.map(item => <option value={item.slug} key={item.slug}>{item.name}</option>)}</select></label>
+      <div className="lfg-field">Your game<div className="lfg-input" style={{ display:'flex', alignItems:'center', gap:10, cursor:'default', userSelect:'none' }}><img src="/games/valorant-logo.png" alt="" style={{ width:20, height:20, objectFit:'contain', flexShrink:0 }} />Valorant</div></div>
     </header>
     <div className="lfg-layout">
       <aside id="lfg-filters" className={`lfg-filters lfg-panel ${filterOpen ? 'open' : ''}`} aria-label="Listing filters"><h2>Narrow the search</h2>

@@ -23,8 +23,7 @@ export default function LfgCreateWizardPage() {
   const catalog = useGameCatalogContext();
   const initialType = params.get('type') === 'lfp' ? 'team' : 'player';
   const [type, setType] = useState<'player' | 'team'>(initialType);
-  const [chosenGame, setGame] = useState(params.get('game') || '');
-  const game = chosenGame || catalog.games.find(item => item.slug === 'valorant')?.slug || catalog.games[0]?.slug || '';
+  const game = 'valorant';
   const [step, setStep] = useState(1);
   const [teamId, setTeamId] = useState('');
   const [roles, setRoles] = useState<string[]>([]);
@@ -79,9 +78,6 @@ export default function LfgCreateWizardPage() {
     teamName: selectedTeam?.name ?? (type === 'team' ? 'Your team' : null), teamTag: selectedTeam?.tag ?? null,
     teamLogoUrl: selectedTeam?.logo_url ?? null, teamMemberCount: null, teamVerifiedCount: null,
   };
-  function changeGame(value: string) {
-    setGame(value); setRoles([]); setAgents([]); setRegion(''); setMinRank(''); setMaxRank(''); setTeamId('');
-  }
   async function submit(publish: boolean) {
     setError('');
     if (riotBlocked) { setError('Link your Riot account before creating a Valorant listing.'); return; }
@@ -99,7 +95,7 @@ export default function LfgCreateWizardPage() {
   return <LfgWorkspace><header className="lfg-heading"><div><div className="lfg-eyebrow">Find a group / Create listing</div><h1>Put yourself on the board.</h1><p>Tell people what you play and what you are looking for.</p></div></header>
     <div className="lfg-page lfg-wizard-layout"><div className="lfg-panel lfg-wizard-form">
       <div className="lfg-segmented" aria-label="Creation progress"><span className="lfg-chip">{step} / 3</span><span className="lfg-chip">{['Your search', 'Your details', 'Review'][step - 1]}</span></div>
-      {step === 1 && <div style={{ marginTop:24 }}><h2 className="lfg-name">What are you looking for?</h2><div className="lfg-row-actions" style={{ margin:'14px 0 22px' }}><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'player'} onClick={() => setType('player')}>I need a team</button><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'team'} onClick={() => setType('team')}>We need a player</button></div><label className="lfg-field">Game<select className="lfg-input" value={game} disabled={!!save.draftId || !catalog.games.length} onChange={event => changeGame(event.target.value)}>{!catalog.games.length && <option value="">Game catalog unavailable</option>}{catalog.games.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label></div>}
+      {step === 1 && <div style={{ marginTop:24 }}><h2 className="lfg-name">What are you looking for?</h2><div className="lfg-row-actions" style={{ margin:'14px 0 22px' }}><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'player'} onClick={() => setType('player')}>I need a team</button><button className="lfg-button" type="button" disabled={!!save.draftId} aria-pressed={type === 'team'} onClick={() => setType('team')}>We need a player</button></div><div className="lfg-field">Game<div className="lfg-input" style={{ display:'flex', alignItems:'center', gap:10, cursor:'default', userSelect:'none' }}><img src="/games/valorant-logo.png" alt="" style={{ width:20, height:20, objectFit:'contain', flexShrink:0 }} />Valorant</div></div></div>}
       {game === 'valorant' && riotBlocked && <section className="lfg-account-gate" aria-label="Riot account required">
         <strong>{stats.isLoading ? 'Checking your Riot account…' : stats.isError ? 'Account status could not load' : 'Connect Riot to list for Valorant'}</strong>
         <p className="lfg-sub">A linked Riot account is required for player, coach, manager and team listings.</p>
