@@ -11,6 +11,8 @@
  *
  * Source of truth: .claude/company/projects/PROJ-075/shared-contracts/types.md
  */
+import type { MatchDetailsPayload } from '@/types/matchDetails';
+
 
 // ── Shared enums ──────────────────────────────────────────────────────────────
 
@@ -1180,27 +1182,6 @@ export interface ScrimHistoryPrivacy {
 }
 
 /** Response from POST /api/scrims/sessions/{id}/reports/parse-screenshot */
-export interface ScrimScreenshotParseResult {
-  team1Score: number | null;
-  team2Score: number | null;
-  confidence: number | null;
-  message: string | null;
-}
-
-/** One candidate from GET /api/scrims/sessions/{id}/recent-matches */
-export interface ScrimRecentMatch {
-  id: string;
-  map: string;
-  mapId?: string | null;
-  startTime: number;
-  team1Score: number;
-  team2Score: number;
-  result: 'win' | 'loss' | 'draw';
-  durationMs?: number | null;
-  agent?: string | null;
-  kda?: string | null;
-}
-
 // ── Scouting ──────────────────────────────────────────────────────────────────
 
 export interface ScoutingShortlist {
@@ -1242,4 +1223,56 @@ export interface CreateShortlistRequest {
 export interface UpsertScoutingNoteRequest {
   gameSlug?: string;
   content: string;
+}
+
+// ── Scrim series, map by map ────────────────────────────────────────────────
+
+export type ScrimGameStatus = 'reported' | 'confirmed' | 'disputed' | 'resolved';
+export type ScrimGameSource = 'manual' | 'riot' | 'ocr';
+
+/** One map of a scrim series (GET /api/scrims/sessions/{id}/games). */
+export interface ScrimGame {
+  gameNumber: number;
+  status: ScrimGameStatus;
+  mapName: string | null;
+  mapId: string | null;
+  team1Score: number;
+  team2Score: number;
+  /** 1 or 2 once the map counts for a team; null while unsettled or void. */
+  winnerSlot: 1 | 2 | null;
+  source: ScrimGameSource;
+  riotMatchId: string | null;
+  /** Riot or screenshot scoreboard details; shown with the match-room scoreboard. */
+  matchData: MatchDetailsPayload | null;
+  screenshotUrls: string[];
+  notes: string | null;
+  reportedByTeamId: string;
+  reportedAt: string;
+  confirmedByTeamId: string | null;
+  confirmedAt: string | null;
+  disputedByTeamId: string | null;
+}
+
+export interface ScrimGamesResponse {
+  bestOf: number;
+  winsNeeded: number;
+  team1Wins: number;
+  team2Wins: number;
+  /** The map to report next while the session is in progress; null once the series is decided. */
+  nextGameNumber: number | null;
+  games: ScrimGame[];
+}
+
+export interface ReportScrimGameInput {
+  gameNumber: number;
+  reportedByTeamId: string;
+  team1Score: number;
+  team2Score: number;
+  source: ScrimGameSource;
+  riotMatchId?: string;
+  mapName?: string;
+  mapId?: string;
+  matchData?: MatchDetailsPayload | Record<string, unknown>;
+  screenshotUrls?: string[];
+  notes?: string;
 }

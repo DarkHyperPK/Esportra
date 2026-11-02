@@ -9,7 +9,7 @@ import { ScrimFaceOff } from '@/components/competitive/scrims/room/ScrimFaceOff'
 import { ScrimStageRail } from '@/components/competitive/scrims/room/ScrimStageRail';
 import { ScrimNextStepCard } from '@/components/competitive/scrims/room/ScrimNextStepCard';
 import { ScrimLobbyPanel } from '@/components/competitive/scrims/room/ScrimLobbyPanel';
-import { ScrimResultPanel } from '@/components/competitive/scrims/room/ScrimResultPanel';
+import { ScrimGamesPanel } from '@/components/competitive/scrims/room/games/ScrimGamesPanel';
 import { ScrimSchedulePanel } from '@/components/competitive/scrims/room/ScrimSchedulePanel';
 import { useScrimSession } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
@@ -188,7 +188,7 @@ export default function ScrimSessionPage() {
 
             {showResult && (
               <motion.div {...arrive(0.12)} id="room-result" className="scroll-mt-6">
-                <ScrimResultPanel session={session} myTeamId={myTeamId} myTeamSide={mySide} />
+                <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
               </motion.div>
             )}
 
