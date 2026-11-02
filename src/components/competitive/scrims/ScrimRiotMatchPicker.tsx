@@ -70,6 +70,7 @@ function MatchRow({
 interface Props {
   sessionId: string;
   isValorant: boolean;
+  mySlot: 'team1' | 'team2';
   onFill: (team1Score: number, team2Score: number) => void;
 }
 
@@ -78,9 +79,9 @@ interface Props {
  * Only rendered for Valorant sessions. Fetches recent matches on demand,
  * lets the user pick one, and calls onFill with the oriented scores.
  */
-export function ScrimRiotMatchPicker({ sessionId, isValorant, onFill }: Props) {
-  const { data, isFetching, isError, error, refetch } = useScrimRecentMatches(sessionId);
-  const matches = data ?? null;
+export function ScrimRiotMatchPicker({ sessionId, isValorant, mySlot, onFill }: Props) {
+  const { data, isFetching, isError, error, refetch } = useScrimRecentMatches(sessionId, mySlot);
+  const matches = data?.matches ?? null;
 
   if (!isValorant) return null;
 
@@ -122,7 +123,7 @@ export function ScrimRiotMatchPicker({ sessionId, isValorant, onFill }: Props) {
       {matches !== null && !isError && (
         <>
           {matches.length === 0 ? (
-            <p className="text-[13px] text-white/40">No recent matches found.</p>
+            <p className="text-[13px] text-white/40">{data?.reason ?? 'No recent matches found.'}</p>
           ) : (
             <div className="space-y-1" role="list" aria-label="Recent Valorant matches">
               {matches.map((m) => (

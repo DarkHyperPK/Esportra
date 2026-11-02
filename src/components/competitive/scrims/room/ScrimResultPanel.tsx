@@ -94,7 +94,7 @@ export function ScrimResultPanel({ session, myTeamId, myTeamSide }: { session: S
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ScrimReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ScrimReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} mySlot={myTeamSide === 2 ? 'team2' : 'team1'} t1Name={t1Name} t2Name={t2Name} defaultT1={String(session.team1Score ?? '')} defaultT2={String(session.team2Score ?? '')} onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -109,7 +109,7 @@ export function ScrimResultPanel({ session, myTeamId, myTeamSide }: { session: S
           <AnimatePresence>
             {showReport && (
               <motion.div key="rf" {...arrive}>
-                <ScrimReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
+                <ScrimReportForm sessionId={session.id} gameSlug={session.gameSlug} bestOf={bo} myTeamId={myTeamId} mySlot={myTeamSide === 2 ? 'team2' : 'team1'} t1Name={t1Name} t2Name={t2Name} defaultT1="" defaultT2="" onSuccess={() => setShowReport(false)} onCancel={() => setShowReport(false)} />
               </motion.div>
             )}
           </AnimatePresence>

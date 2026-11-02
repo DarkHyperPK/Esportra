@@ -26,6 +26,8 @@ import {
   effectivePublicVetoSequence,
   buildPublicTeamVetoUrl,
   PUBLIC_VETO_GAMES,
+  TEAM1_FALLBACK_ID,
+  TEAM2_FALLBACK_ID,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
@@ -116,8 +118,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       bestOf: veto.best_of || state.bestOf || 1,
       team1Name: state.team1Name,
       team2Name: state.team2Name,
-      team1Id: state.team1Id,
-      team2Id: state.team2Id,
+      team1Id: state.team1Id || TEAM1_FALLBACK_ID,
+      team2Id: state.team2Id || TEAM2_FALLBACK_ID,
       sequence: effectivePublicVetoSequence(state),
     }),
     [veto, vetoHistory, gameMaps, state],
@@ -202,8 +204,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       allAvailableMaps={gameMaps}
       team1Name={state.team1Name}
       team2Name={state.team2Name}
-      team1Id={state.team1Id ?? "team1"}
-      team2Id={state.team2Id ?? "team2"}
+      team1Id={state.team1Id || TEAM1_FALLBACK_ID}
+      team2Id={state.team2Id || TEAM2_FALLBACK_ID}
       bestOf={currentBestOf}
       history={vetoHistory}
       externalSequence={effectivePublicVetoSequence(state)}
@@ -257,8 +259,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     bestOf: currentBestOf,
     team1Name: state.team1Name,
     team2Name: state.team2Name,
-    team1Id: state.team1Id,
-    team2Id: state.team2Id,
+    team1Id: state.team1Id || TEAM1_FALLBACK_ID,
+    team2Id: state.team2Id || TEAM2_FALLBACK_ID,
     availableMaps: gameMaps,
     allAvailableMaps: gameMaps,
     game: state.game,
@@ -279,8 +281,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         currentTeamName={currentTeamName}
         team1Name={state.team1Name}
         team2Name={state.team2Name}
-        team1Id={state.team1Id ?? "team1"}
-        team2Id={state.team2Id ?? "team2"}
+        team1Id={state.team1Id || TEAM1_FALLBACK_ID}
+        team2Id={state.team2Id || TEAM2_FALLBACK_ID}
         externalSequence={effectivePublicVetoSequence(state)}
         bestOf={currentBestOf}
         game={state.game}

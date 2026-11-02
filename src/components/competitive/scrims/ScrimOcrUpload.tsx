@@ -96,6 +96,8 @@ function ParseConfirmCard({
 
 interface Props {
   sessionId: string;
+  reportingTeamId: string | null;
+  mySlot: 'team1' | 'team2';
   t1Name: string;
   t2Name: string;
   onFill: (team1Score: number, team2Score: number) => void;
@@ -105,8 +107,8 @@ interface Props {
  * Upload scoreboard screenshot → parse → confirm card → fill scores.
  * Reuses ScoreboardOcrDropzone for the file pick UI.
  */
-export function ScrimOcrUpload({ sessionId, t1Name, t2Name, onFill }: Props) {
-  const parse = useScrimParseScreenshot(sessionId);
+export function ScrimOcrUpload({ sessionId, reportingTeamId, mySlot, t1Name, t2Name, onFill }: Props) {
+  const parse = useScrimParseScreenshot(sessionId, reportingTeamId, mySlot);
   const [parsed, setParsed] = useState<ScrimScreenshotParseResult | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
 

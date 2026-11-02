@@ -12,7 +12,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { InlineNotice } from '@/components/ui/kit';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PublicMapVetoLoading } from '@/pages/tools/PublicMapVetoView';
 
 const PublicMapVetoRoom = lazy(() => import('@/pages/tools/PublicMapVetoRoom'));
@@ -87,11 +87,15 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
           </button>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-h-[92dvh] max-w-5xl gap-0 overflow-y-auto rounded-2xl border-white/[0.1] bg-[#0c0c0f] p-4 sm:p-6">
-            <DialogTitle className="sr-only">Map veto</DialogTitle>
-            <Suspense fallback={<PublicMapVetoLoading embedded />}>
-              <PublicMapVetoRoom token={vetoMyToken} embedded />
-            </Suspense>
+          <DialogContent className="flex h-[min(92dvh,920px)] w-[min(96vw,1200px)] max-w-none flex-col gap-0 overflow-hidden rounded-xl border-white/[0.1] bg-[#0c0c0f] p-0">
+            <DialogHeader className="shrink-0 border-b border-white/[0.08] px-5 py-3.5 text-left">
+              <DialogTitle className="text-[15px] font-semibold text-white">Map veto</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 sm:px-6" data-lenis-prevent>
+              <Suspense fallback={<PublicMapVetoLoading embedded />}>
+                <PublicMapVetoRoom token={vetoMyToken} embedded />
+              </Suspense>
+            </div>
           </DialogContent>
         </Dialog>
       </motion.section>

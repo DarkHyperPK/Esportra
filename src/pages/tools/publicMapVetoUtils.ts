@@ -204,12 +204,17 @@ export const adaptPublicMapsToGameMaps = (maps: PublicVetoGameMap[], game: strin
     is_active: true,
   }));
 
+/** Team and viewer links never receive team ids, so lineup/sequence logic keys on stand-ins. */
+export const TEAM1_FALLBACK_ID = "team1";
+export const TEAM2_FALLBACK_ID = "team2";
+
 export const adaptPublicVetoToMatchVeto = (state: PublicVetoState) => ({
   id: state.id,
   matchId: "public-tool",
   tournamentId: "public-tool",
-  team1Id: state.team1Id,
-  team2Id: state.team2Id,
+  team1Id: state.team1Id || TEAM1_FALLBACK_ID,
+  team2Id: state.team2Id || TEAM2_FALLBACK_ID,
+  selectedMapPool: state.maps.map((map) => map.id),
   team1LinkToken: state.team1Token,
   team2LinkToken: state.team2Token,
   bestOf: state.bestOf,

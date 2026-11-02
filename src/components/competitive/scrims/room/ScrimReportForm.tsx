@@ -8,10 +8,10 @@ import { bestOfLongLabel, seriesOutcomeHint, validSeriesOutcomes, winsNeeded } f
 import { ROOM_EYEBROW, ROOM_FIELD, ROOM_GHOST } from './roomStyles';
 
 export function ScrimReportForm({
-  sessionId, gameSlug, bestOf, myTeamId, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
+  sessionId, gameSlug, bestOf, myTeamId, mySlot, t1Name, t2Name, defaultT1, defaultT2, onSuccess, onCancel,
 }: {
   sessionId: string; gameSlug: string | null; bestOf: number;
-  myTeamId: string | null;
+  myTeamId: string | null; mySlot: 'team1' | 'team2';
   t1Name: string; t2Name: string; defaultT1: string; defaultT2: string;
   onSuccess: () => void; onCancel: () => void;
 }) {
@@ -49,6 +49,7 @@ export function ScrimReportForm({
           <ScrimRiotMatchPicker
             sessionId={sessionId}
             isValorant={isValorant}
+            mySlot={mySlot}
             onFill={fillScores}
           />
         </div>
@@ -58,6 +59,8 @@ export function ScrimReportForm({
       <div className="border border-white/[0.05] bg-black/20 p-3">
         <ScrimOcrUpload
           sessionId={sessionId}
+          reportingTeamId={myTeamId}
+          mySlot={mySlot}
           t1Name={t1Name}
           t2Name={t2Name}
           onFill={fillScores}

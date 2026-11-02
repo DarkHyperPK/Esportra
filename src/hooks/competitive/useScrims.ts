@@ -1,5 +1,7 @@
 import { sessionPollInterval, teamSessionsPollInterval } from '@/services/scrimLive';
 import { toHistoryPage } from '@/services/scrimHistoryMapper';
+import { toScrimParseResult, toScrimRecentMatch, type RawRecentMatch } from '@/services/scrimScoreboard';
+import type { ScoreboardOcrParse } from '@/types/scoreboardOcr';
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
@@ -16,7 +18,6 @@ import type {
   ScrimHistoryPage,
   ScrimHistoryPrivacy,
   ScrimScreenshotParseResult,
-  ScrimRecentMatch,
   ScrimListingDetail,
 } from '@/types/competitive';
 import { ApiError } from '@/lib/apiClient';
@@ -688,11 +689,18 @@ export function useUpdateScrimHistoryPrivacy(teamId: string) {
 }
 
 /** Recent Riot matches for the session's game. Triggered manually via refetch(). */
-export function useScrimRecentMatches(sessionId: string) {
+export function useScrimRecentMatches(sessionId: string, mySlot: 'team1' | 'team2') {
   return useQuery({
     queryKey: scrimHistoryKeys.recentMatches(sessionId),
-    queryFn: () =>
-      apiClient.get<ScrimRecentMatch[]>(`/api/scrims/sessions/${sessionId}/recent-matches`),
+    queryFn: async () => {
+      const res = await apiClient.get<{ matches?: RawRecentMatch[]; reason?: string }>(
+        `/api/scrims/sessions/${sessionId}/recent-matches`,
+      );
+      return {
+        matches: (res.matches ?? []).map((m) => toScrimRecentMatch(m, mySlot)),
+        reason: res.reason ?? null,
+      };
+    },
     enabled: false,
     staleTime: 0,
     gcTime: 0,
@@ -724,16 +732,19 @@ export function usePendingReceivedOffers(listings: ScrimListing[]) {
   return { offers, isLoading };
 }
 
-/** Parse a scoreboard screenshot for a scrim session. Returns score + confidence. */
-export function useScrimParseScreenshot(sessionId: string) {
+/** Parse a scoreboard screenshot for a scrim session. Returns the oriented score + confidence. */
+export function useScrimParseScreenshot(sessionId: string, reportingTeamId: string | null, mySlot: 'team1' | 'team2') {
   return useMutation({
     mutationFn: async (file: File): Promise<ScrimScreenshotParseResult> => {
+      if (!reportingTeamId) throw new Error('Pick your team before uploading a screenshot.');
       const form = new FormData();
       form.append('file', file);
-      return rawApiClient.upload<ScrimScreenshotParseResult>(
+      form.append('reportedByTeamId', reportingTeamId);
+      const parse = await rawApiClient.upload<ScoreboardOcrParse>(
         `/api/scrims/sessions/${sessionId}/reports/parse-screenshot`,
         form,
       );
+      return toScrimParseResult(parse, mySlot);
     },
   });
 }
