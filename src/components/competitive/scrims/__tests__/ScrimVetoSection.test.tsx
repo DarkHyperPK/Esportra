@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ScrimVetoSection } from '../ScrimVetoSection';
 
+vi.mock('@/pages/tools/PublicMapVetoRoom', () => ({
+  default: ({ token, embedded }: { token: string; embedded: boolean }) => (
+    <div data-testid="veto-room" data-token={token} data-embedded={String(embedded)} />
+  ),
+}));
+
 // Fake timers for the 5s transitional timeout
 vi.useFakeTimers();
 
@@ -89,10 +95,26 @@ describe('ScrimVetoSection', () => {
       <ScrimVetoSection vetoSessionId="v1" vetoMyToken="tok" gameSlug="cs2" sessionStatus="in_progress" />,
     );
     expect(screen.queryByText(/map veto unavailable/i)).not.toBeInTheDocument();
-    expect(screen.getByTitle('Map veto')).toBeInTheDocument();
+    expect(screen.queryByTitle('Map veto')).not.toBeInTheDocument();
   });
 
-  it('S2-3: renders iframe with correct URL when veto is ready', () => {
+  it('S2-3: renders the veto room inline with the team token, no iframe', async () => {
+    const { container } = render(
+      <ScrimVetoSection
+        vetoSessionId="veto-session-uuid"
+        vetoMyToken="my-team-token-abc"
+        gameSlug="valorant"
+        sessionStatus="in_progress"
+      />,
+    );
+    await act(async () => { await vi.dynamicImportSettled(); });
+    const room = screen.getByTestId('veto-room');
+    expect(room.getAttribute('data-token')).toBe('my-team-token-abc');
+    expect(room.getAttribute('data-embedded')).toBe('true');
+    expect(container.querySelector('iframe')).toBeNull();
+  });
+
+  it('S2-3: shows the Map veto eyebrow when active', () => {
     render(
       <ScrimVetoSection
         vetoSessionId="veto-session-uuid"
@@ -101,22 +123,6 @@ describe('ScrimVetoSection', () => {
         sessionStatus="in_progress"
       />,
     );
-    const iframe = screen.getByTitle('Map veto') as HTMLIFrameElement;
-    expect(iframe).toBeInTheDocument();
-    expect(iframe.src).toContain('/tools/map-veto/team/my-team-token-abc');
-    // UX risk 3: scrolling must be "no"
-    expect(iframe.getAttribute('scrolling')).toBe('no');
-  });
-
-  it('S2-3: shows MAP VETO eyebrow when iframe is active', () => {
-    render(
-      <ScrimVetoSection
-        vetoSessionId="veto-session-uuid"
-        vetoMyToken="my-team-token-abc"
-        gameSlug="valorant"
-        sessionStatus="in_progress"
-      />,
-    );
-    expect(screen.getByText('MAP VETO')).toBeInTheDocument();
+    expect(screen.getByText('Map veto')).toBeInTheDocument();
   });
 });

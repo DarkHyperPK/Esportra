@@ -48,6 +48,8 @@ type PublicMapVetoViewProps = {
   onPerformTossChoice?: (goFirst: boolean) => Promise<void>;
   team1Logo: string | null;
   team2Logo: string | null;
+  /** Inside another page (scrim room): no page chrome, padding or link-expiry line. */
+  embedded?: boolean;
 };
 
 const noOp = () => undefined;
@@ -85,6 +87,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   onPerformTossChoice,
   team1Logo,
   team2Logo,
+  embedded = false,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
@@ -211,7 +214,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
 
 
-  const pageHeader = (
+  const pageHeader = embedded && !isHost ? null : (
     <div className="space-y-1">
       <VetoHeader
         vetoStatus={veto.status}
@@ -226,7 +229,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         showShareLinks={isHost}
         getTeamVetoUrl={buildPublicTeamVetoUrl}
       />
-      {state.expiresAt && (
+      {state.expiresAt && !embedded && (
         <p className="text-xs text-zinc-500">
           Link expires {new Date(state.expiresAt).toLocaleString()}
         </p>
@@ -351,7 +354,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
-      className="min-h-screen w-full bg-background px-4 py-5 text-white lg:px-8 lg:py-8"
+      className={embedded ? "relative w-full text-white" : "min-h-screen w-full bg-background px-4 py-5 text-white lg:px-8 lg:py-8"}
     >
       <div
         role="status"
@@ -433,8 +436,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   );
 };
 
-export const PublicMapVetoLoading = () => (
-  <div className="min-h-screen w-full bg-background px-4 py-5 lg:px-8 lg:py-8">
+export const PublicMapVetoLoading = ({ embedded = false }: { embedded?: boolean } = {}) => (
+  <div className={embedded ? "w-full" : "min-h-screen w-full bg-background px-4 py-5 lg:px-8 lg:py-8"}>
     <div className="mx-auto max-w-[1400px] space-y-4">
       <Skeleton className="h-7 w-48 rounded-none bg-white/[0.06]" />
       <Skeleton className="h-20 w-full rounded-none bg-white/[0.06]" />

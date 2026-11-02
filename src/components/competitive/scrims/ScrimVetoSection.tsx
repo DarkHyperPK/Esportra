@@ -2,17 +2,19 @@
  * ScrimVetoSection — PROJ-078 Surface 2 (CL-007-S2)
  *
  * Direction: Broadcast (lead), L0.
- * Hero: iframe embed of the existing public veto tool (PROJ-060 decision).
- * UX risk 3 (iOS iframe scroll): scrolling="no" on the iframe element.
+ * Hero: the public veto room rendered inline (same component as the public tool), no iframe.
  * States: S2-0 (non-eligible), S2-1 (not checked in), S2-2 (transitional 5s),
- *         S2-3 (iframe active), S2-4 (veto complete, deferred), S2-5 (unavailable).
+ *         S2-3 (veto active), S2-4 (veto complete, deferred), S2-5 (unavailable).
  */
 
 import { SCRIM_LABEL } from './scrimCardStyles';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import {InlineNotice} from '@/components/ui/kit';
+import { InlineNotice } from '@/components/ui/kit';
+import { PublicMapVetoLoading } from '@/pages/tools/PublicMapVetoView';
+
+const PublicMapVetoRoom = lazy(() => import('@/pages/tools/PublicMapVetoRoom'));
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -69,20 +71,13 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
 
   // S2-3: vetoSessionId set, veto tool active
   if (vetoSessionId && vetoMyToken) {
-    const iframeUrl = `/tools/map-veto/team/${vetoMyToken}`;
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
-        <div className="mt-3">
-          {/* UX risk 3: scrolling="no" prevents iOS Safari scroll interception */}
-          <iframe
-            src={iframeUrl}
-            title="Map veto"
-            scrolling="no"
-            className="w-full border-0"
-            style={{ height: 'max(420px, 60dvh)' }}
-            allow="same-origin"
-          />
+        <p id="veto-title" className={SCRIM_LABEL}>Map veto</p>
+        <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0c0c0f]">
+          <Suspense fallback={<PublicMapVetoLoading embedded />}>
+            <PublicMapVetoRoom token={vetoMyToken} embedded />
+          </Suspense>
         </div>
       </motion.section>
     );
@@ -92,7 +87,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
   if (isInProgress && !vetoSessionId && !transitionalExpired) {
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
+        <p id="veto-title" className={SCRIM_LABEL}>Map veto</p>
         <div className="mt-3">
           <InlineNotice tone="neutral">
             <span className="inline-flex items-center gap-2">
@@ -109,7 +104,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
   if (isInProgress && !vetoSessionId && transitionalExpired) {
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
+        <p id="veto-title" className={SCRIM_LABEL}>Map veto</p>
         <div className="mt-3">
           <InlineNotice
             tone="neutral"

@@ -15,12 +15,19 @@ import {
 
 const PUBLIC_VETO_FALLBACK_POLL_MS = 30_000;
 
-const PublicMapVetoRoom = () => {
-  const { token } = useParams();
+interface PublicMapVetoRoomProps {
+  /** Team link token when rendered inside another page instead of its own route. */
+  token?: string;
+  embedded?: boolean;
+}
+
+const PublicMapVetoRoom = ({ token: tokenProp, embedded = false }: PublicMapVetoRoomProps = {}) => {
+  const params = useParams();
+  const token = tokenProp ?? params.token;
   const location = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const isHost = location.pathname.includes("/host/");
+  const isHost = !embedded && location.pathname.includes("/host/");
   const actingRef = useRef(false);
   const realtimeConnectedRef = useRef(false);
   const [acting, setActing] = useState(false);
@@ -204,23 +211,24 @@ const PublicMapVetoRoom = () => {
 
   if (stateQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[#050505]">
-        <PublicMapVetoLoading />
+      <div className={embedded ? undefined : "min-h-screen bg-[#050505]"}>
+        <PublicMapVetoLoading embedded={embedded} />
       </div>
     );
   }
 
   if (stateQuery.error || !stateQuery.data) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050505] px-4 py-8 text-red-200">
+      <main className={embedded ? "px-4 py-6 text-[13px] text-red-200" : "flex min-h-screen items-center justify-center bg-[#050505] px-4 py-8 text-red-200"}>
         {getApiErrorMessage(stateQuery.error, "Veto room was not found or has expired.")}
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className={embedded ? undefined : "min-h-screen bg-[#050505]"}>
       <PublicMapVetoView
+        embedded={embedded}
         state={stateQuery.data}
         history={(historyQuery.data ?? []) as PublicVetoHistoryRow[]}
         historyLoading={historyQuery.isLoading || historyQuery.isFetching}

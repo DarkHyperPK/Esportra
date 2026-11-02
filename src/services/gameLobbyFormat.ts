@@ -6,30 +6,30 @@
 export interface LobbyFieldFormat {
   fieldOneLabel: string;
   fieldOneHint: string;
-  fieldTwoLabel: string;
-  fieldTwoHint: string;
+  /** Null when the game has a single lobby identifier (e.g. a party code). */
+  fieldTwo: { label: string; hint: string } | null;
+  /** Uppercase the first field as the player types (party codes). */
+  fieldOneUppercase?: boolean;
 }
 
 export const GAME_LOBBY_FORMAT: Record<string, LobbyFieldFormat> = {
   valorant: {
-    fieldOneLabel: 'Lobby Name',
-    fieldOneHint: 'Custom lobby name visible in VALORANT',
-    fieldTwoLabel: 'Password',
-    fieldTwoHint: 'Set a password so only invited players can join',
+    fieldOneLabel: 'Party code',
+    fieldOneHint: 'Paste the VALORANT party code',
+    fieldTwo: null,
+    fieldOneUppercase: true,
   },
   cs2: {
     fieldOneLabel: 'Connect IP',
     fieldOneHint: 'e.g. connect 192.168.1.1:27015',
-    fieldTwoLabel: 'Password',
-    fieldTwoHint: 'sv_password value',
+    fieldTwo: { label: 'Password', hint: 'sv_password value' },
   },
 };
 
 export const FALLBACK_LOBBY_FORMAT: LobbyFieldFormat = {
   fieldOneLabel: 'Lobby Code',
   fieldOneHint: 'Share with your opponent',
-  fieldTwoLabel: 'Password',
-  fieldTwoHint: 'Leave blank if no password',
+  fieldTwo: { label: 'Password', hint: 'Leave blank if no password' },
 };
 
 /**

@@ -39,10 +39,10 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
 
   return (
     <div className={ROOM_PANEL}>
-      <p className={ROOM_EYEBROW}>Lobby Info</p>
+      <p className={ROOM_EYEBROW}>Lobby</p>
       {locked ? (
         <div className="space-y-3">
-          {[{ label: fmt.fieldOneLabel, val: f1 }, { label: fmt.fieldTwoLabel, val: f2 }].map(({ label, val }) => (
+          {[{ label: fmt.fieldOneLabel, val: f1 }, ...(fmt.fieldTwo ? [{ label: fmt.fieldTwo.label, val: f2 }] : [])].map(({ label, val }) => (
             <div key={label} className="space-y-1">
               <p className="text-[11px] text-white/40">{label}</p>
               <p className="text-[14px] text-white/70">{val || <span className="text-white/25">—</span>}</p>
@@ -54,13 +54,22 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
         <div className="space-y-3">
           <div className="space-y-1">
             <label htmlFor="lf1" className="block text-[11px] text-white/40">{fmt.fieldOneLabel}</label>
-            <input id="lf1" value={f1} onChange={(e) => setF1(e.target.value)} placeholder={fmt.fieldOneHint} className={ROOM_FIELD} />
+            <input
+              id="lf1"
+              value={f1}
+              onChange={(e) => setF1(fmt.fieldOneUppercase ? e.target.value.toUpperCase() : e.target.value)}
+              placeholder={fmt.fieldOneHint}
+              autoComplete="off"
+              className={`${ROOM_FIELD}${fmt.fieldOneUppercase ? ' font-mono tracking-wider' : ''}`}
+            />
           </div>
-          <div className="space-y-1">
-            <label htmlFor="lf2" className="block text-[11px] text-white/40">{fmt.fieldTwoLabel}</label>
-            <input id="lf2" value={f2} onChange={(e) => setF2(e.target.value)} placeholder={fmt.fieldTwoHint} className={ROOM_FIELD} />
-          </div>
-          <p className="text-[11px] text-white/30">Either team can update lobby info.</p>
+          {fmt.fieldTwo && (
+            <div className="space-y-1">
+              <label htmlFor="lf2" className="block text-[11px] text-white/40">{fmt.fieldTwo.label}</label>
+              <input id="lf2" value={f2} onChange={(e) => setF2(e.target.value)} placeholder={fmt.fieldTwo.hint} className={ROOM_FIELD} />
+            </div>
+          )}
+          <p className="text-[11px] text-white/30">Either team can update this.</p>
           {dirty && (
             <div className="flex justify-end mt-2">
               <button onClick={save} disabled={update.isPending} className={ROOM_GHOST}>
