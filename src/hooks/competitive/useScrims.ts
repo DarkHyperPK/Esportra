@@ -266,6 +266,8 @@ export function useMakeOffer(listingId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: scrimKeys.listingOffers(listingId) });
       qc.invalidateQueries({ queryKey: ['scrims', 'offers-mine'] });
+      qc.invalidateQueries({ queryKey: scrimKeys.listingDetail(listingId) });
+      qc.invalidateQueries({ queryKey: scrimKeys.slots(listingId) });
     },
   });
 }

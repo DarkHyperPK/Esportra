@@ -33,6 +33,7 @@ import {
   findOverlappingListings,
   formatPreferredDays,
   bestOfLabel,
+  toLocalInputValue,
 } from '@/services/scrimUtils';
 import type { ScrimOffer, ScrimSession } from '@/types/competitive';
 import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
@@ -274,7 +275,7 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
   const [accepting, setAccepting] = useState(false);
   // Pre-fill with the offered team's proposed time if available
   const [scheduledAt, setScheduledAt] = useState<string>(
-    offer.proposedAt ? new Date(offer.proposedAt).toISOString().slice(0, 16) : '',
+    offer.proposedAt ? toLocalInputValue(offer.proposedAt) : '',
   );
 
   const handleAccept = useCallback(async () => {

@@ -55,9 +55,14 @@ export function ScrimOfferForm({
     id: string;
     name: string;
     gameSlug?: string | null;
+    primary_game_slug?: string | null;
   }[];
+  // /api/teams/me is not camel-cased, so read the snake_case field too.
   const teams = gameSlug
-    ? allTeams.filter((t) => !t.gameSlug || t.gameSlug === gameSlug)
+    ? allTeams.filter((t) => {
+        const slug = t.primary_game_slug ?? t.gameSlug;
+        return !slug || slug === gameSlug;
+      })
     : allTeams;
 
   const [offeringTeamId, setOfferingTeamId] = useState('');

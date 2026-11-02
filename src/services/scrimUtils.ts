@@ -193,3 +193,14 @@ export function findOverlappingListings<T extends ListingAvailability>(
   return overlaps;
 }
 
+
+/**
+ * Formats an ISO instant for <input type="datetime-local">, which expects
+ * LOCAL wall-clock time ("YYYY-MM-DDTHH:mm"), not UTC.
+ */
+export function toLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

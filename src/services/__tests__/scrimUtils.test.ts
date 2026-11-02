@@ -10,6 +10,7 @@ import {
   seriesOutcomeHint,
   validSeriesOutcomes,
   winsNeeded,
+  toLocalInputValue,
 } from '../scrimUtils';
 
 describe('formatPreferredDays', () => {
@@ -116,5 +117,15 @@ describe('findOverlappingListings', () => {
       { id: 'b', preferredDays: [4], preferredTimeStart: null, preferredTimeEnd: null },
     ]);
     expect(overlaps.get('a')).toEqual(['b']);
+  });
+});
+
+describe('toLocalInputValue', () => {
+  it('renders local wall-clock time, not UTC', () => {
+    const d = new Date(2026, 10, 2, 21, 5);
+    expect(toLocalInputValue(d.toISOString())).toBe('2026-11-02T21:05');
+  });
+  it('returns empty for invalid input', () => {
+    expect(toLocalInputValue('nope')).toBe('');
   });
 });

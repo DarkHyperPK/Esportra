@@ -102,7 +102,10 @@ export async function resolveNotificationDestination(n: Notification): Promise<s
   if (direct) return direct;
   if (n.type === 'team_invite') return '/player/teams';
   if (n.type === 'staff_invite') return '/staff/dashboard';
-  if (n.type?.startsWith('scrim_')) return '/competitive/scrims/workspace';
+  if (n.type?.startsWith('scrim_')) {
+    const sessionId = typeof n.data?.session_id === 'string' ? n.data.session_id : null;
+    return sessionId ? `/competitive/scrims/sessions/${sessionId}` : '/competitive/scrims/workspace';
+  }
   if (n.type === 'tournament_invite') {
     const invite = getTournamentInviteFromNotification(n);
     if (invite?.data.code) return buildRedeemInvitePath(invite.data.code, invite.data.tournament_id ?? null);

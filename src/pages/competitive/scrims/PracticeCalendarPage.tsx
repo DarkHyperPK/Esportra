@@ -603,7 +603,10 @@ export default function PracticeCalendarPage() {
   const teamsQuery = useMyTeamsSummary();
   const teams = (teamsQuery.data ?? []) as { id: string; name: string; gameSlug?: string | null }[];
   const teamId = searchParams.get('team_id') ?? teams[0]?.id ?? '';
-  const primaryGameSlug = teams[0]?.gameSlug ?? null;
+  const primaryGameSlug =
+    (teams[0] as { primary_game_slug?: string | null; gameSlug?: string | null } | undefined)?.primary_game_slug ??
+    teams[0]?.gameSlug ??
+    null;
 
   const shouldReduceMotion = useReducedMotion();
   const formTransition = shouldReduceMotion ? { duration: 0 } : { duration: 0.18, ease: 'easeOut' };

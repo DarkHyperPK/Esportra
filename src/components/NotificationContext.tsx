@@ -103,6 +103,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         stub.type === 'scrim_offer_withdrawn' ||
         stub.type === 'scrim_result_submitted' ||
         stub.type === 'scrim_dispute_raised' ||
+        stub.type === 'scrim_dispute_resolved' ||
         stub.type === 'scrim_result_confirmed' ||
         stub.type === 'scrim_checkin_updated' ||
         stub.type === 'scrim_session_started' ||
