@@ -68,6 +68,7 @@ export interface EsportsGame {
   aliases?: string[];
   tournamentCapabilities?: TournamentCapabilities;
   logo: string;
+  icon?: string | null;
   banner?: string | null;
   features: GameFeatures;
   brConfig?: BRConfig;

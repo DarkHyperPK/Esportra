@@ -5,6 +5,8 @@ import { resolveGameLogoUrl, resolveNextGameLogoFallback } from '@/utils/gameLog
 type GameLogoImageProps = {
   gameName: string;
   catalogLogo?: string | null;
+  /** When provided, this icon URL is tried first before falling back to catalogLogo. */
+  catalogIcon?: string | null;
   className?: string;
   alt?: string;
 };
@@ -12,14 +14,16 @@ type GameLogoImageProps = {
 export function GameLogoImage({
   gameName,
   catalogLogo,
+  catalogIcon,
   className,
   alt = '',
 }: GameLogoImageProps) {
-  const [src, setSrc] = useState(() => resolveGameLogoUrl(gameName, catalogLogo));
+  const firstUrl = catalogIcon || catalogLogo || undefined;
+  const [src, setSrc] = useState(() => resolveGameLogoUrl(gameName, firstUrl));
 
   useEffect(() => {
-    setSrc(resolveGameLogoUrl(gameName, catalogLogo));
-  }, [gameName, catalogLogo]);
+    setSrc(resolveGameLogoUrl(gameName, catalogIcon || catalogLogo || undefined));
+  }, [gameName, catalogLogo, catalogIcon]);
 
   return (
     <img

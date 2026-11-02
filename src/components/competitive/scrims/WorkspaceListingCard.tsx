@@ -245,6 +245,7 @@ export function WorkspaceListingCard({
               <GameLogoImage
                 gameName={listing.gameSlug}
                 catalogLogo={catalogGame?.logo}
+                catalogIcon={catalogGame?.icon}
                 className="h-7 w-7 object-contain"
               />
             ) : (

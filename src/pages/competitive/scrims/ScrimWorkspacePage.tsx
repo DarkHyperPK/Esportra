@@ -13,7 +13,7 @@ import {
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
-import { Button } from '@/components/ui/button';
+import { CtaButton, DangerButton, GhostButton, OutlineButton } from '@/components/ui/button';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -159,6 +159,7 @@ function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: s
           <GameLogoImage
             gameName={session.gameSlug}
             catalogLogo={catalogGame?.logo}
+            catalogIcon={catalogGame?.icon}
             className="h-7 w-7 object-contain opacity-75"
           />
         ) : (
@@ -181,6 +182,7 @@ function ScrimSessionRow({ session, teamId }: { session: ScrimSession; teamId: s
             <GameLogoImage
               gameName={session.gameSlug}
               catalogLogo={catalogGame.logo}
+              catalogIcon={catalogGame.icon}
               className="h-3.5 w-3.5 object-contain"
             />
           )}
@@ -295,23 +297,22 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
       )}
       {offer.status === 'pending' && (
         <div className="flex gap-2 pt-0.5">
-          <Button
+          <CtaButton
             size="sm"
             onClick={() => acceptMutation.mutate()}
             disabled={isPending}
-            className="h-8 rounded-lg bg-rose-500 px-4 text-[12px] font-semibold text-white hover:bg-rose-600"
+            className="h-8 rounded-lg px-4 text-[12px] font-semibold"
           >
             {acceptMutation.isPending ? '…' : 'Accept'}
-          </Button>
-          <Button
+          </CtaButton>
+          <OutlineButton
             size="sm"
-            variant="ghost"
             onClick={() => declineMutation.mutate()}
             disabled={isPending}
-            className="h-8 rounded-lg border border-white/[0.08] px-3 text-[12px] text-white/55 hover:text-white"
+            className="h-8 rounded-lg px-3 text-[12px]"
           >
             {declineMutation.isPending ? '…' : 'Decline'}
-          </Button>
+          </OutlineButton>
         </div>
       )}
     </div>
@@ -331,6 +332,7 @@ function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
             <GameLogoImage
               gameName={offer.listingGameSlug}
               catalogLogo={catalogGame?.logo}
+              catalogIcon={catalogGame?.icon}
               className="h-6 w-6 object-contain"
             />
           ) : (
@@ -351,15 +353,14 @@ function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
       </div>
       {offer.status === 'pending' && (
         <div className="flex justify-end pt-0.5">
-          <Button
+          <DangerButton
             size="sm"
-            variant="ghost"
             onClick={() => withdrawMutation.mutate()}
             disabled={withdrawMutation.isPending}
-            className="h-8 rounded-lg border border-white/[0.08] px-3 text-[12px] text-red-300/70 hover:text-red-300"
+            className="h-8 rounded-lg px-3 text-[12px]"
           >
             {withdrawMutation.isPending ? '…' : 'Withdraw'}
-          </Button>
+          </DangerButton>
         </div>
       )}
     </div>
@@ -387,6 +388,12 @@ export default function ScrimWorkspacePage() {
   const catalog = useGameCatalogContext();
   const [selectedGame, setSelectedGame] = useState<string>('');
   const gameSlug = selectedGame || activeTeam?.primary_game_slug || catalog.games[0]?.slug || null;
+
+  function handleGameChange(slug: string) {
+    setSelectedGame(slug);
+    const match = teams.find((t) => t.primary_game_slug === slug);
+    if (match) setSelectedTeamId(match.id);
+  }
 
   const listingsQuery = useScrimListings(resolvedTeamId);
   const myOffersQuery = useMyOffers(resolvedTeamId);
@@ -507,7 +514,7 @@ export default function ScrimWorkspacePage() {
             )}
 
             {catalog.games.length > 1 ? (
-              <Select value={gameSlug ?? ''} onValueChange={setSelectedGame}>
+              <Select value={gameSlug ?? ''} onValueChange={handleGameChange}>
                 <SelectTrigger
                   aria-label="Select game"
                   className="h-auto w-auto rounded-full border-none bg-white/[0.08] px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-widest text-white/50 shadow-none focus:ring-0"
@@ -544,17 +551,23 @@ export default function ScrimWorkspacePage() {
               ))}
             </div>
 
-            <Button
-              onClick={() => setShowNewListing((v) => !v)}
-              aria-expanded={showNewListing}
-              className={`h-9 shrink-0 px-4 text-[13px] font-semibold transition-shadow ${
-                showNewListing
-                  ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
-                  : 'bg-rose-500 text-white shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:bg-rose-600 hover:shadow-[0_0_24px_rgba(225,29,72,0.45)]'
-              }`}
-            >
-              {showNewListing ? 'Cancel' : '+ New Scrim'}
-            </Button>
+            {showNewListing ? (
+              <GhostButton
+                onClick={() => setShowNewListing((v) => !v)}
+                aria-expanded={showNewListing}
+                className="h-9 shrink-0 px-4 text-[13px] font-semibold"
+              >
+                Cancel
+              </GhostButton>
+            ) : (
+              <CtaButton
+                onClick={() => setShowNewListing((v) => !v)}
+                aria-expanded={showNewListing}
+                className="h-9 shrink-0 px-4 text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
+              >
+                + New Scrim
+              </CtaButton>
+            )}
           </div>
 
           {/* Mobile context bar */}
@@ -593,17 +606,23 @@ export default function ScrimWorkspacePage() {
                 </span>
               ))}
             </div>
-            <Button
-              onClick={() => setShowNewListing((v) => !v)}
-              aria-expanded={showNewListing}
-              className={`h-9 w-full text-[13px] font-semibold transition-shadow ${
-                showNewListing
-                  ? 'bg-white/[0.08] text-white/60 hover:bg-white/[0.12]'
-                  : 'bg-rose-500 text-white shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:bg-rose-600 hover:shadow-[0_0_24px_rgba(225,29,72,0.45)]'
-              }`}
-            >
-              {showNewListing ? 'Cancel' : '+ New Scrim'}
-            </Button>
+            {showNewListing ? (
+              <GhostButton
+                onClick={() => setShowNewListing((v) => !v)}
+                aria-expanded={showNewListing}
+                className="h-9 w-full text-[13px] font-semibold"
+              >
+                Cancel
+              </GhostButton>
+            ) : (
+              <CtaButton
+                onClick={() => setShowNewListing((v) => !v)}
+                aria-expanded={showNewListing}
+                className="h-9 w-full text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
+              >
+                + New Scrim
+              </CtaButton>
+            )}
           </div>
 
           {/* New listing form */}

@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Field, InlineNotice } from '@/components/ui/kit';
-import { Button } from '@/components/ui/button';
+import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { useCatalogRankTiers } from '@/hooks/competitive/useCatalog';
@@ -348,20 +348,19 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
       {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
 
       <div className="flex justify-end gap-2 pt-1">
-        <Button
-          variant="ghost"
+        <OutlineButton
           onClick={onCancel}
-          className="text-[13px] text-white/50 hover:text-white rounded-xl border border-white/[0.08] px-4"
+          className="rounded-xl px-4 text-[13px]"
         >
           Cancel
-        </Button>
-        <Button
+        </OutlineButton>
+        <CtaButton
           onClick={handleSubmit}
           disabled={createMutation.isPending || !localGameSlug}
-          className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-6 text-[13px] font-semibold"
+          className="rounded-xl px-6 text-[13px] font-semibold"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}
-        </Button>
+        </CtaButton>
       </div>
     </motion.div>
   );

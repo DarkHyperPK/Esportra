@@ -134,6 +134,7 @@ export function catalogGameToEsportsGame(game: CatalogGameApi): EsportsGame {
         }
       : undefined,
     logo: game.logo ?? '',
+    icon: game.icon ?? null,
     banner: game.banner ?? null,
     features: game.features as GameFeatures,
     brConfig: parseCatalogBrConfig(game.brConfig),

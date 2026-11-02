@@ -139,6 +139,7 @@ function ScrimCard({ listing, isOwner, hasTeam, onOpen }: ScrimCardProps) {
             <GameLogoImage
               gameName={listing.gameSlug}
               catalogLogo={catalogGame?.logo}
+              catalogIcon={catalogGame?.icon}
               className="h-5 w-5 object-contain"
             />
           ) : (
