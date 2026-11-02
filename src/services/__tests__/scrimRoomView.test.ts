@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_STEPS, describeNextStep, formatRoomTime, railState } from '../scrimRoomView';
+import { ROOM_STEPS, actionLabel, describeNextStep, formatRoomTime, railState } from '../scrimRoomView';
 import type { ScrimNextAction } from '../scrimNextAction';
 
 const NOW = Date.parse('2026-11-02T20:00:00Z');
@@ -80,5 +80,16 @@ describe('formatRoomTime', () => {
     expect(formatRoomTime(new Date(2026, 10, 2, 20, 0).toISOString())).toMatch(/·/);
     expect(formatRoomTime(null)).toBe('');
     expect(formatRoomTime('nope')).toBe('');
+  });
+});
+
+describe('actionLabel', () => {
+  it('names the action, and falls back to opening the room', () => {
+    expect(actionLabel('check_in')).toBe('Check in');
+    expect(actionLabel('report_result')).toBe('Report result');
+    expect(actionLabel('confirm_result')).toBe('Review result');
+    expect(actionLabel('submit_evidence')).toBe('Add evidence');
+    expect(actionLabel('wait')).toBe('Open room');
+    expect(actionLabel('none')).toBe('Open room');
   });
 });

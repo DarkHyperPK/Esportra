@@ -115,3 +115,14 @@ export function formatRoomTime(iso: string | null): string {
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return `${date} · ${time}`;
 }
+
+/** Button label for the room link on an agenda row. */
+export function actionLabel(action: ScrimNextAction['action']): string {
+  switch (action) {
+    case 'check_in': return 'Check in';
+    case 'report_result': return 'Report result';
+    case 'confirm_result': return 'Review result';
+    case 'submit_evidence': return 'Add evidence';
+    default: return 'Open room';
+  }
+}

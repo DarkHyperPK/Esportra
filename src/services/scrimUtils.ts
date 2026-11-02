@@ -204,3 +204,32 @@ export function toLocalInputValue(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+export interface MemberPreview {
+  username: string;
+  avatarSeed: string | null;
+  rankTierKey: string | null;
+}
+
+/** Offer rosters arrive as a JSON string; parse defensively and normalise keys. */
+export function parseMembersPreview(raw: string | null | undefined): MemberPreview[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((m): MemberPreview[] => {
+      const r = m as Record<string, unknown>;
+      const username = typeof r.username === 'string' ? r.username : null;
+      if (!username) return [];
+      const seed = r.avatarSeed ?? r.avatar_seed;
+      const rank = r.rankTierKey ?? r.rank_tier_key;
+      return [{
+        username,
+        avatarSeed: typeof seed === 'string' ? seed : null,
+        rankTierKey: typeof rank === 'string' ? rank : null,
+      }];
+    });
+  } catch {
+    return [];
+  }
+}

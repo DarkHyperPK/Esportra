@@ -11,6 +11,7 @@ import { StatusPill } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { bestOfLongLabel, normalizeBestOf, winsNeeded } from '@/services/scrimUtils';
 import { sessionStatusMeta } from '@/services/scrimStatusMeta';
+import { GRID_TEXTURE_STYLE } from './roomStyles';
 import type { ScrimSessionStatus } from '@/types/competitive';
 
 export interface FaceOffTeam {
@@ -86,12 +87,7 @@ export function ScrimFaceOff({
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-60"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
-        }}
+        style={GRID_TEXTURE_STYLE}
       />
 
       <div className="relative space-y-6">
