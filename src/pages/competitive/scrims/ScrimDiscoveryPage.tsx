@@ -22,6 +22,7 @@ import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { ScrimDetailModal } from '@/components/competitive/scrims/ScrimDetailModal';
+import { TeamRecordStrip } from '@/components/competitive/scrims/TeamRecordStrip';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { bestOfLabel, formatPreferredDays } from '@/services/scrimUtils';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
@@ -217,6 +218,8 @@ function ScrimCard({ listing, isOwner, hasTeam, onOpen }: ScrimCardProps) {
             {bestOfLabel(listing.bestOf)}
           </span>
         </div>
+
+        <TeamRecordStrip record={listing.record} className="mb-2" />
 
         {/* Roster preview */}
         {members.length > 0 && (

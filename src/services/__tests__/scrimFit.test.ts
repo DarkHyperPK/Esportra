@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deriveScrimFit } from '../scrimFit';
-import { formatRecord, formatShowRate } from '../scrimDiscoveryUtils';
+import { formatRecord } from '../scrimDiscoveryUtils';
 import { isUpcomingSession, offerStatusMeta, sessionStatusMeta } from '../scrimStatusMeta';
 
 const team = (region: string | null, min: number | null, max: number | null) => ({
@@ -33,10 +33,6 @@ describe('record formatters', () => {
   it('omits zero draws', () => {
     expect(formatRecord({ wins: 12, losses: 4 })).toBe('12-4');
     expect(formatRecord({ wins: 12, losses: 4, draws: 1 })).toBe('12-4-1');
-  });
-  it('computes show rate and guards empty', () => {
-    expect(formatShowRate(9, 1)).toBe('90%');
-    expect(formatShowRate(0, 0)).toBeNull();
   });
 });
 

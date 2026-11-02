@@ -29,6 +29,7 @@ import { CompetitivePageShell } from '@/components/competitive/CompetitivePageSh
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
 import { UpNextStrip } from '@/components/competitive/scrims/UpNextStrip';
+import { TeamRecordStrip } from '@/components/competitive/scrims/TeamRecordStrip';
 import { pickLead, withoutType } from '@/services/scrimUpNext';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
 import { WorkspaceListingCard, SCRIM_CARD_CLASS, SCRIM_EYEBROW } from '@/components/competitive/scrims/WorkspaceListingCard';
@@ -345,6 +346,8 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
         </div>
         <StatusPill label={offer.status} tone={OFFER_TONE[offer.status]} />
       </div>
+
+      <TeamRecordStrip record={offer.offeringRecord} />
 
       {/* Team snapshot */}
       {(members.length > 0 || (offer.offeringActiveMemberCount ?? 0) > 0) && (

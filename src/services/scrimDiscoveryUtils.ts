@@ -142,10 +142,3 @@ export function formatRecord(r: ScrimRecordLike): string {
   const draws = r.draws ?? 0;
   return draws > 0 ? `${r.wins}-${r.losses}-${draws}` : `${r.wins}-${r.losses}`;
 }
-
-/** Whole-number percentage, or null when there is nothing to base it on. */
-export function formatShowRate(completed: number, noShows: number): string | null {
-  const total = completed + noShows;
-  if (total <= 0) return null;
-  return `${Math.round((completed / total) * 100)}%`;
-}

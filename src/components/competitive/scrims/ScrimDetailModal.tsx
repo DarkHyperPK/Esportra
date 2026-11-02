@@ -20,6 +20,7 @@ import {
 } from '@/services/scrimUtils';
 import { formatTimeWindow } from '@/services/scrimDiscoveryUtils';
 import { ScrimOfferForm } from './ScrimOfferForm';
+import { TeamRecordStrip } from './TeamRecordStrip';
 import type { ScrimSlot, ScrimTeamMemberDetail } from '@/types/competitive';
 
 interface Props {
@@ -261,6 +262,11 @@ export function ScrimDetailModal({
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {listing && (
+            <div className="px-5 pt-4">
+              <TeamRecordStrip record={listing.record} />
+            </div>
+          )}
           {detailQuery.isLoading ? (
             <div className="space-y-3 p-5 animate-pulse">
               <div className="h-5 w-40 rounded bg-white/[0.06]" />
