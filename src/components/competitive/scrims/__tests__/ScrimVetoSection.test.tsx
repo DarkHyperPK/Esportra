@@ -98,7 +98,7 @@ describe('ScrimVetoSection', () => {
     expect(screen.queryByTitle('Map veto')).not.toBeInTheDocument();
   });
 
-  it('S2-3: renders the veto room inline with the team token, no iframe', async () => {
+  it('S2-3: shows a button that opens the veto room in a dialog', async () => {
     const { container } = render(
       <ScrimVetoSection
         vetoSessionId="veto-session-uuid"
@@ -107,14 +107,15 @@ describe('ScrimVetoSection', () => {
         sessionStatus="in_progress"
       />,
     );
+    expect(screen.queryByTestId('veto-room')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open map veto' }));
     await act(async () => { await vi.dynamicImportSettled(); });
     const room = screen.getByTestId('veto-room');
     expect(room.getAttribute('data-token')).toBe('my-team-token-abc');
-    expect(room.getAttribute('data-embedded')).toBe('true');
     expect(container.querySelector('iframe')).toBeNull();
   });
 
-  it('S2-3: shows the Map veto eyebrow when active', () => {
+  it('S2-3: shows the Map veto eyebrow when ready', () => {
     render(
       <ScrimVetoSection
         vetoSessionId="veto-session-uuid"

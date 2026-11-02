@@ -2,7 +2,7 @@
  * ScrimVetoSection — PROJ-078 Surface 2 (CL-007-S2)
  *
  * Direction: Broadcast (lead), L0.
- * Hero: the public veto room rendered inline (same component as the public tool), no iframe.
+ * Hero: a button that opens the public veto room in a dialog (same flow as the tournament match room).
  * States: S2-0 (non-eligible), S2-1 (not checked in), S2-2 (transitional 5s),
  *         S2-3 (veto active), S2-4 (veto complete, deferred), S2-5 (unavailable).
  */
@@ -12,6 +12,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { InlineNotice } from '@/components/ui/kit';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { PublicMapVetoLoading } from '@/pages/tools/PublicMapVetoView';
 
 const PublicMapVetoRoom = lazy(() => import('@/pages/tools/PublicMapVetoRoom'));
@@ -37,6 +38,7 @@ const TRANSITIONAL_TIMEOUT_MS = 5_000;
 
 export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, sessionStatus, onRetry }: ScrimVetoSectionProps) {
   const reduce = useReducedMotion();
+  const [open, setOpen] = useState(false);
   const isEligibleGame = VETO_ENABLED_GAMES.includes((gameSlug ?? '').toLowerCase());
   const isInProgress = sessionStatus === 'in_progress';
 
@@ -74,11 +76,24 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
         <p id="veto-title" className={SCRIM_LABEL}>Map veto</p>
-        <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0c0c0f]">
-          <Suspense fallback={<PublicMapVetoLoading embedded />}>
-            <PublicMapVetoRoom token={vetoMyToken} embedded />
-          </Suspense>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0c0c0f] px-4 py-3">
+          <p className="text-[13px] text-zinc-400">Ban and pick maps together, then share the party code.</p>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="min-h-[40px] rounded-lg bg-white px-4 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Open map veto
+          </button>
         </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="max-h-[92dvh] max-w-5xl gap-0 overflow-y-auto rounded-2xl border-white/[0.1] bg-[#0c0c0f] p-4 sm:p-6">
+            <DialogTitle className="sr-only">Map veto</DialogTitle>
+            <Suspense fallback={<PublicMapVetoLoading embedded />}>
+              <PublicMapVetoRoom token={vetoMyToken} embedded />
+            </Suspense>
+          </DialogContent>
+        </Dialog>
       </motion.section>
     );
   }
