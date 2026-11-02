@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
@@ -13,7 +13,7 @@ import {
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
-import { CtaButton, DangerButton, GhostButton, OutlineButton } from '@/components/ui/button';
+import { CtaButton, DangerButton, OutlineButton } from '@/components/ui/button';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -26,6 +26,7 @@ import {
   usePendingReceivedOffers,
 } from '@/hooks/competitive/useScrims';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
 import { WorkspaceListingCard, SCRIM_CARD_CLASS, SCRIM_EYEBROW } from '@/components/competitive/scrims/WorkspaceListingCard';
 import {
@@ -34,12 +35,14 @@ import {
   bestOfLabel,
 } from '@/services/scrimUtils';
 import type { ScrimOffer, ScrimSession } from '@/types/competitive';
+import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface TeamSummary {
   id: string;
   name: string;
+  logo_url?: string | null;
   primary_game_slug?: string | null;
 }
 
@@ -267,6 +270,45 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
   const isPending = acceptMutation.isPending || declineMutation.isPending;
   const catalogGame = catalog.games.find((g) => g.slug === offer.listingGameSlug);
   const initials = (offer.offeringTeamName ?? 'TM').slice(0, 2).toUpperCase();
+  const [apiError, setApiError] = useState('');
+  const [accepting, setAccepting] = useState(false);
+  // Pre-fill with the offered team's proposed time if available
+  const [scheduledAt, setScheduledAt] = useState<string>(
+    offer.proposedAt ? new Date(offer.proposedAt).toISOString().slice(0, 16) : '',
+  );
+
+  const handleAccept = useCallback(async () => {
+    setApiError('');
+    try {
+      await acceptMutation.mutateAsync(scheduledAt ? { scheduled_at: new Date(scheduledAt).toISOString() } : undefined);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setApiError('Only a team captain or manager can accept offers.');
+      } else if (err instanceof ApiError && err.status === 409) {
+        setApiError(getApiErrorMessage(err, 'This slot has just been booked. Please select another time.'));
+      } else if (err instanceof ApiError && err.status === 400) {
+        setApiError(getApiErrorMessage(err, 'The selected time is outside the listing\'s availability window.'));
+      } else {
+        setApiError(getApiErrorMessage(err, 'Could not accept offer. Try again.'));
+      }
+    }
+  }, [acceptMutation, scheduledAt]);
+
+  const handleDecline = useCallback(async () => {
+    setApiError('');
+    try {
+      await declineMutation.mutateAsync();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setApiError('Only a team captain or manager can decline offers.');
+      } else {
+        setApiError(getApiErrorMessage(err, 'Could not decline offer. Try again.'));
+      }
+    }
+  }, [declineMutation]);
+
+  const hasDays = (offer.listingPreferredDays?.length ?? 0) > 0;
+  const hasWindow = !!(offer.listingPreferredTimeStart && offer.listingPreferredTimeEnd);
 
   return (
     <div className={`${SCRIM_CARD_CLASS} border-rose-500/25 p-3.5 space-y-2.5`}>
@@ -295,24 +337,82 @@ function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
       {offer.notes && (
         <p className="line-clamp-2 text-[12px] italic text-white/40">"{offer.notes}"</p>
       )}
+
+      {/* Time picker — expands when accepting */}
+      {accepting && (
+        <div className="space-y-2 rounded-xl border border-white/[0.08] bg-black/30 p-3">
+          {(hasDays || hasWindow) && (
+            <div className="space-y-1">
+              <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/30">Listing availability</p>
+              <div className="flex flex-wrap gap-1.5">
+                {hasDays && (
+                  <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/50">
+                    {formatPreferredDays(offer.listingPreferredDays!).join(' / ')}
+                  </span>
+                )}
+                {hasWindow && (
+                  <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/50">
+                    {offer.listingPreferredTimeStart} – {offer.listingPreferredTimeEnd}
+                    {offer.listingTimezone ? ` (${offer.listingTimezone})` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          <div>
+            <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-white/30">Confirm time</p>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
+            />
+          </div>
+        </div>
+      )}
+
+      {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
       {offer.status === 'pending' && (
         <div className="flex gap-2 pt-0.5">
-          <CtaButton
-            size="sm"
-            onClick={() => acceptMutation.mutate()}
-            disabled={isPending}
-            className="h-8 rounded-lg px-4 text-[12px] font-semibold"
-          >
-            {acceptMutation.isPending ? '…' : 'Accept'}
-          </CtaButton>
-          <OutlineButton
-            size="sm"
-            onClick={() => declineMutation.mutate()}
-            disabled={isPending}
-            className="h-8 rounded-lg px-3 text-[12px]"
-          >
-            {declineMutation.isPending ? '…' : 'Decline'}
-          </OutlineButton>
+          {accepting ? (
+            <>
+              <CtaButton
+                size="sm"
+                onClick={handleAccept}
+                disabled={isPending}
+                className="h-8 rounded-lg px-4 text-[12px] font-semibold"
+              >
+                {acceptMutation.isPending ? '…' : 'Confirm scrim'}
+              </CtaButton>
+              <OutlineButton
+                size="sm"
+                onClick={() => { setAccepting(false); setApiError(''); }}
+                disabled={isPending}
+                className="h-8 rounded-lg px-3 text-[12px]"
+              >
+                Back
+              </OutlineButton>
+            </>
+          ) : (
+            <>
+              <CtaButton
+                size="sm"
+                onClick={() => setAccepting(true)}
+                disabled={isPending}
+                className="h-8 rounded-lg px-4 text-[12px] font-semibold"
+              >
+                Accept
+              </CtaButton>
+              <OutlineButton
+                size="sm"
+                onClick={handleDecline}
+                disabled={isPending}
+                className="h-8 rounded-lg px-3 text-[12px]"
+              >
+                {declineMutation.isPending ? '…' : 'Decline'}
+              </OutlineButton>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -323,6 +423,20 @@ function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
   const withdrawMutation = useWithdrawOffer(offer.id);
   const catalog = useGameCatalogContext();
   const catalogGame = catalog.games.find((g) => g.slug === offer.listingGameSlug);
+  const [apiError, setApiError] = useState('');
+
+  const handleWithdraw = useCallback(async () => {
+    setApiError('');
+    try {
+      await withdrawMutation.mutateAsync();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setApiError('Only a team captain or manager can withdraw this offer.');
+      } else {
+        setApiError(getApiErrorMessage(err, 'Could not withdraw offer. Try again.'));
+      }
+    }
+  }, [withdrawMutation]);
 
   return (
     <div className={`${SCRIM_CARD_CLASS} p-3.5 space-y-2.5`}>
@@ -351,11 +465,12 @@ function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
         <CalendarClock className="h-3.5 w-3.5 text-white/35" aria-hidden />
         {formatProposedSlot(offer)}
       </div>
+      {apiError && <InlineNotice tone="critical">{apiError}</InlineNotice>}
       {offer.status === 'pending' && (
         <div className="flex justify-end pt-0.5">
           <DangerButton
             size="sm"
-            onClick={() => withdrawMutation.mutate()}
+            onClick={handleWithdraw}
             disabled={withdrawMutation.isPending}
             className="h-8 rounded-lg px-3 text-[12px]"
           >
@@ -420,19 +535,7 @@ export default function ScrimWorkspacePage() {
     return labels;
   }, [listings]);
 
-  const { offers: pendingReceivedOffers, isLoading: isOffersLoading } = usePendingReceivedOffers(listings);
-
-  const isCountersLoading = listingsQuery.isLoading || sessionsQuery.isLoading || isOffersLoading;
-
-  const openListingsCount = listings.filter((l) => l.status === 'open').length;
-  const pendingReceivedCount = pendingReceivedOffers.length;
-  const upcomingSessionsCount = sessions.filter((s) => s.status === 'scheduled' || s.status === 'in_progress').length;
-
-  const statCounters = [
-    { value: isCountersLoading ? '—' : openListingsCount, label: 'LISTINGS', accent: false },
-    { value: isCountersLoading ? '—' : pendingReceivedCount, label: 'OFFERS', accent: !isCountersLoading && pendingReceivedCount > 0 },
-    { value: isCountersLoading ? '—' : upcomingSessionsCount, label: 'SESSIONS', accent: false },
-  ];
+  const { offers: pendingReceivedOffers } = usePendingReceivedOffers(listings);
 
   // Session stat card counts
   const completedCount = sessions.filter((s) => s.status === 'completed').length;
@@ -491,7 +594,13 @@ export default function ScrimWorkspacePage() {
 
           {/* ── Context bar ─────────────────────────────────────────────────── */}
           <div className="hidden lg:flex items-center gap-4 px-6 py-4 border-b border-white/[0.08]">
-            <div className="h-8 w-8 bg-white/[0.06] shrink-0" aria-hidden />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.1] bg-white/[0.06] text-[10px] font-bold text-white/40">
+              {activeTeam?.logo_url ? (
+                <img src={activeTeam.logo_url} alt="" className="h-full w-full object-contain p-0.5" />
+              ) : (
+                (activeTeam?.name ?? '??').slice(0, 2).toUpperCase()
+              )}
+            </span>
 
             {teams.length > 1 ? (
               <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
@@ -535,45 +644,24 @@ export default function ScrimWorkspacePage() {
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-6" role="group" aria-label="Workspace summary">
-              {statCounters.map(({ value, label, accent }) => (
-                <span key={label} aria-label={`${value} ${label.toLowerCase()}`} className="flex items-baseline gap-1.5">
-                  <span
-                    aria-hidden
-                    className={`text-[15px] font-bold tabular-nums leading-none [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white/60'}`}
-                  >
-                    {value}
-                  </span>
-                  <span aria-hidden className="font-mono text-[10px] uppercase tracking-widest text-white/30">
-                    {label}
-                  </span>
-                </span>
-              ))}
-            </div>
-
-            {showNewListing ? (
-              <GhostButton
-                onClick={() => setShowNewListing((v) => !v)}
-                aria-expanded={showNewListing}
-                className="h-9 shrink-0 px-4 text-[13px] font-semibold"
-              >
-                Cancel
-              </GhostButton>
-            ) : (
-              <CtaButton
-                onClick={() => setShowNewListing((v) => !v)}
-                aria-expanded={showNewListing}
-                className="h-9 shrink-0 px-4 text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
-              >
-                + New Scrim
-              </CtaButton>
-            )}
+            <CtaButton
+              onClick={() => setShowNewListing(true)}
+              className="h-9 shrink-0 px-4 text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
+            >
+              + New Scrim
+            </CtaButton>
           </div>
 
           {/* Mobile context bar */}
           <div className="flex flex-col gap-2 px-4 py-3 border-b border-white/[0.08] lg:hidden">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 shrink-0 bg-white/[0.06]" aria-hidden />
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/[0.1] bg-white/[0.06] text-[9px] font-bold text-white/40">
+                {activeTeam?.logo_url ? (
+                  <img src={activeTeam.logo_url} alt="" className="h-full w-full object-contain p-0.5" />
+                ) : (
+                  (activeTeam?.name ?? '??').slice(0, 2).toUpperCase()
+                )}
+              </span>
               {teams.length > 1 ? (
                 <Select value={resolvedTeamId} onValueChange={setSelectedTeamId}>
                   <SelectTrigger
@@ -594,50 +682,13 @@ export default function ScrimWorkspacePage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-4 pl-9" role="group" aria-label="Workspace summary">
-              {statCounters.map(({ value, label, accent }) => (
-                <span key={label} aria-label={`${value} ${label.toLowerCase()}`} className="flex items-baseline gap-1">
-                  <span aria-hidden className={`text-[14px] font-bold tabular-nums [font-family:var(--font-heading)] ${accent ? 'text-rose-400' : 'text-white/60'}`}>
-                    {value}
-                  </span>
-                  <span aria-hidden className="font-mono text-[10px] uppercase tracking-widest text-white/30">
-                    {label}
-                  </span>
-                </span>
-              ))}
-            </div>
-            {showNewListing ? (
-              <GhostButton
-                onClick={() => setShowNewListing((v) => !v)}
-                aria-expanded={showNewListing}
-                className="h-9 w-full text-[13px] font-semibold"
-              >
-                Cancel
-              </GhostButton>
-            ) : (
-              <CtaButton
-                onClick={() => setShowNewListing((v) => !v)}
-                aria-expanded={showNewListing}
-                className="h-9 w-full text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
-              >
-                + New Scrim
-              </CtaButton>
-            )}
+            <CtaButton
+              onClick={() => setShowNewListing(true)}
+              className="h-9 w-full text-[13px] font-semibold shadow-[0_0_18px_rgba(225,29,72,0.35)] hover:shadow-[0_0_24px_rgba(225,29,72,0.45)] transition-shadow"
+            >
+              + New Scrim
+            </CtaButton>
           </div>
-
-          {/* New listing form */}
-          <AnimatePresence>
-            {showNewListing && (
-              <div key="new-listing-form" className="border-b border-white/[0.06] px-6 py-4">
-                <WorkspaceNewListingForm
-                  teamId={resolvedTeamId}
-                  gameSlug={gameSlug}
-                  onSuccess={() => setShowNewListing(false)}
-                  onCancel={() => setShowNewListing(false)}
-                />
-              </div>
-            )}
-          </AnimatePresence>
 
           {/* ── Hero section ────────────────────────────────────────────────── */}
           <div className="relative overflow-hidden border-b border-white/[0.07] bg-[#0d0e12]">
@@ -786,15 +837,6 @@ export default function ScrimWorkspacePage() {
                     ? `No ${sessionFilter} scrims yet.`
                     : 'No scrims yet. Post a listing to start finding opponents.'}
                 </p>
-                {sessionFilter === 'all' && !sessionSearch.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setShowNewListing(true)}
-                    className="mt-3 border border-white/[0.08] px-4 py-2 text-[13px] text-white/55 transition-colors hover:text-white"
-                  >
-                    New Listing
-                  </button>
-                )}
               </div>
             ) : (
               filteredSessions.map((s) => (
@@ -830,13 +872,6 @@ export default function ScrimWorkspacePage() {
                 <p className="text-[14px] text-white/40">
                   No active listings. Post one to start finding scrims.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowNewListing(true)}
-                  className="mt-3 border border-white/[0.08] px-4 py-2 text-[13px] text-white/55 transition-colors hover:text-white"
-                >
-                  New Listing
-                </button>
               </div>
             ) : (
               <div className="grid gap-3 xl:grid-cols-2">
@@ -875,6 +910,18 @@ export default function ScrimWorkspacePage() {
 
         </div>
       )}
+      {/* New listing modal */}
+      <Dialog open={showNewListing} onOpenChange={setShowNewListing}>
+        <DialogContent className="p-0 gap-0 max-w-xl rounded-2xl border-white/[0.1] overflow-y-auto max-h-[90vh]">
+          <DialogTitle className="sr-only">New scrim listing</DialogTitle>
+          <WorkspaceNewListingForm
+            teamId={resolvedTeamId}
+            gameSlug={gameSlug}
+            onSuccess={() => setShowNewListing(false)}
+            onCancel={() => setShowNewListing(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </CompetitivePageShell>
   );
 }
