@@ -10,7 +10,7 @@ import {
   type BestOf,
   bestOfLongLabel,
 } from '@/services/scrimUtils';
-import { getApiErrorMessage } from '@/lib/apiClient';
+import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
 import { GameCatalogContext } from '@/contexts/game-catalog-context';
 import type { CatalogRankTier } from '@/types/competitive';
 
@@ -161,7 +161,13 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
       });
       onSuccess();
     } catch (err) {
-      setApiError(getApiErrorMessage(err, 'Could not post listing. Try again.'));
+      if (err instanceof ApiError && err.status === 403) {
+        setApiError('Only a team captain or manager can post a scrim listing.');
+      } else if (err instanceof ApiError && err.status === 409) {
+        setApiError(getApiErrorMessage(err, 'Roster is locked due to active scrims or a tournament registration.'));
+      } else {
+        setApiError(getApiErrorMessage(err, 'Could not post listing. Try again.'));
+      }
     }
   }
 
