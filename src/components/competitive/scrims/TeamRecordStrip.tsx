@@ -13,6 +13,8 @@ import type { ScrimTeamRecord } from '@/types/competitive';
 
 interface TeamRecordStripProps {
   record: ScrimTeamRecord | null | undefined;
+  /** Rounded form pips, for the soft-cornered listing cards. */
+  soft?: boolean;
   className?: string;
 }
 
@@ -31,7 +33,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function TeamRecordStrip({ record, className }: TeamRecordStripProps) {
+export function TeamRecordStrip({ record, soft = false, className }: TeamRecordStripProps) {
   const reduce = useReducedMotion();
   const view = describeRecord(record);
   if (!view) return null;
@@ -83,6 +85,7 @@ export function TeamRecordStrip({ record, className }: TeamRecordStripProps) {
               transition={{ duration: 0.16, delay: reduce ? 0 : i * 0.04 }}
               className={cn(
                 'flex h-5 w-5 items-center justify-center border font-mono text-[10px] font-bold',
+                soft && 'rounded-md',
                 PIP_STYLE[pip.result],
                 pip.isLatest && 'border-white/50',
               )}

@@ -5,7 +5,7 @@ import { InlineNotice } from '@/components/ui/kit';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { WorkspaceNewListingForm } from '@/components/competitive/scrims/WorkspaceNewListingForm';
-import { WorkspaceListingCard } from '@/components/competitive/scrims/WorkspaceListingCard';
+import { OwnListingCard } from '@/components/competitive/scrims/listing/OwnListingCard';
 import { WorkspaceSection } from '@/components/competitive/scrims/workspace/WorkspaceSection';
 import { ScrimTeamHeader } from '@/components/competitive/scrims/workspace/ScrimTeamHeader';
 import { UpNextList } from '@/components/competitive/scrims/workspace/UpNextList';
@@ -178,7 +178,7 @@ export default function ScrimWorkspacePage() {
               ) : (
                 <div className="grid gap-3 xl:grid-cols-2">
                   {listings.map((l) => (
-                    <WorkspaceListingCard key={l.id} listing={l} overlappingWith={listingOverlaps.get(l.id) ?? []} />
+                    <OwnListingCard key={l.id} listing={l} overlappingWith={listingOverlaps.get(l.id) ?? []} />
                   ))}
                 </div>
               )}

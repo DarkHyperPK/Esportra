@@ -211,25 +211,28 @@ export interface MemberPreview {
   rankTierKey: string | null;
 }
 
-/** Offer rosters arrive as a JSON string; parse defensively and normalise keys. */
-export function parseMembersPreview(raw: string | null | undefined): MemberPreview[] {
+/** Rosters arrive as a JSON string (offers) or an already-parsed array (discovery); normalise either. */
+export function parseMembersPreview(raw: string | unknown[] | null | undefined): MemberPreview[] {
   if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((m): MemberPreview[] => {
-      const r = m as Record<string, unknown>;
-      const username = typeof r.username === 'string' ? r.username : null;
-      if (!username) return [];
-      const seed = r.avatarSeed ?? r.avatar_seed;
-      const rank = r.rankTierKey ?? r.rank_tier_key;
-      return [{
-        username,
-        avatarSeed: typeof seed === 'string' ? seed : null,
-        rankTierKey: typeof rank === 'string' ? rank : null,
-      }];
-    });
-  } catch {
-    return [];
+  let parsed: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return [];
+    }
   }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((m): MemberPreview[] => {
+    const r = (m ?? {}) as Record<string, unknown>;
+    const username = typeof r.username === 'string' ? r.username : null;
+    if (!username) return [];
+    const seed = r.avatarSeed ?? r.avatar_seed;
+    const rank = r.rankTierKey ?? r.rank_tier_key;
+    return [{
+      username,
+      avatarSeed: typeof seed === 'string' ? seed : null,
+      rankTierKey: typeof rank === 'string' ? rank : null,
+    }];
+  });
 }

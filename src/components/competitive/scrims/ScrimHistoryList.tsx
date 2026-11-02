@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useScrimHistory } from '@/hooks/competitive/useScrims';
-import { SCRIM_CARD_CLASS, SCRIM_EYEBROW } from './WorkspaceListingCard';
+import { SCRIM_CARD_CLASS, SCRIM_EYEBROW } from './scrimCardStyles';
 import type { ScrimHistoryEntry, ScrimHistoryResult } from '@/types/competitive';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
