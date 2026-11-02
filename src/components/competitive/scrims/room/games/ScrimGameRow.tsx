@@ -38,7 +38,7 @@ interface Props {
 }
 
 export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2, confirming, confirmError, onConfirm, onEdit }: Props) {
-  const [showStats, setShowStats] = useState(false);
+  const [showStats, setShowStats] = useState(true);
   const [disputing, setDisputing] = useState(false);
   const turn = gameTurn(game, myTeamId);
   const reporter = game.reportedByTeamId === team1.id ? team1.name : team2.name;
@@ -120,6 +120,7 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
                   gameNumber={game.gameNumber}
                   reportedByTeamId={game.reportedByTeamId}
                   captainTeamId={myTeamId ?? undefined}
+                  captainRoomMode={!!myTeamId}
                 />
               </Suspense>
             </div>

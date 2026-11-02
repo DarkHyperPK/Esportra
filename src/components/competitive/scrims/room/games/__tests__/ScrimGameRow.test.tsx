@@ -57,8 +57,16 @@ describe('ScrimGameRow', () => {
     expect(screen.getByText(/Confirmed automatically/)).toBeInTheDocument();
   });
 
-  it('offers the scoreboard only when the map has match details', () => {
+  it('opens the scoreboard by default when the map has match details, and lets it collapse', () => {
     renderRow({ game: { ...game, matchData: { players: [] } } });
-    expect(screen.getByRole('button', { name: 'Show scoreboard' })).toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: 'Hide scoreboard' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Show scoreboard' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('has no scoreboard control without match details', () => {
+    renderRow();
+    expect(screen.queryByRole('button', { name: /scoreboard/i })).toBeNull();
   });
 });

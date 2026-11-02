@@ -77,9 +77,10 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
 
   const rosterPlayers = useMemo(() => {
     if (!enriched) return [];
-    if (isOrganizer) return enriched.players;
-    if (!captainRoomMode || !captainRiotSide) return enriched.players;
-    return enriched.players.filter((player) => player.teamId === captainRiotSide);
+    const players = enriched.players ?? [];
+    if (isOrganizer) return players;
+    if (!captainRoomMode || !captainRiotSide) return players;
+    return players.filter((player) => player.teamId === captainRiotSide);
   }, [captainRoomMode, captainRiotSide, enriched, isOrganizer]);
 
   const targetPuuid = useMemo(
@@ -131,6 +132,7 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
             team2Name={team2Name}
             t1Side={resolvedT1Side}
             directView={captainRoomMode}
+            perspectiveSide={captainRoomMode && !isOrganizer ? captainRiotSide : null}
           />
         )}
       </div>

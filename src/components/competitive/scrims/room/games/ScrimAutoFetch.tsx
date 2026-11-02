@@ -19,7 +19,7 @@ interface Props {
 
 /** Finds the map in Riot's match history and reports it with the full scoreboard, as the match room does. */
 export function ScrimAutoFetch({ sessionId, gameNumber, myTeamId, team1Id, team2Id, onDone }: Props) {
-  const recent = useScrimRecentMatches(sessionId);
+  const recent = useScrimRecentMatches(sessionId, myTeamId);
   const reportRiot = useReportScrimGameFromRiot(sessionId);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const matches = recent.data?.matches ?? null;

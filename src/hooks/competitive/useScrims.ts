@@ -687,12 +687,12 @@ export function useUpdateScrimHistoryPrivacy(teamId: string) {
 }
 
 /** Recent Riot games the team can report a map from (same payload as the tournament Auto-fetch). */
-export function useScrimRecentMatches(sessionId: string) {
+export function useScrimRecentMatches(sessionId: string, teamId: string) {
   return useQuery({
     queryKey: scrimHistoryKeys.recentMatches(sessionId),
     queryFn: async () => {
       const res = await rawApiClient.get<{ matches?: RiotMatchCandidate[]; reason?: string }>(
-        `/api/scrims/sessions/${sessionId}/recent-matches`,
+        `/api/scrims/sessions/${sessionId}/recent-matches?team_id=${encodeURIComponent(teamId)}`,
       );
       return { matches: res.matches ?? [], reason: res.reason ?? null };
     },

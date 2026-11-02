@@ -186,12 +186,6 @@ export default function ScrimSessionPage() {
               </motion.div>
             )}
 
-            {showResult && (
-              <motion.div {...arrive(0.12)} id="room-result" className="scroll-mt-6">
-                <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
-              </motion.div>
-            )}
-
             {status === 'cancelled' && (
               <InlineNotice tone="neutral">{nextView.body}</InlineNotice>
             )}
@@ -203,6 +197,12 @@ export default function ScrimSessionPage() {
             </motion.aside>
           )}
         </div>
+
+        {showResult && (
+          <motion.div {...arrive(0.12)} id="room-result" className="scroll-mt-6">
+            <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
+          </motion.div>
+        )}
       </div>
     </CompetitivePageShell>
   );

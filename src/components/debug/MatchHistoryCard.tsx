@@ -22,6 +22,8 @@ interface MatchHistoryCardProps {
     t1Side?: 'Blue' | 'Red';
     /** Skip personal-stat collapse header; show analytics tabs immediately (captain match room). */
     directView?: boolean;
+    /** The Riot side the viewer's team played; the result then reads from their point of view, not team 1's. */
+    perspectiveSide?: 'Blue' | 'Red' | null;
     /** With directView: skip the map and score summary when the host already shows it. */
     hideSummary?: boolean;
 }
@@ -114,6 +116,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     team2Name,
     t1Side,
     directView = false,
+    perspectiveSide = null,
     hideSummary = false,
 }) => {
     const [isExpanded, setIsExpanded] = useState(directView);
@@ -147,7 +150,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
         return getTeamTone(riotTeam, teamAId ?? undefined) === 'teamA';
     };
     const isWin = tournamentMode
-        ? Boolean(matchData.teams.find((team) => team.teamId === t1Side)?.won)
+        ? Boolean(matchData.teams.find((team) => team.teamId === (perspectiveSide ?? t1Side))?.won)
         : matchData.teams.find((team) => team.teamId === teamId)?.won;
     const parsedInfo = matchData.matchInfoParsed;
     const roundResults = useMemo(() => matchData.roundResults ?? [], [matchData.roundResults]);
