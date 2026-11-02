@@ -778,8 +778,22 @@ const AppContent = React.memo(() => {
                 <Route path="/auth/riot/callback"        element={<RiotOAuthCallback />} />
 
                 {/* Debug Routes */}
-                <Route path="/debug/riot" element={<RiotTest />} />
-                <Route path="/debug/riot/ocr" element={<ScoreboardOcrDebug />} />
+                <Route
+                  path="/debug/riot"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.verification}><RiotTest /></AdminRouteGuard>
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/debug/riot/ocr"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.verification}><ScoreboardOcrDebug /></AdminRouteGuard>
+                    </AdminProtectedRoute>
+                  }
+                />
                 <Route path="/debug/igdb" element={<IgdbTest />} />
 
                 {/* Catch-all route */}
