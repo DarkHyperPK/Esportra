@@ -7,14 +7,18 @@ const proposeMutate = vi.fn();
 const acceptMutate = vi.fn();
 const declineMutate = vi.fn();
 const withdrawMutate = vi.fn();
-const resetMutate = vi.fn();
+const requestClearMutate = vi.fn();
+const respondClearMutate = vi.fn();
+const withdrawClearMutate = vi.fn();
 
 vi.mock('@/hooks/competitive/useScrimSchedule', () => ({
   useProposeTime: () => ({ mutateAsync: proposeMutate, isPending: false }),
   useAcceptTimeProposal: () => ({ mutateAsync: acceptMutate, isPending: false }),
   useDeclineTimeProposal: () => ({ mutateAsync: declineMutate, isPending: false }),
   useWithdrawTimeProposal: () => ({ mutateAsync: withdrawMutate, isPending: false }),
-  useResetScrimTime: () => ({ mutateAsync: resetMutate, isPending: false }),
+  useRequestTimeClear: () => ({ mutateAsync: requestClearMutate, isPending: false }),
+  useRespondTimeClear: () => ({ mutateAsync: respondClearMutate, isPending: false }),
+  useWithdrawTimeClear: () => ({ mutateAsync: withdrawClearMutate, isPending: false }),
 }));
 
 import { ScrimSchedulePanel } from '../room/ScrimSchedulePanel';
@@ -35,7 +39,9 @@ beforeEach(() => {
   acceptMutate.mockReset().mockResolvedValue({});
   declineMutate.mockReset().mockResolvedValue({});
   withdrawMutate.mockReset().mockResolvedValue({});
-  resetMutate.mockReset().mockResolvedValue({});
+  requestClearMutate.mockReset().mockResolvedValue({});
+  respondClearMutate.mockReset().mockResolvedValue({});
+  withdrawClearMutate.mockReset().mockResolvedValue({});
 });
 
 describe('ScrimSchedulePanel: nobody has proposed', () => {
@@ -119,12 +125,12 @@ describe('ScrimSchedulePanel: a time is already set', () => {
   it('shows the match time and lets a captain change it', () => {
     panel(session({ scheduledAt: future }));
     expect(screen.getByText('Match time')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Change the time' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Propose another time' })).toBeInTheDocument();
   });
 
   it('freezes the time once check-in has started', () => {
     panel(session({ scheduledAt: future, team1CheckedInAt: future }));
-    expect(screen.queryByRole('button', { name: 'Change the time' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Propose another time' })).not.toBeInTheDocument();
     expect(screen.getByText('Match time')).toBeInTheDocument();
   });
 
@@ -146,20 +152,39 @@ describe('ScrimSchedulePanel: taking a time back', () => {
     await waitFor(() => expect(withdrawMutate).toHaveBeenCalledTimes(1));
   });
 
-  it('asks before clearing an agreed time, and only then clears it', async () => {
+  const clearReq = (by: string) => ({ id: 'c1', sessionId: 's1', requestedByTeamId: by, status: 'pending' as const, createdAt: future });
+
+  it('asks the other team to clear an agreed time, and sends nothing before I confirm', async () => {
     panel(session({ scheduledAt: future }));
-    fireEvent.click(screen.getByRole('button', { name: 'Clear the time' }));
-    expect(resetMutate).not.toHaveBeenCalled();
-    expect(screen.getByText(/Clear this time\?/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Yes, clear it' }));
-    await waitFor(() => expect(resetMutate).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to clear the time' }));
+    expect(requestClearMutate).not.toHaveBeenCalled();
+    expect(screen.getByText(/It stays as it is until they agree/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() => expect(requestClearMutate).toHaveBeenCalledTimes(1));
   });
 
-  it('keeps the time when I change my mind', () => {
+  it('keeps the time when I change my mind about asking', () => {
     panel(session({ scheduledAt: future }));
-    fireEvent.click(screen.getByRole('button', { name: 'Clear the time' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
-    expect(resetMutate).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Clear the time' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to clear the time' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Never mind' }));
+    expect(requestClearMutate).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Ask to clear the time' })).toBeInTheDocument();
+  });
+
+  it('waits for the other team after I asked, and lets me withdraw the request', async () => {
+    panel(session({ scheduledAt: future, timeClearRequest: clearReq('me') }));
+    expect(screen.getByText(/Waiting for Nova to agree/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Agree, clear it' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw request' }));
+    await waitFor(() => expect(withdrawClearMutate).toHaveBeenCalledTimes(1));
+  });
+
+  it('lets me agree to their request to clear the time, or keep it', async () => {
+    panel(session({ scheduledAt: future, timeClearRequest: clearReq('them') }));
+    expect(screen.getByText(/Nova asked to clear this time/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Agree, clear it' }));
+    await waitFor(() => expect(respondClearMutate).toHaveBeenCalledWith(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the time' }));
+    await waitFor(() => expect(respondClearMutate).toHaveBeenCalledWith(false));
   });
 });

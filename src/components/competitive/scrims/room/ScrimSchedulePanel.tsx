@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { InlineNotice } from '@/components/ui/kit';
 import {
-  useAcceptTimeProposal, useDeclineTimeProposal, useProposeTime, useResetScrimTime, useWithdrawTimeProposal,
+  useAcceptTimeProposal, useDeclineTimeProposal, useProposeTime, useRequestTimeClear, useRespondTimeClear,
+  useWithdrawTimeClear, useWithdrawTimeProposal,
 } from '@/hooks/competitive/useScrimSchedule';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { formatRoomTime } from '@/services/scrimRoomView';
@@ -35,8 +36,12 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
   const accept = useAcceptTimeProposal(proposal?.id ?? '');
   const decline = useDeclineTimeProposal(proposal?.id ?? '');
   const withdraw = useWithdrawTimeProposal(proposal?.id ?? '');
-  const reset = useResetScrimTime(session.id);
-  const [confirmingReset, setConfirmingReset] = useState(false);
+  const clearRequest = session.timeClearRequest ?? null;
+  const requestClear = useRequestTimeClear(session.id);
+  const respondClear = useRespondTimeClear(clearRequest?.id ?? '');
+  const withdrawClear = useWithdrawTimeClear(clearRequest?.id ?? '');
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const clearMine = !!clearRequest && clearRequest.requestedByTeamId === myTeamId;
   const [countering, setCountering] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,7 +49,8 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
   const checkInStarted = !!(session.team1CheckedInAt || session.team2CheckedInAt);
   const open = session.status === 'scheduled' && !checkInStarted && isStaff;
   const mine = !!proposal && proposal.proposedByTeamId === myTeamId;
-  const busy = propose.isPending || accept.isPending || decline.isPending || withdraw.isPending || reset.isPending;
+  const busy = propose.isPending || accept.isPending || decline.isPending || withdraw.isPending
+    || requestClear.isPending || respondClear.isPending || withdrawClear.isPending;
 
   async function run(action: () => Promise<unknown>, fallback: string) {
     setError('');
@@ -125,22 +131,41 @@ export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }:
             {formatRoomTime(session.scheduledAt)}
           </p>
           {error && <InlineNotice tone="critical">{error}</InlineNotice>}
-          {!countering && !confirmingReset && (
+          {!countering && !clearRequest && !confirmingClear && (
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={busy} onClick={() => setCountering(true)} className={ROOM_GHOST}>Change the time</button>
-              <button type="button" disabled={busy} onClick={() => setConfirmingReset(true)} className={ROOM_GHOST}>Clear the time</button>
+              <button type="button" disabled={busy} onClick={() => setCountering(true)} className={ROOM_GHOST}>Propose another time</button>
+              <button type="button" disabled={busy} onClick={() => setConfirmingClear(true)} className={ROOM_GHOST}>Ask to clear the time</button>
             </div>
           )}
-          {confirmingReset && (
-            <div className="space-y-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.05] p-3">
-              <p className="text-[13px] text-amber-100/90">
-                Clear this time? Check-in is cancelled and you both start again. {opponent} is told.
+          {confirmingClear && !clearRequest && (
+            <div className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+              <p className="text-[13px] text-zinc-300">
+                Ask {opponent} to clear this time? It stays as it is until they agree.
               </p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busy} onClick={() => run(async () => { await reset.mutateAsync(); setConfirmingReset(false); }, 'Could not clear the time. Try again.')} className={PRIMARY}>
-                  {reset.isPending ? 'Clearing…' : 'Yes, clear it'}
+                <button type="button" disabled={busy} onClick={() => run(async () => { await requestClear.mutateAsync(); setConfirmingClear(false); }, 'Could not send the request. Try again.')} className={PRIMARY}>
+                  {requestClear.isPending ? 'Sending…' : 'Send request'}
                 </button>
-                <button type="button" onClick={() => setConfirmingReset(false)} className={ROOM_GHOST}>Keep it</button>
+                <button type="button" onClick={() => setConfirmingClear(false)} className={ROOM_GHOST}>Never mind</button>
+              </div>
+            </div>
+          )}
+          {clearRequest && clearMine && (
+            <div className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+              <p className="text-[13px] text-zinc-300">You asked to clear this time. Waiting for {opponent} to agree.</p>
+              <button type="button" disabled={busy} onClick={() => run(() => withdrawClear.mutateAsync(), 'Could not withdraw. Try again.')} className={ROOM_GHOST}>
+                {withdrawClear.isPending ? 'Withdrawing…' : 'Withdraw request'}
+              </button>
+            </div>
+          )}
+          {clearRequest && !clearMine && (
+            <div className="space-y-2 rounded-lg border border-amber-400/25 bg-amber-400/[0.05] p-3">
+              <p className="text-[13px] text-amber-100/90">{opponent} asked to clear this time. If you agree, check-in is cancelled and you both pick a new time.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={() => run(() => respondClear.mutateAsync(true), 'Could not agree. Try again.')} className={PRIMARY}>
+                  {respondClear.isPending ? 'Clearing…' : 'Agree, clear it'}
+                </button>
+                <button type="button" disabled={busy} onClick={() => run(() => respondClear.mutateAsync(false), 'Could not answer. Try again.')} className={ROOM_GHOST}>Keep the time</button>
               </div>
             </div>
           )}

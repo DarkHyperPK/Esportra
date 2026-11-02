@@ -57,11 +57,29 @@ export function useWithdrawTimeProposal(proposalId: string) {
   });
 }
 
-/** Clears an agreed time before check-in so the captains can start again. */
-export function useResetScrimTime(sessionId: string) {
+/** Asks the other team to agree to clear the agreed time. Nothing changes until they do. */
+export function useRequestTimeClear(sessionId: string) {
   const refresh = useRefreshScrims();
   return useMutation({
-    mutationFn: () => apiClient.post<unknown>(`/api/scrims/sessions/${sessionId}/time/reset`),
+    mutationFn: () => apiClient.post<unknown>(`/api/scrims/sessions/${sessionId}/time/clear-request`),
+    onSuccess: refresh,
+  });
+}
+
+/** The other team agrees to clear the time (it is cleared) or keeps it. */
+export function useRespondTimeClear(requestId: string) {
+  const refresh = useRefreshScrims();
+  return useMutation({
+    mutationFn: (agree: boolean) =>
+      apiClient.post<unknown>(`/api/scrims/time-clear-requests/${requestId}/${agree ? 'accept' : 'decline'}`),
+    onSuccess: refresh,
+  });
+}
+
+export function useWithdrawTimeClear(requestId: string) {
+  const refresh = useRefreshScrims();
+  return useMutation({
+    mutationFn: () => apiClient.post<unknown>(`/api/scrims/time-clear-requests/${requestId}/withdraw`),
     onSuccess: refresh,
   });
 }

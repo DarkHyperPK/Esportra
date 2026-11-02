@@ -839,6 +839,15 @@ export type ScrimUpNextType =
   | 'offer_received';
 
 /** A proposed match time awaiting the other team's answer. */
+/** One team's request to clear the agreed time. The other team has to agree before it is cleared. */
+export interface ScrimTimeClearRequest {
+  id: string;
+  sessionId: string;
+  requestedByTeamId: string;
+  status: 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'superseded';
+  createdAt: string;
+}
+
 export interface ScrimTimeProposal {
   id: string;
   sessionId: string;
@@ -1000,6 +1009,8 @@ export interface ScrimSession {
   bestOf?: number | null;
   /** The proposed time awaiting a response (session detail only). */
   timeProposal?: ScrimTimeProposal | null;
+  /** A request to clear the agreed time, waiting for the other team to agree (session detail only). */
+  timeClearRequest?: ScrimTimeClearRequest | null;
   /** checkin_timeout | cancelled_by_team | listing_closed | admin; null for legacy rows. */
   cancelledReason?: string | null;
   cancelledByTeamId?: string | null;

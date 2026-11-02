@@ -8,6 +8,7 @@ import { ScrimDisputeBanner } from '@/components/competitive/scrims/ScrimDispute
 import { ScrimFaceOff } from '@/components/competitive/scrims/room/ScrimFaceOff';
 import { ScrimStageRail } from '@/components/competitive/scrims/room/ScrimStageRail';
 import { ScrimNextStepCard } from '@/components/competitive/scrims/room/ScrimNextStepCard';
+import { ScrimRoomChat } from '@/components/competitive/scrims/room/ScrimRoomChat';
 import { CheckinSummary } from '@/components/competitive/scrims/room/CheckinSummary';
 import { ScrimLobbyPanel } from '@/components/competitive/scrims/room/ScrimLobbyPanel';
 import { ScrimGamesPanel } from '@/components/competitive/scrims/room/games/ScrimGamesPanel';
@@ -210,6 +211,10 @@ export default function ScrimSessionPage() {
           </div>
         </div>
       </div>
+
+      {isCaptain && status !== 'cancelled' && opponent && (
+        <ScrimRoomChat sessionId={session.id} opponentName={opponent} openOnArrival={status === 'scheduled' && !session.scheduledAt} />
+      )}
     </CompetitivePageShell>
   );
 }
