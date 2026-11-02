@@ -43,10 +43,10 @@ empty; real migrations are DbUp scripts in `esportra-backend/src/Esportra.Infras
 
 | ID | Severity | Finding | Status |
 |---|---|---|---|
-| S1 | CRITICAL (suspected) | `riot_accounts` stored RSO access/refresh tokens in plain text with `SELECT USING (true)` / any-authenticated policies on a Supabase project whose anon key ships in the bundle. Tokens were never read after linking. | Fixed in backend commit (not yet pushed). Production exposure **not probed**; rotate the RSO client secret. |
+| S1 | CRITICAL (suspected) | `riot_accounts` stored RSO access/refresh tokens in plain text with `SELECT USING (true)` / any-authenticated policies on a Supabase project whose anon key ships in the bundle. Tokens were never read after linking. | Fixed and pushed (migrations drop the token columns and lock `riot_accounts`). Production exposure **not probed**; rotate the RSO client secret. |
 | S2 | HIGH | `/api/integrations/riot/proxy` and `/enriched-match` let any signed-in user read any player's matchlist or any match through Esportra's production key; allow-list did not reject `..`. | Fixed: proxy Admin-only, enriched-match visibility rule, traversal rejected. Debug routes guarded in frontend. |
 | S3 | MEDIUM | Unlinking left `player_riot_accounts`; `riot_account_name_history` readable by everyone (PUUID ↔ name). | Fixed. |
-| S4 | integrity | Client-supplied `match_data` trusted as a source. | Addressed by the server-side ingestion design (Phase 1, not built yet). |
+| S4 | integrity | Client-supplied `match_data` trusted as a source. | Addressed: ingestion fetches from Riot on the server and stores its own copy; client `match_data` is not used for analytics. |
 
 Other items found, not changed: `SoloTournamentRegistration.tsx` reads `riotAccount.game_name`/`tag_line` but the hook
 returns camelCase (likely undefined); `ProfilePage.tsx` calls `apiClient` directly in a page; `/debug/riot/overlay*` and
@@ -59,4 +59,3 @@ rule; kept open because it may be used as a stream source).
 - Riot's policy scope for each analytic, data retention, and whether VAL-MATCH-V1 returns custom games for all linked
   players. Treat as requiring confirmation against the registered app.
 - Riot may index custom games minutes late (existing job already retries).
-- The sandbox used for this work could not install .NET, so backend C# changes are **uncompiled and untested**.

@@ -4,6 +4,7 @@ import { InlineNotice } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { gameTurn } from '@/services/scrimGames';
 import type { ScrimGame, ScrimGameStatus } from '@/types/competitive';
+import { ScrimGameDataStatus } from '@/components/competitive/matches/ScrimGameDataStatus';
 import { ScrimGameDispute } from './ScrimGameDispute';
 
 const MatchGameStatisticsPanel = lazy(() =>
@@ -64,6 +65,7 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
       <p className="text-[11px] text-zinc-500">
         Reported by {reporter} · {SOURCE[game.source]}{game.autoConfirmed ? ' · Confirmed automatically' : ''}
       </p>
+      <ScrimGameDataStatus sessionId={sessionId} gameNumber={game.gameNumber} riotMatchId={game.riotMatchId} />
 
       {turn === 'confirm' && isStaff && !disputing && (
         <div className="space-y-2">

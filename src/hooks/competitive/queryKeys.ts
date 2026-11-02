@@ -43,3 +43,12 @@ export const catalogKeys = {
   /** Regions for a game (stable, cache 24 h) */
   regions: (game: string) => ['catalog', 'regions', game] as const,
 };
+
+export const providerMatchKeys = {
+  /** The Riot match behind one scrim map */
+  scrimGame: (sessionId: string, gameNumber: number) => ['provider-match', 'scrim', sessionId, gameNumber] as const,
+  /** The Riot match behind one tournament game */
+  tournamentGame: (matchId: string, gameNumber: number) => ['provider-match', 'tournament', matchId, gameNumber] as const,
+  /** The caller's analytics visibility for a game */
+  visibility: (game: string) => ['analytics-visibility', game] as const,
+};

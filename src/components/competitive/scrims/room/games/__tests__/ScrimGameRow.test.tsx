@@ -4,6 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScrimGameRow } from '../ScrimGameRow';
 import type { ScrimGame } from '@/types/competitive';
 
+// The Riot verification line has its own tests and needs an auth provider; here we only check the row mounts it.
+vi.mock('@/components/competitive/matches/ScrimGameDataStatus', () => ({
+  ScrimGameDataStatus: (props: { sessionId: string; gameNumber: number; riotMatchId: string | null }) => (
+    <p data-testid="data-status">{`${props.sessionId}:${props.gameNumber}:${props.riotMatchId}`}</p>
+  ),
+}));
+
 const game: ScrimGame = {
   gameNumber: 1, status: 'reported', mapName: 'Haven', mapId: null, team1Score: 13, team2Score: 9, winnerSlot: null,
   source: 'riot', riotMatchId: 'm', matchData: null, screenshotUrls: [], notes: null,
@@ -26,6 +33,11 @@ function renderRow(over: Partial<React.ComponentProps<typeof ScrimGameRow>> = {}
 }
 
 describe('ScrimGameRow', () => {
+  it('shows the Riot verification line for the map, with its Riot match id', () => {
+    renderRow();
+    expect(screen.getByTestId('data-status')).toHaveTextContent('s:1:m');
+  });
+
   it('lets the other team confirm or dispute a reported map', () => {
     const { onConfirm } = renderRow();
     expect(screen.getByText(/Apex reported this map/)).toBeInTheDocument();
