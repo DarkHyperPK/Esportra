@@ -46,7 +46,19 @@ describe('notificationRegistry', () => {
 
   it('keeps accent for act-now types only', () => {
     const accent = Object.entries(NOTIFICATION_KINDS).filter(([, k]) => k.tone === 'accent').map(([t]) => t).sort();
-    expect(accent).toEqual(['lfg_interest_received', 'match_ready', 'scrim_checkin_updated', 'scrim_offer_received', 'scrim_session_started', 'staff_invite', 'team_invite', 'tournament_invite', 'veto_your_turn']);
+    expect(accent).toEqual(['lfg_interest_received', 'match_ready', 'scrim_checkin_updated', 'scrim_checkin_window_open', 'scrim_offer_received', 'scrim_session_started', 'scrim_veto_ready', 'staff_invite', 'team_invite', 'tournament_invite', 'veto_your_turn']);
+  });
+
+  it('gives every scrim notification a real label instead of the generic fallback', () => {
+    const scrimTypes = [
+      'scrim_checkin_window_open', 'scrim_reminder_30min', 'scrim_veto_ready',
+      'scrim_timeout_cancelled', 'scrim_session_cancelled',
+    ];
+    for (const type of scrimTypes) {
+      const k = getNotificationKind(type);
+      expect(k.category, type).toBe('competitive');
+      expect(k.label, type).not.toBe('Update');
+    }
   });
 
   it('detects synthetic invite rows', () => {

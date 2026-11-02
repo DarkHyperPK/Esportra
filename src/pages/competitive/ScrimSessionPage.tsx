@@ -13,6 +13,7 @@ import { ScrimResultPanel } from '@/components/competitive/scrims/room/ScrimResu
 import { useScrimSession } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
+import { useNow } from '@/hooks/useNow';
 import { deriveScrimNextAction } from '@/services/scrimNextAction';
 import { describeNextStep, formatRoomTime } from '@/services/scrimRoomView';
 
@@ -35,6 +36,7 @@ export default function ScrimSessionPage() {
   const teamsQuery = useMyTeamsSummary();
   const catalog = useGameCatalogContext();
   const reduce = useReducedMotion();
+  const nowMs = useNow(30_000);
   const session = sessionQuery.data;
 
   const myTeamIds = ((teamsQuery.data ?? []) as { id: string }[]).map((t) => t.id);
@@ -91,8 +93,8 @@ export default function ScrimSessionPage() {
   const opponent = mySide === 2 ? session.team1Name ?? null : session.team2Name ?? null;
   const cancelledByName = session.cancelledByTeamId === session.team1Id ? session.team1Name : session.cancelledByTeamId === session.team2Id ? session.team2Name : null;
 
-  const next = deriveScrimNextAction(session, myTeamId ?? '');
-  const nextView = describeNextStep(next, { opponent, cancelledReason: session.cancelledReason, cancelledByName });
+  const next = deriveScrimNextAction(session, myTeamId ?? '', nowMs);
+  const nextView = describeNextStep(next, { opponent, cancelledReason: session.cancelledReason, cancelledByName }, nowMs);
 
   const canCheckIn = status === 'scheduled' || status === 'in_progress';
   const showResult = status === 'in_progress' || status === 'completed' || status === 'disputed';
@@ -166,6 +168,7 @@ export default function ScrimSessionPage() {
                   vetoMyToken={session.vetoMyToken ?? null}
                   gameSlug={session.gameSlug}
                   sessionStatus={status}
+                  onRetry={() => void sessionQuery.refetch()}
                 />
               </motion.div>
             )}

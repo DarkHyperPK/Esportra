@@ -23,9 +23,11 @@ import type { ScrimSession } from '@/types/competitive';
 interface AgendaRowProps {
   session: ScrimSession;
   teamId: string;
+  /** Current time in ms; defaults to now when the row is used on its own. */
+  nowMs?: number;
 }
 
-export function AgendaRow({ session, teamId }: AgendaRowProps) {
+export function AgendaRow({ session, teamId, nowMs = Date.now() }: AgendaRowProps) {
   const catalog = useGameCatalogContext();
   const cancel = useCancelScrimSession(session.id);
   const [confirming, setConfirming] = useState(false);
@@ -36,8 +38,8 @@ export function AgendaRow({ session, teamId }: AgendaRowProps) {
   const logo = (iAmTeam1 ? session.team2Logo : session.team1Logo) ?? null;
   const gameName = catalog.games.find((g) => g.slug === session.gameSlug)?.name ?? session.gameSlug ?? 'Scrim';
 
-  const next = deriveScrimNextAction(session, teamId);
-  const view = describeNextStep(next, { opponent });
+  const next = deriveScrimNextAction(session, teamId, nowMs);
+  const view = describeNextStep(next, { opponent }, nowMs);
   const needsMe = next.action === 'check_in' || next.action === 'report_result'
     || next.action === 'confirm_result' || next.action === 'submit_evidence';
   const canCancel = session.status === 'scheduled';

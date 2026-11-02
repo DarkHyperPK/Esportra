@@ -67,6 +67,11 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   scrim_checkin_updated: kind(Calendar, 'accent', 'competitive', 'Check-in'),
   scrim_session_started: kind(Swords, 'accent', 'competitive', 'Scrim started'),
   scrim_lobby_updated: kind(Info, 'neutral', 'competitive', 'Lobby update'),
+  scrim_checkin_window_open: kind(Calendar, 'accent', 'competitive', 'Check-in open'),
+  scrim_reminder_30min: kind(Calendar, 'neutral', 'competitive', 'Scrim soon'),
+  scrim_veto_ready: kind(MapIcon, 'accent', 'competitive', 'Map veto'),
+  scrim_timeout_cancelled: kind(XCircle, 'warning', 'competitive', 'Scrim cancelled'),
+  scrim_session_cancelled: kind(XCircle, 'warning', 'competitive', 'Scrim cancelled'),
   // Staff
   staff_invite: kind(Shield, 'accent', 'staff', 'Staff invite'),
   // System

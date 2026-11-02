@@ -10,6 +10,7 @@ import { HubPaths } from '@/lib/signalrClient';
 import { NotificationContext, type Notification } from '@/contexts/notification-context';
 import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { useToast } from '@/hooks/use-toast';
+import { shouldRefreshScrims } from '@/services/scrimLive';
 
 export type { Notification };
 
@@ -96,19 +97,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         void fetchNotifications();
       }
 
-      if (
-        stub.type === 'scrim_offer_received' ||
-        stub.type === 'scrim_offer_accepted' ||
-        stub.type === 'scrim_offer_declined' ||
-        stub.type === 'scrim_offer_withdrawn' ||
-        stub.type === 'scrim_result_submitted' ||
-        stub.type === 'scrim_dispute_raised' ||
-        stub.type === 'scrim_dispute_resolved' ||
-        stub.type === 'scrim_result_confirmed' ||
-        stub.type === 'scrim_checkin_updated' ||
-        stub.type === 'scrim_session_started' ||
-        stub.type === 'scrim_lobby_updated'
-      ) {
+      if (shouldRefreshScrims(stub.type)) {
         queryClient.invalidateQueries({ queryKey: ['scrims'] });
       }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ScrimVetoSection } from '../ScrimVetoSection';
 
 // Fake timers for the 5s transitional timeout
@@ -53,6 +53,43 @@ describe('ScrimVetoSection', () => {
     );
     act(() => vi.advanceTimersByTime(5_001));
     expect(screen.getByText(/map veto unavailable/i)).toBeInTheDocument();
+  });
+
+  it('S2-5: offers "Check again", which re-fetches instead of leaving a dead end', () => {
+    const onRetry = vi.fn();
+    render(
+      <ScrimVetoSection
+        vetoSessionId={null}
+        vetoMyToken={null}
+        gameSlug="cs2"
+        sessionStatus="in_progress"
+        onRetry={onRetry}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(5_001));
+    fireEvent.click(screen.getByRole('button', { name: /check again/i }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('S2-5: shows no retry button when the page gave no way to retry', () => {
+    render(
+      <ScrimVetoSection vetoSessionId={null} vetoMyToken={null} gameSlug="cs2" sessionStatus="in_progress" />,
+    );
+    act(() => vi.advanceTimersByTime(5_001));
+    expect(screen.queryByRole('button', { name: /check again/i })).not.toBeInTheDocument();
+  });
+
+  it('swaps to the veto the moment the id arrives after the unavailable notice', () => {
+    const { rerender } = render(
+      <ScrimVetoSection vetoSessionId={null} vetoMyToken={null} gameSlug="cs2" sessionStatus="in_progress" />,
+    );
+    act(() => vi.advanceTimersByTime(5_001));
+    expect(screen.getByText(/map veto unavailable/i)).toBeInTheDocument();
+    rerender(
+      <ScrimVetoSection vetoSessionId="v1" vetoMyToken="tok" gameSlug="cs2" sessionStatus="in_progress" />,
+    );
+    expect(screen.queryByText(/map veto unavailable/i)).not.toBeInTheDocument();
+    expect(screen.getByTitle('Map veto')).toBeInTheDocument();
   });
 
   it('S2-3: renders iframe with correct URL when veto is ready', () => {

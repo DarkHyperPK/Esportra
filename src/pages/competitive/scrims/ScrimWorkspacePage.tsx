@@ -21,6 +21,7 @@ import {
 } from '@/hooks/competitive/useScrims';
 import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
+import { useNow } from '@/hooks/useNow';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { splitSessions } from '@/services/scrimAgenda';
 import { findOverlappingListings, formatPreferredDays } from '@/services/scrimUtils';
@@ -40,6 +41,7 @@ export default function ScrimWorkspacePage() {
   const [searchParams] = useSearchParams();
   const reduce = useReducedMotion();
   const catalog = useGameCatalogContext();
+  const nowMs = useNow(30_000);
   const [showNewListing, setShowNewListing] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [selectedGame, setSelectedGame] = useState('');
@@ -142,6 +144,7 @@ export default function ScrimWorkspacePage() {
               <ScrimAgenda
                 sessions={active}
                 teamId={teamId}
+                nowMs={nowMs}
                 isLoading={sessionsQuery.isLoading}
                 isError={sessionsQuery.isError}
                 onRetry={() => void sessionsQuery.refetch()}

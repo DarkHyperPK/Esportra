@@ -1,3 +1,4 @@
+import { sessionPollInterval, teamSessionsPollInterval } from '@/services/scrimLive';
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { competitiveApiClient as apiClient } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient as rawApiClient } from '@/lib/apiClient';
@@ -145,6 +146,7 @@ export function useTeamScrimSessions(teamId: string) {
     queryFn: () => apiClient.get<ScrimSession[]>(`/api/scrims/sessions?team_id=${teamId}`),
     enabled: !!teamId,
     staleTime: 30_000,
+    refetchInterval: (query) => teamSessionsPollInterval(query.state.data),
   });
 }
 
@@ -154,6 +156,9 @@ export function useScrimSession(id: string) {
     queryFn: () => apiClient.get<ScrimSession>(`/api/scrims/sessions/${id}`),
     enabled: !!id,
     staleTime: 30_000,
+    // Pushes normally keep this fresh; polling covers a missed one. React Query
+    // pauses it in background tabs.
+    refetchInterval: (query) => sessionPollInterval(query.state.data?.status),
   });
 }
 

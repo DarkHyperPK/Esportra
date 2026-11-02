@@ -144,7 +144,7 @@ describe('AgendaRow', () => {
 });
 
 describe('ScrimAgenda', () => {
-  const base = { teamId: 'me', isLoading: false, isError: false, onRetry: vi.fn(), onNewScrim: vi.fn() };
+  const base = { teamId: 'me', nowMs: Date.now(), isLoading: false, isError: false, onRetry: vi.fn(), onNewScrim: vi.fn() };
 
   it('shows a busy state while loading', () => {
     wrap(<ScrimAgenda {...base} sessions={[]} isLoading />);
@@ -164,6 +164,27 @@ describe('ScrimAgenda', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Post a listing' }));
     expect(onNewScrim).toHaveBeenCalled();
     expect(screen.getByRole('link', { name: 'Find a scrim' })).toHaveAttribute('href', '/competitive/scrims');
+  });
+
+  it('moves a scrim from Later to Today as the clock advances, with no refetch', () => {
+    const soon = session({ id: 'soon', scheduledAt: new Date(2026, 10, 9, 20, 0).toISOString() });
+    const { rerender } = wrap(<ScrimAgenda {...base} sessions={[soon]} nowMs={new Date(2026, 10, 2, 12, 0).getTime()} />);
+    expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('This week');
+    rerender(
+      <MemoryRouter>
+        <ScrimAgenda {...base} sessions={[soon]} nowMs={new Date(2026, 10, 9, 9, 0).getTime()} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('Today');
+  });
+
+  it('turns an agenda row into Check in when the window opens, driven only by the clock', () => {
+    const start = new Date(2026, 10, 9, 20, 0);
+    const s = session({ scheduledAt: start.toISOString() });
+    const { rerender } = wrap(<ul><AgendaRow session={s} teamId="me" nowMs={start.getTime() - 60 * 60_000} /></ul>);
+    expect(screen.getByRole('link', { name: 'Open room' })).toBeInTheDocument();
+    rerender(<MemoryRouter><ul><AgendaRow session={s} teamId="me" nowMs={start.getTime() - 10 * 60_000} /></ul></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'Check in' })).toBeInTheDocument();
   });
 
   it('groups scrims under headings, soonest first', () => {

@@ -21,6 +21,8 @@ export interface ScrimVetoSectionProps {
   gameSlug: string | null;
   /** session.status — used to detect when both teams are checked in (in_progress) */
   sessionStatus: string;
+  /** Re-fetch the session; shown as "Check again" if the veto did not appear. */
+  onRetry?: () => void;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -30,7 +32,7 @@ const TRANSITIONAL_TIMEOUT_MS = 5_000;
 
 // ── ScrimVetoSection ──────────────────────────────────────────────────────────
 
-export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, sessionStatus }: ScrimVetoSectionProps) {
+export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, sessionStatus, onRetry }: ScrimVetoSectionProps) {
   const reduce = useReducedMotion();
   const isEligibleGame = VETO_ENABLED_GAMES.includes((gameSlug ?? '').toLowerCase());
   const isInProgress = sessionStatus === 'in_progress';
@@ -108,7 +110,18 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
         <p id="veto-title" className={EYEBROW_CLASS}>MAP VETO</p>
         <div className="mt-3">
-          <InlineNotice tone="neutral">
+          <InlineNotice
+            tone="neutral"
+            action={onRetry ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-white/80 underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              >
+                Check again
+              </button>
+            ) : undefined}
+          >
             Map veto unavailable for this session. Lobby code is available.
           </InlineNotice>
         </div>
