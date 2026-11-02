@@ -6,7 +6,8 @@
  * discovery card, with room to breathe.
  */
 
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { formatTimeWindow } from '@/services/scrimDiscoveryUtils';
 import { bestOfLabel } from '@/services/scrimUtils';
 import type { ScrimListing } from '@/types/competitive';
@@ -17,7 +18,7 @@ import { TeamRecordStrip } from '../TeamRecordStrip';
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3 className={EYEBROW_CLASS}>{title}</h3>
+      <h3 className={SCRIM_LABEL}>{title}</h3>
       {children}
     </section>
   );

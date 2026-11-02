@@ -94,7 +94,7 @@ const MyTryoutInvitesPage = lazyWithRetry(() => import("./pages/competitive/tryo
 const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDiscoveryPage"));
 const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
 const ScrimSessionPage = lazyWithRetry(() => import("./pages/competitive/ScrimSessionPage"));
-const PracticeCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/PracticeCalendarPage"));
+const ScrimCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimCalendarPage"));
 const ScrimDisputeAdminPage = lazyWithRetry(() => import("./pages/admin/tools/ScrimDisputeAdminPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
@@ -282,7 +282,8 @@ const AppContent = React.memo(() => {
           className="fixed inset-0 w-full h-full z-0 bg-[#0a0a0c]"
           aria-hidden="true"
         >
-          <div className="absolute inset-0 opacity-60">
+          {/* Competitive pages use a plain ground: the decorative shards stay off them. */}
+          <div className={location.pathname.startsWith('/competitive/') ? 'hidden' : 'absolute inset-0 opacity-60'}>
             <div className="absolute -left-[10%] top-[-15%] h-[145%] w-[20%] rotate-[-17deg] bg-white/[0.075] [clip-path:polygon(44%_0,69%_0,53%_24%,76%_42%,49%_64%,67%_100%,23%_100%,35%_78%,12%_53%,38%_29%)]" />
             <div className="absolute left-[18%] top-[-9%] h-[132%] w-[13%] rotate-[-4deg] bg-white/[0.065] [clip-path:polygon(30%_0,84%_0,52%_19%,74%_46%,45%_69%,62%_100%,15%_100%,35%_76%,10%_51%,44%_26%)]" />
             <div className="absolute left-[38%] top-[-18%] h-[150%] w-[18%] rotate-[5deg] bg-white/[0.08] [clip-path:polygon(36%_0,75%_0,62%_18%,85%_35%,57%_58%,72%_100%,30%_100%,34%_80%,8%_56%,39%_31%)]" />
@@ -649,11 +650,13 @@ const AppContent = React.memo(() => {
                       <ScrimSessionPage />
                     </ProtectedRoute>
                   } />
-                  <Route path="practice" element={
+                  <Route path="scrims/calendar" element={
                     <ProtectedRoute>
-                      <PracticeCalendarPage />
+                      <ScrimCalendarPage />
                     </ProtectedRoute>
                   } />
+                  {/* The old practice calendar became the scrim calendar. */}
+                  <Route path="practice" element={<Navigate to="/competitive/scrims/calendar" replace />} />
                   <Route path="careers/:userId" element={<CareerTimelinePage />} />
                   <Route path="scouting" element={
                     <ProtectedRoute>

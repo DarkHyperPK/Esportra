@@ -1,4 +1,5 @@
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 import type { MemberPreview } from '@/services/scrimUtils';
 
@@ -16,7 +17,7 @@ export function OfferRosterPreview({ members, playerCount, scrimsCompleted }: Of
   return (
     <div className="space-y-2 border border-white/[0.06] bg-black/20 px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <p className={EYEBROW_CLASS}>Roster</p>
+        <p className={SCRIM_LABEL}>Roster</p>
         <span className="text-[11px] tabular-nums text-white/40">
           {players} players{(scrimsCompleted ?? 0) > 0 && <> · {scrimsCompleted} scrims</>}
         </span>
@@ -35,7 +36,7 @@ export function OfferRosterPreview({ members, playerCount, scrimsCompleted }: Of
                 </span>
                 <span className="text-[12px] text-white/75">{m.username}</span>
                 {m.rankTierKey && (
-                  <span className="bg-white/[0.05] px-1 py-px font-mono text-[9px] uppercase tracking-[0.1em] text-white/40">
+                  <span className="bg-white/[0.05] px-1 py-px text-[11px] font-medium text-white/40">
                     {m.rankTierKey}
                   </span>
                 )}

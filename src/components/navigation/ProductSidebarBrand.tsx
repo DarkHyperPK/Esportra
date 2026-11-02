@@ -15,9 +15,10 @@ export function ProductSidebarBrand({ collapsed = false, onToggle }: ProductSide
         <img
           src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
           alt=""
-          width={24}
-          height={24}
+          width={26}
+          height={26}
         />
+        {!collapsed && <span className="product-sidebar-wordmark">Esportra</span>}
       </Link>
       {onToggle && (
         <button

@@ -25,7 +25,7 @@ export function ScrimDisputeForm({ sessionId, myTeamId, onCancel }: { sessionId:
       {dispute.isError && <InlineNotice tone="critical">{getApiErrorMessage(dispute.error, 'Could not raise dispute. Try again.')}</InlineNotice>}
       <div className="flex gap-3">
         <button onClick={onCancel} className={ROOM_GHOST}>Cancel</button>
-        <button onClick={submit} disabled={dispute.isPending || !reason.trim()} className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+        <button onClick={submit} disabled={dispute.isPending || !reason.trim()} className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50  text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
           {dispute.isPending ? 'Submitting…' : 'Raise dispute'}
         </button>
       </div>

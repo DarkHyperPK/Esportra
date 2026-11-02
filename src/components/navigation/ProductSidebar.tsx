@@ -23,6 +23,8 @@ import './product-sidebar.css';
 interface NavItem { label: string; to: string }
 interface NavSection {
   id: string;
+  /** Heading shown above the first section of each group. */
+  group: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   /** Direct link for single-item sections (Rankings). No sub-items rendered. */
@@ -30,7 +32,6 @@ interface NavSection {
   items: NavItem[];
 }
 
-const SECTION_STARTS = new Set(['inbox', 'tournaments', 'tools']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -58,29 +59,29 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
 
   return [
     {
-      id: 'inbox', label: 'Inbox', icon: MessageSquare,
+      id: 'inbox', group: 'Play', label: 'Inbox', icon: MessageSquare,
       to: '/inbox',
       items: [],
     },
     {
-      id: 'find-teammates', label: 'Find Teammates', icon: Users,
+      id: 'find-teammates', group: 'Play', label: 'Find Teammates', icon: Users,
       to: '/competitive/lfg',
       items: [],
     },
     {
-      id: 'scrims', label: 'Scrims', icon: Crosshair,
+      id: 'scrims', group: 'Play', label: 'Scrims', icon: Crosshair,
       items: [
         { label: 'Find Scrims', to: '/competitive/scrims' },
         { label: 'Manage Scrims', to: '/competitive/scrims/workspace' },
-        { label: 'Practice Calendar', to: '/competitive/practice' },
+        { label: 'Calendar', to: '/competitive/scrims/calendar' },
       ],
     },
-    { id: 'tournaments', label: 'Tournaments', icon: Trophy, items: tournamentItems },
-    { id: 'venues', label: 'Venues', icon: MapPin, items: venueItems },
-    { id: 'rankings', label: 'Rankings', icon: BarChart2, to: '/leaderboards', items: [] },
-    { id: 'tools', label: 'Tools', icon: Wrench, items: [{ label: 'Veto', to: '/tools/map-veto' }] },
-    { id: 'pricing', label: 'Pricing', icon: DollarSign, to: '/pricing', items: [] },
-    { id: 'about', label: 'About', icon: Info, to: '/about/company', items: [] },
+    { id: 'tournaments', group: 'Compete', label: 'Tournaments', icon: Trophy, items: tournamentItems },
+    { id: 'venues', group: 'Compete', label: 'Venues', icon: MapPin, items: venueItems },
+    { id: 'rankings', group: 'Compete', label: 'Rankings', icon: BarChart2, to: '/leaderboards', items: [] },
+    { id: 'tools', group: 'Resources', label: 'Tools', icon: Wrench, items: [{ label: 'Veto', to: '/tools/map-veto' }] },
+    { id: 'pricing', group: 'Resources', label: 'Pricing', icon: DollarSign, to: '/pricing', items: [] },
+    { id: 'about', group: 'Resources', label: 'About', icon: Info, to: '/about/company', items: [] },
   ];
 }
 
@@ -217,7 +218,7 @@ function LoggedOutSidebar() {
 
         <nav className="product-sidebar-nav flex-1 overflow-y-auto" aria-label="Site navigation">
           {PUBLIC_LINKS.map((link) => {
-            if (link.label === 'Tools') return <SidebarSection key={link.to} section={{ id:'tools', label:'Tools', icon:Wrench, items:[{ label:'Veto', to:link.to }] }} collapsed={false} />;
+            if (link.label === 'Tools') return <SidebarSection key={link.to} section={{ id:'tools', group:'Resources', label:'Tools', icon:Wrench, items:[{ label:'Veto', to:link.to }] }} collapsed={false} />;
             const active = pathname === link.to || pathname.startsWith(link.to + '/');
             const Icon = link.icon;
             return (
@@ -323,11 +324,15 @@ export function ProductSidebar() {
 
         {/* Navigation */}
         <nav id="product-sidebar-navigation" className="product-sidebar-nav flex-1 overflow-y-auto" aria-label="Site navigation">
-          {sections.map(section => (
-            <div key={section.id} className={SECTION_STARTS.has(section.id) ? 'product-sidebar-group-start' : undefined}>
-              <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
-            </div>
-          ))}
+          {sections.map((section, i) => {
+            const startsGroup = i === 0 || sections[i - 1].group !== section.group;
+            return (
+              <div key={section.id} className={startsGroup ? 'product-sidebar-group-start' : undefined}>
+                {startsGroup && !isCollapsed && <p className="product-sidebar-group-label">{section.group}</p>}
+                <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
+              </div>
+            );
+          })}
         </nav>
 
         {/* Account and notifications stay available in both sidebar sizes. */}

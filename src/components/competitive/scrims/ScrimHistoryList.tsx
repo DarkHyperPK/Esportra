@@ -134,7 +134,7 @@ export function ScrimHistoryList({ teamId, silentOnError = false }: Props) {
           variant="outline"
           size="sm"
           onClick={() => query.refetch()}
-          className="rounded-none border-white/[0.08] text-white hover:bg-white/[0.07]"
+          className="rounded-lg border-white/[0.08] text-white hover:bg-white/[0.07]"
         >
           Retry
         </Button>
@@ -172,7 +172,7 @@ export function ScrimHistoryList({ teamId, silentOnError = false }: Props) {
             size="sm"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-none text-[12px] text-white/55 hover:text-white"
+            className="rounded-lg text-[12px] text-white/55 hover:text-white"
           >
             Prev
           </Button>
@@ -184,7 +184,7 @@ export function ScrimHistoryList({ teamId, silentOnError = false }: Props) {
             size="sm"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-none text-[12px] text-white/55 hover:text-white"
+            className="rounded-lg text-[12px] text-white/55 hover:text-white"
           >
             Next
           </Button>

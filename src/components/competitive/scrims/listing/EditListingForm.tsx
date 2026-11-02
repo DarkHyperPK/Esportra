@@ -51,7 +51,7 @@ export function EditListingForm({ listing, onClose }: { listing: ScrimListing; o
               onClick={() => setBestOf(n)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
                 bestOf === n
-                  ? 'border-rose-500/30 bg-rose-500/15 text-rose-400'
+                  ? 'border-white/40 bg-white/10 text-white'
                   : 'border-white/[0.08] text-white/45 hover:border-white/20 hover:text-white'
               }`}
             >
@@ -77,17 +77,18 @@ export function EditListingForm({ listing, onClose }: { listing: ScrimListing; o
         <Button
           variant="ghost"
           onClick={onClose}
-          className="rounded-lg border border-white/[0.08] text-[13px] text-white/50 hover:text-white"
+          className="rounded-lg border border-white/[0.08] text-[13px] text-white/50 hover:text-white rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           Cancel
         </Button>
-        <Button
+        <button
+          type="button"
           onClick={handleSubmit}
           disabled={updateMutation.isPending}
-          className="rounded-lg bg-rose-500 px-4 text-[13px] text-white hover:bg-rose-600"
+          className="min-h-[40px] rounded-lg bg-white px-4 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-40"
         >
           {updateMutation.isPending ? 'Saving…' : 'Save'}
-        </Button>
+        </button>
       </div>
     </div>
   );

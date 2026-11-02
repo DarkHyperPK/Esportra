@@ -79,7 +79,7 @@ export function ScrimReportForm({
               onClick={() => { setS1(String(a)); setS2(String(b)); }}
               className={`border px-2 py-2.5 transition-colors ${
                 s1 === String(a) && s2 === String(b)
-                  ? 'border-rose-500/50 bg-rose-500/10'
+                  ? 'border-white/40 bg-white/10'
                   : 'border-white/[0.08] bg-black/30 hover:border-white/25'
               }`}
             >
@@ -119,7 +119,7 @@ export function ScrimReportForm({
         <button
           onClick={submit}
           disabled={report.isPending || !s1 || !s2}
-          className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50  text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           {report.isPending ? 'Submitting…' : 'Submit result'}
         </button>

@@ -57,9 +57,8 @@ export function AgendaRow({ session, teamId, nowMs = Date.now(), queued = false 
   }
 
   return (
-    <li className={cn('relative border bg-white/[0.03]', needsMe ? 'border-white/[0.16]' : 'border-white/[0.08]')}>
-      {needsMe && next.action === 'check_in' && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-rose-500" />}
-
+    <li className={cn('relative overflow-hidden rounded-xl border bg-white/[0.03]', needsMe ? 'border-white/[0.16]' : 'border-white/[0.08]')}>
+      
       <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:p-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span
@@ -99,9 +98,9 @@ export function AgendaRow({ session, teamId, nowMs = Date.now(), queued = false 
           <Link
             to={`/competitive/scrims/sessions/${session.id}`}
             className={cn(
-              'inline-flex min-h-[40px] items-center justify-center px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]',
+              'inline-flex min-h-[40px] items-center justify-center px-4 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]',
               needsMe
-                ? 'bg-white text-black hover:bg-rose-500 hover:text-white'
+                ? 'bg-white text-black hover:bg-zinc-200'
                 : 'border border-white/[0.14] text-white/80 hover:border-white/30 hover:text-white',
             )}
           >
@@ -117,7 +116,7 @@ export function AgendaRow({ session, teamId, nowMs = Date.now(), queued = false 
           </p>
           {error && <InlineNotice tone="critical">{error}</InlineNotice>}
           <div className="flex gap-2">
-            <DangerButton size="sm" onClick={onCancel} disabled={cancel.isPending} className="h-9 px-4 text-[12px]">
+            <DangerButton size="sm" onClick={onCancel} disabled={cancel.isPending} className="h-9 px-4 text-[12px] rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {cancel.isPending ? 'Cancelling…' : 'Yes, cancel scrim'}
             </DangerButton>
             <OutlineButton size="sm" onClick={() => { setConfirming(false); setError(''); }} disabled={cancel.isPending} className="h-9 px-3 text-[12px]">

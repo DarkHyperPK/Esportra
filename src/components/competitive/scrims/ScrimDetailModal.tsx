@@ -33,7 +33,7 @@ interface Props {
 }
 
 const FOOT_BUTTON =
-  'min-h-[40px] rounded-xl px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
+  'min-h-[40px] rounded-xl px-4 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
 
 export function ScrimDetailModal({ listingId, teamName, teamLogoUrl, gameSlug, isOwner = false, onClose }: Props) {
   const open = !!listingId;
@@ -79,7 +79,7 @@ export function ScrimDetailModal({ listingId, teamName, teamLogoUrl, gameSlug, i
         <ScoutingHeader
           name={name}
           logoUrl={logo}
-          bannerUrl={cardArt ?? logo}
+          bannerUrl={cardArt}
           isCardArt={!!cardArt}
           tag={listing?.teamTag ? `[${listing.teamTag}]` : null}
           region={listing?.regionKey}
@@ -112,7 +112,7 @@ export function ScrimDetailModal({ listingId, teamName, teamLogoUrl, gameSlug, i
                 <div className="flex items-center gap-2 rounded-xl border border-white/[0.14] bg-white/[0.05] px-3 py-2">
                   <Clock3 className="h-3.5 w-3.5 text-white/60" aria-hidden="true" />
                   <span className="text-[12px] font-medium text-white/85">{formatSlotDay(selectedSlot)} · {formatSlotTime(selectedSlot)}</span>
-                  <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-white/50">
+                  <span className="ml-auto text-[11px] font-medium text-white/50">
                     {bestOfLabel(listing.bestOf)} · first to {winsNeeded(listing.bestOf)}
                   </span>
                 </div>
@@ -149,7 +149,7 @@ export function ScrimDetailModal({ listingId, teamName, teamLogoUrl, gameSlug, i
               Close
             </button>
             {!isOwner && (
-              <button type="button" onClick={() => setStep('offer')} className={`${FOOT_BUTTON} bg-white text-black hover:bg-rose-500 hover:text-white`}>
+              <button type="button" onClick={() => setStep('offer')} className={`${FOOT_BUTTON} bg-white text-black hover:bg-zinc-200`}>
                 Request scrim
               </button>
             )}

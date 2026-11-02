@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 
 interface WorkspaceSectionProps {
@@ -12,15 +11,15 @@ interface WorkspaceSectionProps {
   className?: string;
 }
 
-/** A labelled region of the workspace: eyebrow title, optional count and action. */
+/** A labelled region of the workspace: title, optional count and action. */
 export function WorkspaceSection({ id, title, count, action, children, className }: WorkspaceSectionProps) {
   return (
     <section aria-labelledby={`${id}-title`} className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between gap-3">
-        <h2 id={`${id}-title`} className={cn(EYEBROW_CLASS, 'flex items-center gap-2')}>
+        <h2 id={`${id}-title`} className="flex scroll-mt-6 items-center gap-2 font-heading text-[16px] font-semibold text-white">
           {title}
           {count !== undefined && count > 0 && (
-            <span className="tabular-nums text-white/70">{count}</span>
+            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-sans text-[11px] font-medium tabular-nums text-zinc-300">{count}</span>
           )}
         </h2>
         {action}

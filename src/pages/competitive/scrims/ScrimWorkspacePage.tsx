@@ -111,7 +111,7 @@ export default function ScrimWorkspacePage() {
       )}
 
       {!teamsQuery.isLoading && teamId && team && (
-        <div className="mx-auto max-w-[1100px] space-y-8 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
+        <div className="mx-auto max-w-[1320px] space-y-8 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
           <motion.div {...arrive(0)}>
             <ScrimTeamHeader
               team={{ id: team.id, name: team.name, logoUrl: team.logo_url ?? null }}
@@ -125,6 +125,8 @@ export default function ScrimWorkspacePage() {
             />
           </motion.div>
 
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+          <div className="min-w-0 space-y-8">
           <motion.div {...arrive(0.05)}>
             <WorkspaceSection id="needs-you" title="Needs you" count={needsCount}>
               {needsCount === 0 ? (
@@ -162,6 +164,9 @@ export default function ScrimWorkspacePage() {
             )}
           </motion.div>
 
+          </div>
+
+          <div className="min-w-0 space-y-8 xl:sticky xl:top-6">
           <motion.div {...arrive(0.15)}>
             <WorkspaceSection id="listings" title="Your listings" count={listings.length}>
               {listingsQuery.isLoading ? (
@@ -176,7 +181,7 @@ export default function ScrimWorkspacePage() {
               ) : listings.length === 0 ? (
                 <p className="text-[13px] text-zinc-400">No active listings. Post one and teams can send you requests.</p>
               ) : (
-                <div className="grid gap-3 xl:grid-cols-2">
+                <div className="space-y-3">
                   {listings.map((l) => (
                     <OwnListingCard key={l.id} listing={l} overlappingWith={listingOverlaps.get(l.id) ?? []} />
                   ))}
@@ -189,17 +194,19 @@ export default function ScrimWorkspacePage() {
             <motion.div {...arrive(0.2)}>
               <WorkspaceSection id="sent-offers" title="Requests you sent" count={sentOffers.length}>
                 {offersQuery.isLoading ? (
-                  <div className="grid animate-pulse gap-3 xl:grid-cols-2">
+                  <div className="animate-pulse space-y-3">
                     {[1, 2].map((i) => <div key={i} className="h-[72px] border border-white/[0.06] bg-white/[0.04]" />)}
                   </div>
                 ) : (
-                  <div className="grid gap-3 xl:grid-cols-2">
+                  <div className="space-y-3">
                     {sentOffers.map((offer) => <OutgoingOfferCard key={offer.id} offer={offer} />)}
                   </div>
                 )}
               </WorkspaceSection>
             </motion.div>
           )}
+          </div>
+          </div>
         </div>
       )}
 

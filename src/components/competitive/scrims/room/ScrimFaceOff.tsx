@@ -11,10 +11,11 @@ import { StatusPill } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { bestOfLongLabel, normalizeBestOf, winsNeeded } from '@/services/scrimUtils';
 import { sessionStatusMeta } from '@/services/scrimStatusMeta';
-import { GRID_TEXTURE_STYLE } from './roomStyles';
 import type { ScrimSessionStatus } from '@/types/competitive';
 
 export interface FaceOffTeam {
+  /** Stable identity (team id) for generated key art. */
+  id: string;
   name: string;
   logoUrl: string | null;
   isMine: boolean;
@@ -57,13 +58,13 @@ function TeamColumn({ team, showCheckin, dim }: { team: FaceOffTeam; showCheckin
       <p className={cn('max-w-full truncate font-heading text-[17px] font-bold sm:text-[20px]', dim ? 'text-white/40' : 'text-white')}>
         {team.name}
       </p>
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+      <p className="text-[11px] font-medium text-zinc-500">
         {team.isMine ? 'Your team' : 'Opponent'}
       </p>
       {showCheckin && (
         <p
           className={cn(
-            'inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em]',
+            'inline-flex items-center gap-1.5 text-[11px] font-medium',
             team.checkedIn ? 'text-emerald-300' : 'text-zinc-500',
           )}
         >
@@ -83,27 +84,21 @@ export function ScrimFaceOff({
   const dim = status === 'cancelled';
 
   return (
-    <header className="relative overflow-hidden border border-white/[0.08] bg-white/[0.02] px-4 py-6 sm:px-8 sm:py-8">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-60"
-        style={GRID_TEXTURE_STYLE}
-      />
-
+    <header className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-card px-4 py-6 sm:px-8 sm:py-8">
       <div className="relative space-y-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {gameSlug && (
             <span className="inline-flex items-center gap-2">
               <GameLogoImage gameName={gameSlug} catalogLogo={gameLogo ?? undefined} className="h-5 w-5 object-contain" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">{gameName ?? gameSlug}</span>
+              <span className="text-[12px] font-medium text-white/70">{gameName ?? gameSlug}</span>
             </span>
           )}
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/45">
+          <span className="text-[11px] font-medium text-white/45">
             5v5 · {bestOfLongLabel(bo)} · first to {winsNeeded(bo)}
           </span>
           {when && <span className="text-[13px] font-medium tabular-nums text-white/70">{when}</span>}
           <span className="ml-auto">
-            <StatusPill label={meta.label} tone={meta.tone} />
+            <StatusPill label={meta.label} tone={meta.tone} className="rounded-full font-sans text-[11px] font-medium normal-case tracking-normal" />
           </span>
         </div>
 

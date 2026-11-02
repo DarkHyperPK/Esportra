@@ -5,9 +5,10 @@
  * week, later. Prop-driven; the page owns loading and the query.
  */
 
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { Link } from 'react-router-dom';
-import { CtaButton } from '@/components/ui/button';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+import { AccentButton } from '@/components/ui/button';
+
 import { groupAgenda } from '@/services/scrimAgenda';
 import { AgendaRow } from './AgendaRow';
 import type { ScrimSession } from '@/types/competitive';
@@ -59,10 +60,10 @@ export function ScrimAgenda({ sessions, teamId, nowMs, queuedSessionIds, isLoadi
           Post a listing so teams can find you, or browse open listings and send a request.
         </p>
         <div className="flex flex-wrap gap-3">
-          <CtaButton onClick={onNewScrim} className="h-10 px-5 text-[13px] font-semibold">Post a listing</CtaButton>
+          <AccentButton onClick={onNewScrim} className="h-10 px-5 text-[13px] font-semibold rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">Post a listing</AccentButton>
           <Link
             to="/competitive/scrims"
-            className="inline-flex min-h-[40px] items-center border border-white/[0.14] px-4 text-[13px] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="inline-flex min-h-[40px] items-center rounded-lg border border-white/[0.14] px-4 text-[13px] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             Find a scrim
           </Link>
@@ -75,7 +76,7 @@ export function ScrimAgenda({ sessions, teamId, nowMs, queuedSessionIds, isLoadi
     <div className="space-y-5">
       {groups.map((group) => (
         <div key={group.key} className="space-y-2">
-          <h3 className={EYEBROW_CLASS}>{group.label}</h3>
+          <h3 className={SCRIM_LABEL}>{group.label}</h3>
           <ul className="space-y-2">
             {group.sessions.map((s) => <AgendaRow key={s.id} session={s} teamId={teamId} nowMs={nowMs} queued={queuedSessionIds.has(s.id)} />)}
           </ul>

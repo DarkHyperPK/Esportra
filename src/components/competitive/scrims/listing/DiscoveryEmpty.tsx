@@ -9,7 +9,7 @@ interface DiscoveryEmptyProps {
 }
 
 const ACTION =
-  'inline-flex min-h-[44px] items-center justify-center px-5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]';
+  'inline-flex min-h-[44px] items-center justify-center px-5 text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]';
 
 /** The three ways the list can have nothing to show, each with the next step. */
 export function DiscoveryEmpty({ kind, gameName, onClearFilters, onRetry }: DiscoveryEmptyProps) {
@@ -36,7 +36,7 @@ export function DiscoveryEmpty({ kind, gameName, onClearFilters, onRetry }: Disc
         <p className="mx-auto max-w-sm text-[13px] text-zinc-400">{copy.body}</p>
       </div>
       {kind === 'none' && (
-        <Link to="/competitive/scrims/workspace" className={`${ACTION} bg-white text-black hover:bg-rose-500 hover:text-white`}>
+        <Link to="/competitive/scrims/workspace" className={`${ACTION} bg-white text-black hover:bg-zinc-200`}>
           Post a listing
         </Link>
       )}

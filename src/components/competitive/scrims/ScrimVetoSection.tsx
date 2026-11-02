@@ -8,10 +8,11 @@
  *         S2-3 (iframe active), S2-4 (veto complete, deferred), S2-5 (unavailable).
  */
 
+import { SCRIM_LABEL } from './scrimCardStyles';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { InlineNotice, EYEBROW_CLASS } from '@/components/ui/kit';
+import {InlineNotice} from '@/components/ui/kit';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
     const iframeUrl = `/tools/map-veto/team/${vetoMyToken}`;
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={EYEBROW_CLASS}>MAP VETO</p>
+        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
         <div className="mt-3">
           {/* UX risk 3: scrolling="no" prevents iOS Safari scroll interception */}
           <iframe
@@ -91,7 +92,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
   if (isInProgress && !vetoSessionId && !transitionalExpired) {
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={EYEBROW_CLASS}>MAP VETO</p>
+        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
         <div className="mt-3">
           <InlineNotice tone="neutral">
             <span className="inline-flex items-center gap-2">
@@ -108,7 +109,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
   if (isInProgress && !vetoSessionId && transitionalExpired) {
     return (
       <motion.section aria-labelledby="veto-title" {...fadeIn}>
-        <p id="veto-title" className={EYEBROW_CLASS}>MAP VETO</p>
+        <p id="veto-title" className={SCRIM_LABEL}>MAP VETO</p>
         <div className="mt-3">
           <InlineNotice
             tone="neutral"
@@ -116,7 +117,7 @@ export function ScrimVetoSection({ vetoSessionId, vetoMyToken, gameSlug, session
               <button
                 type="button"
                 onClick={onRetry}
-                className="font-mono text-[11px] uppercase tracking-[0.14em] text-white/80 underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                className="text-[11px] font-medium text-white/80 underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
                 Check again
               </button>

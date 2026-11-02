@@ -113,7 +113,7 @@ export function ScrimOfferForm({
         <Button
           variant="ghost"
           onClick={onClose}
-          className="mt-1 rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white"
+          className="mt-1 rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           Close
         </Button>
@@ -123,7 +123,7 @@ export function ScrimOfferForm({
 
   return (
     <div className="space-y-3 rounded-xl border border-white/[0.08] bg-black/35 p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/30">
+      <p className="text-[11px] font-medium text-white/30">
         Send scrim offer
       </p>
       {teams.length > 1 && (
@@ -198,17 +198,18 @@ export function ScrimOfferForm({
         <Button
           variant="ghost"
           onClick={onClose}
-          className="rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white"
+          className="rounded-lg border border-white/[0.08] text-[13px] text-white/55 hover:text-white rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           Cancel
         </Button>
-        <Button
+        <button
+          type="button"
           onClick={handleSubmit}
           disabled={offerMutation.isPending}
-          className="rounded-lg bg-rose-500 px-5 text-[13px] font-semibold text-white hover:bg-rose-600"
+          className="min-h-[40px] rounded-lg bg-white px-5 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-40"
         >
           {offerMutation.isPending ? 'Sending…' : 'Send offer'}
-        </Button>
+        </button>
       </div>
     </div>
   );

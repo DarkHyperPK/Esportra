@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { PageIntro } from '@/components/ui/kit';
 import { CompetitivePageShell } from '@/components/competitive/CompetitivePageShell';
 import { ScrimDetailModal } from '@/components/competitive/scrims/ScrimDetailModal';
 import { UpNextStrip } from '@/components/competitive/scrims/UpNextStrip';
@@ -91,23 +90,22 @@ export default function ScrimDiscoveryPage() {
 
   return (
     <CompetitivePageShell>
-      <div className="px-4 pb-4 pt-8 lg:px-8">
-        <PageIntro
-          eyebrow="Scrims"
-          title="Find a scrim"
-          className="mb-2"
-          aside={
-            <Link
-              to="/competitive/scrims/workspace"
-              className="hidden border border-white/[0.14] px-4 py-2 text-[13px] text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 lg:inline-flex"
-            >
-              {hasTeam ? 'My scrims' : 'Post a listing'}
-            </Link>
-          }
-        />
+      <div className="mx-auto max-w-[1320px] px-4 pt-8 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-white/[0.08] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-heading text-[24px] font-bold leading-tight text-white">Find a scrim</h1>
+            <p className="mt-1 text-[13px] text-zinc-400">Teams looking for {gameName} scrims. Compare records and fit, then send a request.</p>
+          </div>
+          <Link
+            to="/competitive/scrims/workspace"
+            className="inline-flex h-10 shrink-0 items-center rounded-lg border border-white/[0.14] px-4 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          >
+            {hasTeam ? 'My scrims' : 'Post a listing'}
+          </Link>
+        </header>
       </div>
 
-      <main className="space-y-6 px-4 pb-12 lg:px-8">
+      <main className="mx-auto max-w-[1320px] space-y-6 px-4 pb-12 pt-6 lg:px-8">
         <UpNextStrip lead={lead} more={more} onDeadlinePassed={() => void upNext.refetch()} />
 
         <DiscoveryToolbar
@@ -128,8 +126,8 @@ export default function ScrimDiscoveryPage() {
         />
 
         {!query.isLoading && !query.isError && listings.length > 0 && (
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500" aria-live="polite">
-            <span className="tabular-nums text-white/70">{listings.length}</span> team{listings.length === 1 ? '' : 's'} looking for {gameName} scrims
+          <p className="text-[13px] text-zinc-400" aria-live="polite">
+            <span className="font-semibold tabular-nums text-white">{listings.length}</span> team{listings.length === 1 ? '' : 's'} looking for {gameName} scrims
           </p>
         )}
 

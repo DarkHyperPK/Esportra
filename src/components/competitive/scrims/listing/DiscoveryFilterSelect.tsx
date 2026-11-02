@@ -1,4 +1,5 @@
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const NONE = '_';
@@ -24,9 +25,9 @@ export function DiscoveryFilterSelect({ label, value, onChange, options, placeho
   const selected = options.find((o) => o.value === value);
   return (
     <div className="flex min-w-[140px] flex-col gap-1.5">
-      <p className={EYEBROW_CLASS}>{label}</p>
+      <p className={SCRIM_LABEL}>{label}</p>
       <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? '' : v)}>
-        <SelectTrigger aria-label={label} className="h-10 rounded-none border-white/10 bg-black/30 text-[13px]">
+        <SelectTrigger aria-label={label} className="h-10 rounded-lg border-white/10 bg-black/30 text-[13px]">
           {selected?.iconUrl ? (
             <span className="flex min-w-0 items-center gap-1.5">
               <img src={selected.iconUrl} alt="" className="h-4 w-4 shrink-0 object-contain" />

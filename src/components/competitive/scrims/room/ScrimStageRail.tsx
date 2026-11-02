@@ -51,7 +51,7 @@ export function ScrimStageRail({ stage, className }: ScrimStageRailProps) {
                   className={cn(
                     'flex h-[27px] w-[27px] items-center justify-center border bg-[#08080a] font-mono text-[11px] font-bold',
                     isDone && 'border-white/30 text-white',
-                    isCurrent && !isAlert && 'border-rose-500 bg-rose-500 text-white',
+                    isCurrent && !isAlert && 'border-white bg-white text-black',
                     isAlert && 'border-amber-400/60 bg-amber-400/15 text-amber-200',
                     !isDone && !isCurrent && 'border-white/10 text-zinc-600',
                     stopped && 'border-white/10 text-zinc-700',
@@ -61,7 +61,7 @@ export function ScrimStageRail({ stage, className }: ScrimStageRailProps) {
                 </span>
                 <span
                   className={cn(
-                    'text-center font-mono text-[9px] uppercase tracking-[0.14em] sm:text-[10px]',
+                    'text-center text-[11px] font-medium sm:text-[10px]',
                     isCurrent ? 'font-semibold text-white' : isDone ? 'text-zinc-400' : 'text-zinc-600',
                   )}
                 >
@@ -73,7 +73,7 @@ export function ScrimStageRail({ stage, className }: ScrimStageRailProps) {
         </ol>
       </div>
       {stopped && (
-        <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+        <p className="mt-3 text-center text-[11px] font-medium text-zinc-500">
           Cancelled
         </p>
       )}

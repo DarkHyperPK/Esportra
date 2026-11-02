@@ -122,8 +122,8 @@ export default function ScrimSessionPage() {
 
         <motion.div {...arrive(0)} className="space-y-6">
           <ScrimFaceOff
-            team1={{ name: session.team1Name ?? 'Team 1', logoUrl: session.team1Logo ?? null, isMine: mySide === 1, checkedIn: !!session.team1CheckedInAt }}
-            team2={{ name: session.team2Name ?? 'Team 2', logoUrl: session.team2Logo ?? null, isMine: mySide === 2, checkedIn: !!session.team2CheckedInAt }}
+            team1={{ id: session.team1Id, name: session.team1Name ?? 'Team 1', logoUrl: session.team1Logo ?? null, isMine: mySide === 1, checkedIn: !!session.team1CheckedInAt }}
+            team2={{ id: session.team2Id, name: session.team2Name ?? 'Team 2', logoUrl: session.team2Logo ?? null, isMine: mySide === 2, checkedIn: !!session.team2CheckedInAt }}
             status={status}
             gameSlug={session.gameSlug}
             gameName={catalogGame?.name ?? null}

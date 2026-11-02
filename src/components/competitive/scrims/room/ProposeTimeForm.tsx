@@ -64,7 +64,7 @@ export function ProposeTimeForm({ onSubmit, isPending, error, onCancel, submitLa
 
       {showCustom && (
         <label className="block space-y-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">Date and time</span>
+          <span className="text-[11px] font-medium text-zinc-500">Date and time</span>
           <input
             type="datetime-local"
             value={custom}
@@ -76,7 +76,7 @@ export function ProposeTimeForm({ onSubmit, isPending, error, onCancel, submitLa
       )}
 
       <label className="block space-y-1">
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">Note (optional)</span>
+        <span className="text-[11px] font-medium text-zinc-500">Note (optional)</span>
         <input
           value={note}
           maxLength={200}
@@ -93,12 +93,12 @@ export function ProposeTimeForm({ onSubmit, isPending, error, onCancel, submitLa
           type="button"
           disabled={!picked || isPending}
           onClick={() => picked && onSubmit(picked.toISOString(), note.trim())}
-          className="min-h-[44px] bg-white px-5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-black transition-colors hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a] disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-[44px] rounded-lg bg-white px-5 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isPending ? 'Sending…' : picked ? `${submitLabel} ${formatRoomTime(picked.toISOString())}` : 'Pick a time'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="min-h-[44px] border border-white/[0.14] px-4 font-mono text-[12px] uppercase tracking-[0.14em] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+          <button type="button" onClick={onCancel} className="min-h-[44px] rounded-lg border border-white/[0.14] px-4 font-mono text-[12px] uppercase tracking-[0.14em] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
             Cancel
           </button>
         )}

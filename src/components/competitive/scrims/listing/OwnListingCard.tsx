@@ -57,10 +57,10 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
           className="flex items-center justify-between gap-3 bg-white/[0.06] px-5 py-2.5 text-[12px] text-white/85 hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40"
         >
           <span className="inline-flex items-center gap-2 font-medium">
-            <Zap className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
+            <Zap className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
             {pending} new offer{pending === 1 ? '' : 's'} waiting
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/60">Review</span>
+          <span className="text-[11px] font-medium text-white/60">Review</span>
         </a>
       )}
 
@@ -73,11 +73,11 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
           </span>
           <div className="min-w-0 flex-1">
             <h3 className="truncate font-heading text-[17px] font-bold text-white">{game?.name ?? listing.gameSlug?.toUpperCase() ?? 'Scrim'}</h3>
-            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+            <p className="mt-0.5 text-[11px] font-medium text-zinc-500">
               5v5 · {bestOfLabel(listing.bestOf)}{recurring ? ' · Weekly' : ''}{listing.regionKey ? ` · ${listing.regionKey.toUpperCase()}` : ''}
             </p>
           </div>
-          <StatusPill label={status.label} tone={status.tone} className="rounded-full" />
+          <StatusPill label={status.label} tone={status.tone} className="rounded-full font-sans text-[11px] font-medium normal-case tracking-normal" />
         </div>
 
         <div className="space-y-2.5">

@@ -50,17 +50,17 @@ export function OwnListingActions({ listing, editing, onToggleEdit }: OwnListing
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {editable && (
-            <OutlineButton size="sm" aria-pressed={editing} onClick={onToggleEdit} className="h-8 rounded-lg px-3 text-[12px]">
+            <OutlineButton size="sm" aria-pressed={editing} onClick={onToggleEdit} className="h-9 px-3 text-[12px] rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {editing ? 'Close editor' : 'Edit'}
             </OutlineButton>
           )}
           {listing.status === 'open' && (
-            <OutlineButton size="sm" onClick={() => pause.mutate()} disabled={busy} className="h-8 rounded-lg px-3 text-[12px]">
+            <OutlineButton size="sm" onClick={() => pause.mutate()} disabled={busy} className="h-9 px-3 rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {pause.isPending ? 'Pausing…' : 'Pause'}
             </OutlineButton>
           )}
           {listing.status === 'paused' && (
-            <OutlineButton size="sm" onClick={() => reopen.mutate()} disabled={busy} className="h-8 rounded-lg px-3 text-[12px]">
+            <OutlineButton size="sm" onClick={() => reopen.mutate()} disabled={busy} className="h-9 px-3 rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {reopen.isPending ? 'Reopening…' : 'Reopen'}
             </OutlineButton>
           )}

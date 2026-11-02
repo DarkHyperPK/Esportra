@@ -9,7 +9,7 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock } from 'lucide-react';
-import { CtaButton, OutlineButton } from '@/components/ui/button';
+import { AccentButton, OutlineButton } from '@/components/ui/button';
 import { InlineNotice, StatusPill } from '@/components/ui/kit';
 import { useAcceptOffer, useDeclineOffer } from '@/hooks/competitive/useScrims';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
@@ -54,7 +54,7 @@ export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
   }, [decline]);
 
   return (
-    <article className="space-y-3 border border-white/[0.12] bg-white/[0.03] p-4">
+    <article className="space-y-3 rounded-xl border border-white/[0.12] bg-white/[0.03] p-4">
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
@@ -67,9 +67,9 @@ export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
             {name}
             {offer.offeringTeamTag && <span className="ml-1.5 text-[12px] font-normal text-white/40">[{offer.offeringTeamTag}]</span>}
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">{gameName} · wants a scrim</p>
+          <p className="text-[11px] font-medium text-zinc-500">{gameName} · wants a scrim</p>
         </div>
-        {offer.status !== 'pending' && <StatusPill label={meta.label} tone={meta.tone} />}
+        {offer.status !== 'pending' && <StatusPill label={meta.label} tone={meta.tone} className="rounded-full font-sans text-[11px] font-medium normal-case tracking-normal" />}
       </div>
 
       <TeamRecordStrip record={offer.offeringRecord} />
@@ -81,7 +81,7 @@ export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
 
       <div className="flex items-center gap-2 border border-white/[0.06] bg-black/30 px-3 py-2 text-[13px] font-medium tabular-nums text-white/75">
         <CalendarClock className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">Suggested</span>
+        <span className="text-[11px] font-medium text-zinc-500">Suggested</span>
         {formatProposedSlot(offer.proposedAt)}
       </div>
       {offer.notes && <p className="line-clamp-2 text-[12px] italic text-white/45">&ldquo;{offer.notes}&rdquo;</p>}
@@ -91,10 +91,10 @@ export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
       {offer.status === 'pending' && (
         <div className="space-y-2">
           <div className="flex gap-2">
-            <CtaButton size="sm" onClick={onAccept} disabled={busy} className="h-9 px-4 text-[12px] font-semibold">
+            <AccentButton size="sm" onClick={onAccept} disabled={busy} className="h-9 px-4 text-[12px] font-semibold rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {accept.isPending ? 'Accepting…' : 'Accept'}
-            </CtaButton>
-            <OutlineButton size="sm" onClick={onDecline} disabled={busy} className="h-9 px-3 text-[12px]">
+            </AccentButton>
+            <OutlineButton size="sm" onClick={onDecline} disabled={busy} className="h-9 px-3 text-[12px] rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
               {decline.isPending ? 'Declining…' : 'Decline'}
             </OutlineButton>
           </div>

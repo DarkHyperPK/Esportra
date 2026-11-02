@@ -18,7 +18,6 @@ import { TeamRecordStrip } from '../TeamRecordStrip';
 import { FitBadge } from './FitBadge';
 import { RankBand } from './RankBand';
 import { RosterFaces } from './RosterFaces';
-import { GRID_TEXTURE_STYLE } from '../room/roomStyles';
 import { WeekDots } from './WeekDots';
 
 interface ScrimOpponentCardProps {
@@ -30,51 +29,47 @@ interface ScrimOpponentCardProps {
 }
 
 const CTA_BASE =
-  'inline-flex min-h-[40px] flex-1 items-center justify-center rounded-xl px-4 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]';
-const CTA_PRIMARY = `${CTA_BASE} bg-white text-black hover:bg-rose-500 hover:text-white`;
+  'inline-flex min-h-[40px] flex-1 items-center justify-center rounded-xl px-4 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]';
+const CTA_PRIMARY = `${CTA_BASE} bg-white text-black hover:bg-zinc-200`;
 const CTA_QUIET = `${CTA_BASE} border border-white/[0.14] text-white/80 hover:border-white/30 hover:text-white`;
 
 function Hero({ listing, fit, gameName, gameLogo, gameIcon }: {
   listing: ScrimListingEnriched; fit: FitLabel | null; gameName: string; gameLogo?: string | null; gameIcon?: string | null;
 }) {
-  const art = listing.captainCardUrl ?? listing.teamLogoUrl ?? null;
-  const isCard = !!listing.captainCardUrl;
+  const cardArt = listing.captainCardUrl ?? null;
   const name = listing.teamName ?? 'Unknown team';
 
   return (
-    <div className="relative h-[96px] overflow-hidden bg-zinc-900">
-      {art && (
+    <div className="relative h-[96px] overflow-hidden bg-white/[0.03]">
+      {cardArt ? (
         <img
-          src={art}
+          src={cardArt}
           alt=""
           loading="lazy"
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
-          style={isCard
-            ? { filter: 'brightness(0.62) saturate(1.1)', opacity: 0.7 }
-            : { filter: 'blur(10px) brightness(0.5)', transform: 'scale(1.2)', opacity: 0.8 }}
+          style={{ filter: 'brightness(0.6) saturate(1.05)', opacity: 0.75 }}
         />
-      )}
-      {!art && <div aria-hidden="true" className="absolute inset-0 opacity-70" style={GRID_TEXTURE_STYLE} />}
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-card via-card/45 to-transparent" />
+      ) : null}
+      {cardArt && <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />}
 
       <div className="absolute left-2.5 right-2.5 top-2.5 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-black/60 px-2 py-1 backdrop-blur-sm">
+        <span className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-black/60 px-2 py-1">
           {listing.gameSlug && (
             <GameLogoImage gameName={listing.gameSlug} catalogLogo={gameLogo ?? undefined} catalogIcon={gameIcon ?? undefined} className="h-4 w-4 object-contain" />
           )}
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/70">{gameName}</span>
+          <span className="text-[11px] font-medium text-white/75">{gameName}</span>
         </span>
         <FitBadge fit={fit} soft />
       </div>
 
       <div className="absolute inset-x-3.5 bottom-2.5 flex items-end gap-2.5">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/[0.18] bg-zinc-800 font-mono text-[13px] font-semibold text-white/70 shadow-lg">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/[0.18] bg-zinc-800 font-mono text-[13px] font-semibold text-white/70">
           {listing.teamLogoUrl ? <img src={listing.teamLogoUrl} alt="" className="h-full w-full object-cover" /> : name.slice(0, 2).toUpperCase()}
         </span>
         <div className="min-w-0 pb-0.5">
           <h3 className="truncate font-heading text-[16px] font-bold leading-tight text-white">{name}</h3>
-          <p className="truncate font-mono text-[10px] uppercase tracking-[0.16em] text-white/55">
+          <p className="truncate text-[11px] text-white/60">
             {[listing.teamTag, listing.regionKey?.toUpperCase()].filter(Boolean).join(' · ')}
           </p>
         </div>

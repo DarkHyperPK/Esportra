@@ -8,9 +8,10 @@
  * UX risk 2 (button reach): full-width button inline; sticky ActionBar on mobile widths.
  */
 
+import { SCRIM_LABEL } from './scrimCardStyles';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { InlineNotice, StatusPill, EYEBROW_CLASS } from '@/components/ui/kit';
+import {InlineNotice, StatusPill} from '@/components/ui/kit';
 import { Countdown } from '@/components/ui/Countdown';
 import { useScrimCheckin } from '@/hooks/competitive/useScrims';
 import type { ScrimSession } from '@/types/competitive';
@@ -50,7 +51,7 @@ function deriveTeamCheckinState(session: ScrimSession, callerTeamId: string) {
 export function ScrimCheckinSkeleton() {
   return (
     <div className={`${PANEL} animate-pulse`} aria-busy="true" aria-label="Loading check-in">
-      <div className="h-3 w-16 bg-white/[0.06] rounded-none" />
+      <div className="h-3 w-16 bg-white/[0.06] rounded-lg" />
       <div className="space-y-2">
         <div className="h-12 bg-white/[0.04] border border-white/[0.04]" />
         <div className="h-12 bg-white/[0.04] border border-white/[0.04]" />
@@ -75,6 +76,7 @@ function TeamStatusRow({ name, checkedIn }: { name: string; checkedIn: boolean }
       <StatusPill
         label={checkedIn ? 'Checked in' : 'Not yet'}
         tone={checkedIn ? 'success' : 'neutral'}
+        className="rounded-full font-sans text-[11px] font-medium normal-case tracking-normal"
       />
     </div>
   );
@@ -116,7 +118,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
   if (cancelled) {
     return (
       <motion.section aria-labelledby="checkin-title" className={PANEL} {...fadeIn}>
-        <p id="checkin-title" className={EYEBROW_CLASS}>CHECK-IN</p>
+        <p id="checkin-title" className={SCRIM_LABEL}>CHECK-IN</p>
         <InlineNotice tone="critical">
           Session cancelled — check-in timed out. Contact your opponent if you believe this is wrong.
         </InlineNotice>
@@ -128,7 +130,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
   if (bothIn) {
     return (
       <motion.section aria-labelledby="checkin-title" className={PANEL} {...verdictFadeIn}>
-        <p id="checkin-title" className={EYEBROW_CLASS}>CHECK-IN</p>
+        <p id="checkin-title" className={SCRIM_LABEL}>CHECK-IN</p>
         <TeamStatusRow name={t1Name} checkedIn={true} />
         <TeamStatusRow name={t2Name} checkedIn={true} />
         <AnimatePresence>
@@ -144,7 +146,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
   if (!windowOpen) {
     return (
       <motion.section aria-labelledby="checkin-title" className={PANEL} {...fadeIn}>
-        <p id="checkin-title" className={EYEBROW_CLASS}>CHECK-IN</p>
+        <p id="checkin-title" className={SCRIM_LABEL}>CHECK-IN</p>
         <TeamStatusRow name={t1Name} checkedIn={t1In} />
         <TeamStatusRow name={t2Name} checkedIn={t2In} />
         <InlineNotice tone="neutral">Check-in opens 15 minutes before the match.</InlineNotice>
@@ -161,8 +163,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
       onClick={() => void handleCheckin()}
       disabled={checkIn.isPending}
       aria-busy={checkIn.isPending}
-      className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[14px] font-medium px-6 py-3 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
-      style={{ boxShadow: '0 0 12px 0 rgba(255,45,85,0.35)' }}
+      className="w-full bg-white text-black hover:bg-zinc-200 disabled:opacity-50  text-[14px] font-medium px-6 py-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
     >
       {checkIn.isPending ? (
         <span className="inline-flex items-center justify-center gap-2">
@@ -177,7 +178,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
 
   return (
     <motion.section aria-labelledby="checkin-title" className={PANEL} {...fadeIn}>
-      <p id="checkin-title" className={EYEBROW_CLASS}>CHECK-IN</p>
+      <p id="checkin-title" className={SCRIM_LABEL}>CHECK-IN</p>
 
       {/* Team status rows */}
       <TeamStatusRow name={t1Name} checkedIn={t1In} />
@@ -185,7 +186,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
 
       {/* Countdown block — rose left-border cue (UX risk 1: uses server timestamp) */}
       {windowCloseMs !== null && (
-        <div className="border-l-2 border-rose-500 pl-4 space-y-0.5">
+        <div className="border-l-2 border-white/40 pl-4 space-y-0.5">
           <p className="text-[11px] text-zinc-400">time remaining</p>
           <Countdown
             targetDate={windowCloseMs}
@@ -215,7 +216,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
             <InlineNotice tone="critical">Couldn&apos;t check in. Try again.</InlineNotice>
             <button
               onClick={() => void handleCheckin()}
-              className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
+              className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
             >
               Retry
             </button>

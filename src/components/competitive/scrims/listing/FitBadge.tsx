@@ -9,7 +9,7 @@ export function FitBadge({ fit, soft = false }: { fit: FitLabel | null; soft?: b
     <span
       className={cn(
         soft && 'rounded-full',
-        'inline-flex items-center gap-1.5 border bg-black/60 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm',
+        'inline-flex items-center gap-1.5 border bg-black/60 px-2 py-1 text-[11px] font-medium',
         good ? 'border-emerald-400/30 text-emerald-300' : 'border-amber-400/30 text-amber-200',
       )}
     >

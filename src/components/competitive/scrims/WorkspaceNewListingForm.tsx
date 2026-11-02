@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { Field, InlineNotice } from '@/components/ui/kit';
-import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { AccentButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
@@ -177,7 +177,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
               onClick={() => setBestOf(n)}
               className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg border transition-colors ${
                 bestOf === n
-                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  ? 'bg-white/10 text-white border-white/40'
                   : 'text-white/45 border-white/[0.08] hover:text-white hover:border-white/20'
               }`}
             >
@@ -259,17 +259,17 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
       <div className="flex justify-end gap-2 pt-1">
         <OutlineButton
           onClick={onCancel}
-          className="rounded-xl px-4 text-[13px]"
+          className="rounded-xl px-4 text-[13px] rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           Cancel
         </OutlineButton>
-        <CtaButton
+        <AccentButton
           onClick={handleSubmit}
           disabled={createMutation.isPending || !localGameSlug}
-          className="rounded-xl px-6 text-[13px] font-semibold"
+          className="rounded-xl px-6 text-[13px] font-semibold rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}
-        </CtaButton>
+        </AccentButton>
       </div>
     </div>
   );

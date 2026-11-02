@@ -8,7 +8,7 @@ import type { ScrimRecentMatch } from '@/types/competitive';
 // ── Shared style constants (aligned to ScrimSessionPage) ─────────────────────
 
 const GHOST =
-  'text-[13px] border border-white/[0.08] text-white/55 hover:text-white rounded-none px-4 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
+  'text-[13px] border border-white/[0.08] text-white/55 hover:text-white rounded-lg px-4 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
 
 const EYEBROW = 'font-mono text-[10px] tracking-[0.28em] text-zinc-500 uppercase';
 
@@ -26,7 +26,7 @@ function MatchRow({
     match.result === 'win'
       ? 'text-emerald-400'
       : match.result === 'loss'
-        ? 'text-rose-400'
+        ? 'text-amber-300'
         : 'text-zinc-400';
   const resultLabel = match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'D';
 

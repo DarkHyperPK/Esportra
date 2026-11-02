@@ -28,7 +28,7 @@ export function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
   }, [withdraw]);
 
   return (
-    <article className="space-y-3 border border-white/[0.08] bg-white/[0.03] p-4">
+    <article className="space-y-3 rounded-xl rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-white/10 bg-black/40">
           {offer.listingGameSlug ? (
@@ -37,11 +37,11 @@ export function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-heading text-[15px] font-bold text-white">{offer.listingTeamName ?? offer.listingId.slice(0, 8)}</p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+          <p className="text-[11px] font-medium text-zinc-500">
             {offer.status === 'pending' ? 'Your request · waiting on them' : 'Your request'}
           </p>
         </div>
-        <StatusPill label={meta.label} tone={meta.tone} />
+        <StatusPill label={meta.label} tone={meta.tone} className="rounded-full font-sans text-[11px] font-medium normal-case tracking-normal" />
       </div>
       <div className="flex items-center gap-2 border border-white/[0.06] bg-black/30 px-3 py-2 text-[13px] font-medium tabular-nums text-white/75">
         <CalendarClock className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
@@ -50,7 +50,7 @@ export function OutgoingOfferCard({ offer }: { offer: ScrimOffer }) {
       {error && <InlineNotice tone="critical">{error}</InlineNotice>}
       {offer.status === 'pending' && (
         <div className="flex justify-end">
-          <DangerButton size="sm" onClick={onWithdraw} disabled={withdraw.isPending} className="h-9 px-3 text-[12px]">
+          <DangerButton size="sm" onClick={onWithdraw} disabled={withdraw.isPending} className="h-9 px-3 text-[12px] rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">
             {withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
           </DangerButton>
         </div>

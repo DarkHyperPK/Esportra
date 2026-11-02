@@ -6,11 +6,12 @@
  * Data comes in via props; the page owns the query (useScrimUpNext).
  */
 
+import { SCRIM_LABEL } from './scrimCardStyles';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Countdown } from '@/components/ui/Countdown';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
 import { cn } from '@/lib/utils';
 import { describeUpNext } from '@/services/scrimUpNext';
 import type { ScrimUpNextItem } from '@/types/competitive';
@@ -50,21 +51,18 @@ export function UpNextStrip({ lead, more, onDeadlinePassed, className }: UpNextS
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className={cn(
-        'relative flex flex-col gap-4 border bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5',
+        'relative flex flex-col gap-4 rounded-xl border bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5',
         view.urgent ? 'border-white/[0.16]' : 'border-white/[0.08]',
         className,
       )}
     >
-      {view.urgent && (
-        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px] bg-rose-500" />
-      )}
-
+      
       <OpponentCrest name={lead.opponentName} logo={lead.opponentLogo} />
 
       <div className="min-w-0 flex-1 space-y-1">
-        <p className={cn(EYEBROW_CLASS, 'flex items-center gap-2')}>
+        <p className={cn(SCRIM_LABEL, 'flex items-center gap-2')}>
           {view.urgent && (
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-400" />
           )}
           Up next
           {more > 0 && <span className="text-zinc-600">· {more} more waiting</span>}
@@ -85,7 +83,7 @@ export function UpNextStrip({ lead, more, onDeadlinePassed, className }: UpNextS
         )}
         <Link
           to={view.href}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 bg-white px-5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-black transition-colors hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-white px-5 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a]"
         >
           {view.cta}
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

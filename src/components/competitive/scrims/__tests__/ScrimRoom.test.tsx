@@ -57,7 +57,7 @@ describe('ScrimNextStepCard', () => {
 });
 
 describe('ScrimFaceOff', () => {
-  const t = (over: Partial<FaceOffTeam>): FaceOffTeam => ({ name: 'Nova', logoUrl: null, isMine: false, checkedIn: false, ...over });
+  const t = (over: Partial<FaceOffTeam>): FaceOffTeam => ({ id: over.name ?? 'Nova', name: 'Nova', logoUrl: null, isMine: false, checkedIn: false, ...over });
   const base = {
     team1: t({ name: 'Mine', isMine: true, checkedIn: true }),
     team2: t({ name: 'Nova' }),

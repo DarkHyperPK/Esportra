@@ -25,7 +25,7 @@ interface ScrimSchedulePanelProps {
 }
 
 const PRIMARY =
-  'min-h-[44px] bg-white px-5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-black transition-colors hover:bg-rose-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a] disabled:opacity-40';
+  'min-h-[44px] rounded-lg bg-white px-5 text-[13px] font-semibold text-black transition-colors hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080a] disabled:opacity-40';
 
 export function ScrimSchedulePanel({ session, myTeamId, opponentName, isStaff }: ScrimSchedulePanelProps) {
   const proposal = session.timeProposal ?? null;

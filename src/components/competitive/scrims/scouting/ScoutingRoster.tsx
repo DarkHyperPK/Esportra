@@ -4,15 +4,16 @@
  * Who you would be playing: each player's rank and headline stats.
  */
 
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { useState } from 'react';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 import type { ScrimTeamMemberDetail } from '@/types/competitive';
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="w-10 text-center">
-      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-600">{label}</p>
+      <p className="text-[11px] font-medium text-zinc-600">{label}</p>
       <p className="text-[12px] font-semibold tabular-nums text-white/80">{value}</p>
     </div>
   );
@@ -31,8 +32,8 @@ function MemberRow({ member }: { member: ScrimTeamMemberDetail }) {
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2">
           <span className="truncate text-[13px] font-semibold text-white">{name}</span>
-          {member.role === 'captain' && <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/60">Captain</span>}
-          {member.role === 'manager' && <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-500">Manager</span>}
+          {member.role === 'captain' && <span className="text-[11px] font-medium text-white/60">Captain</span>}
+          {member.role === 'manager' && <span className="text-[11px] font-medium text-zinc-500">Manager</span>}
         </p>
         <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-400">
           {member.rankIconUrl && <img src={member.rankIconUrl} alt="" className="h-4 w-4 object-contain" />}
@@ -51,7 +52,7 @@ function MemberRow({ member }: { member: ScrimTeamMemberDetail }) {
 export function ScoutingRoster({ members }: { members: ScrimTeamMemberDetail[] }) {
   return (
     <section className="space-y-2" aria-labelledby="scouting-roster-title">
-      <h3 id="scouting-roster-title" className={EYEBROW_CLASS}>
+      <h3 id="scouting-roster-title" className={SCRIM_LABEL}>
         Roster <span className="ml-1 tabular-nums text-white/60">{members.length}</span>
       </h3>
       {members.length === 0 ? (

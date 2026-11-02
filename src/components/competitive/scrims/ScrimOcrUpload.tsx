@@ -10,7 +10,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const EYEBROW = 'font-mono text-[10px] tracking-[0.28em] text-zinc-500 uppercase';
 const GHOST =
-  'text-[13px] border border-white/[0.08] text-white/55 hover:text-white rounded-none px-4 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
+  'text-[13px] border border-white/[0.08] text-white/55 hover:text-white rounded-lg px-4 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
 
 // ── ParseConfirmCard ──────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ function ParseConfirmCard({
           type="button"
           onClick={onConfirm}
           disabled={result.team1Score == null || result.team2Score == null}
-          className="flex items-center gap-1.5 bg-white/[0.08] hover:bg-white/[0.12] disabled:opacity-40 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
+          className="flex items-center gap-1.5 bg-white/[0.08] hover:bg-white/[0.12] disabled:opacity-40 text-white text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
         >
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
           Apply scores

@@ -5,7 +5,8 @@
  * Renders nothing when history is private, empty or failed to load.
  */
 
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { cn } from '@/lib/utils';
 import type { ScrimHistoryEntry, ScrimHistoryResult } from '@/types/competitive';
 
@@ -17,7 +18,7 @@ export function RecentResults({ entries }: { entries: ScrimHistoryEntry[] }) {
 
   return (
     <section className="space-y-2" aria-labelledby="recent-results-title">
-      <h3 id="recent-results-title" className={EYEBROW_CLASS}>Recent results</h3>
+      <h3 id="recent-results-title" className={SCRIM_LABEL}>Recent results</h3>
       <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
         {entries.map((e) => (
           <li key={e.sessionId} className="flex items-center gap-3 px-3.5 py-2.5">

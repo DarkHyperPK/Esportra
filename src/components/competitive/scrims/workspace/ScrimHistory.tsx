@@ -40,7 +40,7 @@ export function ScrimHistory({ sessions, teamId, defaultOpen }: ScrimHistoryProp
         aria-expanded={open}
         className="flex w-full items-center justify-between border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-left hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
-        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+        <span className="text-[11px] font-medium text-zinc-500">
           History <span className="ml-1 tabular-nums text-white/70">{sessions.length}</span>
         </span>
         <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform', open && 'rotate-180')} aria-hidden="true" />
@@ -86,7 +86,7 @@ export function ScrimHistory({ sessions, teamId, defaultOpen }: ScrimHistoryProp
                       <span className="min-w-0 flex-1 truncate text-[14px] text-white/85">vs {opponent}</span>
                       {outcome && <span className="font-mono text-[13px] tabular-nums text-white/70">{outcome.score}</span>}
                       <span className="hidden text-[12px] tabular-nums text-zinc-500 sm:inline">{formatRoomTime(s.scheduledAt)}</span>
-                      {s.status === 'cancelled' && <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">Cancelled</span>}
+                      {s.status === 'cancelled' && <span className="text-[11px] font-medium text-zinc-500">Cancelled</span>}
                     </Link>
                   </li>
                 );

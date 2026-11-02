@@ -66,7 +66,7 @@ export function DiscoveryToolbar(p: DiscoveryToolbarProps) {
           <SheetTrigger asChild>
             <button
               type="button"
-              className="inline-flex min-h-[44px] items-center gap-2 border border-white/[0.14] px-4 text-[13px] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-white/[0.14] px-4 text-[13px] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               Filters

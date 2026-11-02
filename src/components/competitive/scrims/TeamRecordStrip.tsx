@@ -30,7 +30,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="min-w-0">
       <p className="text-[12px] font-semibold tabular-nums text-white/85">{value}</p>
-      <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+      <p className="text-[11px] font-medium text-zinc-500">{label}</p>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export function TeamRecordStrip({ record, soft = false, dense = false, className
   if (view.isNew) {
     return (
       <p
-        className={cn('font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500', className)}
+        className={cn('text-[11px] font-medium text-zinc-500', className)}
         aria-label={view.summary}
       >
         New to scrims
@@ -89,7 +89,7 @@ export function TeamRecordStrip({ record, soft = false, dense = false, className
         <p className="font-heading text-[22px] font-black leading-none tabular-nums tracking-tight text-white">
           {view.record}
         </p>
-        <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-500">Record</p>
+        <p className="mt-1 text-[11px] font-medium text-zinc-500">Record</p>
       </div>
 
       {view.winRate && <Stat value={view.winRate} label="Win rate" />}

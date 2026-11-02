@@ -5,8 +5,9 @@
  * into the request; leaving it empty still allows a free-form request.
  */
 
+import { SCRIM_LABEL } from '../scrimCardStyles';
 import { Check } from 'lucide-react';
-import { EYEBROW_CLASS } from '@/components/ui/kit';
+
 import { cn } from '@/lib/utils';
 import { formatSlotTime, groupSlotsByDay, slotCounts } from '@/services/scrimSlots';
 import type { ScrimSlot } from '@/types/competitive';
@@ -24,13 +25,13 @@ export function SlotPicker({ slots, selectedId, onSelect }: SlotPickerProps) {
   return (
     <section className="space-y-2" aria-labelledby="slot-picker-title">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 id="slot-picker-title" className={EYEBROW_CLASS}>Pick a time</h3>
+        <h3 id="slot-picker-title" className={SCRIM_LABEL}>Pick a time</h3>
         <span className="text-[11px] tabular-nums text-zinc-500">{open} of {total} open</span>
       </div>
       <div className="space-y-2.5">
         {groupSlotsByDay(slots).map((day) => (
           <div key={day.key} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">{day.label}</p>
+            <p className="mb-2 text-[11px] font-medium text-zinc-500">{day.label}</p>
             <div className="flex flex-wrap gap-1.5">
               {day.slots.map((slot) => {
                 const booked = slot.status !== 'available';

@@ -9,10 +9,11 @@
  * States: S4-0 through S4-7 per direction contract.
  */
 
+import { SCRIM_LABEL } from './scrimCardStyles';
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { InlineNotice, EYEBROW_CLASS } from '@/components/ui/kit';
+import {InlineNotice} from '@/components/ui/kit';
 import { useSubmitDisputeEvidence } from '@/hooks/competitive/useScrims';
 import { formatDistanceToNow } from 'date-fns';
 import type { ScrimDispute, ScrimDisputeOutcome } from '@/types/competitive';
@@ -52,14 +53,14 @@ function isEvidenceWindowOpen(createdAt: string): boolean {
 function EvidenceChip({ submitted, closed }: { submitted: boolean; closed: boolean }) {
   if (closed) {
     return (
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 border border-zinc-700/40 px-2 py-0.5">
+      <span className="text-[11px] font-medium text-zinc-500 border border-zinc-700/40 px-2 py-0.5">
         Window closed
       </span>
     );
   }
   return (
     <span
-      className={`font-mono text-[10px] font-semibold uppercase tracking-[0.16em] px-2 py-0.5 border ${
+      className={`text-[11px] font-medium px-2 py-0.5 border ${
         submitted
           ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
           : 'text-zinc-400 border-zinc-600/40 bg-transparent'
@@ -108,7 +109,7 @@ function EvidenceForm({
 
   return (
     <div className="mt-4 space-y-3">
-      <p className={EYEBROW_CLASS}>YOUR EVIDENCE</p>
+      <p className={SCRIM_LABEL}>YOUR EVIDENCE</p>
 
       <div className="space-y-2">
         {urls.map((url, idx) => (
@@ -153,7 +154,7 @@ function EvidenceForm({
         onClick={() => void handleSubmit()}
         disabled={submit.isPending}
         aria-busy={submit.isPending}
-        className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-[13px] px-4 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
+        className="bg-white text-black hover:bg-zinc-200 disabled:opacity-50  text-[13px] px-4 py-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors"
       >
         {submit.isPending ? (
           <span className="inline-flex items-center gap-2">
@@ -228,7 +229,7 @@ export function ScrimDisputeBanner({
       <InlineNotice tone="warning">
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
-            <p id="dispute-title" className={`${EYEBROW_CLASS} text-amber-300`}>DISPUTE</p>
+            <p id="dispute-title" className={`${SCRIM_LABEL} text-amber-300`}>DISPUTE</p>
             <p className="text-[11px] text-zinc-500 shrink-0">Opened {timeSince} ago</p>
           </div>
 

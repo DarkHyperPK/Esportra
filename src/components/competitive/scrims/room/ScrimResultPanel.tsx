@@ -67,10 +67,10 @@ export function ScrimResultPanel({ session, myTeamId, myTeamSide }: { session: S
           {confirm.isError && <p role="alert" className="text-[12px] text-red-300">{getApiErrorMessage(confirm.error, 'Could not confirm. Try again.')}</p>}
           {!showDispute && (
             <div className="flex gap-3 flex-wrap">
-              <button onClick={() => confirm.mutate()} disabled={confirm.isPending} className="border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 text-[13px] rounded-none px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
+              <button onClick={() => confirm.mutate()} disabled={confirm.isPending} className="border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 text-[13px] rounded-lg px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
                 {confirm.isPending ? 'Confirming…' : 'Confirm result'}
               </button>
-              <button onClick={() => setShowDispute(true)} className="text-amber-400/70 hover:text-amber-400 border border-amber-500/20 text-[13px] rounded-none px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
+              <button onClick={() => setShowDispute(true)} className="text-amber-400/70 hover:text-amber-400 border border-amber-500/20 text-[13px] rounded-lg px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors">
                 Raise dispute
               </button>
             </div>
