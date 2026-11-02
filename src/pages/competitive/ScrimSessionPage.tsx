@@ -10,6 +10,7 @@ import { ScrimStageRail } from '@/components/competitive/scrims/room/ScrimStageR
 import { ScrimNextStepCard } from '@/components/competitive/scrims/room/ScrimNextStepCard';
 import { ScrimLobbyPanel } from '@/components/competitive/scrims/room/ScrimLobbyPanel';
 import { ScrimResultPanel } from '@/components/competitive/scrims/room/ScrimResultPanel';
+import { ScrimSchedulePanel } from '@/components/competitive/scrims/room/ScrimSchedulePanel';
 import { useScrimSession } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
@@ -94,9 +95,15 @@ export default function ScrimSessionPage() {
   const cancelledByName = session.cancelledByTeamId === session.team1Id ? session.team1Name : session.cancelledByTeamId === session.team2Id ? session.team2Name : null;
 
   const next = deriveScrimNextAction(session, myTeamId ?? '', nowMs);
-  const nextView = describeNextStep(next, { opponent, cancelledReason: session.cancelledReason, cancelledByName }, nowMs);
+  const nextView = describeNextStep(
+    next,
+    { opponent, cancelledReason: session.cancelledReason, cancelledByName, proposedAt: session.timeProposal?.proposedAt },
+    nowMs,
+  );
 
-  const canCheckIn = status === 'scheduled' || status === 'in_progress';
+  // Check-in only exists once a time has been agreed.
+  const canCheckIn = (status === 'scheduled' || status === 'in_progress') && !!session.scheduledAt;
+  const showSchedule = status === 'scheduled' || status === 'in_progress';
   const showResult = status === 'in_progress' || status === 'completed' || status === 'disputed';
   const showLobby = status === 'scheduled' || status === 'in_progress';
   const score = session.team1Score != null && session.team2Score != null && status !== 'scheduled'
@@ -122,7 +129,7 @@ export default function ScrimSessionPage() {
             gameName={catalogGame?.name ?? null}
             gameLogo={catalogGame?.logo ?? null}
             bestOf={session.bestOf}
-            when={formatRoomTime(session.scheduledAt)}
+            when={formatRoomTime(session.scheduledAt) || 'Time not set yet'}
             score={score}
             showCheckin={status === 'scheduled'}
           />
@@ -150,6 +157,12 @@ export default function ScrimSessionPage() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-6">
+            {showSchedule && (
+              <motion.div {...arrive(0.06)} id="room-schedule" className="scroll-mt-6">
+                <ScrimSchedulePanel session={session} myTeamId={myTeamId} opponentName={opponent} isStaff={isCaptain} />
+              </motion.div>
+            )}
+
             {canCheckIn && (
               <motion.div {...arrive(0.08)} id="room-checkin" className="scroll-mt-6">
                 <ScrimCheckinPanel

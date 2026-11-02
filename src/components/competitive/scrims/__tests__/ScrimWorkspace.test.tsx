@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ApiError } from '@/lib/apiClient';
 import type { ScrimOffer, ScrimSession } from '@/types/competitive';
 
@@ -60,44 +60,54 @@ beforeEach(() => {
 });
 
 describe('ReceivedOfferCard', () => {
-  it('asks for a time before accepting, then sends it', async () => {
-    wrap(<ReceivedOfferCard offer={offer()} />);
+  const renderOffer = (o = offer()) =>
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<ReceivedOfferCard offer={o} />} />
+          <Route path="/competitive/scrims/sessions/:id" element={<p>ROOM</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+  it('accepts in one tap, with no time, and goes straight to the match room', async () => {
+    acceptMutate.mockResolvedValue({ id: 's-new' });
+    renderOffer();
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
-    expect(acceptMutate).not.toHaveBeenCalled();
-
-    const input = screen.getByLabelText(/confirm time/i) as HTMLInputElement;
-    expect(input.value).toBe('2026-11-03T20:00'); // local time, not UTC
-    fireEvent.click(screen.getByRole('button', { name: /confirm scrim/i }));
-
-    await waitFor(() => expect(acceptMutate).toHaveBeenCalledTimes(1));
-    expect(acceptMutate.mock.calls[0][0]).toEqual({ scheduled_at: new Date(2026, 10, 3, 20, 0).toISOString() });
+    await waitFor(() => expect(screen.getByText('ROOM')).toBeInTheDocument());
+    expect(acceptMutate).toHaveBeenCalledTimes(1);
+    expect(acceptMutate.mock.calls[0][0]).toBeUndefined();
   });
 
-  it('lets you back out of accepting', () => {
-    wrap(<ReceivedOfferCard offer={offer()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  it('never asks for a time or availability while accepting', () => {
+    renderOffer();
     expect(screen.queryByLabelText(/confirm time/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    expect(screen.queryByText(/availability/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/agree the exact time together in the match room/i)).toBeInTheDocument();
   });
 
-  it('shows a clear message when the slot was just taken', async () => {
-    acceptMutate.mockRejectedValue(new ApiError(409, null, 'conflict'));
-    wrap(<ReceivedOfferCard offer={offer()} />);
+  it('shows their suggested time as a suggestion, not a commitment', () => {
+    renderOffer();
+    expect(screen.getByText('Suggested')).toBeInTheDocument();
+  });
+
+  it('stays on the card and explains when accepting fails', async () => {
+    acceptMutate.mockRejectedValue(new ApiError(403, null, 'no'));
+    renderOffer();
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm scrim/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/another time/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/captain or manager can accept/i);
+    expect(screen.queryByText('ROOM')).not.toBeInTheDocument();
   });
 
-  it('declines without a time step and explains a permission error', async () => {
+  it('declines without any extra step and explains a permission error', async () => {
     declineMutate.mockRejectedValue(new ApiError(403, null, 'no'));
-    wrap(<ReceivedOfferCard offer={offer()} />);
+    renderOffer();
     fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/captain or manager can decline/i);
   });
 
   it('shows no actions for an offer that is no longer pending', () => {
-    wrap(<ReceivedOfferCard offer={offer({ status: 'declined' })} />);
+    renderOffer(offer({ status: 'declined' }));
     expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
   });
 });

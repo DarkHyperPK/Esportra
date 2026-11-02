@@ -66,6 +66,22 @@ export function describeUpNext(item: ScrimUpNextItem, nowMs: number = Date.now()
         href: roomPath(item.sessionId),
         urgent: false,
       };
+    case 'time_to_respond':
+      return {
+        title: `${opp} proposed a match time`,
+        detail: 'Accept it, or suggest another time that suits you.',
+        cta: 'Respond',
+        href: roomPath(item.sessionId),
+        urgent: false,
+      };
+    case 'time_to_propose':
+      return {
+        title: `Pick a time with ${opp}`,
+        detail: 'Propose when you want to play. They only need to accept.',
+        cta: 'Pick a time',
+        href: roomPath(item.sessionId),
+        urgent: false,
+      };
     case 'evidence_due':
       return {
         title: `Dispute with ${opp} needs your evidence`,

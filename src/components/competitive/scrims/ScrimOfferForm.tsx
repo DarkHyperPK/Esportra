@@ -153,7 +153,7 @@ export function ScrimOfferForm({
         </p>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Proposed start" htmlFor={`oat-${listingId}`} optional>
+        <Field label="Suggested time" htmlFor={`oat-${listingId}`} optional>
           {prefilledProposedAt ? (
             <div className="flex h-10 items-center rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/70">
               {formatProposedAt(prefilledProposedAt)}

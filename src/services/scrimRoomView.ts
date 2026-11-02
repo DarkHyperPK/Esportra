@@ -17,7 +17,7 @@ export const ROOM_STEPS = [
 ] as const;
 
 /** Element ids the next-step card scrolls to. */
-export type RoomTarget = 'room-checkin' | 'room-veto' | 'room-result' | 'room-dispute';
+export type RoomTarget = 'room-schedule' | 'room-checkin' | 'room-veto' | 'room-result' | 'room-dispute';
 
 export interface RailState {
   /** Index of the active step; ROOM_STEPS.length = all done; -1 = stopped. */
@@ -42,6 +42,8 @@ export interface NextStepContext {
   cancelledReason?: string | null;
   /** Name of the team that cancelled, when known. */
   cancelledByName?: string | null;
+  /** The pending proposed time, for wording about it. */
+  proposedAt?: string | null;
 }
 
 export interface NextStepView {
@@ -80,6 +82,24 @@ export function describeNextStep(next: ScrimNextAction, ctx: NextStepContext, no
       return view(
         left ? `Check-in opens in ${left}` : 'Waiting for the start time',
         'Both captains check in from 15 minutes before the start. Be ready with your lineup.',
+      );
+    case 'propose_time':
+      return view(
+        'Agree a time',
+        'Propose when you want to play. When the other captain accepts, check-in is set up for you.',
+        'room-schedule',
+      );
+    case 'respond_time':
+      return view(
+        `${opp} proposed a time`,
+        `${ctx.proposedAt ? `${formatRoomTime(ctx.proposedAt)}. ` : ''}Accept it, or suggest another.`,
+        'room-schedule',
+      );
+    case 'wait_time':
+      return view(
+        `Waiting for ${opp} to answer`,
+        ctx.proposedAt ? `You proposed ${formatRoomTime(ctx.proposedAt)}.` : 'You have proposed a time.',
+        'room-schedule',
       );
     case 'check_in':
       return view(
@@ -125,6 +145,8 @@ export function actionLabel(action: ScrimNextAction['action']): string {
     case 'check_in': return 'Check in';
     case 'report_result': return 'Report result';
     case 'confirm_result': return 'Review result';
+    case 'propose_time': return 'Pick a time';
+    case 'respond_time': return 'Respond';
     case 'submit_evidence': return 'Add evidence';
     default: return 'Open room';
   }

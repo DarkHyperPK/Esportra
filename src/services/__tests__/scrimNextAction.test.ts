@@ -119,7 +119,49 @@ describe('deriveScrimNextAction', () => {
     expect(deriveScrimNextAction(session({ status: 'cancelled' }), 'a', T).action).toBe('none');
   });
 
-  it('treats a session with no time as waiting', () => {
-    expect(deriveScrimNextAction(session({ scheduledAt: null }), 'a', T).action).toBe('wait');
+  it('treats a session with no time as needing one (the captains agree it in the room)', () => {
+    expect(deriveScrimNextAction(session({ scheduledAt: null }), 'a', T).action).toBe('propose_time');
+  });
+});
+
+// ── Agreeing a time ──────────────────────────────────────────────────────────
+
+describe('a match with no time yet', () => {
+  const unscheduled = (over: Partial<NextActionSession> = {}) => session({ scheduledAt: null, ...over });
+  const proposal = (by: string) => ({ proposedByTeamId: by, proposedAt: at(60) });
+
+  it('asks me to propose a time when nobody has', () => {
+    expect(deriveScrimNextAction(unscheduled(), 'a', T)).toMatchObject({ stage: 'scheduled', action: 'propose_time', deadline: null });
+  });
+
+  it('asks me to respond to THEIR proposal', () => {
+    expect(deriveScrimNextAction(unscheduled({ timeProposal: proposal('b') }), 'a', T).action).toBe('respond_time');
+  });
+
+  it('only waits when the pending proposal is MINE', () => {
+    expect(deriveScrimNextAction(unscheduled({ timeProposal: proposal('a') }), 'a', T).action).toBe('wait_time');
+  });
+
+  it('works from either side of the match', () => {
+    const s = unscheduled({ timeProposal: proposal('a') });
+    expect(deriveScrimNextAction(s, 'a', T).action).toBe('wait_time');
+    expect(deriveScrimNextAction(s, 'b', T).action).toBe('respond_time');
+  });
+
+  it('still shows a reschedule proposal from them on a match that already has a time', () => {
+    const s = session({ scheduledAt: at(60 * 24), timeProposal: proposal('b') });
+    expect(deriveScrimNextAction(s, 'a', T).action).toBe('respond_time');
+  });
+
+  it('lets check-in win while it is open, even with a proposal pending', () => {
+    const s = session({ timeProposal: proposal('b'), checkinWindowOpenedAt: at(-15) });
+    expect(deriveScrimNextAction(s, 'a', T - 5 * 60_000).action).toBe('check_in');
+  });
+
+  it('does not nag about time once the scrim is live, over or cancelled', () => {
+    for (const status of ['in_progress', 'completed', 'cancelled'] as const) {
+      const r = deriveScrimNextAction(unscheduled({ status, timeProposal: proposal('b') }), 'a', T);
+      expect(r.action).not.toMatch(/time/);
+    }
   });
 });

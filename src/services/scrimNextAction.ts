@@ -16,6 +16,9 @@ export type ScrimStage = 'scheduled' | 'checkin' | 'live' | 'result' | 'disputed
 export type ScrimAction =
   | 'wait'
   | 'check_in'
+  | 'propose_time'
+  | 'respond_time'
+  | 'wait_time'
   | 'wait_opponent'
   | 'report_result'
   | 'confirm_result'
@@ -38,6 +41,8 @@ export interface NextActionSession {
    * (older payloads): fall back to the clock.
    */
   checkinWindowOpenedAt?: string | null;
+  /** The proposed time awaiting an answer, when the payload carries it (session detail). */
+  timeProposal?: { proposedByTeamId: string; proposedAt: string } | null;
   dispute?: {
     status: 'open' | 'escalated' | 'resolved';
     raisedByTeamId: string;
@@ -60,9 +65,23 @@ const result = (stage: ScrimStage, action: ScrimAction, deadline: string | null 
 });
 
 
-function deriveScheduled(s: NextActionSession, iAmTeam1: boolean, now: number): ScrimNextAction {
-  if (!s.scheduledAt) return result('scheduled', 'wait');
-  const start = new Date(s.scheduledAt).getTime();
+function deriveScheduled(s: NextActionSession, iAmTeam1: boolean, myTeamId: string, now: number): ScrimNextAction {
+  // Check-in wins while it is open; otherwise the open question is the match time.
+  const checkin = s.scheduledAt ? deriveCheckin(s, iAmTeam1, now) : null;
+  if (checkin && checkin.action === 'check_in') return checkin;
+
+  const proposal = s.timeProposal;
+  if (proposal) {
+    return proposal.proposedByTeamId === myTeamId
+      ? result('scheduled', 'wait_time')
+      : result('scheduled', 'respond_time');
+  }
+  if (!s.scheduledAt) return result('scheduled', 'propose_time');
+  return checkin ?? result('scheduled', 'wait');
+}
+
+function deriveCheckin(s: NextActionSession, iAmTeam1: boolean, now: number): ScrimNextAction {
+  const start = new Date(s.scheduledAt as string).getTime();
   const opens = start - CHECKIN_OPENS_BEFORE_MIN * MIN;
   const closes = start + CHECKIN_CLOSES_AFTER_MIN * MIN;
   const iCheckedIn = !!(iAmTeam1 ? s.team1CheckedInAt : s.team2CheckedInAt);
@@ -101,7 +120,7 @@ export function deriveScrimNextAction(
   const iAmTeam1 = session.team1Id === myTeamId;
   switch (session.status) {
     case 'scheduled':
-      return deriveScheduled(session, iAmTeam1, now);
+      return deriveScheduled(session, iAmTeam1, myTeamId, now);
     case 'in_progress':
       return deriveLive(session, iAmTeam1);
     case 'disputed':

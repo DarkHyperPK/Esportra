@@ -100,3 +100,34 @@ describe('actionLabel', () => {
     expect(actionLabel('none')).toBe('Open room');
   });
 });
+
+describe('agreeing a time', () => {
+  const ctx = { opponent: 'Nova', proposedAt: new Date(2026, 10, 3, 20, 0).toISOString() };
+  const n = (action: ScrimNextAction['action']): ScrimNextAction => ({ stage: 'scheduled', action, deadline: null });
+
+  it('tells the captain to agree a time, and points at the scheduling panel', () => {
+    const v = describeNextStep(n('propose_time'), ctx, NOW);
+    expect(v.headline).toBe('Agree a time');
+    expect(v.target).toBe('room-schedule');
+    expect(v.urgent).toBe(false);
+  });
+
+  it('names who proposed and what they proposed', () => {
+    const v = describeNextStep(n('respond_time'), ctx, NOW);
+    expect(v.headline).toBe('Nova proposed a time');
+    expect(v.body).toMatch(/·/);
+    expect(v.body).toContain('Accept it, or suggest another');
+    expect(v.target).toBe('room-schedule');
+  });
+
+  it('says who we are waiting for', () => {
+    expect(describeNextStep(n('wait_time'), ctx, NOW).headline).toBe('Waiting for Nova to answer');
+    expect(describeNextStep(n('wait_time'), { opponent: null }, NOW).headline).toContain('your opponent');
+  });
+
+  it('labels the agenda buttons for time actions', () => {
+    expect(actionLabel('propose_time')).toBe('Pick a time');
+    expect(actionLabel('respond_time')).toBe('Respond');
+    expect(actionLabel('wait_time')).toBe('Open room');
+  });
+});

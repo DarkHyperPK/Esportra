@@ -25,9 +25,6 @@ const DAYS = [
   { label: 'Sun', value: 0 },
 ] as const;
 
-const INPUT_CLASS =
-  'h-10 w-full border border-white/10 bg-black/30 px-3 text-[13px] text-white ' +
-  'placeholder:text-zinc-600 focus:outline-none focus:border-white/30 rounded-xl';
 
 // ── Rank tier select ──────────────────────────────────────────────────────────
 
@@ -93,25 +90,8 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
   const [localGameSlug, setLocalGameSlug] = useState<string>(gameSlug ?? '');
 
-  function defaultBookingUntil(): string {
-    const d = new Date();
-    d.setDate(d.getDate() + 28);
-    return d.toISOString().slice(0, 10);
-  }
-
-  /** Date input → inclusive end-of-day ISO, so the whole chosen day stays bookable. */
-  function toEndOfDayIso(value: string): string | undefined {
-    if (!value) return undefined;
-    const [y, m, day] = value.split('-').map(Number);
-    if (!y || !m || !day) return undefined;
-    return new Date(y, m - 1, day, 23, 59, 59).toISOString();
-  }
-
-  const [scheduleType, setScheduleType] = useState<'one_off' | 'recurring'>('one_off');
   const [bestOf, setBestOf] = useState<BestOf>(3);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [timeStart, setTimeStart] = useState('');
-  const [timeEnd, setTimeEnd] = useState('');
   const [timezone] = useState(() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; }
   });
@@ -122,7 +102,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
   const rankTiers = rankTiersQuery.data ?? [];
   const regionsQuery = useCatalogRegions(localGameSlug);
   const regions = regionsQuery.data ?? [];
-  const [scheduleUntil, setScheduleUntil] = useState('');
   const [notes, setNotes] = useState('');
   const [apiError, setApiError] = useState('');
 
@@ -134,10 +113,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
   async function handleSubmit() {
     setApiError('');
-    if (scheduleType === 'recurring' && !scheduleUntil) {
-      setApiError('Pick the last date you want to accept bookings.');
-      return;
-    }
     try {
       await createMutation.mutateAsync({
         teamId,
@@ -146,18 +121,11 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         minRankKey: minRankKey || undefined,
         maxRankKey: maxRankKey || undefined,
         preferredDays: selectedDays.length ? selectedDays : undefined,
-        preferredTimeStart: timeStart || undefined,
-        preferredTimeEnd: timeEnd || undefined,
         timezone: timezone || undefined,
         notes: notes.trim() || undefined,
-        scheduleType,
+        // A days-only listing stays open after a match is accepted, so it can be reused.
+        scheduleType: 'recurring',
         bestOf,
-        // Recurring listings require a booking window and a slot length server-side.
-        // Individual matches still run their own length; the grid is booking-only.
-        scheduleUntil:
-          scheduleType === 'recurring' ? toEndOfDayIso(scheduleUntil) : undefined,
-        slotDurationMinutes:
-          scheduleType === 'recurring' ? 90 : undefined,
       });
       onSuccess();
     } catch (err) {
@@ -192,32 +160,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </Select>
       </Field>
 
-      {/* Schedule type */}
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider font-mono">Schedule type</p>
-        <div className="flex gap-2">
-          {(['one_off', 'recurring'] as const).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => {
-                setScheduleType(type);
-                if (type === 'recurring' && !scheduleUntil) {
-                  setScheduleUntil(defaultBookingUntil());
-                }
-              }}
-              className={`px-3 py-1.5 text-[12px] rounded-lg border transition-colors ${
-                scheduleType === type
-                  ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                  : 'text-white/45 border-white/[0.08] hover:text-white hover:border-white/20'
-              }`}
-            >
-              {type === 'one_off' ? 'One-off' : 'Recurring'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Match format — fixed by the listing, shown to every offering team */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -250,7 +192,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
 
       {/* Preferred days */}
       <div className="space-y-2">
-        <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider font-mono">Preferred days</p>
+        <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider font-mono">Days you usually play</p>
         <div className="flex gap-1.5 flex-wrap">
           {DAYS.map(({ label, value }) => (
             <button
@@ -268,28 +210,9 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Time window */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Available from" htmlFor="nl-time-start">
-          <input
-            id="nl-time-start"
-            type="time"
-            value={timeStart}
-            onChange={(e) => setTimeStart(e.target.value)}
-            className={`${INPUT_CLASS} [color-scheme:dark]`}
-          />
-        </Field>
-        <Field label="Until" htmlFor="nl-time-end">
-          <input
-            id="nl-time-end"
-            type="time"
-            value={timeEnd}
-            onChange={(e) => setTimeEnd(e.target.value)}
-            className={`${INPUT_CLASS} [color-scheme:dark]`}
-          />
-        </Field>
+        <p className="text-[11px] text-white/30">
+          No times needed. You and the other captain agree the exact time inside each scrim.
+        </p>
       </div>
 
       {/* Mode is not configured — a scrim is 5v5 by definition. */}
@@ -317,28 +240,6 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
           <RankTierSelect id="nl-min-rank" label="Min rank" value={minRankKey} onChange={setMinRankKey} tiers={rankTiers} />
           <RankTierSelect id="nl-max-rank" label="Max rank" value={maxRankKey} onChange={setMaxRankKey} tiers={rankTiers} />
         </div>
-      )}
-
-      {/* Recurring fields */}
-      {scheduleType === 'recurring' && (
-        <Field label="Accept bookings until" htmlFor="nl-until">
-          <input
-            id="nl-until"
-            type="date"
-            required
-            value={scheduleUntil}
-            onChange={(e) => setScheduleUntil(e.target.value)}
-            className={`${INPUT_CLASS} [color-scheme:dark]`}
-          />
-          <p className="text-[11px] text-white/30 mt-1.5">
-            Your listing stays open for new slots through this date (defaults four weeks out).
-          </p>
-          {(selectedDays.length === 0 || !timeStart || !timeEnd) && (
-            <p className="text-[11px] text-amber-300/70 mt-1.5">
-              Add at least one day and a time window so bookable slots can be generated.
-            </p>
-          )}
-        </Field>
       )}
 
       {/* Notes */}

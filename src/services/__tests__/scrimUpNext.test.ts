@@ -51,7 +51,7 @@ describe('describeUpNext', () => {
   });
 
   it('gives every type a title, cta and href', () => {
-    const types = ['checkin_open', 'veto_ready', 'result_to_confirm', 'evidence_due', 'result_to_report', 'offer_received'] as const;
+    const types = ['checkin_open', 'veto_ready', 'result_to_confirm', 'time_to_respond', 'evidence_due', 'result_to_report', 'time_to_propose', 'offer_received'] as const;
     for (const type of types) {
       const d = describeUpNext(item({ type, deadline: type === 'offer_received' ? at(600) : null }), NOW);
       expect(d.title.length).toBeGreaterThan(0);
@@ -93,5 +93,17 @@ describe('withoutType', () => {
   it('passes undefined through and never reports fewer than it holds', () => {
     expect(withoutType(undefined, 'offer_received')).toBeUndefined();
     expect(withoutType({ items: [item()], total: 0 }, 'offer_received')?.total).toBe(1);
+  });
+});
+
+describe('time items', () => {
+  it('asks to respond to a proposal, and to pick a time, naming the opponent', () => {
+    const respond = describeUpNext(item({ type: 'time_to_respond', deadline: null }), NOW);
+    expect(respond.title).toBe('Nova proposed a match time');
+    expect(respond.cta).toBe('Respond');
+    expect(respond.urgent).toBe(false);
+    const propose = describeUpNext(item({ type: 'time_to_propose', deadline: null }), NOW);
+    expect(propose.title).toBe('Pick a time with Nova');
+    expect(propose.href).toBe('/competitive/scrims/sessions/s1');
   });
 });

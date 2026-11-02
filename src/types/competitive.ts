@@ -830,9 +830,22 @@ export type ScrimUpNextType =
   | 'checkin_open'
   | 'veto_ready'
   | 'result_to_confirm'
+  | 'time_to_respond'
   | 'evidence_due'
   | 'result_to_report'
+  | 'time_to_propose'
   | 'offer_received';
+
+/** A proposed match time awaiting the other team's answer. */
+export interface ScrimTimeProposal {
+  id: string;
+  sessionId: string;
+  proposedByTeamId: string;
+  proposedAt: string;
+  note: string | null;
+  status: 'pending' | 'accepted' | 'declined' | 'superseded';
+  createdAt: string;
+}
 
 /** One thing the caller's team must act on (GET /api/scrims/up-next). */
 export interface ScrimUpNextItem {
@@ -983,6 +996,8 @@ export interface ScrimSession {
   team2Logo?: string | null;
   /** Series format inherited from the source listing: 1 | 3 | 5. */
   bestOf?: number | null;
+  /** The proposed time awaiting a response (session detail only). */
+  timeProposal?: ScrimTimeProposal | null;
   /** checkin_timeout | cancelled_by_team | listing_closed | admin; null for legacy rows. */
   cancelledReason?: string | null;
   cancelledByTeamId?: string | null;
