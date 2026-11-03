@@ -1,9 +1,12 @@
 import { useState, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { Field, InlineNotice } from '@/components/ui/kit';
 import { AccentButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateScrimListing } from '@/hooks/competitive/useScrims';
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
+import { useScrimEligibleGames } from '@/hooks/competitive/useScrimEligibleGames';
+import { scrimGamesOf } from '@/lib/scrimGames';
 import {
   BEST_OF_OPTIONS,
   type BestOf,
@@ -86,9 +89,13 @@ interface Props {
 
 export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel }: Props) {
   const catalog = useContext(GameCatalogContext);
+  const games = scrimGamesOf(catalog.games);
+  const eligibleQuery = useScrimEligibleGames(teamId);
+  const eligible = new Set(eligibleQuery.data ?? []);
   const createMutation = useCreateScrimListing();
 
-  const [localGameSlug, setLocalGameSlug] = useState<string>(gameSlug ?? '');
+  const [localGameSlug, setLocalGameSlug] = useState<string>(gameSlug && scrimGamesOf([{ slug: gameSlug }]).length > 0 ? gameSlug : '');
+  const rosterReady = !!localGameSlug && eligible.has(localGameSlug.toLowerCase());
 
   const [bestOf, setBestOf] = useState<BestOf>(3);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -152,13 +159,20 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
             <SelectValue placeholder="Select game" />
           </SelectTrigger>
           <SelectContent>
-            {catalog.games.length === 0 && <SelectItem value="_">Loading…</SelectItem>}
-            {catalog.games.map((g) => (
-              <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+            {games.length === 0 && <SelectItem value="_">Loading…</SelectItem>}
+            {games.map((g) => (
+              <SelectItem key={g.slug} value={g.slug} disabled={eligibleQuery.isSuccess && !eligible.has(g.slug.toLowerCase())}>
+                {eligibleQuery.isSuccess && !eligible.has(g.slug.toLowerCase()) ? `${g.name} · needs a full roster` : g.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
+      {eligibleQuery.isSuccess && eligible.size === 0 && (
+        <p role="note" className="text-[12px] text-amber-200/90">
+          Your team needs a full roster for a game before it can list scrims. <Link to="/teams" className="underline underline-offset-4 hover:text-white">Set up your roster</Link>
+        </p>
+      )}
 
       {/* Match format — fixed by the listing, shown to every offering team */}
       <div className="space-y-2">
@@ -265,7 +279,7 @@ export function WorkspaceNewListingForm({ teamId, gameSlug, onSuccess, onCancel 
         </OutlineButton>
         <AccentButton
           onClick={handleSubmit}
-          disabled={createMutation.isPending || !localGameSlug}
+          disabled={createMutation.isPending || !localGameSlug || (eligibleQuery.isSuccess && !rosterReady)}
           className="rounded-xl px-6 text-[13px] font-semibold rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal"
         >
           {createMutation.isPending ? 'Posting…' : 'Post listing'}

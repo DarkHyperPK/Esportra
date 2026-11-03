@@ -110,7 +110,7 @@ export default function ScrimSessionPage() {
   const showLobby = status === 'scheduled' || status === 'in_progress';
   const bothCheckedIn = !!session.team1CheckedInAt && !!session.team2CheckedInAt;
   const score = session.team1Score != null && session.team2Score != null && status !== 'scheduled'
-    ? `${session.team1Score} – ${session.team2Score}`
+    ? { team1: session.team1Score, team2: session.team2Score }
     : null;
 
   return (

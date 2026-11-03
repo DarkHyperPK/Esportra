@@ -90,8 +90,8 @@ describe('ScrimFaceOff', () => {
   it('shows the score instead of VS once a result exists', () => {
     const { rerender } = render(<ScrimFaceOff {...base} />);
     expect(screen.getByText('VS')).toBeInTheDocument();
-    rerender(<ScrimFaceOff {...base} score="2 – 1" />);
-    expect(screen.getByText('2 – 1')).toBeInTheDocument();
+    rerender(<ScrimFaceOff {...base} score={{ team1: 2, team2: 1 }} />);
+    expect(screen.getByLabelText('Series 2 to 1')).toBeInTheDocument();
     expect(screen.queryByText('VS')).not.toBeInTheDocument();
   });
 });

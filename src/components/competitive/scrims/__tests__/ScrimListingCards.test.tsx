@@ -11,7 +11,7 @@ import { RankBand } from '../listing/RankBand';
 import { RosterFaces } from '../listing/RosterFaces';
 import { FitBadge } from '../listing/FitBadge';
 import { DiscoveryEmpty } from '../listing/DiscoveryEmpty';
-import { DiscoveryToolbar } from '../listing/DiscoveryToolbar';
+import { DiscoveryFilterPanel, DiscoveryToolbar } from '../listing/DiscoveryToolbar';
 import { ScrimOpponentCard } from '../listing/ScrimOpponentCard';
 import type { ScrimListingEnriched } from '@/services/scrimDiscoveryUtils';
 
@@ -95,6 +95,16 @@ describe('DiscoveryToolbar', () => {
     expect(within(list).getByText('Europe')).toBeInTheDocument();
     fireEvent.click(within(list).getByRole('button', { name: 'Remove Europe filter' }));
     expect(onDismiss).toHaveBeenCalled();
+  });
+  it('defaults to all games and only offers rank filters once one game is chosen', () => {
+    const onGameChange = vi.fn();
+    const { rerender } = wrap(<DiscoveryFilterPanel {...base} game="" onGameChange={onGameChange} />);
+    expect(screen.getByRole('button', { name: 'All games' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Min rank')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Valorant' }));
+    expect(onGameChange).toHaveBeenCalledWith('valorant');
+    rerender(<MemoryRouter><DiscoveryFilterPanel {...base} game="valorant" onGameChange={onGameChange} /></MemoryRouter>);
+    expect(screen.getByText('Min rank')).toBeInTheDocument();
   });
   it('shows no chip list when nothing is applied', () => {
     wrap(<DiscoveryToolbar {...base} chips={[]} />);

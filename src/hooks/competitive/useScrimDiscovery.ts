@@ -15,6 +15,7 @@ import { competitiveApiClient as apiClient } from '@/hooks/competitive/competiti
 import type { ScrimListing } from '@/types/competitive';
 
 export interface DiscoverScrimsFilters {
+  /** "" = every game. */
   game: string;
   mode?: string;
   region?: string;
@@ -28,9 +29,11 @@ export function useDiscoverScrimsFiltered(filters: DiscoverScrimsFilters) {
   return useQuery({
     queryKey: ['scrims', 'discover-filtered', filters] as const,
     queryFn: () => {
-      const params = new URLSearchParams({ game });
-      if (mode) params.set('mode', mode);
-      if (region) params.set('region', region);
+      const params = new URLSearchParams();
+      if (game) params.set('game', game);
+      // The API reads mode_key / region_key.
+      if (mode) params.set('mode_key', mode);
+      if (region) params.set('region_key', region);
       if (minRankSortOrder !== undefined) {
         params.set('min_rank_sort_order', String(minRankSortOrder));
       }
@@ -39,7 +42,6 @@ export function useDiscoverScrimsFiltered(filters: DiscoverScrimsFilters) {
       }
       return apiClient.get<ScrimListing[]>(`/api/scrims/discover?${params.toString()}`);
     },
-    enabled: !!game,
     staleTime: 30_000,
   });
 }
