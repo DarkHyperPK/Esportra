@@ -1,5 +1,5 @@
 import { NO_VALUE } from '@/services/scrimData/format';
-import { rateText, roundClock } from '@/services/scrimInsights/present';
+import { rateText } from '@/services/scrimInsights/present';
 import type { InsightsReport } from '@/types/scrimInsights';
 import { ReportSection } from './ReportSection';
 
@@ -20,12 +20,11 @@ export function OpeningPanel({ report }: { report: InsightsReport }) {
       {active.length > 0 && (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[480px] text-left text-[13px]">
-            <thead><tr className="text-[10px] uppercase tracking-wide text-zinc-500"><th className="py-1 pr-3 font-semibold">Player</th><th className="px-3 font-semibold">Won</th><th className="px-3 font-semibold">Lost</th><th className="px-3 font-semibold">Duels won</th><th className="px-3 font-semibold">First kill at</th><th className="px-3 font-semibold">First death at</th></tr></thead>
+            <thead><tr className="text-[10px] uppercase tracking-wide text-zinc-500"><th className="py-1 pr-3 font-semibold">Player</th><th className="px-3 font-semibold">Won</th><th className="px-3 font-semibold">Lost</th><th className="px-3 font-semibold">Duels won</th></tr></thead>
             <tbody>{active.map((p) => (
               <tr key={p.key} className="border-t border-white/5 tabular-nums">
                 <th scope="row" className="max-w-[160px] truncate py-1.5 pr-3 font-normal text-white">{name(p.key)}</th>
                 <td className="px-3">{p.kills}</td><td className="px-3">{p.deaths}</td><td className="px-3">{rateText(p.duelsWon)}</td>
-                <td className="px-3">{roundClock(p.avgMsToFirstKill)}</td><td className="px-3">{roundClock(p.avgMsToFirstDeath)}</td>
               </tr>
             ))}</tbody>
           </table>

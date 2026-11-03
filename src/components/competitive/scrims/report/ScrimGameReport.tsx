@@ -7,20 +7,18 @@ import { TIER_LABEL, TIER_MEANING } from '@/services/scrimData/format';
 import { CombatPanel } from './CombatPanel';
 import { DecisivePanel } from './DecisivePanel';
 import { EconomyPanel } from './EconomyPanel';
-import { KillFeedPanel } from './KillFeedPanel';
 import { OpeningPanel } from './OpeningPanel';
 import { PlayerTable } from './PlayerTable';
 import { ReportHeader } from './ReportHeader';
-import { useReportAssets } from './useReportAssets';
 import { RoundTimeline } from './RoundTimeline';
 import { SpikePanel } from './SpikePanel';
 
 const TimelineTab = lazy(() => import('./timeline/TimelineTab'));
 
-const REPORT_TABS = ['scoreboard', 'timeline', 'rounds', 'decisive', 'kills', 'economy', 'spike'] as const;
+const REPORT_TABS = ['scoreboard', 'timeline', 'rounds', 'decisive', 'impact', 'economy', 'spike'] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
 const TABS: readonly (TabItem & { id: ReportTab })[] = [
-  { id: 'scoreboard', label: 'Scoreboard' }, { id: 'timeline', label: 'Timeline' }, { id: 'rounds', label: 'Rounds' }, { id: 'decisive', label: 'Decisive moments' }, { id: 'kills', label: 'Kills & damage' },
+  { id: 'scoreboard', label: 'Scoreboard' }, { id: 'timeline', label: 'Timeline' }, { id: 'rounds', label: 'Rounds' }, { id: 'decisive', label: 'Decisive moments' }, { id: 'impact', label: 'Impact' },
   { id: 'economy', label: 'Economy' }, { id: 'spike', label: 'Spike & retakes' },
 ];
 
@@ -31,7 +29,6 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
   const { data, isLoading, isError, refetch } = useScrimGameInsights(sessionId, gameNumber, teamId);
   const [tab, setTab] = useTabParam(REPORT_TABS, 'scoreboard');
   const base = useTabBase();
-  const assets = useReportAssets(!!data?.report);
 
   if (isLoading) return <PanelSkeleton />;
   if (isError || !data) return <PanelError onRetry={() => void refetch()} />;
@@ -51,8 +48,8 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
           <TabPanel base={base} id="timeline" value={tab}><Suspense fallback={<PanelSkeleton />}><TimelineTab sessionId={sessionId} gameNumber={gameNumber} teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="rounds" value={tab} className="space-y-4"><RoundTimeline report={report} /><OpeningPanel report={report} /></TabPanel>
           <TabPanel base={base} id="decisive" value={tab}><DecisivePanel report={report} /></TabPanel>
-          <TabPanel base={base} id="kills" value={tab} className="space-y-4"><KillFeedPanel report={report} assets={assets} /><CombatPanel report={report} /></TabPanel>
-          <TabPanel base={base} id="economy" value={tab}><EconomyPanel report={report} assets={assets} /></TabPanel>
+          <TabPanel base={base} id="impact" value={tab}><CombatPanel report={report} /></TabPanel>
+          <TabPanel base={base} id="economy" value={tab}><EconomyPanel report={report} /></TabPanel>
           <TabPanel base={base} id="spike" value={tab}><SpikePanel report={report} /></TabPanel>
           <details className="rounded-none border border-white/5 p-4 text-[12px] text-zinc-400">
             <summary className="cursor-pointer font-semibold text-zinc-300">How these figures are worked out</summary>

@@ -1,23 +1,9 @@
-import { NO_VALUE } from '@/services/scrimData/format';
-import type { KillCatalog } from '@/services/scrimInsights/assets';
-import { BUY_LABEL, BUY_MEANING, assetLabel, money, rateText } from '@/services/scrimInsights/present';
+import { BUY_LABEL, BUY_MEANING, money, rateText } from '@/services/scrimInsights/present';
 import type { InsightsReport } from '@/types/scrimInsights';
 import { ReportSection } from './ReportSection';
 
-function Uses({ title, rows, labels, icons }: { title: string; rows: Array<{ weapon: string; rounds: number }>; labels?: ReadonlyMap<string, string>; icons?: ReadonlyMap<string, string> }) {
-  return (
-    <div>
-      <p className="mb-1 text-[12px] font-semibold text-zinc-400">{title}</p>
-      <ul className="space-y-0.5 text-[13px]">
-        {rows.slice(0, 6).map((r) => <li key={r.weapon} className="flex items-center justify-between gap-3">
-          <span className="flex min-w-0 items-center gap-2">{icons?.get(r.weapon.toLowerCase()) ? <img src={icons.get(r.weapon.toLowerCase())} alt="" className="h-5 w-12 shrink-0 object-contain" loading="lazy" /> : null}<span className="truncate text-zinc-200">{assetLabel(r.weapon, labels)}</span></span><span className="tabular-nums text-zinc-500">{r.rounds} player-rounds</span></li>)}
-      </ul>
-    </div>
-  );
-}
-
 /** Spending and loadouts for your team, and how rounds went at each buy level. */
-export function EconomyPanel({ report, assets }: { report: InsightsReport; assets: KillCatalog }) {
+export function EconomyPanel({ report }: { report: InsightsReport }) {
   const e = report.economy;
   if (e.winRateByBuy.length === 0 && e.avgLoadoutMine == null) return null;
   return (
@@ -34,10 +20,6 @@ export function EconomyPanel({ report, assets }: { report: InsightsReport; asset
           <tbody>{e.winRateByBuy.map((b) => <tr key={b.buy} className="border-t border-white/5"><th scope="row" className="py-1.5 font-normal text-zinc-200">{BUY_LABEL[b.buy] ?? b.buy}</th><td className="tabular-nums text-zinc-100">{rateText(b.roundsWon)}</td></tr>)}</tbody>
         </table>
       )}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {e.weapons.length > 0 ? <Uses title="Weapons bought" rows={e.weapons} labels={assets.weaponName} icons={assets.weaponIcon} /> : <p className="text-[12px] text-zinc-500">{NO_VALUE}</p>}
-        {e.armor.length > 0 && <Uses title="Armor bought" rows={e.armor} labels={assets.armorName} icons={assets.armorIcon} />}
-      </div>
     </ReportSection>
   );
 }

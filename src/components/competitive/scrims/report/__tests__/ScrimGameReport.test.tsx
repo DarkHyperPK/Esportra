@@ -67,10 +67,10 @@ describe('ScrimGameReport', () => {
     view();
     expect(screen.getByRole('heading', { name: 'Lotus' })).toBeInTheDocument();
     expect(screen.getByText(/Map veto: Lotus, picked by your team/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Timeline', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Spike & retakes']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Timeline', 'Rounds', 'Decisive moments', 'Impact', 'Economy', 'Spike & retakes']);
     expect(screen.getByRole('region', { name: 'Scoreboard' })).toBeInTheDocument();
     expect(screen.getAllByText('Omega One').length).toBeGreaterThan(0);
-    for (const hidden of ['Rounds', 'Opening duels', 'Kill feed', 'Economy', 'Abilities', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();
+    for (const hidden of ['Rounds', 'Opening duels', 'Who carried', 'Economy', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();
     expect(screen.getByText('How these figures are worked out')).toBeInTheDocument();
   });
 
@@ -80,9 +80,8 @@ describe('ScrimGameReport', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Rounds' }));
     expect(screen.getByRole('region', { name: 'Rounds' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Opening duels' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'Kills & damage' }));
-    expect(screen.getByRole('region', { name: 'Kill feed' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Damage and multi-kills' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Impact' }));
+    expect(screen.getByRole('region', { name: 'Who carried' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Economy' }));
     expect(screen.getByRole('region', { name: 'Economy' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Spike & retakes' }));
@@ -102,17 +101,6 @@ describe('ScrimGameReport', () => {
     view('economy');
     expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByRole('region', { name: 'Scoreboard' })).toBeNull();
-  });
-
-  it('draws the kill feed with agent and weapon icons, never a raw id, and lets you pick another round', () => {
-    state = { data: parsed(FULL) };
-    view('kills');
-    expect(screen.getByAltText('Vandal')).toHaveAttribute('src', '/air-hud/core/assets/weapons/VandalKillfeed.webp');
-    fireEvent.click(screen.getByRole('button', { name: '2' }));
-    expect(screen.getByTitle('Weapon')).toBeInTheDocument();
-    expect(screen.getByAltText('Weapon')).toHaveAttribute('src', '/air-hud/core/assets/weapons/UnknownKillfeed.webp');
-    expect(screen.queryByText(/1234abcd/)).not.toBeInTheDocument();
-    expect(document.body.innerHTML).not.toContain('1234abcd');
   });
 
   it('shows each round as the game does: how it ended, the side, the plant, with a full sentence for each', () => {

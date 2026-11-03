@@ -3,12 +3,11 @@ import { resolveAgent } from '@/lib/valorantAgents';
 import { formatNumber, formatPct } from '@/services/scrimData/format';
 import type { PlayerSummary } from '@/types/scrimData';
 
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div>
+    <div title={title}>
       <dt className="text-[10px] uppercase tracking-wider text-zinc-600">{label}</dt>
       <dd className="tabular-nums text-zinc-200">{value}</dd>
-      {note && <dd className="text-[10px] text-zinc-600">{note}</dd>}
     </div>
   );
 }
@@ -40,15 +39,12 @@ function Player({ p }: { p: PlayerSummary }) {
         </p>
         <Agents agents={p.agents} />
       </div>
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4 lg:grid-cols-6">
-        <Stat label="ACS" value={formatNumber(p.acs, 0)} note={p.acs != null ? of(p.statGames) : undefined} />
-        <Stat label="K/D" value={formatNumber(p.kd)} note={p.kd != null ? of(p.kdaGames) : undefined} />
+      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
+        <Stat label="ACS" value={formatNumber(p.acs, 0)} title={p.acs != null ? of(p.statGames) : undefined} />
+        <Stat label="K/D" value={formatNumber(p.kd)} title={p.kd != null ? of(p.kdaGames) : undefined} />
         <Stat label="ADR" value={formatNumber(p.adr, 0)} />
         <Stat label="Headshot %" value={formatPct(p.hsPct)} />
-        <Stat label="First kills" value={String(p.firstKills)} />
-        <Stat label="First deaths" value={p.firstDeaths == null ? '—' : String(p.firstDeaths)} note={p.firstDeaths != null ? of(p.firstDeathGames) : 'auto-fetched maps only'} />
       </dl>
-      <p className="mt-1 text-[11px] text-zinc-600">{p.fullGames} full-data · {p.screenshotGames} screenshot{p.plants + p.defuses > 0 ? ` · ${p.plants} plants · ${p.defuses} defuses` : ''}</p>
     </li>
   );
 }

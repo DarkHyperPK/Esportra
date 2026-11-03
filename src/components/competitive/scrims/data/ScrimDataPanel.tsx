@@ -3,7 +3,6 @@ import { TabBar, TabPanel, useTabBase, type TabItem } from '@/components/ui/kit'
 import { useScrimData } from '@/hooks/competitive/useScrimData';
 import { useTabParam } from '@/hooks/useTabParam';
 import { EMPTY_TEXT } from '@/services/scrimData/format';
-import { ActivityBars } from './ActivityBars';
 import { CompositionPanel } from './CompositionPanel';
 import { CoverageSummary } from './CoverageSummary';
 import { DataNotice } from './DataNotice';
@@ -54,7 +53,6 @@ export function ScrimDataPanel({ teamId }: { teamId: string }) {
           <TabPanel base={base} id="overview" value={tab} className="space-y-4">
             <CoverageSummary coverage={data.coverage} />
             <RecordSummary record={data.record} form={data.form} />
-            <ActivityBars activity={data.activity} />
             <RecentMapsPanel maps={data.recent} teamId={teamId} />
           </TabPanel>
           <TabPanel base={base} id="team-report" value={tab}><Suspense fallback={<PanelSkeleton />}><TeamReportTab teamId={teamId} /></Suspense></TabPanel>
