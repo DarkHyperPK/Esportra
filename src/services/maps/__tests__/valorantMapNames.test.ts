@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayMapName, mapNameFromRiotId, UNKNOWN_MAP } from '../valorantMapNames';
+import { displayMapName, mapNameFromRiotId, registerMapCatalog, UNKNOWN_MAP } from '../valorantMapNames';
 
 describe('valorantMapNames', () => {
   it.each([
@@ -22,5 +22,15 @@ describe('valorantMapNames', () => {
     expect(displayMapName('Lotus')).toBe('Lotus');
     expect(displayMapName('  ')).toBeNull();
     expect(displayMapName(undefined)).toBeNull();
+  });
+
+  it('learns maps Riot added from the published list, without overriding the built-in names', () => {
+    registerMapCatalog([{ mapUrl: '/Game/Maps/TestSummitCode/TestSummitCode', displayName: 'Test Summit' }, { mapUrl: '/Game/Maps/Triad/Triad', displayName: 'Renamed' }, { displayName: 'No path' }]);
+    expect(mapNameFromRiotId('/Game/Maps/TestSummitCode/TestSummitCode')).toBe('Test Summit');
+    expect(displayMapName('/Game/Maps/TestSummitCode/TestSummitCode')).toBe('Test Summit');
+    expect(mapNameFromRiotId('/Game/Maps/Triad/Triad')).toBe('Haven');
+    expect(displayMapName('/Game/Maps/Other/Other')).toBe(UNKNOWN_MAP);
+    registerMapCatalog([]);
+    expect(mapNameFromRiotId('TestSummitCode')).toBe('Test Summit');
   });
 });

@@ -25,8 +25,8 @@ const FULL = {
     rounds: [round(1, true), round(2, true)], streaks: { longest_win: 2, longest_loss: 0 },
     halves: { first: rate(2, 2), second: rate(0, 0), overtime: rate(0, 0) },
     opening: { players: [{ key: 'p1', kills: 2, deaths: 0, duels_won: rate(2, 2), avg_ms_to_first_kill: 5000, avg_ms_to_first_death: null }], win_after_first_blood: rate(2, 2), win_after_first_death: rate(0, 0), first_blood_rounds: rate(2, 2), attack_first_blood: rate(2, 2), defense_first_blood: rate(0, 0) },
-    kills: [{ round: 1, ordinal: 1, round_ms: 5000, killer: 'p1', victim: 'p3', assistants: [], killer_mine: true, weapon: 'Vandal', x: 1, y: 2 }, { round: 2, ordinal: 1, round_ms: 7000, killer: 'p3', victim: 'p1', assistants: [], killer_mine: false, weapon: '1234abcd-4575-0200-1a81-3eacf00cf872', x: 1, y: 2 }],
-    economy: { win_rate_by_buy: [{ buy: 'full', rounds_won: rate(2, 2) }], pistol_rounds: rate(0, 0), avg_loadout_mine: 4000, avg_loadout_theirs: 2500, avg_loadout_in_won_rounds: 4000, avg_loadout_in_lost_rounds: null, weapons: [{ weapon: 'Vandal', rounds: 4 }], armor: [] },
+    kills: [{ round: 1, ordinal: 1, round_ms: 5000, killer: 'p1', victim: 'p3', assistants: [], killer_mine: true, weapon: 'w-vandal', type: 'Weapon', x: 1, y: 2 }, { round: 2, ordinal: 1, round_ms: 7000, killer: 'p3', victim: 'p1', assistants: [], killer_mine: false, weapon: '1234abcd-4575-0200-1a81-3eacf00cf872', type: 'Weapon', x: 1, y: 2 }],
+    economy: { win_rate_by_buy: [{ buy: 'full', rounds_won: rate(2, 2) }], pistol_rounds: rate(0, 0), avg_loadout_mine: 4000, avg_loadout_theirs: 2500, avg_loadout_in_won_rounds: 4000, avg_loadout_in_lost_rounds: null, weapons: [{ weapon: 'w-vandal', rounds: 4 }], armor: [] },
     abilities: [{ key: 'p1', grenade: 3, ability1: 6, ability2: null, ultimate: 1, per_round: 3.3 }],
     objectives: { by_player: [], sites: [{ weapon: 'A', rounds: 1 }], avg_plant_ms: 30000, avg_defuse_ms: null, win_when_planting: rate(1, 1), win_when_opponent_plants: rate(0, 0) },
     formulas: [{ id: 'acs', text: 'ACS = score ÷ rounds played.' }],
@@ -39,7 +39,10 @@ const refetch = vi.fn();
 vi.mock('@/hooks/competitive/useScrimGameInsights', () => ({
   useScrimGameInsights: () => ({ data: state.data, isLoading: !!state.isLoading, isError: !!state.isError, refetch }),
 }));
-vi.mock('@/hooks/useValorantCatalog', () => ({ useValorantWeapons: () => ({ data: [{ uuid: 'x', displayName: 'Vandal' }] }) }));
+vi.mock('@/hooks/useValorantCatalog', () => ({
+  useValorantWeapons: () => ({ data: [{ uuid: 'w-vandal', displayName: 'Vandal', killStreamIcon: 'https://x/vandal.png' }] }),
+  useValorantAgents: () => ({ data: {} }),
+}));
 
 // The API client camel-cases keys; parse the same way the hook does.
 const camel = (v: unknown): unknown => Array.isArray(v) ? v.map(camel)
@@ -85,13 +88,22 @@ describe('ScrimGameReport', () => {
     expect(screen.queryByRole('region', { name: 'Scoreboard' })).toBeNull();
   });
 
-  it('never shows a raw weapon id and lets you pick another round in the kill feed', () => {
+  it('draws the kill feed with agent and weapon icons, never a raw id, and lets you pick another round', () => {
     state = { data: parsed(FULL) };
     view('kills');
-    expect(screen.getByText(/with Vandal/)).toBeInTheDocument();
+    expect(screen.getByAltText('Vandal')).toHaveAttribute('src', 'https://x/vandal.png');
     fireEvent.click(screen.getByRole('button', { name: '2' }));
-    expect(screen.getByText(/with Unknown/)).toBeInTheDocument();
+    expect(screen.getByTitle('Weapon')).toBeInTheDocument();
     expect(screen.queryByText(/1234abcd/)).not.toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain('1234abcd');
+  });
+
+  it('shows each round as the game does: how it ended, the side, the plant, with a full sentence for each', () => {
+    state = { data: parsed(FULL) };
+    view('rounds');
+    expect(screen.getByLabelText('Round 1: Your team won by eliminating the opposition, attacking, spike planted at A at 0:30. Score 1–0.')).toBeInTheDocument();
+    expect(screen.getByText(/First half · you attacked/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Legend')).toHaveTextContent('Spike detonated');
   });
 
   it('says why there is no detail for a map without verified Riot data, and shows no sections', () => {

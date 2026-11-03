@@ -7,12 +7,26 @@ const NAME_BY_CODE: Record<string, string> = {
 
 export const UNKNOWN_MAP = 'Unknown map';
 
+/** Maps Riot's published list added after the built-in table above (new maps need no release). Set when the map catalog loads. */
+let learned: Record<string, string> = {};
+
+/** Teaches the helpers the maps in valorant-api's list: the last segment of each map path -> its display name. */
+export function registerMapCatalog(entries: ReadonlyArray<{ mapUrl?: string; displayName?: string }>): void {
+  const next: Record<string, string> = {};
+  for (const e of entries) {
+    const code = e.mapUrl ? lastSegment(e.mapUrl) : '';
+    if (code && e.displayName) next[code] = e.displayName;
+  }
+  if (Object.keys(next).length > 0) learned = next;
+}
+
 const lastSegment = (value: string) => value.split('/').filter(Boolean).pop()?.trim().toLowerCase() ?? '';
 
 /** The name for a Riot map path or code ("/Game/Maps/Triad/Triad", "Triad"); null when it is not a known code. */
 export function mapNameFromRiotId(riotMapIdOrCode: string | null | undefined): string | null {
   if (!riotMapIdOrCode) return null;
-  return NAME_BY_CODE[lastSegment(riotMapIdOrCode)] ?? null;
+  const code = lastSegment(riotMapIdOrCode);
+  return NAME_BY_CODE[code] ?? learned[code] ?? null;
 }
 
 /**

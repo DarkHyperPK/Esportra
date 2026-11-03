@@ -30,7 +30,7 @@ export const reportSchema = z.object({
   }),
   kills: z.array(z.object({
     round: z.number(), ordinal: z.number(), roundMs: z.number().nullable(), killer: z.string().nullable(), victim: z.string(),
-    assistants: z.array(z.string()), killerMine: z.boolean(), weapon: z.string().nullable(), x: z.number().nullable(), y: z.number().nullable(),
+    assistants: z.array(z.string()), killerMine: z.boolean(), weapon: z.string().nullable(), type: z.string().nullable().default(null), x: z.number().nullable(), y: z.number().nullable(),
   })),
   economy: z.object({
     winRateByBuy: z.array(z.object({ buy: z.string(), roundsWon: rate })), pistolRounds: rate, avgLoadoutMine: num, avgLoadoutTheirs: num,

@@ -1,21 +1,23 @@
 import { NO_VALUE } from '@/services/scrimData/format';
+import type { KillCatalog } from '@/services/scrimInsights/assets';
 import { BUY_LABEL, BUY_MEANING, assetLabel, money, rateText } from '@/services/scrimInsights/present';
 import type { InsightsReport } from '@/types/scrimInsights';
 import { ReportSection } from './ReportSection';
 
-function Uses({ title, rows, labels }: { title: string; rows: Array<{ weapon: string; rounds: number }>; labels?: ReadonlyMap<string, string> }) {
+function Uses({ title, rows, labels, icons }: { title: string; rows: Array<{ weapon: string; rounds: number }>; labels?: ReadonlyMap<string, string>; icons?: ReadonlyMap<string, string> }) {
   return (
     <div>
       <p className="mb-1 text-[12px] font-semibold text-zinc-400">{title}</p>
       <ul className="space-y-0.5 text-[13px]">
-        {rows.slice(0, 6).map((r) => <li key={r.weapon} className="flex justify-between gap-3"><span className="truncate text-zinc-200">{assetLabel(r.weapon, labels)}</span><span className="tabular-nums text-zinc-500">{r.rounds} player-rounds</span></li>)}
+        {rows.slice(0, 6).map((r) => <li key={r.weapon} className="flex items-center justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-2">{icons?.get(r.weapon.toLowerCase()) ? <img src={icons.get(r.weapon.toLowerCase())} alt="" className="h-5 w-12 shrink-0 object-contain" loading="lazy" /> : null}<span className="truncate text-zinc-200">{assetLabel(r.weapon, labels)}</span></span><span className="tabular-nums text-zinc-500">{r.rounds} player-rounds</span></li>)}
       </ul>
     </div>
   );
 }
 
 /** Spending and loadouts for your team, and how rounds went at each buy level. */
-export function EconomyPanel({ report, weapons, armor }: { report: InsightsReport; weapons?: ReadonlyMap<string, string>; armor?: ReadonlyMap<string, string> }) {
+export function EconomyPanel({ report, assets, armor }: { report: InsightsReport; assets: KillCatalog; armor?: ReadonlyMap<string, string> }) {
   const e = report.economy;
   if (e.winRateByBuy.length === 0 && e.avgLoadoutMine == null) return null;
   return (
@@ -33,7 +35,7 @@ export function EconomyPanel({ report, weapons, armor }: { report: InsightsRepor
         </table>
       )}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {e.weapons.length > 0 ? <Uses title="Weapons bought" rows={e.weapons} labels={weapons} /> : <p className="text-[12px] text-zinc-500">{NO_VALUE}</p>}
+        {e.weapons.length > 0 ? <Uses title="Weapons bought" rows={e.weapons} labels={assets.weaponName} icons={assets.weaponIcon} /> : <p className="text-[12px] text-zinc-500">{NO_VALUE}</p>}
         {e.armor.length > 0 && armor && <Uses title="Armor bought" rows={e.armor} labels={armor} />}
       </div>
     </ReportSection>

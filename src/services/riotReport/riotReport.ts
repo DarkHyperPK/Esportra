@@ -1,4 +1,5 @@
 import type { RiotMatchCandidate } from '@/types/riotMatchCandidate';
+import { UNKNOWN_MAP } from '@/services/maps/valorantMapNames';
 
 export interface RiotReportContext {
   gameNumber: number;
@@ -47,7 +48,8 @@ export function riotReportBody(candidate: RiotMatchCandidate, ctx: RiotReportCon
     gameNumber: ctx.gameNumber,
     riotMatchId: candidate.id,
     mapId: ctx.mapId || undefined,
-    mapName: candidate.map || ctx.mapName,
+    // "Unknown map" is a display fallback, not a name worth saving: keep it off the record so the map can be named once it is known.
+    mapName: (candidate.map && candidate.map !== UNKNOWN_MAP ? candidate.map : undefined) || ctx.mapName,
     team1Score,
     team2Score,
     winnerTeamId,

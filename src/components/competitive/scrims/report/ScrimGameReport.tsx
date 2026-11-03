@@ -1,9 +1,7 @@
-import { useMemo } from 'react';
 import { InlineNotice, TabBar, TabPanel, useTabBase, type TabItem } from '@/components/ui/kit';
 import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitive/scrims/data/PanelStates';
 import { useScrimGameInsights } from '@/hooks/competitive/useScrimGameInsights';
 import { useTabParam } from '@/hooks/useTabParam';
-import { useValorantWeapons } from '@/hooks/useValorantCatalog';
 import { TIER_LABEL, TIER_MEANING } from '@/services/scrimData/format';
 import { AbilityPanel, ObjectivePanel } from './AbilityObjectivePanels';
 import { CombatPanel } from './CombatPanel';
@@ -12,6 +10,7 @@ import { KillFeedPanel } from './KillFeedPanel';
 import { OpeningPanel } from './OpeningPanel';
 import { PlayerTable } from './PlayerTable';
 import { ReportHeader } from './ReportHeader';
+import { useReportAssets } from './useReportAssets';
 import { RoundTimeline } from './RoundTimeline';
 
 const REPORT_TABS = ['scoreboard', 'rounds', 'kills', 'economy', 'utility'] as const;
@@ -28,8 +27,7 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
   const { data, isLoading, isError, refetch } = useScrimGameInsights(sessionId, gameNumber, teamId);
   const [tab, setTab] = useTabParam(REPORT_TABS, 'scoreboard');
   const base = useTabBase();
-  const { data: weaponList } = useValorantWeapons(!!data?.report);
-  const weapons = useMemo(() => new Map((weaponList ?? []).flatMap((w) => (w.uuid && w.displayName ? [[w.uuid.toLowerCase(), w.displayName] as const] : []))), [weaponList]);
+  const assets = useReportAssets(!!data?.report);
 
   if (isLoading) return <PanelSkeleton />;
   if (isError || !data) return <PanelError onRetry={() => void refetch()} />;
@@ -47,8 +45,8 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
           <TabBar tabs={TABS} value={tab} onChange={(id) => setTab(id as ReportTab)} label="Map report sections" base={base} />
           <TabPanel base={base} id="scoreboard" value={tab}><PlayerTable players={report.players} /></TabPanel>
           <TabPanel base={base} id="rounds" value={tab} className="space-y-4"><RoundTimeline report={report} /><OpeningPanel report={report} /></TabPanel>
-          <TabPanel base={base} id="kills" value={tab} className="space-y-4"><KillFeedPanel report={report} weapons={weapons} /><CombatPanel report={report} /></TabPanel>
-          <TabPanel base={base} id="economy" value={tab}><EconomyPanel report={report} weapons={weapons} /></TabPanel>
+          <TabPanel base={base} id="kills" value={tab} className="space-y-4"><KillFeedPanel report={report} assets={assets} /><CombatPanel report={report} /></TabPanel>
+          <TabPanel base={base} id="economy" value={tab}><EconomyPanel report={report} assets={assets} /></TabPanel>
           <TabPanel base={base} id="utility" value={tab} className="space-y-4"><AbilityPanel report={report} /><ObjectivePanel report={report} /></TabPanel>
           <details className="rounded-xl border border-white/5 p-4 text-[12px] text-zinc-400">
             <summary className="cursor-pointer font-semibold text-zinc-300">How these figures are worked out</summary>

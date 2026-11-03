@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { registerMapCatalog } from '@/services/maps/valorantMapNames';
 import { bundledValorantAgents, getValorantAgentIcon, getValorantRoleIcon, valorantUiAssetVersion } from '@/lib/valorantUiAssets';
 
 /**
@@ -26,7 +27,7 @@ export interface ValorantMap {
     yScalarToAdd?: number;
 }
 export interface ValorantTier { tier: number; tierName?: string; divisionName?: string; smallIcon?: string; largeIcon?: string }
-export interface ValorantWeapon { uuid?: string; displayName?: string; displayIcon?: string }
+export interface ValorantWeapon { uuid?: string; displayName?: string; displayIcon?: string; killStreamIcon?: string }
 
 type Raw = Record<string, unknown>;
 type Cached<T> = { at: number; data: T };
@@ -106,7 +107,7 @@ function latestTiers(entries: Raw[]): Record<number, ValorantTier> {
     return tiers;
 }
 
-const slimWeapon = (w: Raw): ValorantWeapon => ({ uuid: str(w.uuid), displayName: str(w.displayName), displayIcon: str(w.displayIcon) });
+const slimWeapon = (w: Raw): ValorantWeapon => ({ uuid: str(w.uuid), displayName: str(w.displayName), displayIcon: str(w.displayIcon), killStreamIcon: str(w.killStreamIcon) });
 
 function useCatalog<T>(key: string, load: () => Promise<T>, enabled: boolean, seed?: T) {
     const cached = readCache<T>(key);
@@ -141,10 +142,14 @@ export const useValorantAgents = (enabled = true) =>
     }, enabled, initialAgents);
 
 export const useValorantMaps = (enabled = true) =>
-    useCatalog('maps', async () => (await fetchList('/maps')).map(slimMap), enabled);
+    useCatalog('maps', async () => {
+        const maps = (await fetchList('/maps')).map(slimMap);
+        registerMapCatalog(maps);
+        return maps;
+    }, enabled);
 
 export const useValorantTiers = (enabled = true) =>
     useCatalog('tiers', async () => latestTiers(await fetchList('/competitivetiers')), enabled);
 
 export const useValorantWeapons = (enabled = true) =>
-    useCatalog('weapons', async () => (await fetchList('/weapons')).map(slimWeapon), enabled);
+    useCatalog('weapons-v2', async () => (await fetchList('/weapons')).map(slimWeapon), enabled);
