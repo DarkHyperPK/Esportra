@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Esportra Scrims reel</title>
+<link rel="stylesheet" href="/assets/fonts/fonts.css" />
+<style>
+  :root { --black: #09090B; --panel: #111114; --ink: #FAFAFA; --label: #E4E4E7; --secondary: #A1A1AA; --hint: #71717A; --rose: #F43F5E; --success: #34D399; }
+  html, body { margin: 0; padding: 0; background: #000; }
+  #frame { position: relative; overflow: hidden; background: var(--black); color: var(--ink); font-family: Inter, system-ui, sans-serif; }
+  #frame * { box-sizing: border-box; }
+  .layer { position: absolute; inset: 0; }
+  .abs { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+  .panel { position: absolute; left: 0; top: 0; overflow: hidden; transform-origin: 50% 50%; backface-visibility: hidden;
+           box-shadow: 0 40px 120px -30px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.06); }
+  .panel img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; }
+  .grid { position: absolute; inset: -200px;
+          background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+          background-size: 96px 96px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.28em; font-weight: 600; }
+  .display { font-family: Poppins, system-ui, sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -0.035em; line-height: 0.9; white-space: nowrap; }
+  .line { position: absolute; left: 0; white-space: nowrap; }
+  .word { display: inline-block; will-change: transform, opacity, filter; }
+  .mask { overflow: hidden; position: absolute; }
+  .char { display: inline-block; will-change: transform; }
+  .outline { color: transparent; -webkit-text-stroke: 3px var(--ink); }
+  .cursor { position: absolute; left: 0; top: 0; width: 46px; height: 46px; will-change: transform; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6)); }
+  .ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); will-change: transform, opacity; }
+</style>
+</head>
+<body>
+<div id="frame"></div>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="mbx" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur id="mbx-g" stdDeviation="0 0" /></filter>
+    <filter id="mby" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur id="mby-g" stdDeviation="0 0" /></filter>
+  </defs>
+</svg>
+<script src="./comp.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "bpm": 120,
+  "duration": 20,
+  "fps": 60,
+  "beats": [
+    { "id": "hook", "start": 0, "end": 2, "label": "The problem" },
+    { "id": "reveal", "start": 2, "end": 4, "label": "Product appears" },
+    { "id": "find", "start": 4, "end": 6, "label": "Find" },
+    { "id": "book", "start": 6, "end": 8, "label": "Book" },
+    { "id": "agree", "start": 8, "end": 10, "label": "Agree a time" },
+    { "id": "checkin", "start": 10, "end": 12, "label": "Check in" },
+    { "id": "veto", "start": 12, "end": 14, "label": "Map veto" },
+    { "id": "report", "start": 14, "end": 16, "label": "Report" },
+    { "id": "insights", "start": 16, "end": 18, "label": "Insights" },
+    { "id": "outro", "start": 18, "end": 20, "label": "Logo" }
+  ],
+  "events": [
+    { "t": 0.0, "type": "word" }, { "t": 0.5, "type": "word" }, { "t": 1.0, "type": "word" },
+    { "t": 1.5, "type": "word" }, { "t": 1.75, "type": "word" },
+    { "t": 1.25, "type": "riser", "len": 0.75 },
+    { "t": 2.0, "type": "impact" },
+    { "t": 2.5, "type": "tick" }, { "t": 2.75, "type": "tick" }, { "t": 3.0, "type": "tick" },
+    { "t": 3.25, "type": "tick" }, { "t": 3.5, "type": "tick" }, { "t": 3.75, "type": "tick" },
+    { "t": 4.0, "type": "whoosh" }, { "t": 6.0, "type": "whoosh" }, { "t": 7.0, "type": "whoosh", "small": true },
+    { "t": 8.0, "type": "whoosh" }, { "t": 10.0, "type": "whoosh" }, { "t": 12.0, "type": "whoosh" },
+    { "t": 14.0, "type": "whoosh" }, { "t": 16.0, "type": "whoosh" }, { "t": 18.0, "type": "whoosh" },
+    { "t": 5.0, "type": "click" }, { "t": 6.5, "type": "click" }, { "t": 7.5, "type": "click" },
+    { "t": 9.0, "type": "click" }, { "t": 11.0, "type": "click" }, { "t": 13.0, "type": "click" },
+    { "t": 14.5, "type": "click" }, { "t": 15.25, "type": "click" },
+    { "t": 16.75, "type": "hover" },
+    { "t": 7.55, "type": "success" }, { "t": 9.05, "type": "success" }, { "t": 11.05, "type": "success" },
+    { "t": 13.05, "type": "thud" }, { "t": 15.3, "type": "impact", "small": true },
+    { "t": 18.0, "type": "impact" }
+  ]
+}

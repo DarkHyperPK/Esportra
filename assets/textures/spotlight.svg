@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.16"/><stop offset="0.85" stop-color="rgb(225,228,240)" stop-opacity="0.025"/></linearGradient>
+<radialGradient id="pool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.12"/><stop offset="1" stop-color="rgb(225,228,240)" stop-opacity="0"/></radialGradient>
+<radialGradient id="src" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.35"/><stop offset="1" stop-color="rgb(225,228,240)" stop-opacity="0"/></radialGradient>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="38"/></filter>
+<linearGradient id="vig" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="0.3" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/></linearGradient>
+</defs>
+<rect width="1920" height="1080" fill="#09090B"/>
+<polygon points="890,-20 1030,-20 1420.8,864 499.20000000000005,864" fill="url(#beam)" filter="url(#soft)"/>
+<ellipse cx="960" cy="864" rx="576" ry="81" fill="url(#pool)"/>
+<ellipse cx="960" cy="-10" rx="220" ry="90" fill="url(#src)"/>
+<rect width="1920" height="1080" fill="url(#vig)"/></svg>
