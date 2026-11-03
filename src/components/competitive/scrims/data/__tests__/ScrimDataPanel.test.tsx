@@ -70,7 +70,7 @@ describe('ScrimDataPanel', () => {
     renderPanel();
     expect(screen.getByText(/Based on 6 confirmed scrim maps/)).toBeInTheDocument();
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Timeline', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('What your data is built from')).toHaveTextContent('full data');
     expect(screen.getByTitle(/Auto-fetched from Riot/)).toBeInTheDocument();

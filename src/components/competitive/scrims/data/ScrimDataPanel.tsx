@@ -20,13 +20,14 @@ const TeamReportTab = lazy(() => import('./reports/TeamReportTab'));
 const PlayerReportsTab = lazy(() => import('./reports/PlayerReportsTab'));
 const OpponentsTab = lazy(() => import('./reports/OpponentsTab'));
 const TrendsTab = lazy(() => import('./reports/TrendsTab'));
+const TimelineHome = lazy(() => import('./reports/TimelineHome'));
 const HeatmapTab = lazy(() => import('./reports/HeatmapTab'));
 
-const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'agents', 'opponents', 'trends', 'heatmaps', 'players', 'roster'] as const;
+const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'timeline', 'agents', 'opponents', 'trends', 'heatmaps', 'players', 'roster'] as const;
 type InsightTab = (typeof INSIGHT_TABS)[number];
 
 const TABS: readonly (TabItem & { id: InsightTab })[] = [
-  { id: 'overview', label: 'Overview' }, { id: 'team-report', label: 'Team report' }, { id: 'player-reports', label: 'Player reports' }, { id: 'maps', label: 'Maps' },
+  { id: 'overview', label: 'Overview' }, { id: 'team-report', label: 'Team report' }, { id: 'player-reports', label: 'Player reports' }, { id: 'maps', label: 'Maps' }, { id: 'timeline', label: 'Timeline' },
   { id: 'agents', label: 'Agents & comps' }, { id: 'opponents', label: 'Opponents' }, { id: 'trends', label: 'Trends' }, { id: 'heatmaps', label: 'Heatmaps' }, { id: 'players', label: 'Players' }, { id: 'roster', label: 'Roster' },
 ];
 
@@ -59,6 +60,7 @@ export function ScrimDataPanel({ teamId }: { teamId: string }) {
           <TabPanel base={base} id="team-report" value={tab}><Suspense fallback={<PanelSkeleton />}><TeamReportTab teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="player-reports" value={tab}><Suspense fallback={<PanelSkeleton />}><PlayerReportsTab teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="maps" value={tab}><MapsTab teamId={teamId} data={data} /></TabPanel>
+          <TabPanel base={base} id="timeline" value={tab}><Suspense fallback={<PanelSkeleton />}><TimelineHome maps={data.recent} teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="agents" value={tab} className="space-y-4">
             <AgentTable agents={data.agents} />
             <CompositionPanel compositions={data.compositions} />

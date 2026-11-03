@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MatchTimeline, TimelineKill, TimelineRound } from '@/schemas/scrimTimeline';
-import { axisMax, clock, eventMarkers, matchHeatPoints, roundEvents } from '../timeline';
+import { matchHeatPoints, roundEvents } from '../timeline';
 
 const kill = (ordinal: number, ms: number | null, killer: string | null, victim: string, extra: Partial<TimelineKill> = {}): TimelineKill => ({
   ordinal, ms, killer, victim, assistants: [], weapon: 'w', type: 'Weapon', victimX: 100, victimY: 200, positions: [], ...extra,
@@ -25,28 +25,6 @@ describe('timeline events', () => {
     expect(new Set(e.map((x) => x.id)).size).toBe(3);
   });
 
-  it('sizes the time axis to the last event, in whole 10 s, never under 30 s', () => {
-    expect(axisMax(roundEvents(TIMELINE.rounds[0]))).toBe(30000);
-    expect(axisMax(roundEvents(round({ kills: [kill(1, 71000, 'p1', 'p3')] })))).toBe(80000);
-    expect(axisMax([])).toBe(30000);
-    expect(clock(63000)).toBe('1:03');
-    expect(clock(null)).toBe('—');
-  });
-});
-
-describe('minimap markers', () => {
-  it('shows the recorded positions with the roles of killer and victim, adding the victim when they were not recorded', () => {
-    const e = roundEvents(TIMELINE.rounds[0])[0];
-    const m = eventMarkers(e, TIMELINE.rounds[0]);
-    expect(m.map((x) => [x.key, x.role])).toEqual([['p1', 'killer'], ['p3', 'victim']]);
-    const second = eventMarkers(roundEvents(TIMELINE.rounds[0])[1], TIMELINE.rounds[0]);
-    expect(second).toEqual([{ key: 'p2', x: 100, y: 200, facing: null, role: 'victim' }]);
-  });
-
-  it('draws the plant where the spike went down', () => {
-    const plant = roundEvents(TIMELINE.rounds[0]).find((e) => e.kind === 'plant')!;
-    expect(eventMarkers(plant, TIMELINE.rounds[0])).toEqual([{ key: 'p1', x: 5, y: 6, facing: null, role: 'killer' }]);
-  });
 });
 
 describe('match heatmap points', () => {

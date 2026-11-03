@@ -14,29 +14,6 @@ export function roundEvents(r: TimelineRound): RoundEvent[] {
   return events.sort((a, b) => (a.ms ?? Number.MAX_SAFE_INTEGER) - (b.ms ?? Number.MAX_SAFE_INTEGER));
 }
 
-/** The length of the time axis: the last event, rounded up to a whole 10 s, never under 30 s. */
-export function axisMax(events: RoundEvent[]): number {
-  const last = Math.max(0, ...events.map((e) => e.ms ?? 0));
-  return Math.max(30_000, Math.ceil(last / 10_000) * 10_000);
-}
-
-export const clock = (ms: number | null): string => (ms == null ? '—' : `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`);
-
-/** What the minimap shows for an event: the players' recorded positions, or just the victim's if Riot recorded none. */
-export interface Marker { key: string; x: number; y: number; facing: number | null; role: 'killer' | 'victim' | 'assist' | 'other' }
-
-export function eventMarkers(e: RoundEvent, round: TimelineRound): Marker[] {
-  if (e.kind !== 'kill') {
-    const at = e.kind === 'plant' ? { x: round.plantX, y: round.plantY, key: round.planter } : { x: round.defuseX, y: round.defuseY, key: round.defuser };
-    return at.x != null && at.y != null ? [{ key: at.key ?? 'spike', x: at.x, y: at.y, facing: null, role: 'killer' }] : [];
-  }
-  const k = e.kill;
-  const roleOf = (key: string): Marker['role'] => (key === k.killer ? 'killer' : key === k.victim ? 'victim' : k.assistants.includes(key) ? 'assist' : 'other');
-  const fromPositions = k.positions.map((p) => ({ key: p.key, x: p.x, y: p.y, facing: p.facing, role: roleOf(p.key) }));
-  if (fromPositions.some((p) => p.role === 'victim') || k.victimX == null || k.victimY == null) return fromPositions;
-  return [...fromPositions, { key: k.victim, x: k.victimX, y: k.victimY, facing: null, role: 'victim' }];
-}
-
 /** The positions behind a heatmap of this one match, from the same data as the timeline. Opening = the first kill of a round. */
 export function matchHeatPoints(t: MatchTimeline, kind: HeatKind, side: string | null): Array<{ x: number; y: number; round: number }> {
   const mine = new Set(t.players.filter((p) => p.mine).map((p) => p.key));

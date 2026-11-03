@@ -47,6 +47,8 @@ interface RiotTimelineMapProps {
   teamALabel?: string;
   teamBLabel?: string;
   displayTeamASide?: 'Blue' | 'Red';
+  /** Fill the host's width instead of the centred 1080px column. */
+  fullWidth?: boolean;
 }
 
 type TimelineActionType = 'kill' | 'plant';
@@ -584,6 +586,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
   teamALabel,
   teamBLabel,
   displayTeamASide,
+  fullWidth = false,
 }) => {
   const weaponCatalog = useValorantWeapons().data;
   const weapons = useMemo(() => buildWeaponMap(weaponCatalog ?? []), [weaponCatalog]);
@@ -728,7 +731,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1080px] space-y-4">
+    <div className={cn('w-full space-y-4', !fullWidth && 'mx-auto max-w-[1080px]')}>
       <div className="min-w-0 overflow-hidden border border-white/5 bg-[#0a0a0c] shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
         <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-[linear-gradient(90deg,#27272a,#18181b)] px-4 py-2.5">
           <div>
