@@ -65,6 +65,8 @@ describe('describeNextStep', () => {
       .toContain('checked in on time');
     expect(describeNextStep(next(base), { opponent: 'Nova', cancelledReason: 'cancelled_by_team', cancelledByName: 'Nova' }, NOW).body)
       .toContain('Nova cancelled');
+    expect(describeNextStep(next(base), { opponent: 'Nova', cancelledReason: 'veto_abandoned' }, NOW).body)
+      .toContain('map veto');
     expect(describeNextStep(next(base), { opponent: 'Nova', cancelledReason: null }, NOW).body)
       .toBe('This scrim was cancelled.');
   });

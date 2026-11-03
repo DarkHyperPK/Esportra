@@ -60,12 +60,15 @@ const view = (
   urgent = false,
 ): NextStepView => ({ headline, body, target, urgent });
 
-function cancelledBody(ctx: NextStepContext): string {
+export function cancelledBody(ctx: NextStepContext): string {
   if (ctx.cancelledReason === 'checkin_timeout') {
     return 'Not both teams checked in on time, so the scrim was cancelled.';
   }
   if (ctx.cancelledReason === 'cancelled_by_team') {
     return ctx.cancelledByName ? `${ctx.cancelledByName} cancelled this scrim.` : 'A team cancelled this scrim.';
+  }
+  if (ctx.cancelledReason === 'veto_abandoned') {
+    return 'Nobody acted on the map veto for a while, so the scrim was cancelled.';
   }
   return 'This scrim was cancelled.';
 }

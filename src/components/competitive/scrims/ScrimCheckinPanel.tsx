@@ -15,6 +15,7 @@ import {InlineNotice, StatusPill} from '@/components/ui/kit';
 import { Countdown } from '@/components/ui/Countdown';
 import { useScrimCheckin } from '@/hooks/competitive/useScrims';
 import type { ScrimSession } from '@/types/competitive';
+import { cancelledBody } from '@/services/scrimRoomView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export function ScrimCheckinPanel({ session, callerTeamId, isCaptain, onCheckinS
       <motion.section aria-labelledby="checkin-title" className={PANEL} {...fadeIn}>
         <p id="checkin-title" className={SCRIM_LABEL}>CHECK-IN</p>
         <InlineNotice tone="critical">
-          Session cancelled — check-in timed out. Contact your opponent if you believe this is wrong.
+          {cancelledBody({ opponent: null, cancelledReason: session.cancelledReason })} Contact your opponent if you believe this is wrong.
         </InlineNotice>
       </motion.section>
     );

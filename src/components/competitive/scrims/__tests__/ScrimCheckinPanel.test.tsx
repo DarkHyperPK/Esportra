@@ -63,17 +63,21 @@ describe('ScrimCheckinPanel', () => {
     expect(screen.queryByRole('button', { name: /check in your team/i })).not.toBeInTheDocument();
   });
 
-  it('S1-6: shows cancelled message when session is cancelled', () => {
+  it.each([
+    ['checkin_timeout', /checked in on time/i],
+    ['veto_abandoned', /map veto/i],
+    [null, /scrim was cancelled/i],
+  ])('S1-6: says why a cancelled session was cancelled (%s)', (reason, text) => {
     render(
       <ScrimCheckinPanel
-        session={{ ...baseSession, status: 'cancelled' }}
+        session={{ ...baseSession, status: 'cancelled', cancelledReason: reason }}
         callerTeamId="team-1"
         isCaptain={true}
         onCheckinSuccess={vi.fn()}
       />,
       { wrapper },
     );
-    expect(screen.getByText(/check-in timed out/i)).toBeInTheDocument();
+    expect(screen.getByText(text)).toBeInTheDocument();
   });
 
   it('S1-2: shows check-in button for captain when window is open', () => {
