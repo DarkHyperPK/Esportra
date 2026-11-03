@@ -92,3 +92,7 @@ a "partial" lineup. Substitute and pair comparisons are descriptive: the games d
 
 **Who sees it.** Active members of the team, and staff admins. Everyone else gets nothing. This replaces the earlier
 public career and tournament surfaces, which were removed.
+
+### Matchmade (ranked) games on staging
+
+By default only custom games are verified. With the backend setting `Riot__AllowNonCustomMatches=true` (staging only), a ranked, unrated or other matchmade game can be attached to a scrim map. It can never be fully verified: the opposing scrim team is not in it, so only the reporting team's side and the score are checked (`partially_verified`, reason `queue_not_custom`). These maps count in the same record and map pool, and the page states how many came from a matchmade queue. A wrong score still disputes the game.

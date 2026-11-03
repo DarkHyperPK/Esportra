@@ -18,7 +18,7 @@ describe('TierBadge', () => {
 
 describe('CoverageSummary', () => {
   it('counts each tier and says what it contains', () => {
-    render(<CoverageSummary coverage={{ maps: 6, full: 3, screenshot: 2, scoreOnly: 1, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0 }} />);
+    render(<CoverageSummary coverage={{ maps: 6, full: 3, screenshot: 2, scoreOnly: 1, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, queueGames: 0 }} />);
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText(/every player, every round/)).toBeInTheDocument();
     expect(screen.getByText(/no round-by-round detail/)).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe('CoverageSummary', () => {
   });
 
   it('draws no bar when there are no maps', () => {
-    const { container } = render(<CoverageSummary coverage={{ maps: 0, full: 0, screenshot: 0, scoreOnly: 0, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0 }} />);
+    const { container } = render(<CoverageSummary coverage={{ maps: 0, full: 0, screenshot: 0, scoreOnly: 0, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, queueGames: 0 }} />);
     expect(container.querySelector('[aria-hidden]')).toBeNull();
   });
 });

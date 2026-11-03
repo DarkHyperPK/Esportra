@@ -12,6 +12,7 @@ export interface StatusPresentation {
 
 const REASONS: Record<string, string> = {
   not_custom_game: 'The Riot match was not a custom game.',
+  queue_not_custom: 'Played in a matchmade queue, not a custom game. Only your side and the score were checked.',
   team1_split_across_sides: 'Players from the first team were on both sides of the Riot match.',
   team2_split_across_sides: 'Players from the second team were on both sides of the Riot match.',
   teams_on_same_side: 'Both teams were on the same side of the Riot match.',

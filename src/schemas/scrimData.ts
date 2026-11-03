@@ -33,7 +33,7 @@ export const scrimDataSchema = z.object({
   teamId: z.string(),
   coverage: z.object({
     maps: z.number(), full: z.number(), screenshot: z.number(), scoreOnly: z.number(), riotPending: z.number(),
-    riotNotVerified: z.number(), awaitingConfirmation: z.number(), disputed: z.number(),
+    riotNotVerified: z.number(), awaitingConfirmation: z.number(), disputed: z.number(), queueGames: z.number().default(0),
   }),
   hasData: z.boolean(), truncated: z.boolean(), minMapSample: z.number(),
   sample: z.object({ maps: z.number(), from: z.string().nullable(), to: z.string().nullable() }),

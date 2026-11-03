@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({ useScrimData: vi.fn() }));
 vi.mock('@/hooks/competitive/useScrimData', () => ({ useScrimData: mocks.useScrimData }));
 
 const coverage = (over: Partial<Coverage> = {}): Coverage => ({
-  maps: 6, full: 2, screenshot: 2, scoreOnly: 2, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, ...over,
+  maps: 6, full: 2, screenshot: 2, scoreOnly: 2, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, queueGames: 0, ...over,
 });
 const side = { played: 0, won: 0, pct: null };
 

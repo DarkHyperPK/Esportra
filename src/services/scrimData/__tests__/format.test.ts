@@ -3,7 +3,7 @@ import { coverageNotes, formatNumber, formatPct, gameDate, isSmallSample, monthL
 import type { Coverage } from '@/types/scrimData';
 
 const coverage = (over: Partial<Coverage> = {}): Coverage => ({
-  maps: 6, full: 2, screenshot: 2, scoreOnly: 2, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, ...over,
+  maps: 6, full: 2, screenshot: 2, scoreOnly: 2, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, queueGames: 0, ...over,
 });
 
 describe('numbers', () => {
@@ -54,6 +54,10 @@ describe('labels', () => {
 describe('coverageNotes', () => {
   it('says nothing when everything is counted and in', () => {
     expect(coverageNotes(coverage())).toEqual([]);
+  });
+
+  it('says when maps came from a matchmade queue', () => {
+    expect(coverageNotes(coverage({ queueGames: 2 }))[0]).toContain('2 maps were played in a matchmade queue');
   });
 
   it('explains pending, mismatching, unconfirmed and disputed maps in words', () => {

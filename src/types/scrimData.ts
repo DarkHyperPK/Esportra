@@ -21,6 +21,8 @@ export interface Coverage {
   /** Maps reported but not yet confirmed by the other team: not counted. */
   awaitingConfirmation: number;
   disputed: number;
+  /** Riot maps played in a matchmade queue (ranked, unrated…): only the team’s own side was checked. */
+  queueGames: number;
 }
 
 export interface TeamRecord {

@@ -64,6 +64,7 @@ export function coverageNotes(c: Coverage): string[] {
   const notes: string[] = [];
   if (c.riotPending > 0) notes.push(`${c.riotPending} auto-fetched ${c.riotPending === 1 ? 'map is' : 'maps are'} still waiting for Riot. Riot can take a few minutes to list a custom game, so this fills in by itself.`);
   if (c.riotNotVerified > 0) notes.push(`${c.riotNotVerified} auto-fetched ${c.riotNotVerified === 1 ? 'map does' : 'maps do'} not match Riot’s record, so only the result counts for ${c.riotNotVerified === 1 ? 'it' : 'them'}.`);
+  if (c.queueGames > 0) notes.push(`${c.queueGames} ${c.queueGames === 1 ? 'map was' : 'maps were'} played in a matchmade queue (ranked or similar), not a custom game, so only your side and the score were checked.`);
   if (c.awaitingConfirmation > 0) notes.push(`${c.awaitingConfirmation} ${c.awaitingConfirmation === 1 ? 'map is' : 'maps are'} waiting for the other team to confirm and ${c.awaitingConfirmation === 1 ? 'is' : 'are'} not counted yet.`);
   if (c.disputed > 0) notes.push(`${c.disputed} disputed ${c.disputed === 1 ? 'map is' : 'maps are'} not counted.`);
   return notes;
