@@ -45,6 +45,7 @@ const refetch = vi.fn();
 vi.mock('@/hooks/competitive/useScrimGameInsights', () => ({
   useScrimGameInsights: () => ({ data: state.data, isLoading: !!state.isLoading, isError: !!state.isError, refetch }),
 }));
+vi.mock('../ScreenshotEvidence', () => ({ ScreenshotEvidence: () => <div data-testid="evidence" /> }));
 vi.mock('@/hooks/competitive/useScrimTimeline', () => ({ useScrimTimeline: () => ({ data: undefined, isLoading: true, isError: false, refetch }) }));
 vi.mock('@/hooks/useValorantCatalog', () => ({
   useValorantMaps: () => ({ data: [] }),
@@ -118,6 +119,14 @@ describe('ScrimGameReport', () => {
     expect(screen.getByText(/not reported from a Riot match/)).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Scoreboard' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('tab')).toHaveLength(0);
+  });
+
+  it('shows the stored screenshot and its scoreboard for a map reported from a screenshot', () => {
+    state = { data: parsed({ ...NONE, tier: 'screenshot', reason: 'This map was not reported from a Riot match, so only its result is recorded.' }) };
+    view();
+    expect(screen.getByTestId('evidence')).toBeInTheDocument();
+    expect(screen.getByText(/Read from a scoreboard screenshot/)).toBeInTheDocument();
+    expect(screen.queryByText(/not reported from a Riot match/)).toBeNull();
   });
 
   it('offers a retry when the report cannot be loaded', () => {

@@ -11,6 +11,7 @@ import { OpeningPanel } from './OpeningPanel';
 import { PlayerTable } from './PlayerTable';
 import { ReportHeader } from './ReportHeader';
 import { RoundTimeline } from './RoundTimeline';
+import { ScreenshotEvidence } from './ScreenshotEvidence';
 import { SpikePanel } from './SpikePanel';
 
 const TimelineTab = lazy(() => import('./timeline/TimelineTab'));
@@ -38,8 +39,17 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
       <ReportHeader data={data} />
       {!report ? (
         <>
-          <InlineNotice tone="neutral">{data.reason ?? 'There is no detailed data for this map.'}</InlineNotice>
-          <PanelMessage>{`${TIER_LABEL[data.tier]}. ${TIER_MEANING[data.tier]}`}</PanelMessage>
+          {data.tier === 'screenshot' ? (
+            <>
+              <InlineNotice tone="neutral">Read from a scoreboard screenshot: player lines only, no round-by-round detail.</InlineNotice>
+              <ScreenshotEvidence sessionId={sessionId} gameNumber={gameNumber} mapName={data.map} />
+            </>
+          ) : (
+            <>
+              <InlineNotice tone="neutral">{data.reason ?? 'There is no detailed data for this map.'}</InlineNotice>
+              <PanelMessage>{`${TIER_LABEL[data.tier]}. ${TIER_MEANING[data.tier]}`}</PanelMessage>
+            </>
+          )}
         </>
       ) : (
         <>
