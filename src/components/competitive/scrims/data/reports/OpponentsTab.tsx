@@ -41,19 +41,11 @@ function Detail({ o }: { o: OpponentRow }) {
   return (
     <div className="space-y-4">
       <p className="text-[12px] text-zinc-400" title="Team-level only: nothing about their players is shown.">{o.maps} {o.maps === 1 ? 'map' : 'maps'} against {o.name}{isSmallSample(o.maps) ? ' · small sample' : ''}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         <StatTile label="Record" value={`${o.wins}–${o.losses}`} hint={`${formatPct(o.winRatePct)} of maps`} />
         <StatTile label="Rounds" value={formatPct(o.roundWinPct)} hint={`${o.roundsWon} won, ${o.roundsLost} lost`} />
-        <StatTile label="First met" value={gameDate(o.firstPlayed)} hint="First map in the record" />
-        <StatTile label="Last met" value={gameDate(o.lastPlayed)} hint="Most recent map" />
       </div>
       <Meetings o={o} />
-      <section aria-label="Maps against them" className="border border-white/[0.06] bg-[#111114] p-4">
-        <h3 className={EYEBROW_CLASS}>Maps against them</h3>
-        <ul className="mt-3 grid gap-x-8 gap-y-1 sm:grid-cols-2">
-          {o.mapsPlayed.map((m) => <li key={m.map} className="flex justify-between border-b border-white/[0.06] py-1.5 text-[13px]"><span className="text-white">{m.map}</span><span className="tabular-nums text-zinc-300">{m.wins}–{m.games - m.wins}</span></li>)}
-        </ul>
-      </section>
       {o.veto.vetoes > 0 && <MapPicksView picks={o.veto} />}
     </div>
   );

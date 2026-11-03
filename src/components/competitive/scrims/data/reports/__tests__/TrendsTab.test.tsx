@@ -42,8 +42,8 @@ describe('TrendsTab', () => {
     mocks.trends.mockReturnValue(q({ data: scrimTrendsSchema.parse(camel(DATA)) }));
     render(<TrendsTab teamId="t1" />);
     expect(screen.getByRole('region', { name: 'Last 10 maps against the 10 before' })).toHaveTextContent('Not enough maps yet (10 and 2)');
-    expect(screen.getAllByTestId('trend')).toHaveLength(3);
-    expect(screen.getByRole('heading', { name: 'Team ACS' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
+    expect(screen.getAllByTestId('trend')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Opening and trading' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
   });
 
   it('explains an empty team and offers a retry on error', () => {

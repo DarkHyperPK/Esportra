@@ -29,7 +29,6 @@ describe('OpponentsTab', () => {
     expect(screen.getByRole('button', { name: /Omega/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/3 maps against Omega/)).toHaveAttribute('title', expect.stringMatching(/Team-level only/));
     expect(screen.getByRole('region', { name: 'Meetings' })).toHaveTextContent('13–11');
-    expect(screen.getByRole('region', { name: 'Maps against them' })).toHaveTextContent('Lotus');
     expect(screen.queryByRole('region', { name: 'Map picks and bans' })).toBeNull();
   });
 

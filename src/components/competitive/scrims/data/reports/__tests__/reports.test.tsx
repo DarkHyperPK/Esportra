@@ -63,13 +63,12 @@ describe('TeamReportTab', () => {
     expect(screen.getByText(/^3 maps · /)).toBeInTheDocument();
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
     expect(screen.getByLabelText('Highlights')).toHaveTextContent('Best map: Lotus');
-    expect(screen.getAllByTestId('trend').length).toBe(2);
-    for (const t of ['Results by map', 'Attack and defense', 'Opening duels', 'Rounds won by buy', 'Players by ACS', 'What decided rounds', 'Players in the deciding moments']) expect(screen.getByRole('region', { name: t })).toBeInTheDocument();
+    for (const t of ['Attack and defense', 'Opening duels', 'Rounds won by buy', 'What decided rounds', 'Players in the deciding moments']) expect(screen.getByRole('region', { name: t })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'What decided rounds' })).toHaveTextContent('8 of 12 · 67%');
     expect(screen.getByRole('region', { name: 'What decided rounds' })).toHaveTextContent('1v2 situations');
     expect(screen.getByRole('region', { name: 'Players in the deciding moments' })).toHaveTextContent('10 of 14 · 71%');
     expect(screen.getByRole('region', { name: 'Attack and defense' })).toHaveTextContent('20 of 40 · 50%');
-    expect(screen.getByRole('heading', { name: 'Round win rate by map' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Attack and defense' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
   });
 
   it('draws no line chart for fewer than three maps and says when there is nothing yet', () => {

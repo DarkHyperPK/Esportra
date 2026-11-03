@@ -31,7 +31,6 @@ function View({ r }: { r: PlayerReportBody }) {
   const s = r.summary;
   const trend = r.series.map((p) => ({ label: `${p.index}. ${p.map ?? 'Map'}`, acs: p.acs, adr: p.adr }));
   const maps: BarItem[] = r.byMap.filter((m) => m.acs != null).map((m) => ({ label: m.key, value: m.acs, valueText: `${formatNumber(m.acs, 0)} ACS`, sub: `${m.wins}–${m.maps - m.wins} · K/D ${formatNumber(m.kd)}` }));
-  const agents: BarItem[] = r.byAgent.map((a) => ({ label: resolveAgent(a.key)?.displayName ?? 'Unknown agent', value: a.maps, valueText: `${a.maps} ${a.maps === 1 ? 'map' : 'maps'}`, sub: `${formatNumber(a.acs, 0)} ACS`, icon: resolveAgent(a.key)?.iconUrl }));
   const c = r.comparison;
   return (
     <div className="space-y-4">
@@ -56,15 +55,7 @@ function View({ r }: { r: PlayerReportBody }) {
           </ChartCard>
         )}
         {maps.length > 0 && <ChartCard title="By map" note="ACS on each map, with the record and K/D." summary="ACS by map." table={{ columns: ['Map', 'ACS'], rows: maps.map((m) => [m.label, m.valueText]) }}><BarList items={maps} max={Math.max(300, ...maps.map((m) => m.value ?? 0))} /></ChartCard>}
-        {agents.length > 0 && <ChartCard title="Agents played" summary="Maps played on each agent." table={{ columns: ['Agent', 'Maps'], rows: agents.map((a) => [a.label, a.valueText]) }}><BarList items={agents} max={Math.max(...agents.map((a) => a.value ?? 0), 1)} /></ChartCard>}
         <ChartCard title="Where shots land" note="Head, body and legs as a share of every located hit." summary={`Head ${formatPct(r.hits.headPct)}, body ${formatPct(r.hits.bodyPct)}, legs ${formatPct(r.hits.legPct)}.`} table={{ columns: ['Part', 'Share'], rows: [['Head', r.hits.headPct], ['Body', r.hits.bodyPct], ['Legs', r.hits.legPct]] }}><HitBar hits={r.hits} /></ChartCard>
-        <ChartCard title="Multi-kills and objective" summary={`${s.multi2} double, ${s.multi3} triple, ${s.multi4} quadra, ${s.multi5} ace kills; ${s.plants} plants, ${s.defuses} defuses.`}>
-          <dl className="grid grid-cols-3 gap-3 text-center">
-            {[['2K', s.multi2], ['3K', s.multi3], ['4K', s.multi4], ['5K', s.multi5], ['Plants', s.plants], ['Defuses', s.defuses]].map(([k, v]) => (
-              <div key={k as string}><dd className="font-heading text-xl font-bold tabular-nums text-white">{v}</dd><dt className="text-[11px] text-zinc-500">{k}</dt></div>
-            ))}
-          </dl>
-        </ChartCard>
       </div>
     </div>
   );

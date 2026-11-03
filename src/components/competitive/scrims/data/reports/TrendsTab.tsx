@@ -53,10 +53,6 @@ function Charts({ t }: { t: ScrimTrends['trends'] }) {
         <TrendChart data={data} lines={[{ key: 'round_win', name: 'Round win %', color: CHART.you }, { key: 'rolling_round_win', name: 'Last-5 average', color: CHART.third }]} domain={[0, 100]} reference={50} unit="%" />
         {key('Each map', 'Last-5 average', CHART.you, CHART.third)}
       </ChartCard>
-      <ChartCard title="Team ACS" note="Your five players combined, weighted by rounds." summary={`Team ACS over ${data.length} maps.`} table={{ columns: ['Map', 'ACS', 'Last-5 average'], rows: data.map((d) => [d.label, d.acs, d.rolling_acs]) }}>
-        <TrendChart data={data} lines={[{ key: 'acs', name: 'ACS', color: CHART.you }, { key: 'rolling_acs', name: 'Last-5 average', color: CHART.third }]} />
-        {key('Each map', 'Last-5 average', CHART.you, CHART.third)}
-      </ChartCard>
       <ChartCard title="Opening and trading" note="Rounds you got the first kill, and deaths a teammate avenged within 5 seconds." summary="First-kill rounds and traded deaths over the maps." table={{ columns: ['Map', 'First kill %', 'Traded %'], rows: data.map((d) => [d.label, d.first_kill, d.traded]) }}>
         <TrendChart data={data} lines={[{ key: 'first_kill', name: 'Rounds you got the first kill %', color: CHART.you }, { key: 'traded', name: 'Deaths avenged %', color: CHART.them }]} domain={[0, 100]} reference={50} unit="%" />
         {key('First kill rounds', 'Deaths avenged', CHART.you, CHART.them)}
