@@ -45,7 +45,9 @@ const refetch = vi.fn();
 vi.mock('@/hooks/competitive/useScrimGameInsights', () => ({
   useScrimGameInsights: () => ({ data: state.data, isLoading: !!state.isLoading, isError: !!state.isError, refetch }),
 }));
+vi.mock('@/hooks/competitive/useScrimTimeline', () => ({ useScrimTimeline: () => ({ data: undefined, isLoading: true, isError: false, refetch }) }));
 vi.mock('@/hooks/useValorantCatalog', () => ({
+  useValorantMaps: () => ({ data: [] }),
   useValorantWeapons: () => ({ data: [{ uuid: 'w-vandal', displayName: 'Vandal', killStreamIcon: 'https://x/vandal.png' }] }),
   useValorantAgents: () => ({ data: {} }),
   useValorantGear: () => ({ data: [] }),
@@ -65,7 +67,7 @@ describe('ScrimGameReport', () => {
     view();
     expect(screen.getByRole('heading', { name: 'Lotus' })).toBeInTheDocument();
     expect(screen.getByText(/Map veto: Lotus, picked by your team/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Utility & spike']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Timeline', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Utility & spike']);
     expect(screen.getByRole('region', { name: 'Scoreboard' })).toBeInTheDocument();
     expect(screen.getAllByText('Omega One').length).toBeGreaterThan(0);
     for (const hidden of ['Rounds', 'Opening duels', 'Kill feed', 'Economy', 'Abilities', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();

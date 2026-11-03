@@ -19,10 +19,10 @@ function Comparison({ w }: { w: Window }) {
     <section aria-label={w.label} className="border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>{w.label}</h3>
       {!w.enough ? (
-        <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">Not enough maps in both periods yet ({w.currentMaps} and {w.previousMaps}).</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">Not enough maps yet ({w.currentMaps} and {w.previousMaps}).</p>
       ) : (
         <>
-          <p className="mt-2 text-[12px] text-zinc-500">{w.currentMaps} maps against {w.previousMaps}. A change inside the usual swing is called “no clear change”.</p>
+          <p className="mt-2 text-[12px] text-zinc-500" title="A change inside the usual swing is called “no clear change”.">{w.currentMaps} maps against {w.previousMaps}</p>
           <ul className="mt-3 divide-y divide-white/[0.06]">
             {w.metrics.map((m) => {
               const v = VERDICT[m.verdict];
@@ -75,8 +75,7 @@ export default function TrendsTab({ teamId }: { teamId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-[12px] text-zinc-400">
-        Based on the last {t.sample.maps} verified {t.sample.maps === 1 ? 'map' : 'maps'}{t.sample.from && t.sample.to ? ` · ${gameDate(t.sample.from)} – ${gameDate(t.sample.to)}` : ''}
-        {isSmallSample(t.sample.maps) ? ' · small sample' : ''}{t.sample.capped ? ` · older maps beyond the latest ${data.maxMaps} are not included` : ''}.
+        {t.sample.maps} {t.sample.maps === 1 ? 'map' : 'maps'}{t.sample.from && t.sample.to ? ` · ${gameDate(t.sample.from)} – ${gameDate(t.sample.to)}` : ''}{isSmallSample(t.sample.maps) ? ' · small sample' : ''}{t.sample.capped ? ` · latest ${data.maxMaps} only` : ''}
       </p>
       <div className="grid gap-4 lg:grid-cols-3">{t.windows.map((w) => <Comparison key={w.label} w={w} />)}</div>
       <Charts t={t} />

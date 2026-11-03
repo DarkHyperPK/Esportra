@@ -23,7 +23,7 @@ function Row({ m, teamId }: { m: RecentMap; teamId?: string }) {
 export function RecentMapsPanel({ maps, teamId }: { maps: RecentMap[]; teamId?: string }) {
   if (maps.length === 0) return null;
   return (
-    <section aria-label="Recent maps" className="rounded-none-none border border-white/[0.06] bg-[#111114] px-4 pb-1 pt-4">
+    <section aria-label="Recent maps" className="rounded-none border border-white/[0.06] bg-[#111114] px-4 pb-1 pt-4">
       <h3 className={EYEBROW_CLASS}>Recent maps</h3>
       <ul className="mt-2 divide-y divide-white/5">{maps.map((m) => <li key={`${m.sessionId}-${m.gameNumber}`}><Row m={m} teamId={teamId} /></li>)}</ul>
     </section>

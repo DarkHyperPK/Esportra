@@ -12,7 +12,7 @@ function Row({ p }: { p: ReportPlayer }) {
     <tr className="border-t border-white/5">
       <th scope="row" className="sticky left-0 z-[1] max-w-[200px] bg-[#0c0c0f] px-3 py-2 text-left font-normal">
         <span className="flex min-w-0 items-center gap-2">
-          {agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-7 w-7 shrink-0 rounded-none-none" loading="lazy" /> : <span className="grid h-7 w-7 shrink-0 place-items-center rounded-none-none bg-white/5 text-[10px] text-zinc-500">?</span>}
+          {agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-7 w-7 shrink-0 rounded-none" loading="lazy" /> : <span className="grid h-7 w-7 shrink-0 place-items-center rounded-none bg-white/5 text-[10px] text-zinc-500">?</span>}
           <span className="truncate text-[13px] text-white">{p.name}</span>
           {p.tag && <span className="shrink-0 text-[11px] text-zinc-500">#{p.tag}</span>}
         </span>
@@ -26,7 +26,7 @@ function Table({ title, players }: { title: string; players: ReportPlayer[] }) {
   return (
     <div>
       <p className="mb-1 text-[12px] font-semibold text-zinc-400">{title}</p>
-      <div className="overflow-x-auto rounded-none-none border border-white/5">
+      <div className="overflow-x-auto rounded-none border border-white/5">
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="text-[10px] uppercase tracking-wide text-zinc-500">

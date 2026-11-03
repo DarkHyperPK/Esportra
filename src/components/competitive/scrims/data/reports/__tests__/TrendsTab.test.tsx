@@ -30,7 +30,7 @@ describe('TrendsTab', () => {
   it('sets the latest maps against the ones before, in words, with the change and the sample', () => {
     mocks.trends.mockReturnValue(q({ data: scrimTrendsSchema.parse(camel(DATA)) }));
     render(<TrendsTab teamId="t1" />);
-    expect(screen.getByText(/Based on the last 4 verified maps/)).toBeInTheDocument();
+    expect(screen.getByText(/^4 maps · /)).toBeInTheDocument();
     const win = screen.getByRole('region', { name: 'Last 5 maps against the 5 before' });
     expect(win).toHaveTextContent('35 → 65');
     expect(win).toHaveTextContent('Up · +30');
@@ -41,7 +41,7 @@ describe('TrendsTab', () => {
   it('says plainly when a comparison has too few maps, and draws the charts with a text alternative', () => {
     mocks.trends.mockReturnValue(q({ data: scrimTrendsSchema.parse(camel(DATA)) }));
     render(<TrendsTab teamId="t1" />);
-    expect(screen.getByRole('region', { name: 'Last 10 maps against the 10 before' })).toHaveTextContent('Not enough maps in both periods yet (10 and 2)');
+    expect(screen.getByRole('region', { name: 'Last 10 maps against the 10 before' })).toHaveTextContent('Not enough maps yet (10 and 2)');
     expect(screen.getAllByTestId('trend')).toHaveLength(3);
     expect(screen.getByRole('heading', { name: 'Team ACS' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
   });

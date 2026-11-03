@@ -20,9 +20,9 @@ describe('CoverageSummary', () => {
   it('counts each tier and says what it contains', () => {
     render(<CoverageSummary coverage={{ maps: 6, full: 3, screenshot: 2, scoreOnly: 1, riotPending: 0, riotNotVerified: 0, awaitingConfirmation: 0, disputed: 0, queueGames: 0 }} />);
     expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText(/every player, every round/)).toBeInTheDocument();
-    expect(screen.getByText(/no round-by-round detail/)).toBeInTheDocument();
-    expect(screen.getByText(/Only the result and the map/)).toBeInTheDocument();
+    expect(screen.getByTitle(/every player, every round/)).toBeInTheDocument();
+    expect(screen.getByTitle(/no round-by-round detail/)).toBeInTheDocument();
+    expect(screen.getByTitle(/Only the result and the map/)).toBeInTheDocument();
   });
 
   it('draws no bar when there are no maps', () => {

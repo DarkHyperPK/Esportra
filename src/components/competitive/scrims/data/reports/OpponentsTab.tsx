@@ -14,8 +14,7 @@ function Meetings({ o }: { o: OpponentRow }) {
   const max = Math.max(1, ...o.meetings.map((m) => Math.abs((m.roundsWon ?? 0) - (m.roundsLost ?? 0))));
   return (
     <section aria-label="Meetings" className="border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>Meetings, newest first</h3>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">The bar is the round difference: right of the line you were ahead, left you were behind. Agents are what your team played.</p>
+      <h3 className={EYEBROW_CLASS} title="The bar is the round difference: right of the line you were ahead, left you were behind. Agents are what your team played.">Meetings, newest first</h3>
       <ul className="mt-3 divide-y divide-white/[0.06]">
         {o.meetings.map((m) => {
           const diff = (m.roundsWon ?? 0) - (m.roundsLost ?? 0);
@@ -41,7 +40,7 @@ function Meetings({ o }: { o: OpponentRow }) {
 function Detail({ o }: { o: OpponentRow }) {
   return (
     <div className="space-y-4">
-      <p className="text-[12px] text-zinc-400">Based on {o.maps} {o.maps === 1 ? 'map' : 'maps'} against {o.name}{isSmallSample(o.maps) ? ' · small sample' : ''}. Team-level only: nothing about their players is shown.</p>
+      <p className="text-[12px] text-zinc-400" title="Team-level only: nothing about their players is shown.">{o.maps} {o.maps === 1 ? 'map' : 'maps'} against {o.name}{isSmallSample(o.maps) ? ' · small sample' : ''}</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label="Record" value={`${o.wins}–${o.losses}`} hint={`${formatPct(o.winRatePct)} of maps`} />
         <StatTile label="Rounds" value={formatPct(o.roundWinPct)} hint={`${o.roundsWon} won, ${o.roundsLost} lost`} />

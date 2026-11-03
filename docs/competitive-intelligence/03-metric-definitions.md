@@ -125,3 +125,7 @@ Scrim Insights (`/competitive/scrims/data?tab=`) shows one category at a time: O
 - **Opponents** are scrim partners as teams only. Nothing about their players is shown or aggregated across matches.
 - **Trends** compare the last 5 / 10 maps with the ones before and this month with last; a comparison needs enough maps in both periods, and a change inside the usual swing reads "no clear change".
 - **Heatmaps** plot positions at the moments Riot recorded (a kill's killer location, a victim's location, plants, defuses), never movement. Coordinates become map positions with Riot's conversion: across = y x xMultiplier + xScalarToAdd, down = x x yMultiplier + yScalarToAdd.
+
+### Map tier list and per-map timeline
+- **Map tier list** (Maps tab): rating = (rounds won + 13) ÷ (rounds played + 26), so each map starts as half a map at 50% and a thin sample cannot top or bottom the list. Tiers: S ≥ 58%, A ≥ 54%, B ≥ 50%, C ≥ 46%, D below. A map needs 2+ maps played to be placed. Constants live in `services/scrimData/mapTiers.ts`.
+- **Timeline** (per-map report): rounds with kills, plants and defuses and the positions Riot recorded at those moments only, never continuous movement. The map's heatmap is built from the same payload. Verified Riot maps only; player ids are opaque keys.

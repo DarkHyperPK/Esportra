@@ -11,7 +11,7 @@ function Who({ p, mine }: { p: ReportPlayer | undefined; mine: boolean }) {
   const agent = resolveAgent(p?.agent);
   return (
     <span className={cn('flex min-w-0 items-center gap-1.5', mine ? 'text-emerald-200' : 'text-rose-200')}>
-      {agent ? <img src={agent.iconUrl} alt={agent.displayName} title={agent.displayName} className="h-6 w-6 shrink-0 rounded-none-none" loading="lazy" /> : <span className="h-6 w-6 shrink-0 rounded-none-none bg-white/5" aria-hidden />}
+      {agent ? <img src={agent.iconUrl} alt={agent.displayName} title={agent.displayName} className="h-6 w-6 shrink-0 rounded-none" loading="lazy" /> : <span className="h-6 w-6 shrink-0 rounded-none bg-white/5" aria-hidden />}
       <span className="truncate text-[13px]">{p?.name ?? NO_VALUE}</span>
     </span>
   );
@@ -29,7 +29,7 @@ export function KillFeedPanel({ report, assets }: { report: InsightsReport; asse
       <div role="group" aria-label="Choose a round" className="mb-3 flex flex-wrap gap-1.5">
         {rounds.map((r) => (
           <button key={r} type="button" aria-pressed={r === shown} onClick={() => setRound(r)}
-            className={cn('h-8 min-w-8 rounded-none-none border px-2 text-[12px] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+            className={cn('h-8 min-w-8 rounded-none border px-2 text-[12px] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
               r === shown ? 'border-white/40 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>{r}</button>
         ))}
       </div>
@@ -50,7 +50,7 @@ export function KillFeedPanel({ report, assets }: { report: InsightsReport; asse
               <Who p={player(k.victim)} mine={!k.killerMine} />
               {k.assistants.length > 0 && (
                 <span className="flex items-center gap-1 text-[11px] text-zinc-500">assist
-                  {k.assistants.map((a) => { const ag = resolveAgent(player(a)?.agent); return ag ? <img key={a} src={ag.iconUrl} alt={player(a)?.name ?? ag.displayName} title={player(a)?.name ?? ag.displayName} className="h-5 w-5 rounded-none-none" loading="lazy" /> : null; })}
+                  {k.assistants.map((a) => { const ag = resolveAgent(player(a)?.agent); return ag ? <img key={a} src={ag.iconUrl} alt={player(a)?.name ?? ag.displayName} title={player(a)?.name ?? ag.displayName} className="h-5 w-5 rounded-none" loading="lazy" /> : null; })}
                 </span>
               )}
             </li>

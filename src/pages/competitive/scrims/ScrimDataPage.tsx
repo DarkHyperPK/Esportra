@@ -19,12 +19,12 @@ export default function ScrimDataPage() {
 
   return (
     <CompetitivePageShell>
-      <div className="mx-auto max-w-[1100px] space-y-6 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
+      <div className="space-y-6 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
         <header className="space-y-3 border-b border-white/[0.08] pb-6">
           <div>
             <h1 className="font-heading text-[24px] font-bold leading-tight text-white">Scrim Insights</h1>
             <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-zinc-400">
-              Study how your team does in scrims, one category at a time: overview, maps, map picks, agents, players and roster. Built from maps both teams confirmed, using auto-fetched Riot data or screenshots where you have them. Only your team can see this.
+              Your team’s scrims, one category at a time. Built from maps both teams confirmed. Only your team can see this.
             </p>
           </div>
           {teams.length > 1 && (

@@ -9,8 +9,7 @@ export function CoachPlayersTable({ rows }: { rows: CoachUserRow[] }) {
   if (rows.length === 0) return null;
   return (
     <section aria-label="Players in the deciding moments" className="border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>Players in the deciding moments</h3>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">Opening duels are the first kill of a round. A death is traded when a teammate kills the killer within 5 seconds. A clutch is being the last player alive against one or more enemies.</p>
+      <h3 className={EYEBROW_CLASS} title="Opening duels are the first kill of a round. A death is traded when a teammate kills the killer within 5 seconds. A clutch is being the last player alive against one or more enemies.">Players in the deciding moments</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[640px] text-left">
           <thead>

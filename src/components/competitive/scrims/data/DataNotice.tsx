@@ -15,10 +15,7 @@ export function DataNotice({ maps, from, to, coverage, truncated }: Props) {
   const notes = coverageNotes(coverage);
   return (
     <div className="space-y-2">
-      <p className="text-[12px] text-zinc-400">{sampleLine(maps, from, to)}. Only maps both teams confirmed are counted.</p>
-      {isSmallSample(maps) && (
-        <InlineNotice tone="neutral">Small sample: with so few maps a single result moves every figure. Treat these as a first look, not a pattern.</InlineNotice>
-      )}
+      <p className="text-[12px] text-zinc-400" title="Only maps both teams confirmed are counted.">{sampleLine(maps, from, to)}{isSmallSample(maps) ? ' · small sample' : ''}</p>
       {truncated && <InlineNotice tone="warning">Only the most recent maps are included in these figures.</InlineNotice>}
       {notes.map((n) => <p key={n} className="text-[12px] text-zinc-500">{n}</p>)}
     </div>

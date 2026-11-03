@@ -4,14 +4,14 @@ import type { ScrimMapPicks } from '@/schemas/scrimMapPicks';
 
 const WHO: Record<ScrimMapPicks['picks']['byPicker'][number]['pickedBy'], string> = { you: 'Maps you picked', opponent: 'Maps the opponent picked', decider: 'Decider maps' };
 
-function Results({ picks }: { picks: ScrimMapPicks['picks'] }) {
+export function PickResults({ picks }: { picks: ScrimMapPicks['picks'] }) {
   if (picks.byPicker.length === 0) return null;
   return (
-    <section aria-label="Results by who chose the map" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
+    <section aria-label="Results by who chose the map" className="rounded-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>Results by who chose the map</h3>
       <ul className="mt-3 grid gap-3 sm:grid-cols-3">
         {picks.byPicker.map((p) => (
-          <li key={p.pickedBy} className="rounded-none-none border border-white/5 p-3">
+          <li key={p.pickedBy} className="rounded-none border border-white/5 p-3">
             <p className="text-[12px] text-zinc-400">{WHO[p.pickedBy]}</p>
             <p className="mt-1 text-[20px] font-bold tabular-nums text-white">{p.wins}–{p.games - p.wins}</p>
             <p className="text-[12px] text-zinc-400">{formatPct(p.winRatePct)} of maps · {formatPct(p.roundWinRatePct)} of rounds</p>
@@ -23,11 +23,10 @@ function Results({ picks }: { picks: ScrimMapPicks['picks'] }) {
   );
 }
 
-function Table({ picks }: { picks: ScrimMapPicks['picks'] }) {
+export function PickTable({ picks }: { picks: ScrimMapPicks['picks'] }) {
   return (
-    <section aria-label="Map picks and bans" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>Picks and bans by map</h3>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">Counted from scrims whose map veto finished. A decider is the map left after the picks and bans.</p>
+    <section aria-label="Map picks and bans" className="rounded-none border border-white/[0.06] bg-[#111114] p-4">
+      <h3 className={EYEBROW_CLASS} title="Counted from scrims whose map veto finished. A decider is the map left after the picks and bans.">Picks and bans by map</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[520px] text-left">
           <thead>
@@ -56,8 +55,8 @@ function Table({ picks }: { picks: ScrimMapPicks['picks'] }) {
 export function MapPicksView({ picks }: { picks: ScrimMapPicks['picks'] }) {
   return (
     <div className="space-y-4">
-      <Table picks={picks} />
-      <Results picks={picks} />
+      <PickTable picks={picks} />
+      <PickResults picks={picks} />
     </div>
   );
 }

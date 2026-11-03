@@ -19,8 +19,7 @@ function Sample({ r, max }: { r: TeamReportBody; max: number }) {
   const s = r.sample;
   return (
     <p className="text-[12px] text-zinc-400">
-      Based on the last {s.maps} verified {s.maps === 1 ? 'map' : 'maps'}{s.from && s.to ? ` · ${gameDate(s.from)} – ${gameDate(s.to)}` : ''}
-      {isSmallSample(s.maps) ? ' · small sample' : ''}{s.capped ? ` · older maps beyond the latest ${max} are not included` : ''}.
+      {s.maps} {s.maps === 1 ? 'map' : 'maps'}{s.from && s.to ? ` · ${gameDate(s.from)} – ${gameDate(s.to)}` : ''}{isSmallSample(s.maps) ? ' · small sample' : ''}{s.capped ? ` · latest ${max} only` : ''}
     </p>
   );
 }
@@ -49,7 +48,7 @@ function Charts({ r }: { r: TeamReportBody }) {
         <ChartCard title="Team ACS and ADR by map" note="Your five players combined, weighted by rounds." summary={`Team ACS and ADR over ${r.series.length} maps.`}
           table={{ columns: ['Map', 'ACS', 'ADR'], rows: trend.map((t) => [t.label, t.acs, t.adr]) }}>
           <TrendChart data={trend} lines={[{ key: 'acs', name: 'ACS', color: CHART.you }, { key: 'adr', name: 'ADR', color: CHART.third }]} />
-          <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.third }} />ADR</span></p>
+          <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-none" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-none" style={{ background: CHART.third }} />ADR</span></p>
         </ChartCard>
       ) : null}
       {mapItems.length > 0 && <ChartCard title="Results by map" note="Wins and losses on each map, with the share of rounds won." summary={`Results on ${mapItems.length} maps.`} table={{ columns: ['Map', 'Record'], rows: mapItems.map((m) => [m.label, m.valueText]) }}><BarList items={mapItems} reference={50} /></ChartCard>}

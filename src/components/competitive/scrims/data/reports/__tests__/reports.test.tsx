@@ -60,7 +60,7 @@ describe('TeamReportTab', () => {
   it('shows the figures, the highlights and the charts, each with its sample and a text equivalent', () => {
     mocks.team.mockReturnValue(q({ data: teamData() }));
     render(<TeamReportTab teamId="t1" />);
-    expect(screen.getByText(/Based on the last 3 verified maps/)).toBeInTheDocument();
+    expect(screen.getByText(/^3 maps · /)).toBeInTheDocument();
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
     expect(screen.getByLabelText('Highlights')).toHaveTextContent('Best map: Lotus');
     expect(screen.getAllByTestId('trend').length).toBe(2);
@@ -101,7 +101,7 @@ describe('PlayerReportsTab', () => {
     renderTab('/x?player=u2');
     expect(screen.getByRole('button', { name: /Ray/ })).toHaveAttribute('aria-pressed', 'true');
     expect(mocks.player).toHaveBeenLastCalledWith('t1', 'u2');
-    expect(screen.getByText(/30 below the team average \(210\)/)).toBeInTheDocument();
+    expect(screen.getByText(/ACS 30 below the team \(210\)/)).toBeInTheDocument();
     expect(screen.getByText('Untraded openers').closest('div')).toHaveTextContent('5');
     expect(screen.getByText('Opening duels').closest('div')).toHaveTextContent('10 of 14');
     expect(screen.getByLabelText('Highlights')).toHaveTextContent('Consistent from map to map');
@@ -115,7 +115,7 @@ describe('PlayerReportsTab', () => {
     mocks.player.mockReturnValue(q({ data: scrimPlayerReportSchema.parse(camel(PLAYER)) }));
     renderTab();
     expect(screen.queryByRole('navigation', { name: 'Choose a player' })).toBeNull();
-    expect(screen.getByText(/Captains, managers and coaches can open every player/)).toBeInTheDocument();
+    expect(screen.getByText(/Staff can open every player/)).toBeInTheDocument();
     expect(mocks.player).toHaveBeenLastCalledWith('t1', 'u2');
   });
 

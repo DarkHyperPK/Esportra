@@ -37,7 +37,8 @@ const data = (over: Partial<ScrimData> = {}): ScrimData => ({
 
 const query = (over: Record<string, unknown> = {}) => ({ isLoading: false, isError: false, data: undefined, refetch: vi.fn(), ...over });
 const renderPanel = (tab = '') => render(<MemoryRouter initialEntries={[`/x${tab ? `?tab=${tab}` : ''}`]}><ScrimDataPanel teamId="t1" /></MemoryRouter>);
-vi.mock('../tabs/MapPicksTab', () => ({ MapPicksTab: () => <p>map picks content</p> }));
+vi.mock('@/hooks/competitive/useScrimMapPicks', () => ({ useScrimMapPicks: () => ({ data: undefined }) }));
+vi.mock('@/hooks/useValorantMapCatalog', () => ({ useValorantMapCatalog: () => ({ data: [] }) }));
 
 beforeEach(() => mocks.useScrimData.mockReset());
 
@@ -68,10 +69,11 @@ describe('ScrimDataPanel', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
     renderPanel();
     expect(screen.getByText(/Based on 6 confirmed scrim maps/)).toBeInTheDocument();
-    expect(screen.getByText(/Small sample/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Map picks', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
+    expect(screen.getByText(/small sample/)).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByLabelText('What your data is built from')).toHaveTextContent('Auto-fetched from Riot');
+    expect(screen.getByLabelText('What your data is built from')).toHaveTextContent('full data');
+    expect(screen.getByTitle(/Auto-fetched from Riot/)).toBeInTheDocument();
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getByLabelText(/Recent form, newest first: Win, Loss, Win/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ascent/ })).toHaveAttribute('href', expect.stringMatching(/^\/competitive\/scrims\/sessions\/s1\/games\/\d+\/report/));
@@ -82,17 +84,16 @@ describe('ScrimDataPanel', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
     renderPanel();
     fireEvent.click(screen.getByRole('tab', { name: 'Maps' }));
-    expect(screen.getByLabelText('Map pool')).toHaveTextContent('Too few maps');
-    expect(screen.getByLabelText('Map pool')).toHaveTextContent('No confirmed maps on: Split');
+    expect(screen.getByRole('region', { name: 'Map tier list' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Ascent' })).toHaveTextContent('1–1');
+    expect(screen.getByText(/Not played yet: Split/)).toBeInTheDocument();
     expect(screen.queryByLabelText('What your data is built from')).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: 'Agents & comps' }));
-    expect(screen.getByLabelText('Compositions')).toHaveTextContent('not proof it is better');
+    expect(screen.getByTitle(/not proof it is better/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Players' }));
     expect(screen.getByRole('region', { name: 'Players' })).toHaveTextContent('Nova');
     fireEvent.click(screen.getByRole('tab', { name: 'Roster' }));
     expect(screen.getByRole('region', { name: 'Roster' })).toHaveTextContent('Partial');
-    fireEvent.click(screen.getByRole('tab', { name: 'Map picks' }));
-    expect(screen.getByText('map picks content')).toBeInTheDocument();
   });
 
   it('opens the tab named in the URL and ignores an unknown one', () => {

@@ -21,7 +21,7 @@ function Agents({ agents }: { agents: PlayerSummary['agents'] }) {
         const agent = resolveAgent(a.characterId);
         return (
           <li key={a.characterId} className="flex items-center gap-1 text-[11px] text-zinc-400">
-            {agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-6 w-6 rounded-none-none" loading="lazy" /> : <span aria-hidden className="grid h-6 w-6 place-items-center rounded-none-none bg-white/5 text-[10px]">?</span>}
+            {agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-6 w-6 rounded-none" loading="lazy" /> : <span aria-hidden className="grid h-6 w-6 place-items-center rounded-none bg-white/5 text-[10px]">?</span>}
             ×{a.games}
           </li>
         );
@@ -57,11 +57,8 @@ function Player({ p }: { p: PlayerSummary }) {
 export function PlayersPanel({ players }: { players: PlayerSummary[] }) {
   if (players.length === 0) return null;
   return (
-    <section aria-label="Players" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>Players</h3>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">
-        Only maps with player data appear here. Averages are weighted by rounds. Headshot % is the share of hits that landed on the head (as the screenshot or Riot reports it), not aim accuracy. First deaths are only recorded for auto-fetched maps.
-      </p>
+    <section aria-label="Players" className="rounded-none border border-white/[0.06] bg-[#111114] p-4">
+      <h3 className={EYEBROW_CLASS} title="Only maps with player data appear here. Averages are weighted by rounds. Headshot % is the share of hits that landed on the head (as the screenshot or Riot reports it), not aim accuracy. First deaths are only recorded for auto-fetched maps.">Players</h3>
       <ul className="mt-2 divide-y divide-white/5">{players.map((p) => <Player key={p.userId} p={p} />)}</ul>
     </section>
   );

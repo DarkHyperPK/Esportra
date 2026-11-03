@@ -115,7 +115,7 @@ export default function ScrimSessionPage() {
 
   return (
     <CompetitivePageShell>
-      <div className="mx-auto max-w-[1100px] space-y-6 px-4 pb-12 pt-6 lg:px-8 lg:pt-8">
+      <div className="space-y-6 px-4 pb-12 pt-6 lg:px-8 lg:pt-8">
         <div className="flex items-center gap-3">
           <Link to="/competitive/scrims/workspace" className={BACK_LINK}>← Your Scrims</Link>
           {sessionQuery.isFetching && !sessionQuery.isLoading && (
@@ -158,7 +158,7 @@ export default function ScrimSessionPage() {
           </motion.div>
         )}
 
-        <div className={showResult ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start' : 'mx-auto max-w-[760px]'}>
+        <div className={showResult ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start' : 'max-w-[760px]'}>
           {showResult && (
             <motion.div {...arrive(0.12)} id="room-result" className="order-2 min-w-0 scroll-mt-6 lg:order-1">
               <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />

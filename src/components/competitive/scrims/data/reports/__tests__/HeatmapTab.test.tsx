@@ -27,7 +27,7 @@ describe('HeatmapTab', () => {
     expect(screen.getByTestId('canvas')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Map' })).toHaveTextContent('Lotus · 4');
     expect(screen.getByRole('group', { name: 'What to show' })).toHaveTextContent('Opening deaths');
-    expect(screen.getByText(/not continuous movement/)).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'What to show' })).toHaveAttribute('title', expect.stringMatching(/not continuous movement/));
   });
 
   it('asks again with the chosen map, event and side', () => {

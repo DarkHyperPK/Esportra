@@ -6,9 +6,8 @@ export interface ChartTable { columns: string[]; rows: Array<Array<string | numb
 /** A titled chart with a text summary for screen readers and a hidden data table, so the figures are never only in the picture. */
 export function ChartCard({ title, note, summary, table, children }: { title: string; note?: string; summary: string; table?: ChartTable; children: ReactNode }) {
   return (
-    <section aria-label={title} className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>{title}</h3>
-      {note && <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">{note}</p>}
+    <section aria-label={title} className="rounded-none border border-white/[0.06] bg-[#111114] p-4">
+      <h3 className={EYEBROW_CLASS} title={note}>{title}</h3>
       <div className="mt-3" role="img" aria-label={summary}>{children}</div>
       {table && (
         <table className="sr-only">

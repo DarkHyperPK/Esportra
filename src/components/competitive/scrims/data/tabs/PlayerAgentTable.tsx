@@ -7,9 +7,8 @@ import type { PlayerAgentSummary } from '@/types/scrimData';
 export function PlayerAgentTable({ rows }: { rows: PlayerAgentSummary[] }) {
   if (rows.length === 0) return null;
   return (
-    <section aria-label="Players by agent" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
-      <h3 className={EYEBROW_CLASS}>Players by agent</h3>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">One row per player and agent. Figures come only from maps that have them; a count in brackets says how many.</p>
+    <section aria-label="Players by agent" className="rounded-none border border-white/[0.06] bg-[#111114] p-4">
+      <h3 className={EYEBROW_CLASS} title="One row per player and agent. Figures come only from maps that have them; a count in brackets says how many.">Players by agent</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[520px] text-left">
           <thead>

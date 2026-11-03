@@ -27,7 +27,7 @@ describe('OpponentsTab', () => {
     mocks.opponents.mockReturnValue(q({ data: data([opp('o1', 'Omega'), opp('o2', 'Nova')]) }));
     renderTab();
     expect(screen.getByRole('button', { name: /Omega/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/Team-level only: nothing about their players is shown/)).toBeInTheDocument();
+    expect(screen.getByText(/3 maps against Omega/)).toHaveAttribute('title', expect.stringMatching(/Team-level only/));
     expect(screen.getByRole('region', { name: 'Meetings' })).toHaveTextContent('13–11');
     expect(screen.getByRole('region', { name: 'Maps against them' })).toHaveTextContent('Lotus');
     expect(screen.queryByRole('region', { name: 'Map picks and bans' })).toBeNull();
@@ -39,7 +39,7 @@ describe('OpponentsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /Nova/ }));
     expect(screen.getByRole('button', { name: /Nova/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('region', { name: 'Map picks and bans' })).toBeInTheDocument();
-    expect(screen.getByText(/Based on 3 maps against Nova/)).toBeInTheDocument();
+    expect(screen.getByText(/3 maps against Nova/)).toBeInTheDocument();
   });
 
   it('opens the partner named in the URL, explains an empty record, and offers a retry', () => {

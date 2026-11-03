@@ -3,6 +3,7 @@ import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitiv
 import { useScrimHeatmap } from '@/hooks/competitive/useScrimReports';
 import { useValorantMaps } from '@/hooks/useValorantCatalog';
 import { cn } from '@/lib/utils';
+import { mapNameFromRiotId } from '@/services/maps/valorantMapNames';
 import { HEAT_KINDS, heatSummary, type HeatKind } from '@/services/scrimInsights/heatmap';
 import { HeatmapCanvas } from './HeatmapCanvas';
 
@@ -25,8 +26,9 @@ export default function HeatmapTab({ teamId }: { teamId: string }) {
   const [map, setMap] = useState<string | null>(null);
   const { data: catalog } = useValorantMaps();
   const q = useScrimHeatmap(teamId, { map, kind, side });
-  const chosen = map ?? q.data?.availableMaps[0]?.map ?? null;
-  const art = useMemo(() => (catalog ?? []).find((m) => m.displayName?.toLowerCase() === chosen?.toLowerCase()), [catalog, chosen]);
+  // With no map picked yet the API answers for the team's most-played map and says which; that is the map drawn.
+  const chosen = map ?? q.data?.map ?? q.data?.availableMaps[0]?.map ?? null;
+  const art = useMemo(() => (catalog ?? []).find((m) => m.displayName?.toLowerCase() === chosen?.toLowerCase()) ?? (catalog ?? []).find((m) => !!chosen && mapNameFromRiotId(m.mapUrl) === chosen), [catalog, chosen]);
 
   if (q.isLoading) return <PanelSkeleton />;
   if (q.isError || !q.data) return <PanelError onRetry={() => void q.refetch()} />;
@@ -39,13 +41,12 @@ export default function HeatmapTab({ teamId }: { teamId: string }) {
         <div role="group" aria-label="Map" className="flex flex-wrap gap-2">
           {data.availableMaps.map((m) => <Choice key={m.map} active={m.map === chosen} onClick={() => setMap(m.map)}>{`${m.map} · ${m.maps}`}</Choice>)}
         </div>
-        <div role="group" aria-label="What to show" className="flex flex-wrap gap-2">
+        <div role="group" aria-label="What to show" title={`${help} Positions at the moments Riot recorded, not continuous movement.`} className="flex flex-wrap gap-2">
           {HEAT_KINDS.map((k) => <Choice key={k.id} active={k.id === kind} onClick={() => setKind(k.id)}>{k.label}</Choice>)}
         </div>
         <div role="group" aria-label="Side" className="flex flex-wrap gap-2">
           {SIDES.map((s) => <Choice key={s.label} active={s.id === side} onClick={() => setSide(s.id)}>{s.label}</Choice>)}
         </div>
-        <p className="text-[12px] leading-relaxed text-zinc-500">{help} These are positions at the moments Riot recorded, not continuous movement.</p>
       </div>
       <p className="text-[13px] text-zinc-300" role="status">{heatSummary(kind, data.points.length, data.maps, chosen, side)}{data.truncated ? ' Showing the first 3,000 only.' : ''}</p>
       {!art?.displayIcon ? (
