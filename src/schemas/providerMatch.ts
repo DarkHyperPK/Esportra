@@ -9,13 +9,3 @@ export const providerMatchSchema = z.object({
     .nullish(),
   players: z.array(z.object({ isRosterMember: z.boolean() })).optional(),
 });
-
-export const analyticsVisibilitySchema = z.object({
-  game: z.string(),
-  visibility: z.enum(['private', 'public']),
-});
-
-export const analyticsVisibilityRequestSchema = z.object({
-  game: z.string().regex(/^[a-z0-9_-]{2,40}$/),
-  visibility: z.enum(['private', 'public']),
-});

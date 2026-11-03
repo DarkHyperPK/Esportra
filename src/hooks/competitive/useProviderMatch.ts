@@ -28,16 +28,3 @@ export function useScrimProviderMatch(sessionId: string | undefined, gameNumber:
     refetchInterval: pollWhileUnsettled,
   });
 }
-
-/** Riot verification of one tournament game. Needs a signed-in user: the API treats a 401 as a sign-out. */
-export function useTournamentProviderMatch(matchId: string | undefined, gameNumber: number | undefined, hasRiotMatch: boolean) {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: providerMatchKeys.tournamentGame(matchId ?? '', gameNumber ?? 0),
-    queryFn: () => fetchProviderMatch(`/api/matches/${matchId}/games/${gameNumber}/provider-match`),
-    enabled: !!user?.id && !!matchId && !!gameNumber && hasRiotMatch,
-    staleTime: 30_000,
-    retry: false,
-    refetchInterval: pollWhileUnsettled,
-  });
-}

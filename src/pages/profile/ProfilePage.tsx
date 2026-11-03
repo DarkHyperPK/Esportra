@@ -23,7 +23,6 @@ import { TournamentHistoryTab } from '@/components/profile/tabs/TournamentHistor
 import { TeamsTab } from '@/components/profile/tabs/TeamsTab';
 import { AchievementsTab } from '@/components/profile/tabs/AchievementsTab';
 import { MatchHistoryTab } from '@/components/profile/tabs/MatchHistoryTab';
-import { PerformanceTab } from '@/components/profile/tabs/PerformanceTab';
 
 /**
  * ProfilePage: top-level route for /profile/:username.
@@ -227,8 +226,6 @@ export default function ProfilePage(): React.JSX.Element {
         return <TournamentHistoryTab profileId={profile.id} accentColor={accentColor} />;
       case 'matches':
         return <MatchHistoryTab profileId={profile.id} accentColor={accentColor} />;
-      case 'performance':
-        return <PerformanceTab profileId={profile.id} />;
       case 'teams':
         return <TeamsTab profileId={profile.id} />;
       case 'achievements':

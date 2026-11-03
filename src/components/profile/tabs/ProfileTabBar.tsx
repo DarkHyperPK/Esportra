@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ProfileTab = 'overview' | 'history' | 'matches' | 'performance' | 'teams' | 'achievements';
+export type ProfileTab = 'overview' | 'history' | 'matches' | 'teams' | 'achievements';
 
 interface ProfileTabBarProps {
   activeTab: ProfileTab;
@@ -12,7 +12,6 @@ const TABS: { id: ProfileTab; label: string; shortLabel: string }[] = [
   { id: 'overview', label: 'Overview', shortLabel: 'Overview' },
   { id: 'history', label: 'Tournament History', shortLabel: 'History' },
   { id: 'matches', label: 'Matches', shortLabel: 'Matches' },
-  { id: 'performance', label: 'Performance', shortLabel: 'Stats' },
   { id: 'teams', label: 'Teams', shortLabel: 'Teams' },
   { id: 'achievements', label: 'Achievements', shortLabel: 'Achievements' },
 ];

@@ -10,7 +10,6 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 import PlayerCard from '@/components/player/PlayerCard';
 import { PlayerHandle } from '@/components/profile/PlayerHandle';
 import { ScrimHistoryList } from '@/components/competitive/scrims/ScrimHistoryList';
-import { TeamCareerPanel } from '@/components/competitive/career/TeamCareerPanel';
 
 interface TeamMember {
     id: string;
@@ -373,15 +372,6 @@ export default function TeamProfilePage() {
                                     </div>
                                 );
                             })()}
-                        </section>
-
-                        {/* Competitive record — from Riot-verified games; members see all, others what the team shares */}
-                        <section>
-                            <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <Target className="w-3.5 h-3.5" />
-                                Competitive Record
-                            </h2>
-                            <TeamCareerPanel teamId={team.id} quietWhenSignedOut />
                         </section>
 
                         {/* Scrim History — only shown when team has made it public */}

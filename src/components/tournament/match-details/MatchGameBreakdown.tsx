@@ -6,7 +6,6 @@ import type { GameVerification, PublicGame } from '@/services/matchStats/publicG
 import type { ResultSource } from '@/services/matchStats/matchEvidence';
 import { MatchRoundStrip } from './MatchRoundStrip';
 import { MatchRiotStats } from './MatchRiotStats';
-import { TournamentGameDataStatus } from '@/components/competitive/matches/TournamentGameDataStatus';
 import { ResultSourceBadge } from './ResultSourceBadge';
 import { EvidenceThumbs } from './EvidenceThumbs';
 import type { EvidenceShot } from './EvidenceLightbox';
@@ -20,8 +19,6 @@ type Props = {
     team1Name: string;
     team2Name: string;
     team1Id?: string;
-    /** The bracket match this map belongs to; enables the Riot verification line. */
-    matchId?: string;
     panelId: string;
 };
 
@@ -43,7 +40,7 @@ function sourceLine(game: PublicGame, source: ResultSource, reportedBy: string |
  * One map: the result on its art, how it was reported, then the full Riot record
  * when the map was pulled from Riot (otherwise rounds and scoreboard), and its screenshots.
  */
-export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot, team1Name, team2Name, team1Id, matchId, panelId }: Props) => {
+export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot, team1Name, team2Name, team1Id, panelId }: Props) => {
     const hasScore = game.team1Score !== null && game.team2Score !== null;
     const verification = game.verification ? VERIFICATION[game.verification] : null;
 
@@ -72,10 +69,7 @@ export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot
                     <ResultSourceBadge source={source} />
                     <span className="text-[13px] text-zinc-300">{sourceLine(game, source, reportedBy)}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    {matchId && game.riotMatchId ? <TournamentGameDataStatus matchId={matchId} gameNumber={game.gameNumber} hasRiotMatch /> : null}
-                    {verification ? <StatusPill label={verification.label} tone={verification.tone} /> : null}
-                </div>
+                {verification ? <StatusPill label={verification.label} tone={verification.tone} /> : null}
             </div>
 
             {game.enriched?.players?.length && game.t1Side ? (

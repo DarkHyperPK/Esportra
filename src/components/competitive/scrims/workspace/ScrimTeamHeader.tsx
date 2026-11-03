@@ -6,7 +6,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
+import { BarChart3, CalendarDays } from 'lucide-react';
 import { AccentButton } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -80,6 +80,13 @@ export function ScrimTeamHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <Link
+          to={`/competitive/scrims/data?team_id=${team.id}`}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.14] px-4 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        >
+          <BarChart3 className="h-4 w-4" aria-hidden="true" />
+          Your scrims data
+        </Link>
         <Link
           to="/competitive/scrims/calendar"
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.14] px-4 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"

@@ -47,17 +47,9 @@ export const catalogKeys = {
 export const providerMatchKeys = {
   /** The Riot match behind one scrim map */
   scrimGame: (sessionId: string, gameNumber: number) => ['provider-match', 'scrim', sessionId, gameNumber] as const,
-  /** The Riot match behind one tournament game */
-  tournamentGame: (matchId: string, gameNumber: number) => ['provider-match', 'tournament', matchId, gameNumber] as const,
-  /** The caller's analytics visibility for a game */
-  visibility: (game: string) => ['analytics-visibility', game] as const,
 };
 
-export const careerKeys = {
-  /** A player's career summary for a game */
-  player: (userId: string, game: string) => ['career', 'player', userId, game] as const,
-  /** The paged game list behind it */
-  playerGames: (userId: string, game: string) => ['career', 'player', userId, game, 'games'] as const,
-  team: (teamId: string) => ['career', 'team', teamId] as const,
-  teamGames: (teamId: string) => ['career', 'team', teamId, 'games'] as const,
+export const scrimDataKeys = {
+  /** A team's scrim data: record, maps, compositions, players, lineups */
+  team: (teamId: string) => ['scrim-data', 'team', teamId] as const,
 };

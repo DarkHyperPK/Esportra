@@ -46,29 +46,49 @@ match is never trusted. Statuses: **verified**, **partially_verified**, **unveri
   Ascent, Port=Icebox, Triad=Haven, Foxtrot=Breeze, Canyon=Fracture, Pitt=Pearl, Jam=Lotus, Juliett=Sunset,
   Infinity=Abyss). Unknown codenames or free-text map names are not compared.
 
-## Career records (Phase 2, implemented)
+## Your scrims data (implemented)
 
-Source: verified and partly verified Riot custom games only (match retrieved and completed). A game belongs to the team
-a player was on **when it was reported**, so a career follows the player across teams. All figures come from one
-function (`CareerMath`), are weighted over every round rather than averaged per match, and are `null` (shown as "—")
-when there is nothing to divide by; an empty career has no K/D, not 0.00.
+Scope: **scrims only**, for the team's own members. Nothing here is public, and tournament games are not included.
+
+**What counts.** A scrim map counts once both teams have confirmed it (or staff resolved it with a winner). Reported,
+disputed and void maps are not counted; the page says how many are waiting. Every counted map contributes its result and
+map; what else it contributes depends on its **data tier**:
+
+| Tier | Source | Contributes |
+|---|---|---|
+| Full data | Auto-fetched Riot game whose association is verified or partly verified | Everything: every player's stats, agents, attack/defense rounds, first kills/deaths, plants/defuses |
+| Screenshot | OCR scoreboard stored on the map | Each player's own line as shown (ACS, K/D/A, ADR, HS%, first bloods, plants/defuses), agents and roster match. No rounds, so no attack/defense, first deaths or multi-kills |
+| Score only | A typed map, or a Riot game that is pending, unverified or does not match Riot | The result and the map |
+
+A Riot game is never given full data on the team's say-so: if Riot's record disagrees with the report, the map counts
+for its result only and is listed as "does not match Riot". Screenshot figures are what the screenshot showed (the other
+team confirmed the result, not each player's numbers), so they are labelled as limited.
+
+**Formulas.** Weighted over rounds, null (shown as "—") when there is nothing to divide by, and each player figure uses
+only the maps that provide it and says how many ("from 2 of 4 maps"). A screenshot map's rounds are the sum of its two
+scores.
 
 | Figure | Definition |
 |---|---|
-| Win rate | games won ÷ all games (a game is won when the player's side won more rounds) |
-| K/D | kills ÷ max(deaths, 1) over all rounds |
-| KDA | (kills + assists) ÷ max(deaths, 1) |
-| ACS | total score ÷ total rounds played |
-| ADR | total damage dealt ÷ total rounds played |
-| Headshot share | headshots ÷ all hits with a recorded location (where hits landed, not aim accuracy) |
-| First kills / deaths | rounds where the player made / suffered the first elimination (tie-break in the opening-kill rule above) |
-| Team round win rate | rounds won ÷ rounds played; averages per game are over games |
-| Team first kill rate | first eliminations by the team's players ÷ rounds played |
+| Win rate | maps won ÷ confirmed maps, with a 95% Wilson range shown |
+| Round win rate | rounds won ÷ rounds played |
+| ACS / ADR | round-weighted mean of the player's per-map ACS / ADR (Riot: score ÷ rounds, damage ÷ rounds; screenshot: as shown) |
+| K/D | kills ÷ max(deaths, 1) over maps that have kills, deaths and assists; KDA adds assists |
+| Headshot % | Riot: headshots ÷ located hits; screenshot: as shown. Where hits landed, not aim accuracy |
+| First kills / deaths | first elimination of a round (tie-break above). First deaths exist for full-data maps only |
+| Attack / defense | rounds won on that side ÷ rounds played on it, from full-data maps only. A team's side in a round is the winner's role if it won, otherwise the opposite role |
 
-Every block shows its sample ("Based on N verified games · date range"); fewer than 10 games is labelled a small sample.
+**Map pool.** A map is called a strength or weakness only with at least 5 maps *and* when the 95% Wilson range of its
+win rate lies wholly above or below the team's overall win rate; otherwise "in line with overall" or "too few maps".
+Pool maps with no confirmed map are listed as unplayed.
 
-**Who sees what.** The player and staff admins see everything. Staff (captain, manager, coach, owner) of a team the player
-is on now see only the games played for that team. Anyone else sees nothing unless the player opts in to public, which
-shares the summary but lists only tournament games (plus the viewer's own team's games). A team's record is shown in full
-to its members; to others it shows tournament games, and scrim games only if the team keeps its scrim history public.
-Team member names appear only to members.
+**Compositions** are the five agents the team fielded (Riot or screenshot, in any order), with results by map. They
+describe what happened; the page says a higher win rate is not proof a composition is better, since map, opponent,
+side and players differ. Roles come from bundled agent metadata, separate from match records.
+
+**Lineups, substitutes and pairs** use the roster as it was when a Riot map was reported, and the roster-matched player on
+a screenshot map (their current team role, since it is not stored per map). Maps with fewer than five known players make
+a "partial" lineup. Substitute and pair comparisons are descriptive: the games differ in more than the player.
+
+**Who sees it.** Active members of the team, and staff admins. Everyone else gets nothing. This replaces the earlier
+public career and tournament surfaces, which were removed.

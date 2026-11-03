@@ -27,10 +27,3 @@ export interface ProviderMatchDetail {
   match?: { dataStatus: ProviderMatchDataStatus } | null;
   players?: ProviderMatchPlayer[];
 }
-
-export type AnalyticsVisibility = 'private' | 'public';
-
-export interface AnalyticsVisibilitySetting {
-  game: string;
-  visibility: AnalyticsVisibility;
-}

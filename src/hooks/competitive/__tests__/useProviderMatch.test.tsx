@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useScrimProviderMatch, useTournamentProviderMatch } from '../useProviderMatch';
+import { useScrimProviderMatch } from '../useProviderMatch';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), user: { current: { id: 'u1' } as { id: string } | null } }));
 vi.mock('@/hooks/competitive/competitiveApiClient', () => ({ competitiveApiClient: { get: mocks.get } }));
@@ -34,13 +34,5 @@ describe('useScrimProviderMatch', () => {
     const { result } = renderHook(() => useScrimProviderMatch('s1', 1, true), { wrapper });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.data).toBeUndefined();
-  });
-});
-
-describe('useTournamentProviderMatch', () => {
-  it('uses the match and game number', async () => {
-    mocks.get.mockResolvedValue({ status: 'none', reasons: [] });
-    renderHook(() => useTournamentProviderMatch('m1', 3, true), { wrapper });
-    await waitFor(() => expect(mocks.get).toHaveBeenCalledWith('/api/matches/m1/games/3/provider-match'));
   });
 });

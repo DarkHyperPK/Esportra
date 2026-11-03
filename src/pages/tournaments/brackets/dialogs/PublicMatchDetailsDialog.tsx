@@ -152,7 +152,6 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                                         team1Name={team1Name}
                                         team2Name={team2Name}
                                         team1Id={match.team1?.id}
-                                        matchId={rawId(match.id)}
                                         panelId={panelId}
                                     />
                                 </div>

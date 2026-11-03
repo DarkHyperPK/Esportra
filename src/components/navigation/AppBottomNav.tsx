@@ -66,6 +66,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: 'Find Scrims', to: '/competitive/scrims' },
       { label: 'Manage Scrims', to: '/competitive/scrims/workspace' },
       { label: 'Calendar', to: '/competitive/scrims/calendar' },
+      { label: 'Your scrims data', to: '/competitive/scrims/data' },
     ],
   },
   {

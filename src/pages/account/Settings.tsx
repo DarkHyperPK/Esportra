@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
-import { AnalyticsVisibilitySection } from '@/components/account/AnalyticsVisibilitySection';
 import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import { usePasswordChange } from '@/hooks/usePasswordChange';
@@ -388,7 +387,6 @@ function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotif
           )}
         </div>
       ))}
-      {riotAccount && <AnalyticsVisibilitySection />}
     </div>
   );
 }

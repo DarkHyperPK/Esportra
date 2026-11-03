@@ -95,6 +95,7 @@ const ScrimDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/scrim
 const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimWorkspacePage"));
 const ScrimSessionPage = lazyWithRetry(() => import("./pages/competitive/ScrimSessionPage"));
 const ScrimCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimCalendarPage"));
+const ScrimDataPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDataPage"));
 const ScrimDisputeAdminPage = lazyWithRetry(() => import("./pages/admin/tools/ScrimDisputeAdminPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
@@ -653,6 +654,11 @@ const AppContent = React.memo(() => {
                   <Route path="scrims/calendar" element={
                     <ProtectedRoute>
                       <ScrimCalendarPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="scrims/data" element={
+                    <ProtectedRoute>
+                      <ScrimDataPage />
                     </ProtectedRoute>
                   } />
                   {/* The old practice calendar became the scrim calendar. */}
