@@ -114,3 +114,7 @@ Scrim Insights (`/competitive/scrims/data?tab=`) shows one category at a time: O
 
 - **Map picks** (`GET /api/scrims/teams/{id}/map-picks`) counts only scrims whose veto finished. Your side in the veto is your place in the scrim. A game's veto map is the n-th pick, then the decider, shifted back by voided maps. Results are split by who chose the map. Bo1 has no picks, only bans and a decider.
 - **Agents** and **players by agent** use every map with an agent recorded; K/D and ACS use only maps that have them and show how many. Results describe maps where the agent was in play, not that it caused them.
+
+### Team and player reports
+
+`GET /api/scrims/teams/{id}/report` and `.../players/{userId}/report` cover the team's last 30 Riot-verified, confirmed scrim maps. Figures are round-weighted over the maps they come from and show their sample; nothing is computed from one map into a "highlight". Highlights are rules over the report's own figures: best/weakest map (3+ maps), attack/defense gap (40+ rounds each, 15+ points apart), pistol rounds (6+), top ACS and opening duels (3+ maps, 8+ duels), form (last 5 vs previous 5 over 10+ maps, 5+ points). Consistency is the standard deviation of ACS across maps. Staff (captain, owner, manager, coach) and admins see every player; other members see team figures and only their own player report.

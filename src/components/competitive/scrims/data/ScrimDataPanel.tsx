@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { TabBar, TabPanel, useTabBase, type TabItem } from '@/components/ui/kit';
 import { useScrimData } from '@/hooks/competitive/useScrimData';
 import { useTabParam } from '@/hooks/useTabParam';
@@ -16,11 +17,14 @@ import { AgentTable } from './tabs/AgentTable';
 import { MapPicksTab } from './tabs/MapPicksTab';
 import { PlayerAgentTable } from './tabs/PlayerAgentTable';
 
-const INSIGHT_TABS = ['overview', 'maps', 'map-picks', 'agents', 'players', 'roster'] as const;
+const TeamReportTab = lazy(() => import('./reports/TeamReportTab'));
+const PlayerReportsTab = lazy(() => import('./reports/PlayerReportsTab'));
+
+const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'map-picks', 'agents', 'players', 'roster'] as const;
 type InsightTab = (typeof INSIGHT_TABS)[number];
 
 const TABS: readonly (TabItem & { id: InsightTab })[] = [
-  { id: 'overview', label: 'Overview' }, { id: 'maps', label: 'Maps' }, { id: 'map-picks', label: 'Map picks' },
+  { id: 'overview', label: 'Overview' }, { id: 'team-report', label: 'Team report' }, { id: 'player-reports', label: 'Player reports' }, { id: 'maps', label: 'Maps' }, { id: 'map-picks', label: 'Map picks' },
   { id: 'agents', label: 'Agents & comps' }, { id: 'players', label: 'Players' }, { id: 'roster', label: 'Roster' },
 ];
 
@@ -50,6 +54,8 @@ export function ScrimDataPanel({ teamId }: { teamId: string }) {
             <ActivityBars activity={data.activity} />
             <RecentMapsPanel maps={data.recent} teamId={teamId} />
           </TabPanel>
+          <TabPanel base={base} id="team-report" value={tab}><Suspense fallback={<PanelSkeleton />}><TeamReportTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={base} id="player-reports" value={tab}><Suspense fallback={<PanelSkeleton />}><PlayerReportsTab teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="maps" value={tab} className="space-y-4">
             <MapPoolPanel maps={data.maps} unplayed={data.unplayedMaps} minSample={data.minMapSample} />
           </TabPanel>
