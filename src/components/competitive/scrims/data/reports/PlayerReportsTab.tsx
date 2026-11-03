@@ -17,11 +17,11 @@ function HitBar({ hits }: { hits: PlayerReportBody['hits'] }) {
   const parts = [{ k: 'Head', v: hits.headPct, c: CHART.you }, { k: 'Body', v: hits.bodyPct, c: CHART.third }, { k: 'Legs', v: hits.legPct, c: CHART.them }];
   return (
     <div>
-      <div className="flex h-3 gap-0.5 overflow-hidden rounded-[4px]" aria-hidden>
+      <div className="flex h-3 gap-0.5 overflow-hidden rounded-none-none" aria-hidden>
         {parts.map((p) => p.v ? <div key={p.k} style={{ width: `${p.v}%`, background: p.c }} /> : null)}
       </div>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-zinc-300">
-        {parts.map((p) => <li key={p.k} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: p.c }} aria-hidden />{p.k} {formatPct(p.v)}</li>)}
+        {parts.map((p) => <li key={p.k} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-none-none" style={{ background: p.c }} aria-hidden />{p.k} {formatPct(p.v)}</li>)}
       </ul>
     </div>
   );
@@ -40,19 +40,19 @@ function View({ r }: { r: PlayerReportBody }) {
         {c.acsVsTeam != null ? ` ACS is ${Math.abs(c.acsVsTeam)} ${c.acsVsTeam >= 0 ? 'above' : 'below'} the team average (${formatNumber(c.teamAcs, 0)}).` : ''}
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatTile label="ACS" value={formatNumber(s.acs, 0)} hint={s.acsSd != null ? `varies by about ${s.acsSd} per map` : 'average combat score'} />
-        <StatTile label="ADR" value={formatNumber(s.adr, 0)} hint="damage per round" />
-        <StatTile label="K/D" value={formatNumber(s.kd)} hint={`${s.kills} kills, ${s.deaths} deaths`} />
+        <StatTile label="Opening duels" value={r.coach?.entryDuels ? `${r.coach.entryWins} of ${r.coach.entryDuels}` : '—'} hint="Won, of the first fights of rounds they were in" />
+        <StatTile label="Untraded openers" value={r.coach ? String(r.coach.untradedFirstDeaths) : '—'} hint="First deaths no teammate avenged" />
+        <StatTile label="Deaths traded" value={r.coach?.deaths ? `${r.coach.traded} of ${r.coach.deaths}` : '—'} hint="Killer killed within 5 s by a teammate" />
+        <StatTile label="Clutches" value={r.coach?.clutchAttempts ? `${r.coach.clutchWins} of ${r.coach.clutchAttempts}` : '—'} hint="Last alive against one or more enemies" />
         <StatTile label="KAST" value={formatPct(s.kast)} hint="rounds with a kill, assist, survival or trade" />
-        <StatTile label="Headshots" value={formatPct(s.hsPct)} hint="share of hits, not aim accuracy" />
-        <StatTile label="Opening" value={`${s.firstKills}–${s.firstDeaths}`} hint="first kills – first deaths" />
+        <StatTile label="ACS · ADR" value={`${formatNumber(s.acs, 0)} · ${formatNumber(s.adr, 0)}`} hint={s.acsSd != null ? `ACS varies by about ${s.acsSd} per map` : 'combat score · damage per round'} />
       </div>
       <HighlightCards highlights={r.highlights} />
       <div className="grid gap-4 lg:grid-cols-2">
         {trend.length >= 3 && (
           <ChartCard title="ACS and ADR by map" note="Oldest map first." summary={`ACS and ADR over ${trend.length} maps.`} table={{ columns: ['Map', 'ACS', 'ADR'], rows: trend.map((t) => [t.label, t.acs, t.adr]) }}>
             <TrendChart data={trend} lines={[{ key: 'acs', name: 'ACS', color: CHART.you }, { key: 'adr', name: 'ADR', color: CHART.third }]} />
-            <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: CHART.third }} />ADR</span></p>
+            <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.third }} />ADR</span></p>
           </ChartCard>
         )}
         {maps.length > 0 && <ChartCard title="By map" note="ACS on each map, with the record and K/D." summary="ACS by map." table={{ columns: ['Map', 'ACS'], rows: maps.map((m) => [m.label, m.valueText]) }}><BarList items={maps} max={Math.max(300, ...maps.map((m) => m.value ?? 0))} /></ChartCard>}
@@ -89,9 +89,9 @@ export default function PlayerReportsTab({ teamId }: { teamId: string }) {
           {players.map((p) => (
             <button key={p.userId} type="button" aria-pressed={p.userId === chosen?.userId}
               onClick={() => setParams((prev) => { const n = new URLSearchParams(prev); n.set('player', p.userId); return n; }, { replace: true })}
-              className={cn('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
+              className={cn('inline-flex h-9 items-center gap-2 rounded-none-none border px-3 text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40',
                 p.userId === chosen?.userId ? 'border-white/40 text-white' : 'border-white/[0.14] text-white/60 hover:text-white')}>
-              {resolveAgent(p.agents[0]?.agent)?.iconUrl && <img src={resolveAgent(p.agents[0]?.agent)!.iconUrl} alt="" className="h-5 w-5 rounded-sm" loading="lazy" />}
+              {resolveAgent(p.agents[0]?.agent)?.iconUrl && <img src={resolveAgent(p.agents[0]?.agent)!.iconUrl} alt="" className="h-5 w-5 rounded-none-none" loading="lazy" />}
               {p.name ?? 'Player'}
             </button>
           ))}

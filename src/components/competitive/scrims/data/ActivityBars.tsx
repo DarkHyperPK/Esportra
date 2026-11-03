@@ -11,14 +11,14 @@ export function ActivityBars({ activity }: { activity: MonthLine[] }) {
   const peak = Math.max(...months.map((m) => m.games), 1);
 
   return (
-    <section aria-label="Activity" className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="Activity" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>Activity · games per month</h3>
       <ul className="mt-4 flex h-24 items-end gap-1.5">
         {months.map((m) => (
           <li key={m.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
             aria-label={`${monthLabel(m.month)}: ${m.games} ${m.games === 1 ? 'game' : 'games'}, ${m.wins} won`}>
             <span className="text-[10px] tabular-nums text-zinc-500">{m.games}</span>
-            <span aria-hidden className="w-full rounded-sm bg-rose-500/70" style={{ height: `${Math.max(6, (m.games / peak) * 100)}%` }} />
+            <span aria-hidden className="w-full rounded-none-none bg-rose-500/70" style={{ height: `${Math.max(6, (m.games / peak) * 100)}%` }} />
             <span aria-hidden className="text-[10px] text-zinc-600">{monthLabel(m.month)}</span>
           </li>
         ))}

@@ -118,3 +118,10 @@ Scrim Insights (`/competitive/scrims/data?tab=`) shows one category at a time: O
 ### Team and player reports
 
 `GET /api/scrims/teams/{id}/report` and `.../players/{userId}/report` cover the team's last 30 Riot-verified, confirmed scrim maps. Figures are round-weighted over the maps they come from and show their sample; nothing is computed from one map into a "highlight". Highlights are rules over the report's own figures: best/weakest map (3+ maps), attack/defense gap (40+ rounds each, 15+ points apart), pistol rounds (6+), top ACS and opening duels (3+ maps, 8+ duels), form (last 5 vs previous 5 over 10+ maps, 5+ points). Consistency is the standard deviation of ACS across maps. Staff (captain, owner, manager, coach) and admins see every player; other members see team figures and only their own player report.
+
+### Decisive moments, opponents, trends, heatmaps
+
+- **Decisive moments** are worked out from who was alive when, using the kill feed. A death is *traded* when a teammate kills the killer within 5 seconds. A *clutch* is the last player alive against one or more enemies. *Led / trailed* rounds are those where your team had more / fewer players alive at some point. *Post-plant* and *retake* are rounds where your team / the opponent planted. *Anti-eco* is your full buy against their eco; *loadout edge* is 1,000+ more or less loadout value per player. Findings are rules with minimum samples (for example post-plant needs 8 rounds) and always quote their evidence.
+- **Opponents** are scrim partners as teams only. Nothing about their players is shown or aggregated across matches.
+- **Trends** compare the last 5 / 10 maps with the ones before and this month with last; a comparison needs enough maps in both periods, and a change inside the usual swing reads "no clear change".
+- **Heatmaps** plot positions at the moments Riot recorded (a kill's killer location, a victim's location, plants, defuses), never movement. Coordinates become map positions with Riot's conversion: across = y x xMultiplier + xScalarToAdd, down = x x yMultiplier + yScalarToAdd.

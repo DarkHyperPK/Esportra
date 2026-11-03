@@ -13,6 +13,15 @@ const row = (id: string, name: string, acs: number) => ({
 const point = (i: number, map: string, result: string, win: number) => ({
   index: i, date: `2026-10-0${i}T12:00:00Z`, map, opponent: 'Omega', result, rounds_won: 13, rounds_lost: 7, round_win_pct: win, team_acs: 210, team_adr: 140, first_blood_pct: 55, pistol_won: true,
 });
+const coachRow = (id: string, name: string) => ({
+  user_id: id, name, maps: 6, deaths: 40, traded: 22, untraded_first_deaths: 5, trade_kills: 18, clutch_attempts: 6, clutch_wins: 4, entry_duels: 14, entry_wins: 10, multi_kill_rounds: 6, multi_kill_rounds_won: 5,
+});
+const COACH = {
+  trades: { deaths: 40, traded: 22, trade_kills: 18 }, led: rate(30, 40), trailed: rate(6, 20), clutches: [{ versus: 1, attempts: 6, wins: 4 }, { versus: 2, attempts: 4, wins: 0 }],
+  post_plant: rate(8, 12), post_plant_by_site: [{ site: 'A', won: rate(5, 6) }], no_plant_on_attack: rate(3, 14), retake: rate(2, 9), retake_by_site: [],
+  after_pistol_win: rate(2, 5), after_pistol_loss: rate(1, 5), anti_eco: rate(7, 8), eco_upsets: rate(2, 6), loadout_ahead: rate(30, 40), loadout_behind: rate(4, 20), avg_first_kill_ms: 21000, slow_rounds: rate(5, 9),
+  players: [coachRow('u1', 'Nova'), coachRow('u2', 'Ray')],
+};
 const TEAM = {
   team_id: 't1', has_data: true, staff: true, viewer_user_id: 'u1', max_maps: 30,
   report: {
@@ -21,7 +30,7 @@ const TEAM = {
     maps: [{ map: 'Lotus', games: 2, wins: 2, rounds_won: 26, rounds_lost: 14, round_win_pct: 65, attack: rate(10, 18), defense: rate(16, 22) }],
     attack: rate(20, 40), defense: rate(30, 40), first_blood_rounds: rate(22, 40), win_after_first_blood: rate(18, 22), win_after_first_death: rate(6, 18), pistol: rate(4, 6),
     buys: [{ buy: 'full', rounds_won: rate(14, 20) }], players: [row('u1', 'Nova', 240), row('u2', 'Ray', 180)],
-    highlights: [{ kind: 'best_map', tone: 'good', title: 'Best map: Lotus', detail: '2–0 over 2 maps.', player_id: null }],
+    coach: COACH, highlights: [{ kind: 'best_map', tone: 'good', title: 'Best map: Lotus', detail: '2–0 over 2 maps.', player_id: null }],
   },
 };
 const PLAYER = {
@@ -31,7 +40,7 @@ const PLAYER = {
     series: [1, 2, 3].map((i) => ({ index: i, date: `2026-10-0${i}T12:00:00Z`, map: 'Lotus', agent: 'add6443a-41bd-e414-f6ad-e58d267f4e95', result: 'win', rounds: 20, acs: 180 + i, adr: 140, kills: 18, deaths: 12, assists: 4, kd: 1.5, kast: 70, hs_pct: 22, first_kills: 2, first_deaths: 1 })),
     by_map: [{ key: 'Lotus', maps: 3, wins: 3, win_rate_pct: 100, acs: 181, kd: 1.5, rounds: 60 }], by_agent: [{ key: 'add6443a-41bd-e414-f6ad-e58d267f4e95', maps: 3, wins: 3, win_rate_pct: 100, acs: 181, kd: 1.5, rounds: 60 }],
     hits: { head: 20, body: 60, leg: 20, head_pct: 20, body_pct: 60, leg_pct: 20 }, comparison: { team_acs: 210, acs_vs_team: -30, last5_acs: null, previous5_acs: null, acs_change: null },
-    highlights: [{ kind: 'consistency', tone: 'good', title: 'Consistent from map to map', detail: 'ACS varies by about 4 between maps.', player_id: 'u2' }],
+    coach: coachRow('u2', 'Ray'), highlights: [{ kind: 'consistency', tone: 'good', title: 'Consistent from map to map', detail: 'ACS varies by about 4 between maps.', player_id: 'u2' }],
   },
 };
 
@@ -55,7 +64,10 @@ describe('TeamReportTab', () => {
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
     expect(screen.getByLabelText('Highlights')).toHaveTextContent('Best map: Lotus');
     expect(screen.getAllByTestId('trend').length).toBe(2);
-    for (const t of ['Results by map', 'Attack and defense', 'Opening duels', 'Rounds won by buy', 'Players by ACS']) expect(screen.getByRole('region', { name: t })).toBeInTheDocument();
+    for (const t of ['Results by map', 'Attack and defense', 'Opening duels', 'Rounds won by buy', 'Players by ACS', 'What decided rounds', 'Players in the deciding moments']) expect(screen.getByRole('region', { name: t })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'What decided rounds' })).toHaveTextContent('8 of 12 · 67%');
+    expect(screen.getByRole('region', { name: 'What decided rounds' })).toHaveTextContent('1v2 situations');
+    expect(screen.getByRole('region', { name: 'Players in the deciding moments' })).toHaveTextContent('10 of 14 · 71%');
     expect(screen.getByRole('region', { name: 'Attack and defense' })).toHaveTextContent('20 of 40 · 50%');
     expect(screen.getByRole('heading', { name: 'Round win rate by map' }).closest('section')?.querySelector('table.sr-only')).not.toBeNull();
   });
@@ -90,6 +102,8 @@ describe('PlayerReportsTab', () => {
     expect(screen.getByRole('button', { name: /Ray/ })).toHaveAttribute('aria-pressed', 'true');
     expect(mocks.player).toHaveBeenLastCalledWith('t1', 'u2');
     expect(screen.getByText(/30 below the team average \(210\)/)).toBeInTheDocument();
+    expect(screen.getByText('Untraded openers').closest('div')).toHaveTextContent('5');
+    expect(screen.getByText('Opening duels').closest('div')).toHaveTextContent('10 of 14');
     expect(screen.getByLabelText('Highlights')).toHaveTextContent('Consistent from map to map');
     expect(screen.getByRole('region', { name: 'Where shots land' })).toHaveTextContent('Head 20.0%');
     fireEvent.click(screen.getByRole('button', { name: /Nova/ }));

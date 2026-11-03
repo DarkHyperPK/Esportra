@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { competitiveApiClient } from '@/hooks/competitive/competitiveApiClient';
 import { scrimInsightsKeys } from '@/hooks/competitive/queryKeys';
 import { scrimPlayerReportSchema, scrimTeamReportSchema } from '@/schemas/scrimReport';
+import { scrimHeatmapSchema } from '@/schemas/scrimHeatmap';
+import { scrimTrendsSchema } from '@/schemas/scrimTrends';
 
 /**
  * The team report: charts-ready series and highlights over the team's verified scrim maps. Members of the team only, and the API treats a 401
@@ -28,5 +30,37 @@ export function useScrimPlayerReport(teamId: string | undefined, userId: string 
     enabled: !!user?.id && !!teamId && !!userId,
     staleTime: 60_000,
     retry: false,
+  });
+}
+
+/** How the team is moving over its recent verified maps. Every member of the team may read it. */
+export function useScrimTrends(teamId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: scrimInsightsKeys.trends(teamId ?? ''),
+    queryFn: async () => scrimTrendsSchema.parse(await competitiveApiClient.get<unknown>(`/api/scrims/teams/${teamId}/trends`)),
+    enabled: !!user?.id && !!teamId,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+export interface HeatmapQuery { map: string | null; kind: string; side: string | null }
+
+/** Where the team's recorded events happened. Every member of the team may read it; the map is chosen by display name. */
+export function useScrimHeatmap(teamId: string | undefined, q: HeatmapQuery) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: scrimInsightsKeys.heatmap(teamId ?? '', q.map, q.kind, q.side),
+    queryFn: async () => {
+      const params = new URLSearchParams({ kind: q.kind });
+      if (q.map) params.set('map', q.map);
+      if (q.side) params.set('side', q.side);
+      return scrimHeatmapSchema.parse(await competitiveApiClient.get<unknown>(`/api/scrims/teams/${teamId}/heatmap?${params.toString()}`));
+    },
+    enabled: !!user?.id && !!teamId,
+    staleTime: 60_000,
+    retry: false,
+    placeholderData: (prev) => prev,
   });
 }

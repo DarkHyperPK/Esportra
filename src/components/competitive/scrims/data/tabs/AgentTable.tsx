@@ -7,7 +7,7 @@ function AgentCell({ id }: { id: string }) {
   const agent = resolveAgent(id);
   return (
     <span className="flex min-w-0 items-center gap-2">
-      {agent ? <img src={agent.iconUrl} alt="" className="h-7 w-7 shrink-0 rounded-sm" loading="lazy" /> : <span className="grid h-7 w-7 shrink-0 place-items-center rounded-sm bg-white/5 text-[10px] text-zinc-500">?</span>}
+      {agent ? <img src={agent.iconUrl} alt="" className="h-7 w-7 shrink-0 rounded-none-none" loading="lazy" /> : <span className="grid h-7 w-7 shrink-0 place-items-center rounded-none-none bg-white/5 text-[10px] text-zinc-500">?</span>}
       <span className="truncate text-[13px] text-white">{agent?.displayName ?? 'Unknown agent'}</span>
     </span>
   );
@@ -17,7 +17,7 @@ function AgentCell({ id }: { id: string }) {
 export function AgentTable({ agents }: { agents: AgentSummary[] }) {
   if (agents.length === 0) return null;
   return (
-    <section aria-label="Agents" className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="Agents" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>Agents</h3>
       <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">
         Results are for maps where the agent was in play, not proof the agent made the difference. K/D and ACS use only the maps that have them, and the count is shown.

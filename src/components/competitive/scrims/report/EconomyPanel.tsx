@@ -17,7 +17,7 @@ function Uses({ title, rows, labels, icons }: { title: string; rows: Array<{ wea
 }
 
 /** Spending and loadouts for your team, and how rounds went at each buy level. */
-export function EconomyPanel({ report, assets, armor }: { report: InsightsReport; assets: KillCatalog; armor?: ReadonlyMap<string, string> }) {
+export function EconomyPanel({ report, assets }: { report: InsightsReport; assets: KillCatalog }) {
   const e = report.economy;
   if (e.winRateByBuy.length === 0 && e.avgLoadoutMine == null) return null;
   return (
@@ -36,7 +36,7 @@ export function EconomyPanel({ report, assets, armor }: { report: InsightsReport
       )}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {e.weapons.length > 0 ? <Uses title="Weapons bought" rows={e.weapons} labels={assets.weaponName} icons={assets.weaponIcon} /> : <p className="text-[12px] text-zinc-500">{NO_VALUE}</p>}
-        {e.armor.length > 0 && armor && <Uses title="Armor bought" rows={e.armor} labels={armor} />}
+        {e.armor.length > 0 && <Uses title="Armor bought" rows={e.armor} labels={assets.armorName} icons={assets.armorIcon} />}
       </div>
     </ReportSection>
   );

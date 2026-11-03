@@ -19,13 +19,16 @@ import { PlayerAgentTable } from './tabs/PlayerAgentTable';
 
 const TeamReportTab = lazy(() => import('./reports/TeamReportTab'));
 const PlayerReportsTab = lazy(() => import('./reports/PlayerReportsTab'));
+const OpponentsTab = lazy(() => import('./reports/OpponentsTab'));
+const TrendsTab = lazy(() => import('./reports/TrendsTab'));
+const HeatmapTab = lazy(() => import('./reports/HeatmapTab'));
 
-const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'map-picks', 'agents', 'players', 'roster'] as const;
+const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'map-picks', 'agents', 'opponents', 'trends', 'heatmaps', 'players', 'roster'] as const;
 type InsightTab = (typeof INSIGHT_TABS)[number];
 
 const TABS: readonly (TabItem & { id: InsightTab })[] = [
   { id: 'overview', label: 'Overview' }, { id: 'team-report', label: 'Team report' }, { id: 'player-reports', label: 'Player reports' }, { id: 'maps', label: 'Maps' }, { id: 'map-picks', label: 'Map picks' },
-  { id: 'agents', label: 'Agents & comps' }, { id: 'players', label: 'Players' }, { id: 'roster', label: 'Roster' },
+  { id: 'agents', label: 'Agents & comps' }, { id: 'opponents', label: 'Opponents' }, { id: 'trends', label: 'Trends' }, { id: 'heatmaps', label: 'Heatmaps' }, { id: 'players', label: 'Players' }, { id: 'roster', label: 'Roster' },
 ];
 
 /**
@@ -64,6 +67,9 @@ export function ScrimDataPanel({ teamId }: { teamId: string }) {
             <AgentTable agents={data.agents} />
             <CompositionPanel compositions={data.compositions} />
           </TabPanel>
+          <TabPanel base={base} id="opponents" value={tab}><Suspense fallback={<PanelSkeleton />}><OpponentsTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={base} id="trends" value={tab}><Suspense fallback={<PanelSkeleton />}><TrendsTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={base} id="heatmaps" value={tab}><Suspense fallback={<PanelSkeleton />}><HeatmapTab teamId={teamId} /></Suspense></TabPanel>
           <TabPanel base={base} id="players" value={tab} className="space-y-4">
             <PlayersPanel players={data.players} />
             <PlayerAgentTable rows={data.playerAgents} />

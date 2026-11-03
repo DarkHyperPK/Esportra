@@ -3,6 +3,21 @@ import { z } from 'zod';
 const num = z.number().nullable();
 const rate = z.object({ count: z.number(), of: z.number(), pct: num });
 
+const siteRate = z.object({ site: z.string(), won: rate });
+
+export const coachUserRowSchema = z.object({
+  userId: z.string(), name: z.string().nullable(), maps: z.number(), deaths: z.number(), traded: z.number(), untradedFirstDeaths: z.number(), tradeKills: z.number(),
+  clutchAttempts: z.number(), clutchWins: z.number(), entryDuels: z.number(), entryWins: z.number(), multiKillRounds: z.number(), multiKillRoundsWon: z.number(),
+});
+
+export const coachTeamSchema = z.object({
+  trades: z.object({ deaths: z.number(), traded: z.number(), tradeKills: z.number() }), led: rate, trailed: rate,
+  clutches: z.array(z.object({ versus: z.number(), attempts: z.number(), wins: z.number() })),
+  postPlant: rate, postPlantBySite: z.array(siteRate), noPlantOnAttack: rate, retake: rate, retakeBySite: z.array(siteRate),
+  afterPistolWin: rate, afterPistolLoss: rate, antiEco: rate, ecoUpsets: rate, loadoutAhead: rate, loadoutBehind: rate, avgFirstKillMs: num, slowRounds: rate,
+  players: z.array(coachUserRowSchema),
+});
+
 const sample = z.object({ maps: z.number(), from: z.string().nullable(), to: z.string().nullable(), capped: z.boolean() });
 
 export const highlightSchema = z.object({
@@ -26,7 +41,7 @@ const teamMap = z.object({ map: z.string(), games: z.number(), wins: z.number(),
 const teamReport = z.object({
   sample, wins: z.number(), losses: z.number(), winRatePct: num, roundWinPct: num, series: z.array(seriesPoint), maps: z.array(teamMap),
   attack: rate, defense: rate, firstBloodRounds: rate, winAfterFirstBlood: rate, winAfterFirstDeath: rate, pistol: rate,
-  buys: z.array(z.object({ buy: z.string(), roundsWon: rate })), players: z.array(playerRowSchema), highlights: z.array(highlightSchema),
+  buys: z.array(z.object({ buy: z.string(), roundsWon: rate })), players: z.array(playerRowSchema), coach: coachTeamSchema, highlights: z.array(highlightSchema),
 });
 
 /** The team report and who may see which players. A regular member gets their own row only. */
@@ -45,7 +60,7 @@ const playerReport = z.object({
   byMap: z.array(slice), byAgent: z.array(slice),
   hits: z.object({ head: z.number(), body: z.number(), leg: z.number(), headPct: num, bodyPct: num, legPct: num }),
   comparison: z.object({ teamAcs: num, acsVsTeam: num, last5Acs: num, previous5Acs: num, acsChange: num }),
-  highlights: z.array(highlightSchema),
+  coach: coachUserRowSchema.nullable(), highlights: z.array(highlightSchema),
 });
 
 export const scrimPlayerReportSchema = z.object({

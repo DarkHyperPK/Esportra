@@ -43,7 +43,7 @@ export function MapPoolPanel({ maps, unplayed, minSample }: Props) {
   if (maps.length === 0 && unplayed.length === 0) return null;
   const { most, least } = practiceSummary(maps, unplayed);
   return (
-    <section aria-label="Map pool" className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="Map pool" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>Map pool</h3>
       <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">{mapSignalExplanation(minSample)}</p>
       <p className="mt-1 text-[12px] leading-relaxed text-zinc-600">Attack and defense come from auto-fetched maps only; screenshot and score-only maps have no round-by-round data.</p>

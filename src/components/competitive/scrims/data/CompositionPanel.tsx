@@ -12,7 +12,7 @@ function Comp({ c }: { c: CompositionIntel }) {
         <ul className="flex shrink-0 gap-1" aria-label={`Agents: ${names}`}>
           {c.agents.map((a) => {
             const agent = resolveAgent(a);
-            return <li key={a}>{agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-8 w-8 rounded-sm" loading="lazy" /> : <span className="grid h-8 w-8 place-items-center rounded-sm bg-white/5 text-[10px] text-zinc-500">?</span>}</li>;
+            return <li key={a}>{agent ? <img src={agent.iconUrl} alt={agent.displayName} className="h-8 w-8 rounded-none-none" loading="lazy" /> : <span className="grid h-8 w-8 place-items-center rounded-none-none bg-white/5 text-[10px] text-zinc-500">?</span>}</li>;
           })}
         </ul>
         <p className="shrink-0 text-right text-[13px] tabular-nums text-zinc-200">
@@ -33,7 +33,7 @@ function Comp({ c }: { c: CompositionIntel }) {
 export function CompositionPanel({ compositions }: { compositions: CompositionIntel[] }) {
   if (compositions.length === 0) return null;
   return (
-    <section aria-label="Compositions" className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="Compositions" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>Compositions</h3>
       <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">
         What the team has played and how it went. A composition’s record also reflects the map, the opponent, the side and who was playing, so a higher win rate here is not proof it is better.

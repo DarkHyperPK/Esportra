@@ -11,10 +11,10 @@ const TIERS: Array<{ tier: DataTier; count: (c: Coverage) => number; bar: string
 /** What the numbers are built from: how many maps have full detail, a screenshot, or just a score. */
 export function CoverageSummary({ coverage }: { coverage: Coverage }) {
   return (
-    <section aria-label="What your data is built from" className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="What your data is built from" className="rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <h3 className={EYEBROW_CLASS}>What your data is built from</h3>
       {coverage.maps > 0 && (
-        <div aria-hidden className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/5">
+        <div aria-hidden className="mt-3 flex h-2 overflow-hidden rounded-none-full bg-white/5">
           {TIERS.map(({ tier, count, bar }) => (count(coverage) > 0 ? <span key={tier} className={bar} style={{ width: `${(100 * count(coverage)) / coverage.maps}%` }} /> : null))}
         </div>
       )}

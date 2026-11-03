@@ -27,6 +27,7 @@ export interface ValorantMap {
     yScalarToAdd?: number;
 }
 export interface ValorantTier { tier: number; tierName?: string; divisionName?: string; smallIcon?: string; largeIcon?: string }
+export interface ValorantGear { uuid?: string; displayName?: string; displayIcon?: string }
 export interface ValorantWeapon { uuid?: string; displayName?: string; displayIcon?: string; killStreamIcon?: string }
 
 type Raw = Record<string, unknown>;
@@ -150,6 +151,9 @@ export const useValorantMaps = (enabled = true) =>
 
 export const useValorantTiers = (enabled = true) =>
     useCatalog('tiers', async () => latestTiers(await fetchList('/competitivetiers')), enabled);
+
+export const useValorantGear = (enabled = true) =>
+    useCatalog('gear', async () => (await fetchList('/gear')).map((g): ValorantGear => ({ uuid: str(g.uuid), displayName: str(g.displayName), displayIcon: str(g.displayIcon) })), enabled);
 
 export const useValorantWeapons = (enabled = true) =>
     useCatalog('weapons-v2', async () => (await fetchList('/weapons')).map(slimWeapon), enabled);

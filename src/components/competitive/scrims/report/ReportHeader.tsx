@@ -18,7 +18,7 @@ export function ReportHeader({ data }: { data: ScrimGameInsights }) {
   const result = RESULT[data.result];
   const queue = data.match && data.match.isCustom === false ? 'Played in a matchmade queue, not a custom game.' : null;
   return (
-    <header className="space-y-2 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <header className="space-y-2 rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h1 className="font-heading text-[22px] font-bold leading-tight text-white">{data.map ?? UNKNOWN_MAP}</h1>
         <span className="text-[22px] font-bold tabular-nums text-white">{data.score.mine}–{data.score.theirs}</span>

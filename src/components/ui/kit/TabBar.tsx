@@ -58,7 +58,7 @@ export function TabBar({ tabs, value, onChange, label, base, className }: TabBar
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50',
               selected ? 'text-white' : 'text-zinc-500 hover:text-zinc-200')}>
             {t.label}
-            {t.count !== undefined && <span className="rounded bg-white/[0.08] px-1.5 text-[11px] tabular-nums text-zinc-300">{t.count}</span>}
+            {t.count !== undefined && <span className="rounded-none bg-white/[0.08] px-1.5 text-[11px] tabular-nums text-zinc-300">{t.count}</span>}
             {selected && <span aria-hidden className="absolute inset-x-2 -bottom-px h-0.5 bg-white" />}
           </button>
         );

@@ -56,6 +56,9 @@ export const scrimDataKeys = {
 
 export const scrimInsightsKeys = {
   mapPicks: (teamId: string) => ['scrims', 'map-picks', teamId] as const,
+  heatmap: (teamId: string, map: string | null, kind: string, side: string | null) => ['scrims', 'heatmap', teamId, map, kind, side] as const,
+  trends: (teamId: string) => ['scrims', 'trends', teamId] as const,
+  opponents: (teamId: string) => ['scrims', 'opponents', teamId] as const,
   teamReport: (teamId: string) => ['scrims', 'team-report', teamId] as const,
   playerReport: (teamId: string, userId: string) => ['scrims', 'player-report', teamId, userId] as const,
   game: (sessionId: string, gameNumber: number, teamId?: string) => ['scrims', 'insights', sessionId, gameNumber, teamId ?? null] as const,

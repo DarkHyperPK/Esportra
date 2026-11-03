@@ -19,6 +19,19 @@ const round = z.object({
 
 const count = z.object({ weapon: z.string(), rounds: z.number() });
 
+const siteRate = z.object({ site: z.string(), won: rate });
+
+const coachMap = z.object({
+  trades: z.object({ deaths: z.number(), traded: z.number(), tradeKills: z.number() }), ledRounds: rate, trailedRounds: rate,
+  clutches: z.array(z.object({ round: z.number(), key: z.string(), versus: z.number(), won: z.boolean() })),
+  postPlant: rate, postPlantBySite: z.array(siteRate), noPlantOnAttack: rate, retake: rate, retakeBySite: z.array(siteRate),
+  afterPistolWin: rate, afterPistolLoss: rate, antiEco: rate, ecoUpsets: rate, loadoutAhead: rate, loadoutBehind: rate, avgFirstKillMs: num, slowRounds: rate,
+  players: z.array(z.object({
+    key: z.string(), deaths: z.number(), traded: z.number(), untradedFirstDeaths: z.number(), tradeKills: z.number(), clutchAttempts: z.number(), clutchWins: z.number(),
+    entryDuels: z.number(), entryWins: z.number(), multiKillRounds: z.number(), multiKillRoundsWon: z.number(),
+  })),
+});
+
 export const reportSchema = z.object({
   players: z.array(player),
   rounds: z.array(round),
@@ -41,6 +54,7 @@ export const reportSchema = z.object({
     byPlayer: z.array(z.object({ key: z.string(), plants: z.number(), defuses: z.number() })), sites: z.array(count),
     avgPlantMs: num, avgDefuseMs: num, winWhenPlanting: rate, winWhenOpponentPlants: rate,
   }),
+  coach: coachMap.optional(),
   formulas: z.array(z.object({ id: z.string(), text: z.string() })),
 });
 

@@ -2,11 +2,14 @@ import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitiv
 import { StatTile } from '@/components/competitive/scrims/data/StatTile';
 import { useScrimTeamReport } from '@/hooks/competitive/useScrimReports';
 import { formatNumber, formatPct, gameDate, isSmallSample } from '@/services/scrimData/format';
+import { fromTeam } from '@/services/scrimInsights/coach';
 import { BUY_LABEL, BUY_MEANING, rateText } from '@/services/scrimInsights/present';
 import type { Rate, TeamReportBody } from '@/types/scrimReport';
 import { BarList, type BarItem } from './BarList';
 import { ChartCard } from './ChartCard';
 import { CHART } from './chartTheme';
+import { CoachPanel } from './CoachPanel';
+import { CoachPlayersTable } from './CoachPlayersTable';
 import { HighlightCards } from './HighlightCards';
 import TrendChart from './TrendChart';
 
@@ -46,7 +49,7 @@ function Charts({ r }: { r: TeamReportBody }) {
         <ChartCard title="Team ACS and ADR by map" note="Your five players combined, weighted by rounds." summary={`Team ACS and ADR over ${r.series.length} maps.`}
           table={{ columns: ['Map', 'ACS', 'ADR'], rows: trend.map((t) => [t.label, t.acs, t.adr]) }}>
           <TrendChart data={trend} lines={[{ key: 'acs', name: 'ACS', color: CHART.you }, { key: 'adr', name: 'ADR', color: CHART.third }]} />
-          <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: CHART.third }} />ADR</span></p>
+          <p className="mt-1 flex gap-4 text-[11px] text-zinc-400"><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.you }} />ACS</span><span><span className="mr-1 inline-block h-2 w-2 rounded-none-none" style={{ background: CHART.third }} />ADR</span></p>
         </ChartCard>
       ) : null}
       {mapItems.length > 0 && <ChartCard title="Results by map" note="Wins and losses on each map, with the share of rounds won." summary={`Results on ${mapItems.length} maps.`} table={{ columns: ['Map', 'Record'], rows: mapItems.map((m) => [m.label, m.valueText]) }}><BarList items={mapItems} reference={50} /></ChartCard>}
@@ -69,12 +72,14 @@ export default function TeamReportTab({ teamId }: { teamId: string }) {
     <div className="space-y-4">
       <Sample r={r} max={data.maxMaps} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Maps" value={`${r.wins}–${r.losses}`} hint={`${formatPct(r.winRatePct)} of maps won`} />
-        <StatTile label="Round win rate" value={formatPct(r.roundWinPct)} hint="Rounds won ÷ rounds played" />
-        <StatTile label="Pistol rounds" value={rateText(r.pistol)} hint="Rounds 1 and 13 won" />
-        <StatTile label="First kill rounds" value={rateText(r.firstBloodRounds)} hint="Rounds you got the first kill" />
+        <StatTile label="Record" value={`${r.wins}–${r.losses}`} hint={`${formatPct(r.winRatePct)} of maps · ${formatPct(r.roundWinPct)} of rounds`} />
+        <StatTile label="After the first kill" value={rateText(r.winAfterFirstBlood)} hint="Rounds won when you got the first kill" />
+        <StatTile label="Deaths avenged" value={r.coach.trades.deaths ? `${r.coach.trades.traded} of ${r.coach.trades.deaths}` : '—'} hint="Killer killed within 5 s by a teammate" />
+        <StatTile label="Won when planted" value={rateText(r.coach.postPlant)} hint="Rounds you planted the spike" />
       </div>
       <HighlightCards highlights={r.highlights} />
+      <CoachPanel view={fromTeam(r.coach)} />
+      <CoachPlayersTable rows={r.coach.players} />
       <Charts r={r} />
     </div>
   );

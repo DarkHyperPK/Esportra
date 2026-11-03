@@ -29,6 +29,12 @@ const FULL = {
     economy: { win_rate_by_buy: [{ buy: 'full', rounds_won: rate(2, 2) }], pistol_rounds: rate(0, 0), avg_loadout_mine: 4000, avg_loadout_theirs: 2500, avg_loadout_in_won_rounds: 4000, avg_loadout_in_lost_rounds: null, weapons: [{ weapon: 'w-vandal', rounds: 4 }], armor: [] },
     abilities: [{ key: 'p1', grenade: 3, ability1: 6, ability2: null, ultimate: 1, per_round: 3.3 }],
     objectives: { by_player: [], sites: [{ weapon: 'A', rounds: 1 }], avg_plant_ms: 30000, avg_defuse_ms: null, win_when_planting: rate(1, 1), win_when_opponent_plants: rate(0, 0) },
+    coach: {
+      trades: { deaths: 3, traded: 1, trade_kills: 1 }, led_rounds: rate(2, 2), trailed_rounds: rate(0, 1), clutches: [{ round: 1, key: 'p1', versus: 1, won: true }, { round: 2, key: 'p1', versus: 2, won: false }],
+      post_plant: rate(1, 1), post_plant_by_site: [{ site: 'A', won: rate(1, 1) }], no_plant_on_attack: rate(0, 1), retake: rate(0, 0), retake_by_site: [],
+      after_pistol_win: rate(0, 1), after_pistol_loss: rate(0, 0), anti_eco: rate(0, 0), eco_upsets: rate(0, 1), loadout_ahead: rate(1, 1), loadout_behind: rate(0, 1), avg_first_kill_ms: 4000, slow_rounds: rate(0, 0),
+      players: [{ key: 'p1', deaths: 1, traded: 0, untraded_first_deaths: 1, trade_kills: 1, clutch_attempts: 2, clutch_wins: 1, entry_duels: 2, entry_wins: 1, multi_kill_rounds: 1, multi_kill_rounds_won: 1 }],
+    },
     formulas: [{ id: 'acs', text: 'ACS = score ÷ rounds played.' }],
   },
 };
@@ -42,6 +48,7 @@ vi.mock('@/hooks/competitive/useScrimGameInsights', () => ({
 vi.mock('@/hooks/useValorantCatalog', () => ({
   useValorantWeapons: () => ({ data: [{ uuid: 'w-vandal', displayName: 'Vandal', killStreamIcon: 'https://x/vandal.png' }] }),
   useValorantAgents: () => ({ data: {} }),
+  useValorantGear: () => ({ data: [] }),
 }));
 
 // The API client camel-cases keys; parse the same way the hook does.
@@ -58,7 +65,7 @@ describe('ScrimGameReport', () => {
     view();
     expect(screen.getByRole('heading', { name: 'Lotus' })).toBeInTheDocument();
     expect(screen.getByText(/Map veto: Lotus, picked by your team/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Rounds', 'Kills & damage', 'Economy', 'Utility & spike']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Utility & spike']);
     expect(screen.getByRole('region', { name: 'Scoreboard' })).toBeInTheDocument();
     expect(screen.getAllByText('Omega One').length).toBeGreaterThan(0);
     for (const hidden of ['Rounds', 'Opening duels', 'Kill feed', 'Economy', 'Abilities', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();
@@ -81,6 +88,14 @@ describe('ScrimGameReport', () => {
     expect(screen.getByRole('region', { name: 'Spike' })).toBeInTheDocument();
   });
 
+  it('shows the clutches and what decided rounds on the decisive-moments tab', () => {
+    state = { data: parsed(FULL) };
+    view('decisive');
+    expect(screen.getByRole('region', { name: 'Clutches' })).toHaveTextContent('1v2');
+    expect(screen.getByRole('region', { name: 'What decided rounds on this map' })).toHaveTextContent('Won after you planted');
+    expect(screen.getByRole('region', { name: 'Players in the deciding moments' })).toHaveTextContent('Alpha One');
+  });
+
   it('opens the tab named in the URL', () => {
     state = { data: parsed(FULL) };
     view('economy');
@@ -91,9 +106,10 @@ describe('ScrimGameReport', () => {
   it('draws the kill feed with agent and weapon icons, never a raw id, and lets you pick another round', () => {
     state = { data: parsed(FULL) };
     view('kills');
-    expect(screen.getByAltText('Vandal')).toHaveAttribute('src', 'https://x/vandal.png');
+    expect(screen.getByAltText('Vandal')).toHaveAttribute('src', '/air-hud/core/assets/weapons/VandalKillfeed.webp');
     fireEvent.click(screen.getByRole('button', { name: '2' }));
     expect(screen.getByTitle('Weapon')).toBeInTheDocument();
+    expect(screen.getByAltText('Weapon')).toHaveAttribute('src', '/air-hud/core/assets/weapons/UnknownKillfeed.webp');
     expect(screen.queryByText(/1234abcd/)).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain('1234abcd');
   });
@@ -102,7 +118,8 @@ describe('ScrimGameReport', () => {
     state = { data: parsed(FULL) };
     view('rounds');
     expect(screen.getByLabelText('Round 1: Your team won by eliminating the opposition, attacking, spike planted at A at 0:30. Score 1–0.')).toBeInTheDocument();
-    expect(screen.getByText(/First half · you attacked/)).toBeInTheDocument();
+    expect(screen.getByText(/you attacked/)).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'First half' })).toBeInTheDocument();
     expect(screen.getByLabelText('Legend')).toHaveTextContent('Spike detonated');
   });
 

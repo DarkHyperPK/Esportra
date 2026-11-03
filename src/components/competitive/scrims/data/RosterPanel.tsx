@@ -9,7 +9,7 @@ const record = (r: { games: number; wins: number }) => (r.games === 0 ? '—' : 
 export function RosterPanel({ roster }: { roster: RosterIntel }) {
   const { stability: s, substitutes: sub } = roster;
   return (
-    <section aria-label="Roster" className="space-y-4 rounded-xl border border-white/5 bg-white/[0.02] p-4">
+    <section aria-label="Roster" className="space-y-4 rounded-none-none border border-white/[0.06] bg-[#111114] p-4">
       <div>
         <h3 className={EYEBROW_CLASS}>Roster · who played</h3>
         <p className="mt-2 text-[12px] leading-relaxed text-zinc-400">

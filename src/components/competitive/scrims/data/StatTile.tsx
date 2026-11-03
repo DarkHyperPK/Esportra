@@ -12,7 +12,7 @@ interface Props {
 /** One figure with its definition underneath, so nobody has to guess what it means. */
 export function StatTile({ label, value, hint, className }: Props) {
   return (
-    <div className={cn('rounded-xl border border-white/5 bg-white/[0.02] p-4', className)}>
+    <div className={cn('rounded-none-none border border-white/[0.06] bg-[#111114] p-4', className)}>
       <p className={EYEBROW_CLASS}>{label}</p>
       <p className="mt-1.5 font-heading text-2xl font-bold tabular-nums text-white">{value}</p>
       <p className="mt-1 text-[11px] leading-snug text-zinc-500">{hint}</p>

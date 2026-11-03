@@ -4,6 +4,18 @@ import { roundClock } from './present';
 
 export type RoundEnd = 'elimination' | 'detonated' | 'defused' | 'timeout' | 'surrender' | 'unknown';
 
+const HUD = '/air-hud/core/assets';
+
+/** The game's own round-win-reason art (white glyphs), shipped with the broadcast HUD. Surrender and unknown endings have none. */
+export const ROUND_END_ICON: Partial<Record<RoundEnd, string>> = {
+  elimination: `${HUD}/roundWinReason/kills.webp`, detonated: `${HUD}/roundWinReason/detonated.webp`,
+  defused: `${HUD}/roundWinReason/defused.webp`, timeout: `${HUD}/roundWinReason/timeout.webp`,
+};
+
+/** The spike's own icon. */
+export const SPIKE_ICON = `${HUD}/misc/Spike_Icon.svg`;
+export const END_LABEL: Record<RoundEnd, string> = { elimination: 'Eliminations', detonated: 'Spike detonated', defused: 'Spike defused', timeout: 'Time ran out', surrender: 'Surrender', unknown: 'Round ended' };
+
 /** How a round ended, from Riot's round result code. A code we do not recognise is "unknown", never guessed. */
 export function roundEnd(code: string | null | undefined): RoundEnd {
   const c = (code ?? '').toLowerCase();
@@ -44,29 +56,50 @@ export function killMethod(kill: Pick<ReportKill, 'type' | 'weapon'>): KillMetho
   return kill.weapon ? 'weapon' : 'other';
 }
 
-export interface KillArt { label: string; src?: string; method: KillMethod }
+/** The game's kill-feed silhouette for a weapon ("Vandal" -> VandalKillfeed.webp). Local first; the weapon catalog's own icon is the fallback. */
+export function killfeedWeaponIcon(name: string | undefined): string | undefined {
+  const clean = name?.replace(/[^A-Za-z]/g, '');
+  return clean ? `${HUD}/weapons/${clean}Killfeed.webp` : undefined;
+}
+
+export const KILLFEED_UNKNOWN = `${HUD}/weapons/UnknownKillfeed.webp`;
+export const KILLFEED_KNIFE = `${HUD}/weapons/KnifeKillfeed.webp`;
+
+export interface KillArt {
+  label: string;
+  src?: string;
+  /** Tried when `src` fails to load. */
+  fallbackSrc?: string;
+  method: KillMethod;
+  /** White silhouettes (the game's kill-feed art) are drawn as they are; coloured ability art is not tinted. */
+  silhouette: boolean;
+}
 
 export interface KillCatalog {
   weaponName: ReadonlyMap<string, string>;
   /** Weapon id -> the kill-feed icon (falls back to the display icon). */
   weaponIcon: ReadonlyMap<string, string>;
+  /** Armor id -> name and icon (valorant-api gear). */
+  armorName: ReadonlyMap<string, string>;
+  armorIcon: ReadonlyMap<string, string>;
   /** Agent id -> ability slot ("Ability1", "Grenade", "Ultimate") -> its icon and name. */
   abilities: ReadonlyMap<string, ReadonlyMap<string, { icon?: string; name?: string }>>;
 }
 
-const FIXED: Partial<Record<KillMethod, string>> = { spike: 'Spike', melee: 'Melee', fall: 'Fall damage' };
-
-/** What to draw for how a kill was made: the weapon's icon, the agent's ability icon, or a labelled fallback. Never a raw id. */
+/** What to draw for how a kill was made: the weapon's kill-feed art, the agent's ability icon, the spike, the knife, or a labelled unknown. Never a raw id. */
 export function killArt(kill: Pick<ReportKill, 'type' | 'weapon'>, killerAgentId: string | null | undefined, catalog: KillCatalog): KillArt {
   const method = killMethod(kill);
   const id = (kill.weapon ?? '').toLowerCase();
   if (method === 'weapon') {
-    return { method, label: catalog.weaponName.get(id) ?? 'Weapon', src: catalog.weaponIcon.get(id) };
+    const name = catalog.weaponName.get(id);
+    return { method, label: name ?? 'Weapon', src: name ? killfeedWeaponIcon(name) : KILLFEED_UNKNOWN, fallbackSrc: catalog.weaponIcon.get(id) ?? KILLFEED_UNKNOWN, silhouette: true };
   }
   if (method === 'ability' || method === 'ultimate') {
     const slot = method === 'ultimate' ? 'Ultimate' : ABILITY_SLOT[id] ?? '';
     const ability = killerAgentId ? catalog.abilities.get(killerAgentId.toLowerCase())?.get(slot) : undefined;
-    return { method, label: ability?.name ?? (method === 'ultimate' ? 'Ultimate' : 'Ability'), src: ability?.icon };
+    return { method, label: ability?.name ?? (method === 'ultimate' ? 'Ultimate' : 'Ability'), src: ability?.icon, silhouette: false };
   }
-  return { method, label: FIXED[method] ?? NO_VALUE };
+  if (method === 'spike') return { method, label: 'Spike', src: SPIKE_ICON, silhouette: false };
+  if (method === 'melee') return { method, label: 'Melee', src: KILLFEED_KNIFE, silhouette: true };
+  return { method, label: method === 'fall' ? 'Fall damage' : NO_VALUE, src: KILLFEED_UNKNOWN, silhouette: true };
 }
