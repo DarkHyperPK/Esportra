@@ -96,6 +96,7 @@ const ScrimWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scrim
 const ScrimSessionPage = lazyWithRetry(() => import("./pages/competitive/ScrimSessionPage"));
 const ScrimCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimCalendarPage"));
 const ScrimDataPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDataPage"));
+const ScrimGameReportPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimGameReportPage"));
 const ScrimDisputeAdminPage = lazyWithRetry(() => import("./pages/admin/tools/ScrimDisputeAdminPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
@@ -654,6 +655,11 @@ const AppContent = React.memo(() => {
                   <Route path="scrims/calendar" element={
                     <ProtectedRoute>
                       <ScrimCalendarPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="scrims/sessions/:sessionId/games/:gameNumber/report" element={
+                    <ProtectedRoute>
+                      <ScrimGameReportPage />
                     </ProtectedRoute>
                   } />
                   <Route path="scrims/data" element={

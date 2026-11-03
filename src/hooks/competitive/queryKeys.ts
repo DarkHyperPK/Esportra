@@ -53,3 +53,7 @@ export const scrimDataKeys = {
   /** A team's scrim data: record, maps, compositions, players, lineups */
   team: (teamId: string) => ['scrim-data', 'team', teamId] as const,
 };
+
+export const scrimInsightsKeys = {
+  game: (sessionId: string, gameNumber: number, teamId?: string) => ['scrims', 'insights', sessionId, gameNumber, teamId ?? null] as const,
+};

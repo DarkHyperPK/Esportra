@@ -96,3 +96,14 @@ public career and tournament surfaces, which were removed.
 ### Matchmade (ranked) games on staging
 
 By default only custom games are verified. With the backend setting `Riot__AllowNonCustomMatches=true` (staging only), a ranked, unrated or other matchmade game can be attached to a scrim map. It can never be fully verified: the opposing scrim team is not in it, so only the reporting team's side and the score are checked (`partially_verified`, reason `queue_not_custom`). These maps count in the same record and map pool, and the page states how many came from a matchmade queue. A wrong score still disputes the game.
+
+### Per-map report
+
+`GET /api/scrims/sessions/{id}/games/{n}/insights` (members of either scrim team) shows one verified Riot map in depth: scoreboard, round timeline, opening duels, kill feed, damage, economy, abilities and spike. Nothing is stored; every figure is computed from Riot's recorded match and shows its sample.
+
+- **ACS** = score ÷ rounds. **ADR** = damage ÷ rounds. **K/D** = kills ÷ max(deaths, 1). Headshot/body/leg share = that hit type ÷ all located hits (not aim accuracy).
+- **KAST** = rounds with a kill, an assist, survival or a trade (the killer is killed by a teammate within 5 s) ÷ rounds, from the kill feed.
+- **Opening duel** = the first kill of a round; duels won = opening kills ÷ (opening kills + opening deaths); win rates after first blood / first death are counted over rounds with a result.
+- **Buy** = average loadout value per player: eco ≤ 2,000, full ≥ 3,900, otherwise force; rounds 1 and 13 are pistol rounds. Riot numbers rounds from 0; the report counts from 1.
+- **Abilities** are Riot's per-map cast totals. Riot gives no per-round counts, so there is no per-round ability view.
+- Opponent players appear by name for this one match only, as in a match history. They are never aggregated across matches. A map without verified Riot data says so and shows no invented sections.

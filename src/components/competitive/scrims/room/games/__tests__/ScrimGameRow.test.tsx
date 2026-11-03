@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { ScrimGameRow } from '../ScrimGameRow';
 import type { ScrimGame } from '@/types/competitive';
 
@@ -24,10 +25,10 @@ function renderRow(over: Partial<React.ComponentProps<typeof ScrimGameRow>> = {}
   const onConfirm = vi.fn();
   const onEdit = vi.fn();
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter><QueryClientProvider client={new QueryClient()}>
       <ScrimGameRow sessionId="s" game={game} myTeamId="t2" isStaff team1={team1} team2={team2}
         confirming={false} confirmError={null} onConfirm={onConfirm} onEdit={onEdit} {...over} />
-    </QueryClientProvider>,
+    </QueryClientProvider></MemoryRouter>,
   );
   return { onConfirm, onEdit };
 }

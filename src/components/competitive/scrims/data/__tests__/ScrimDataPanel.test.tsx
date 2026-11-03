@@ -77,7 +77,7 @@ describe('ScrimDataPanel', () => {
     expect(screen.getByLabelText('Compositions')).toHaveTextContent('not proof it is better');
     expect(screen.getByLabelText('Players')).toHaveTextContent('Nova');
     expect(screen.getByLabelText('Roster')).toHaveTextContent('Partial');
-    expect(screen.getByRole('link', { name: /Ascent/ })).toHaveAttribute('href', '/competitive/scrims/sessions/s1');
+    expect(screen.getByRole('link', { name: /Ascent/ })).toHaveAttribute('href', expect.stringMatching(/^\/competitive\/scrims\/sessions\/s1\/games\/\d+\/report/));
   });
 
   it('says where each player figure comes from, and where it does not exist', () => {

@@ -32,7 +32,7 @@ export function ScrimDataPanel({ teamId }: { teamId: string }) {
           <CompositionPanel compositions={data.compositions} />
           <PlayersPanel players={data.players} />
           <RosterPanel roster={data.roster} />
-          <RecentMapsPanel maps={data.recent} />
+          <RecentMapsPanel maps={data.recent} teamId={teamId} />
         </>
       )}
     </div>

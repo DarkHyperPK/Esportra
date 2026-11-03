@@ -41,7 +41,7 @@ describe('RecentMapsPanel', () => {
     expect(screen.getByText('Map not recorded')).toBeInTheDocument();
     expect(screen.getByText('Score only')).toBeInTheDocument();
     expect(screen.getByText('Loss')).toBeInTheDocument();
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/competitive/scrims/sessions/s9');
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/competitive/scrims/sessions/s9/games/2/report');
   });
 
   it('renders nothing without maps', () => {

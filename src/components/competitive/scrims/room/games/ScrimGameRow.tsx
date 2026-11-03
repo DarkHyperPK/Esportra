@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { InlineNotice } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
@@ -97,6 +98,13 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
       )}
       {game.status === 'disputed' && (
         <InlineNotice tone="warning">Staff will rule on this map. You can keep playing and reporting the other maps.</InlineNotice>
+      )}
+
+      {game.riotMatchId && (
+        <Link to={`/competitive/scrims/sessions/${sessionId}/games/${game.gameNumber}/report${myTeamId ? `?team_id=${myTeamId}` : ''}`}
+          className="inline-block text-[12px] font-medium text-white/60 underline underline-offset-4 hover:text-white">
+          Open the full map report
+        </Link>
       )}
 
       {game.matchData && (
