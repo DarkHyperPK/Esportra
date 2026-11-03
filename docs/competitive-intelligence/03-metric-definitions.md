@@ -45,3 +45,30 @@ match is never trusted. Statuses: **verified**, **partially_verified**, **unveri
 - Map names are compared only for Riot internal names this project has confirmed (Duality=Bind, Bonsai=Split,
   Ascent, Port=Icebox, Triad=Haven, Foxtrot=Breeze, Canyon=Fracture, Pitt=Pearl, Jam=Lotus, Juliett=Sunset,
   Infinity=Abyss). Unknown codenames or free-text map names are not compared.
+
+## Career records (Phase 2, implemented)
+
+Source: verified and partly verified Riot custom games only (match retrieved and completed). A game belongs to the team
+a player was on **when it was reported**, so a career follows the player across teams. All figures come from one
+function (`CareerMath`), are weighted over every round rather than averaged per match, and are `null` (shown as "—")
+when there is nothing to divide by; an empty career has no K/D, not 0.00.
+
+| Figure | Definition |
+|---|---|
+| Win rate | games won ÷ all games (a game is won when the player's side won more rounds) |
+| K/D | kills ÷ max(deaths, 1) over all rounds |
+| KDA | (kills + assists) ÷ max(deaths, 1) |
+| ACS | total score ÷ total rounds played |
+| ADR | total damage dealt ÷ total rounds played |
+| Headshot share | headshots ÷ all hits with a recorded location (where hits landed, not aim accuracy) |
+| First kills / deaths | rounds where the player made / suffered the first elimination (tie-break in the opening-kill rule above) |
+| Team round win rate | rounds won ÷ rounds played; averages per game are over games |
+| Team first kill rate | first eliminations by the team's players ÷ rounds played |
+
+Every block shows its sample ("Based on N verified games · date range"); fewer than 10 games is labelled a small sample.
+
+**Who sees what.** The player and staff admins see everything. Staff (captain, manager, coach, owner) of a team the player
+is on now see only the games played for that team. Anyone else sees nothing unless the player opts in to public, which
+shares the summary but lists only tournament games (plus the viewer's own team's games). A team's record is shown in full
+to its members; to others it shows tournament games, and scrim games only if the team keeps its scrim history public.
+Team member names appear only to members.

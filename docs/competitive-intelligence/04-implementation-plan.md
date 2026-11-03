@@ -4,7 +4,8 @@
 - **Built and pushed:** security fixes S1–S3 (backend `staging`), debug-route admin guard, these docs, and the
   Phase 1 data foundation (below). Backend: 51 new unit/integration tests run against the full migration replay on
   Postgres 16; frontend: 1016 tests, lint and `npm run build` pass.
-- **Not built (later phases):** profile/team dashboards, map/agent/composition analytics, round-level dashboards,
+- **Phase 2 built:** player and team career records (totals, agents, maps, teams played for, monthly activity, paged game history) on the profile "Performance" tab and the team page "Competitive Record" section.
+- **Not built (later phases):** map/agent/composition analytics, round-level dashboards,
   coach workspace, milestones, ratings, AI insights. The tables to power them exist; no placeholder statistics were added.
 - **Deviations from the first plan:** the analytics visibility setting is its own table
   (`player_analytics_settings`, absent row = private) rather than a column on `player_game_profiles`, which needs a
@@ -49,3 +50,5 @@ ingestion, snapshots, consent. Advanced: round/kill/economy dashboards, coach no
 | `GET/PUT /api/competitive/analytics-visibility` | the player | `private` (default) or `public` |
 | `POST /api/admin/provider-matches/associations` | staff | manual, audited association |
 | `POST /api/admin/provider-matches/backfill?limit=` | staff | queue ingestion of existing reported games |
+| `GET /api/competitive/players/{id}/career` (+ `/matches?before=&limit=`) | per the access rules in doc 03 | career summary and paged games |
+| `GET /api/competitive/teams/{id}/career` (+ `/matches`) | signed-in users | team record; members also get the roster appearances |

@@ -52,3 +52,12 @@ export const providerMatchKeys = {
   /** The caller's analytics visibility for a game */
   visibility: (game: string) => ['analytics-visibility', game] as const,
 };
+
+export const careerKeys = {
+  /** A player's career summary for a game */
+  player: (userId: string, game: string) => ['career', 'player', userId, game] as const,
+  /** The paged game list behind it */
+  playerGames: (userId: string, game: string) => ['career', 'player', userId, game, 'games'] as const,
+  team: (teamId: string) => ['career', 'team', teamId] as const,
+  teamGames: (teamId: string) => ['career', 'team', teamId, 'games'] as const,
+};
