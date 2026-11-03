@@ -28,6 +28,16 @@ const lineup = z.object({
   winRatePct: ratio, roundWinRatePct: ratio, lastPlayed: z.string().nullable(),
 });
 
+const agentSummary = z.object({
+  characterId: z.string(), games: z.number(), wins: z.number(), winRatePct: ratio, pickSharePct: ratio, kd: ratio, kdGames: z.number(), acs: ratio, statGames: z.number(),
+  maps: z.array(z.object({ map: z.string(), games: z.number(), wins: z.number() })),
+});
+
+const playerAgent = z.object({
+  userId: z.string(), name: z.string().nullable(), characterId: z.string(), games: z.number(), wins: z.number(), winRatePct: ratio,
+  kd: ratio, kdGames: z.number(), acs: ratio, statGames: z.number(),
+});
+
 /** Validates the response at the boundary; anything unexpected becomes an error state, never a half-drawn page. */
 export const scrimDataSchema = z.object({
   teamId: z.string(),
@@ -44,6 +54,7 @@ export const scrimDataSchema = z.object({
   form: z.array(z.enum(['W', 'L', 'D'])),
   activity: z.array(z.object({ month: z.string(), games: z.number(), wins: z.number() })),
   maps: z.array(mapIntel), unplayedMaps: z.array(z.string()), compositions: z.array(composition), players: z.array(player),
+  agents: z.array(agentSummary).default([]), playerAgents: z.array(playerAgent).default([]),
   roster: z.object({
     lineups: z.array(lineup),
     stability: z.object({ distinctLineups: z.number(), completeLineups: z.number(), mostUsedSharePct: ratio, playersUsed: z.number(), gamesWithKnownPlayers: z.number() }),

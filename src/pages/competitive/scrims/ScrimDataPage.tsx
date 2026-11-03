@@ -10,7 +10,7 @@ interface TeamSummary {
   name: string;
 }
 
-/** "Your scrims data": a team's own scrim record and what it can learn from it. For the team's members only. */
+/** "Scrim Insights": a team's own scrim record and what it can learn from it. For the team's members only. */
 export default function ScrimDataPage() {
   const [params] = useSearchParams();
   const { data, isLoading } = useMyTeamsSummary();
@@ -22,9 +22,9 @@ export default function ScrimDataPage() {
       <div className="mx-auto max-w-[1100px] space-y-6 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
         <header className="space-y-3 border-b border-white/[0.08] pb-6">
           <div>
-            <h1 className="font-heading text-[24px] font-bold leading-tight text-white">Your scrims data</h1>
+            <h1 className="font-heading text-[24px] font-bold leading-tight text-white">Scrim Insights</h1>
             <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-zinc-400">
-              How your team has done in scrims: results, maps, agents and who played. Built from maps both teams confirmed, using auto-fetched Riot data or screenshots where you have them. Only your team can see this.
+              Study how your team does in scrims, one category at a time: overview, maps, map picks, agents, players and roster. Built from maps both teams confirmed, using auto-fetched Riot data or screenshots where you have them. Only your team can see this.
             </p>
           </div>
           {teams.length > 1 && (

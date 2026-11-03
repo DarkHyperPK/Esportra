@@ -25,7 +25,7 @@ const data = (over: Partial<ScrimData> = {}): ScrimData => ({
   maps: [{ mapId: 'Ascent', map: 'Ascent', games: 2, wins: 1, winRatePct: 50, winLowPct: 9.5, winHighPct: 90.5, roundsWon: 20, roundsLost: 20, roundWinRatePct: 50, attack: { played: 4, won: 2, pct: 50 }, defense: side, lastPlayed: '2026-10-02T00:00:00Z', signal: 'insufficient_sample' }],
   unplayedMaps: ['Split'],
   compositions: [{ agents: ['a', 'b', 'c', 'd', 'e'], games: 4, wins: 3, winRatePct: 75, roundWinRatePct: 60, attack: side, defense: side, maps: [{ map: 'Ascent', games: 2, wins: 2 }], lastPlayed: null }],
-  players: [player()],
+  players: [player()], agents: [], playerAgents: [],
   roster: {
     lineups: [{ userIds: ['u1'], names: ['Nova'], complete: false, games: 4, wins: 3, winRatePct: 75, roundWinRatePct: 60, lastPlayed: null }],
     stability: { distinctLineups: 1, completeLineups: 0, mostUsedSharePct: null, playersUsed: 1, gamesWithKnownPlayers: 4 },
@@ -36,7 +36,8 @@ const data = (over: Partial<ScrimData> = {}): ScrimData => ({
 });
 
 const query = (over: Record<string, unknown> = {}) => ({ isLoading: false, isError: false, data: undefined, refetch: vi.fn(), ...over });
-const renderPanel = () => render(<MemoryRouter><ScrimDataPanel teamId="t1" /></MemoryRouter>);
+const renderPanel = (tab = '') => render(<MemoryRouter initialEntries={[`/x${tab ? `?tab=${tab}` : ''}`]}><ScrimDataPanel teamId="t1" /></MemoryRouter>);
+vi.mock('../tabs/MapPicksTab', () => ({ MapPicksTab: () => <p>map picks content</p> }));
 
 beforeEach(() => mocks.useScrimData.mockReset());
 
@@ -63,26 +64,60 @@ describe('ScrimDataPanel', () => {
     expect(screen.queryByText('Win rate')).toBeNull();
   });
 
-  it('shows what the data is built from, the sample, and every section', () => {
+  it('opens on an overview with what the data is built from, the sample, the record and recent maps, and one tab at a time', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
     renderPanel();
     expect(screen.getByText(/Based on 6 confirmed scrim maps/)).toBeInTheDocument();
     expect(screen.getByText(/Small sample/)).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Maps', 'Map picks', 'Agents & comps', 'Players', 'Roster']);
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('What your data is built from')).toHaveTextContent('Auto-fetched from Riot');
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getByLabelText(/Recent form, newest first: Win, Loss, Win/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Map pool')).toHaveTextContent('Ascent');
+    expect(screen.getByRole('link', { name: /Ascent/ })).toHaveAttribute('href', expect.stringMatching(/^\/competitive\/scrims\/sessions\/s1\/games\/\d+\/report/));
+    for (const other of ['Map pool', 'Compositions', 'Players', 'Roster']) expect(screen.queryByLabelText(other)).toBeNull();
+  });
+
+  it('shows each category only on its own tab', () => {
+    mocks.useScrimData.mockReturnValue(query({ data: data() }));
+    renderPanel();
+    fireEvent.click(screen.getByRole('tab', { name: 'Maps' }));
     expect(screen.getByLabelText('Map pool')).toHaveTextContent('Too few maps');
     expect(screen.getByLabelText('Map pool')).toHaveTextContent('No confirmed maps on: Split');
+    expect(screen.queryByLabelText('What your data is built from')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Agents & comps' }));
     expect(screen.getByLabelText('Compositions')).toHaveTextContent('not proof it is better');
-    expect(screen.getByLabelText('Players')).toHaveTextContent('Nova');
-    expect(screen.getByLabelText('Roster')).toHaveTextContent('Partial');
-    expect(screen.getByRole('link', { name: /Ascent/ })).toHaveAttribute('href', expect.stringMatching(/^\/competitive\/scrims\/sessions\/s1\/games\/\d+\/report/));
+    fireEvent.click(screen.getByRole('tab', { name: 'Players' }));
+    expect(screen.getByRole('region', { name: 'Players' })).toHaveTextContent('Nova');
+    fireEvent.click(screen.getByRole('tab', { name: 'Roster' }));
+    expect(screen.getByRole('region', { name: 'Roster' })).toHaveTextContent('Partial');
+    fireEvent.click(screen.getByRole('tab', { name: 'Map picks' }));
+    expect(screen.getByText('map picks content')).toBeInTheDocument();
+  });
+
+  it('opens the tab named in the URL and ignores an unknown one', () => {
+    mocks.useScrimData.mockReturnValue(query({ data: data() }));
+    const { unmount } = renderPanel('players');
+    expect(screen.getByRole('tab', { name: 'Players' })).toHaveAttribute('aria-selected', 'true');
+    unmount();
+    renderPanel('bogus');
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows the agent and player-by-agent tables when the data has them', () => {
+    const agent = { characterId: 'add6443a-41bd-e414-f6ad-e58d267f4e95', games: 3, wins: 2, winRatePct: 66.7, pickSharePct: 30, kd: 1.4, kdGames: 2, acs: 240, statGames: 2, maps: [{ map: 'Ascent', games: 2, wins: 2 }] };
+    mocks.useScrimData.mockReturnValue(query({ data: data({ agents: [agent], playerAgents: [{ userId: 'u1', name: 'Nova', characterId: agent.characterId, games: 3, wins: 2, winRatePct: 66.7, kd: 1.4, kdGames: 2, acs: 240, statGames: 2 }] }) }));
+    const { unmount } = renderPanel('agents');
+    expect(screen.getByLabelText('Agents')).toHaveTextContent('66.7%');
+    expect(screen.getByLabelText('Agents')).toHaveTextContent('(2)');
+    unmount();
+    renderPanel('players');
+    expect(screen.getByLabelText('Players by agent')).toHaveTextContent('Nova');
   });
 
   it('says where each player figure comes from, and where it does not exist', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data({ players: [player({ firstDeaths: null, firstDeathGames: 0, kd: null, acs: null, adr: null, hsPct: null })] }) }));
-    const { container } = renderPanel();
+    const { container } = renderPanel('players');
     expect(screen.getByText('auto-fetched maps only')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/NaN|undefined|null/);
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(5);
@@ -90,7 +125,7 @@ describe('ScrimDataPanel', () => {
 
   it('notes figures that come from only some of a player’s maps', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
-    renderPanel();
+    renderPanel('players');
     expect(screen.getAllByText('from 4 of 4 maps').length).toBeGreaterThan(0);
     expect(screen.getByText('from 2 of 4 maps')).toBeInTheDocument();
   });

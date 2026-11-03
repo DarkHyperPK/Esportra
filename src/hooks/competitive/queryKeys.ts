@@ -55,5 +55,6 @@ export const scrimDataKeys = {
 };
 
 export const scrimInsightsKeys = {
+  mapPicks: (teamId: string) => ['scrims', 'map-picks', teamId] as const,
   game: (sessionId: string, gameNumber: number, teamId?: string) => ['scrims', 'insights', sessionId, gameNumber, teamId ?? null] as const,
 };

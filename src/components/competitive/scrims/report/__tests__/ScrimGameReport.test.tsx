@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { scrimGameInsightsSchema } from '@/schemas/scrimInsights';
 import { ScrimGameReport } from '../ScrimGameReport';
@@ -44,26 +45,49 @@ vi.mock('@/hooks/useValorantCatalog', () => ({ useValorantWeapons: () => ({ data
 const camel = (v: unknown): unknown => Array.isArray(v) ? v.map(camel)
   : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase()), camel(x)])) : v;
 const parsed = (raw: unknown) => scrimGameInsightsSchema.parse(camel(raw));
-const view = () => render(<ScrimGameReport sessionId="s1" gameNumber={1} />);
+const view = (tab = '') => render(<MemoryRouter initialEntries={[`/x${tab ? `?tab=${tab}` : ''}`]}><ScrimGameReport sessionId="s1" gameNumber={1} /></MemoryRouter>);
 
 describe('ScrimGameReport', () => {
   beforeEach(() => { state = {}; refetch.mockClear(); });
 
-  it('shows every section for a verified map, with the veto and how figures are worked out', () => {
+  it('opens on the scoreboard with the veto and shows one category at a time', () => {
     state = { data: parsed(FULL) };
     view();
     expect(screen.getByRole('heading', { name: 'Lotus' })).toBeInTheDocument();
     expect(screen.getByText(/Map veto: Lotus, picked by your team/)).toBeInTheDocument();
-    for (const name of ['Scoreboard', 'Rounds', 'Opening duels', 'Kill feed', 'Damage and multi-kills', 'Economy', 'Abilities', 'Spike']) {
-      expect(screen.getByRole('region', { name })).toBeInTheDocument();
-    }
-    expect(screen.getByText('How these figures are worked out')).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Rounds', 'Kills & damage', 'Economy', 'Utility & spike']);
+    expect(screen.getByRole('region', { name: 'Scoreboard' })).toBeInTheDocument();
     expect(screen.getAllByText('Omega One').length).toBeGreaterThan(0);
+    for (const hidden of ['Rounds', 'Opening duels', 'Kill feed', 'Economy', 'Abilities', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();
+    expect(screen.getByText('How these figures are worked out')).toBeInTheDocument();
+  });
+
+  it('groups the other categories under their own tabs', () => {
+    state = { data: parsed(FULL) };
+    view();
+    fireEvent.click(screen.getByRole('tab', { name: 'Rounds' }));
+    expect(screen.getByRole('region', { name: 'Rounds' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Opening duels' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Kills & damage' }));
+    expect(screen.getByRole('region', { name: 'Kill feed' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Damage and multi-kills' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Economy' }));
+    expect(screen.getByRole('region', { name: 'Economy' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Utility & spike' }));
+    expect(screen.getByRole('region', { name: 'Abilities' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Spike' })).toBeInTheDocument();
+  });
+
+  it('opens the tab named in the URL', () => {
+    state = { data: parsed(FULL) };
+    view('economy');
+    expect(screen.getByRole('tab', { name: 'Economy' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('region', { name: 'Scoreboard' })).toBeNull();
   });
 
   it('never shows a raw weapon id and lets you pick another round in the kill feed', () => {
     state = { data: parsed(FULL) };
-    view();
+    view('kills');
     expect(screen.getByText(/with Vandal/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '2' }));
     expect(screen.getByText(/with Unknown/)).toBeInTheDocument();
@@ -75,6 +99,7 @@ describe('ScrimGameReport', () => {
     view();
     expect(screen.getByText(/not reported from a Riot match/)).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Scoreboard' })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
   });
 
   it('offers a retry when the report cannot be loaded', () => {

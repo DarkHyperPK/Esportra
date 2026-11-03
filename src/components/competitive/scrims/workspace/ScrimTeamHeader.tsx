@@ -85,7 +85,7 @@ export function ScrimTeamHeader({
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.14] px-4 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           <BarChart3 className="h-4 w-4" aria-hidden="true" />
-          Your scrims data
+          Scrim Insights
         </Link>
         <Link
           to="/competitive/scrims/calendar"

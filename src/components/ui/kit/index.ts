@@ -13,3 +13,5 @@ export { ActionBar } from './ActionBar';
 export { SummaryCard, type SummaryRow } from './SummaryCard';
 export { ToggleRow } from './ToggleRow';
 export { Timeline, type TimelineItem } from './Timeline';
+export { TabBar, TabPanel, type TabItem } from './TabBar';
+export { useTabBase } from './useTabBase';

@@ -1,5 +1,5 @@
 /**
- * scrimData.ts — "Your scrims data": a team's own scrim record built from confirmed scrim maps.
+ * scrimData.ts — "Scrim Insights": a team's own scrim record built from confirmed scrim maps.
  * Mirrors GET /api/scrims/teams/{teamId}/data (camelCased by competitiveApiClient).
  * Each map has a data tier; a figure is null when the sources behind it do not provide it.
  */
@@ -140,6 +140,36 @@ export interface ScrimData {
   unplayedMaps: string[];
   compositions: CompositionIntel[];
   players: PlayerSummary[];
+  agents: AgentSummary[];
+  playerAgents: PlayerAgentSummary[];
   roster: RosterIntel;
   recent: RecentMap[];
+}
+
+/** One agent across the team's scrim maps. A figure comes only from the maps that provide it; `kdGames` / `statGames` say how many. */
+export interface AgentSummary {
+  characterId: string;
+  games: number;
+  wins: number;
+  winRatePct: number | null;
+  pickSharePct: number | null;
+  kd: number | null;
+  kdGames: number;
+  acs: number | null;
+  statGames: number;
+  maps: Array<{ map: string; games: number; wins: number }>;
+}
+
+/** One player on one agent. */
+export interface PlayerAgentSummary {
+  userId: string;
+  name: string | null;
+  characterId: string;
+  games: number;
+  wins: number;
+  winRatePct: number | null;
+  kd: number | null;
+  kdGames: number;
+  acs: number | null;
+  statGames: number;
 }

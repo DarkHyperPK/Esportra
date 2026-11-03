@@ -46,7 +46,7 @@ match is never trusted. Statuses: **verified**, **partially_verified**, **unveri
   Ascent, Port=Icebox, Triad=Haven, Foxtrot=Breeze, Canyon=Fracture, Pitt=Pearl, Jam=Lotus, Juliett=Sunset,
   Infinity=Abyss). Unknown codenames or free-text map names are not compared.
 
-## Your scrims data (implemented)
+## Scrim Insights (implemented)
 
 Scope: **scrims only**, for the team's own members. Nothing here is public, and tournament games are not included.
 
@@ -107,3 +107,10 @@ By default only custom games are verified. With the backend setting `Riot__Allow
 - **Buy** = average loadout value per player: eco ≤ 2,000, full ≥ 3,900, otherwise force; rounds 1 and 13 are pistol rounds. Riot numbers rounds from 0; the report counts from 1.
 - **Abilities** are Riot's per-map cast totals. Riot gives no per-round counts, so there is no per-round ability view.
 - Opponent players appear by name for this one match only, as in a match history. They are never aggregated across matches. A map without verified Riot data says so and shows no invented sections.
+
+### Scrim Insights tabs
+
+Scrim Insights (`/competitive/scrims/data?tab=`) shows one category at a time: Overview, Maps, Map picks, Agents & comps, Players, Roster. The map report (`.../report?tab=`) has Scoreboard, Rounds, Kills & damage, Economy, Utility & spike. The open tab is kept in the URL.
+
+- **Map picks** (`GET /api/scrims/teams/{id}/map-picks`) counts only scrims whose veto finished. Your side in the veto is your place in the scrim. A game's veto map is the n-th pick, then the decider, shifted back by voided maps. Results are split by who chose the map. Bo1 has no picks, only bans and a decider.
+- **Agents** and **players by agent** use every map with an agent recorded; K/D and ACS use only maps that have them and show how many. Results describe maps where the agent was in play, not that it caused them.

@@ -2,7 +2,7 @@
 
 ## Status
 - **Scope (decided with the product owner):** scrims only, for a team's own members, built from auto-fetch (Riot) and OCR
-  (screenshot) data, in one place: **Scrims → Your scrims data** (`/competitive/scrims/data`).
+  (screenshot) data, in one place: **Scrims → Scrim Insights** (`/competitive/scrims/data`).
 - **Built:** security fixes S1–S3; the verified Riot match store with rosters frozen at report time (Phase 1); and the
   scrim data model (coverage tiers, record, map pool with evidence, compositions, players, lineups, recent maps) served by
   `GET /api/scrims/teams/{teamId}/data`.
@@ -36,7 +36,7 @@ map pool, compositions, players, roster and recent maps. Data via `hooks/competi
 `MatchDataStatusBadge` on each scrim map row shows whether Riot's record backs the reported result.
 
 ## F. Priorities
-Preserve: scrim and tournament reporting, OCR, existing Riot sync. Delivered: the verified match store and Your scrims data. Infrastructure:
+Preserve: scrim and tournament reporting, OCR, existing Riot sync. Delivered: the verified match store and Scrim Insights. Infrastructure:
 ingestion and roster snapshots. Advanced: round/kill/economy dashboards, coach notes, milestones. Future: ratings
 (documented methodology), AI insights (cite stats and n), additional games.
 
