@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { EYEBROW_CLASS } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
@@ -10,21 +10,21 @@ import { useMapArt } from '../maps/useMapArt';
 
 const PANEL = 'border border-white/[0.06] bg-[#0a0a0c] p-5';
 
-/** The latest scrim map on its splash art, with a link to read it event by event. */
-export function LastScrim({ map }: { map: RecentMap | undefined }) {
+/** The latest scrim map on its splash art. The whole card opens that map's report. */
+export function LastScrim({ map, teamId }: { map: RecentMap | undefined; teamId: string }) {
   const art = useMapArt();
-  const [params] = useSearchParams();
   if (!map) return null;
   const splash = map.map ? art(map.map) : null;
-  const next = new URLSearchParams(params);
-  next.set('tab', 'timeline');
-  next.set('map', `${map.sessionId}:${map.gameNumber}`);
   return (
-    <section aria-label="Last scrim" className="relative overflow-hidden border border-white/[0.06] bg-[#0a0a0c]">
-      {splash && <img src={splash} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" loading="lazy" />}
+    <Link to={`/competitive/scrims/sessions/${map.sessionId}/games/${map.gameNumber}/report?team_id=${teamId}`} aria-label={`Last scrim: ${map.map ?? 'map'} vs ${map.opponent ?? 'opponent'}, open the report`}
+      className="group relative block overflow-hidden rounded-xl border border-white/[0.05] bg-[#0a0a0c] transition-colors hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+      {splash && <img src={splash} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 transition-opacity group-hover:opacity-45" loading="lazy" />}
       <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
       <div className="relative p-5">
-        <h3 className={EYEBROW_CLASS}>Last scrim</h3>
+        <div className="flex items-baseline justify-between">
+          <h3 className={EYEBROW_CLASS}>Last scrim</h3>
+          <span aria-hidden="true" className="font-mono text-[11px] text-white/50 group-hover:text-white">Report →</span>
+        </div>
         <div className="mt-3 flex items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="truncate font-heading text-[20px] font-bold text-white">{map.map ?? 'Map'}</p>
@@ -35,9 +35,8 @@ export function LastScrim({ map }: { map: RecentMap | undefined }) {
             <span className={cn('font-mono text-[11px] font-bold uppercase', map.result === 'win' ? 'text-emerald-300' : map.result === 'loss' ? 'text-rose-400' : 'text-white/50')}>{RESULT_LABEL[map.result]}</span>
           </p>
         </div>
-        {map.tier === 'full' && <Link to={`?${next.toString()}`} className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-white/70 underline-offset-4 hover:text-white hover:underline">Open timeline →</Link>}
       </div>
-    </section>
+    </Link>
   );
 }
 

@@ -24,7 +24,7 @@ export default function OverviewDashboard({ teamId, team, recent, fallback }: Pr
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <MapRatingBars series={report.series} byMap={ratings?.byMap ?? []} />
         <div className="space-y-4">
-          <LastScrim map={recent[0]} />
+          <LastScrim map={recent[0]} teamId={teamId} />
           <UpNext teamId={teamId} />
           <Focus highlights={report.highlights} />
         </div>

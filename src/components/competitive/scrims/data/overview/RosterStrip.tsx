@@ -16,7 +16,7 @@ function Card({ p, rating, href }: { p: Player; rating: TeamRatings['players'][n
   return (
     <Link to={href} title={rating && value != null ? ratingBreakdown(rating) : 'A rating needs 3 maps.'}
       className="group relative block aspect-[4/5] max-h-[260px] overflow-hidden rounded-xl border border-white/[0.05] bg-gradient-to-b from-white/[0.04] to-[#0b0b0e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
-      {portrait && <img src={portrait} alt="" loading="lazy" className="absolute inset-x-0 bottom-0 mx-auto h-[94%] w-auto object-contain object-bottom opacity-60 grayscale transition duration-300 group-hover:opacity-100 group-hover:grayscale-0 motion-reduce:transition-none" />}
+      {portrait && <img src={portrait} alt="" loading="lazy" className="absolute inset-0 h-full w-full origin-top scale-[1.3] object-cover object-top opacity-70 grayscale transition duration-300 group-hover:opacity-100 group-hover:grayscale-0 motion-reduce:transition-none" />}
       <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
       <div className="absolute left-3 top-3">
         <p className="font-heading text-[28px] font-black leading-none tabular-nums text-white">{value == null ? '—' : Math.round(value)}</p>

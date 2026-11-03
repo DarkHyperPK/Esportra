@@ -71,7 +71,7 @@ describe('ScrimDataPanel', () => {
     renderPanel();
     expect(screen.getByText(/Based on 6 confirmed scrim maps/)).toBeInTheDocument();
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Timeline', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Matches', 'Team', 'Players', 'Opponents']);
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('What your data is built from')).toHaveTextContent('full data');
     expect(screen.getByTitle(/Auto-fetched from Riot/)).toBeInTheDocument();
@@ -81,9 +81,18 @@ describe('ScrimDataPanel', () => {
     for (const other of ['Map pool', 'Compositions', 'Players', 'Roster']) expect(screen.queryByLabelText(other)).toBeNull();
   });
 
+  it('opens a section from an old link inside its group', () => {
+    mocks.useScrimData.mockReturnValue(query({ data: data() }));
+    renderPanel('maps');
+    expect(screen.getByRole('tab', { name: 'Team' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Maps' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows each category only on its own tab', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
     renderPanel();
+    fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Matches', 'Team', 'Players', 'Opponents', 'Report', 'Maps', 'Agents & comps', 'Heatmaps', 'Trends']);
     fireEvent.click(screen.getByRole('tab', { name: 'Maps' }));
     expect(screen.getByRole('region', { name: 'Map tier list' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Ascent' })).toHaveTextContent('1–1');
@@ -92,9 +101,9 @@ describe('ScrimDataPanel', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Agents & comps' }));
     expect(screen.getByTitle(/not proof it is better/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Players' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Stats' }));
     expect(screen.getByRole('region', { name: 'Players' })).toHaveTextContent('Nova');
-    fireEvent.click(screen.getByRole('tab', { name: 'Roster' }));
-    expect(screen.getByRole('region', { name: 'Roster' })).toHaveTextContent('Partial');
+    expect(screen.queryByRole('tab', { name: 'Roster' })).toBeNull();
   });
 
   it('opens the tab named in the URL and ignores an unknown one', () => {

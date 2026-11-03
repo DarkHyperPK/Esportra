@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { MapIntel } from '@/types/scrimData';
@@ -30,7 +31,7 @@ describe('MapTierList', () => {
 
 describe('MapRows', () => {
   it('shows each map on its own picture with record, rounds, sides and how the veto treats it', () => {
-    render(<MapRows maps={MAPS} artFor={art} picks={[{ map: 'Lotus', youPicked: 3, youBanned: 1, theyPicked: 0, theyBanned: 2, decider: 1, played: 4 }]} />);
+    render(<MemoryRouter><MapRows maps={MAPS} artFor={art} picks={[{ map: 'Lotus', youPicked: 3, youBanned: 1, theyPicked: 0, theyBanned: 2, decider: 1, played: 4 }]} /></MemoryRouter>);
     const lotus = screen.getByRole('article', { name: 'Lotus' });
     expect(lotus).toHaveTextContent('3–1');
     expect(lotus).toHaveTextContent('Picked 3');

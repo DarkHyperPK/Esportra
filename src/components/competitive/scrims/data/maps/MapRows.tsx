@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { Link, useSearchParams } from 'react-router-dom';
 import { formatPct, gameDate } from '@/services/scrimData/format';
 import type { ScrimMapPicks } from '@/schemas/scrimMapPicks';
 import type { MapIntel } from '@/types/scrimData';
@@ -18,6 +18,8 @@ const sideText = (s: MapIntel['attack']) => (s.played > 0 ? formatPct(s.pct) : '
 
 /** One map per row over its own picture: record, rounds, attack and defense, and how the veto treats it. */
 export function MapRows({ maps, picks, artFor }: { maps: MapIntel[]; picks: PickRow[]; artFor: (map: string) => string | null }) {
+  const [params] = useSearchParams();
+  const historyHref = (map: string) => { const n = new URLSearchParams(params); n.set('tab', 'history'); n.set('h_map', map); return `?${n.toString()}`; };
   const byMap = new Map(picks.map((p) => [p.map.toLowerCase(), p]));
   return (
     <section aria-label="Maps" className="space-y-px border border-white/[0.06] bg-white/[0.06]">
@@ -32,12 +34,13 @@ export function MapRows({ maps, picks, artFor }: { maps: MapIntel[]; picks: Pick
               <div className="min-w-0">
                 <h3 className="truncate font-heading text-[16px] font-bold text-white">{m.map}</h3>
                 <p className="text-[11px] text-zinc-400">{m.games} {m.games === 1 ? 'map' : 'maps'} · last {gameDate(m.lastPlayed)}</p>
+                <Link to={historyHref(m.map)} className="mt-1 inline-block font-mono text-[11px] text-white/60 underline-offset-4 hover:text-white hover:underline">See matches →</Link>
               </div>
               <Figure label="Record" value={`${m.wins}–${m.games - m.wins}`} title={`Win rate ${formatPct(m.winRatePct)}`} />
               <Figure label="Rounds" value={formatPct(m.roundWinRatePct)} title={`${m.roundsWon} won, ${m.roundsLost} lost`} />
               <Figure label="Attack" value={sideText(m.attack)} title={m.attack.played ? `${m.attack.won} of ${m.attack.played} rounds` : 'No round data'} />
               <Figure label="Defense" value={sideText(m.defense)} title={m.defense.played ? `${m.defense.won} of ${m.defense.played} rounds` : 'No round data'} />
-              <div className={cn('hidden lg:block')} aria-hidden />
+              <div className="hidden lg:block" aria-hidden />
               <p className="text-[12px] tabular-nums text-zinc-300 sm:col-span-5 lg:col-span-1" title="From finished map vetoes">
                 {v ? <>Picked <b className="text-white">{v.youPicked}</b> · Banned <b className="text-white">{v.youBanned}</b> · Decider <b className="text-white">{v.decider}</b><br /><span className="text-zinc-500">Opponent picked {v.theyPicked} · banned {v.theyBanned}</span></> : <span className="text-zinc-600">No veto data</span>}
               </p>

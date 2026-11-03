@@ -39,8 +39,8 @@ export function TeamHero({ team, report, ratings }: Props) {
       <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center lg:gap-12">
         <div className="flex min-w-0 items-center gap-5">
           {team.logoUrl
-            ? <img src={team.logoUrl} alt="" className="h-16 w-16 shrink-0 border border-white/10 object-cover" />
-            : <span aria-hidden="true" className="grid h-16 w-16 shrink-0 place-items-center border border-white/10 bg-white/[0.04] font-mono text-[18px] text-white/60">{team.name.slice(0, 2).toUpperCase()}</span>}
+            ? <img src={team.logoUrl} alt="" className="h-16 w-16 shrink-0 object-contain" />
+            : <span aria-hidden="true" className="shrink-0 font-heading text-[28px] font-black text-white/50">{team.name.slice(0, 2).toUpperCase()}</span>}
           <div className="min-w-0">
             <h2 className="truncate font-heading text-[26px] font-black uppercase leading-none tracking-wide text-white sm:text-[32px]">{team.name}</h2>
             <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white/45">

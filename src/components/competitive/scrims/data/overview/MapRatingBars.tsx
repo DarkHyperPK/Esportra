@@ -15,9 +15,8 @@ export function MapRatingBars({ series, byMap }: { series: TeamReportBody['serie
   const avg = rated.reduce((n, r) => n + (r.value ?? 0), 0) / rated.length;
   return (
     <section aria-label="Map by map" className="overflow-hidden rounded-xl border border-white/[0.05] bg-[#0a0a0c]">
-      <div className="flex items-baseline justify-between px-4 pb-2 pt-4">
-        <h3 className={EYEBROW_CLASS}>Map by map</h3>
-        <p className="font-mono text-[11px] tabular-nums text-white/50">Average <span className="text-white">{Math.round(avg)}</span></p>
+      <div className="px-4 pb-2 pt-4">
+        <h3 className={EYEBROW_CLASS} title="Bar length is the team rating on that map. The tick is your average.">Map by map</h3>
       </div>
       <ol className="divide-y divide-white/[0.04]">
         {rows.map(({ s, value }) => {
@@ -29,18 +28,17 @@ export function MapRatingBars({ series, byMap }: { series: TeamReportBody['serie
               aria-label={`${s.map ?? 'Map'} against ${s.opponent}: ${won ? 'won' : lost ? 'lost' : 'drew'} ${s.roundsWon}–${s.roundsLost}, rating ${value == null ? 'none' : Math.round(value)}`}>
               {splash && <img src={splash} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-20" />}
               <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-[#0a0a0c]/80 to-[#0a0a0c]/40" />
-              <div className="relative grid grid-cols-[1.25rem_minmax(0,9rem)_3.5rem_minmax(0,1fr)_2.25rem] items-center gap-3 px-4 py-2.5">
+              <div className="relative grid grid-cols-[1.25rem_minmax(0,9rem)_3.5rem_minmax(0,1fr)] items-center gap-3 px-4 py-2.5">
                 <span className={cn('font-mono text-[11px] font-bold', won ? 'text-emerald-300' : lost ? 'text-rose-400' : 'text-white/50')}>{won ? 'W' : lost ? 'L' : 'D'}</span>
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] font-semibold text-white">{s.map ?? 'Map'}</span>
                   <span className="block truncate text-[11px] text-white/45">vs {s.opponent}</span>
                 </span>
                 <span className="font-mono text-[12px] tabular-nums text-white/80">{s.roundsWon}–{s.roundsLost}</span>
-                <span className="relative h-1.5 rounded-full bg-white/[0.08]" aria-hidden="true">
-                  <span className={cn('absolute inset-y-0 left-0 rounded-full', won ? 'bg-white/85' : 'bg-white/35')} style={{ width: `${value ?? 0}%` }} />
-                  <span className="absolute -inset-y-1 w-px bg-rose-400/80" style={{ left: `${avg}%` }} />
+                <span className="relative h-2.5 rounded-full bg-white/[0.1]" aria-hidden="true" title={value == null ? undefined : `Rating ${Math.round(value)}`}>
+                  <span className={cn('absolute inset-y-0 left-0 rounded-full', won ? 'bg-emerald-400' : lost ? 'bg-rose-500' : 'bg-zinc-400')} style={{ width: `${value ?? 0}%` }} />
+                  <span className="absolute -inset-y-1 w-0.5 rounded-full bg-white/70" style={{ left: `${avg}%` }} />
                 </span>
-                <span className="text-right font-heading text-[16px] font-bold tabular-nums text-white">{value == null ? '—' : Math.round(value)}</span>
               </div>
             </li>
           );

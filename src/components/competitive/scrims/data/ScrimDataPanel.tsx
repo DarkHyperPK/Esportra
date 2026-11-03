@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { TabBar, TabPanel, useTabBase, type TabItem } from '@/components/ui/kit';
+import { TabBar, TabPanel, useTabBase } from '@/components/ui/kit';
 import type { OverviewTeam } from './overview/OverviewDashboard';
 import { useScrimData } from '@/hooks/competitive/useScrimData';
 import { useTabParam } from '@/hooks/useTabParam';
 import { EMPTY_TEXT } from '@/services/scrimData/format';
+import { INSIGHT_GROUPS, INSIGHT_TABS, groupOf, type InsightTab } from '@/services/scrimData/insightTabs';
 import { CompositionPanel } from './CompositionPanel';
 import { CoverageSummary } from './CoverageSummary';
 import { DataNotice } from './DataNotice';
@@ -12,7 +13,6 @@ import { PanelError, PanelMessage, PanelSkeleton } from './PanelStates';
 import { PlayersPanel } from './PlayersPanel';
 import { RecentMapsPanel } from './RecentMapsPanel';
 import { RecordSummary } from './RecordSummary';
-import { RosterPanel } from './RosterPanel';
 import { AgentTable } from './tabs/AgentTable';
 import { PlayerAgentTable } from './tabs/PlayerAgentTable';
 
@@ -22,15 +22,8 @@ const OpponentsTab = lazy(() => import('./reports/OpponentsTab'));
 const TrendsTab = lazy(() => import('./reports/TrendsTab'));
 const OverviewDashboard = lazy(() => import('./overview/OverviewDashboard'));
 const TimelineHome = lazy(() => import('./reports/TimelineHome'));
+const MatchHistory = lazy(() => import('./history/MatchHistory'));
 const HeatmapTab = lazy(() => import('./reports/HeatmapTab'));
-
-const INSIGHT_TABS = ['overview', 'team-report', 'player-reports', 'maps', 'timeline', 'agents', 'opponents', 'trends', 'heatmaps', 'players', 'roster'] as const;
-type InsightTab = (typeof INSIGHT_TABS)[number];
-
-const TABS: readonly (TabItem & { id: InsightTab })[] = [
-  { id: 'overview', label: 'Overview' }, { id: 'team-report', label: 'Team report' }, { id: 'player-reports', label: 'Player reports' }, { id: 'maps', label: 'Maps' }, { id: 'timeline', label: 'Timeline' },
-  { id: 'agents', label: 'Agents & comps' }, { id: 'opponents', label: 'Opponents' }, { id: 'trends', label: 'Trends' }, { id: 'heatmaps', label: 'Heatmaps' }, { id: 'players', label: 'Players' }, { id: 'roster', label: 'Roster' },
-];
 
 /**
  * Scrim Insights for one team, in tabs so one category is on screen at a time. How thin or complete the data is stays above the tabs,
@@ -40,6 +33,9 @@ export function ScrimDataPanel({ teamId, team }: { teamId: string; team?: Overvi
   const { isLoading, isError, data, refetch } = useScrimData(teamId);
   const [tab, setTab] = useTabParam(INSIGHT_TABS, 'overview');
   const base = useTabBase();
+  const group = groupOf(tab);
+  const nested = group.tabs.length > 1;
+  const leafBase = nested ? `${base}-sub` : base;
 
   if (isLoading) return <PanelSkeleton />;
   if (isError || !data) return <PanelError onRetry={() => void refetch()} />;
@@ -51,8 +47,10 @@ export function ScrimDataPanel({ teamId, team }: { teamId: string; team?: Overvi
         <PanelMessage>{EMPTY_TEXT}</PanelMessage>
       ) : (
         <>
-          <TabBar tabs={TABS} value={tab} onChange={(id) => setTab(id as InsightTab)} label="Scrim insights sections" base={base} />
-          <TabPanel base={base} id="overview" value={tab}>
+          <TabBar tabs={INSIGHT_GROUPS.map((g) => ({ id: g.id, label: g.label }))} value={group.id} label="Scrim insights sections" base={base}
+            onChange={(id) => setTab(INSIGHT_GROUPS.find((g) => g.id === id)?.tabs[0].id ?? 'overview')} />
+          {nested && <TabBar tabs={group.tabs} value={tab} onChange={(id) => setTab(id as InsightTab)} label={`${group.label} sections`} base={leafBase} className="-mt-2" />}
+          <TabPanel base={leafBase} id="overview" value={tab}>
             <Suspense fallback={<PanelSkeleton />}>
               <OverviewDashboard teamId={teamId} team={team ?? { name: 'Your team', logoUrl: null, tag: null }} recent={data.recent}
                 fallback={<div className="space-y-4"><CoverageSummary coverage={data.coverage} />
@@ -60,22 +58,22 @@ export function ScrimDataPanel({ teamId, team }: { teamId: string; team?: Overvi
             <RecentMapsPanel maps={data.recent} teamId={teamId} /></div>} />
             </Suspense>
           </TabPanel>
-          <TabPanel base={base} id="team-report" value={tab}><Suspense fallback={<PanelSkeleton />}><TeamReportTab teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="player-reports" value={tab}><Suspense fallback={<PanelSkeleton />}><PlayerReportsTab teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="maps" value={tab}><MapsTab teamId={teamId} data={data} /></TabPanel>
-          <TabPanel base={base} id="timeline" value={tab}><Suspense fallback={<PanelSkeleton />}><TimelineHome maps={data.recent} teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="agents" value={tab} className="space-y-4">
+          <TabPanel base={leafBase} id="team-report" value={tab}><Suspense fallback={<PanelSkeleton />}><TeamReportTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="player-reports" value={tab}><Suspense fallback={<PanelSkeleton />}><PlayerReportsTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="maps" value={tab}><MapsTab teamId={teamId} data={data} /></TabPanel>
+          <TabPanel base={leafBase} id="history" value={tab}><Suspense fallback={<PanelSkeleton />}><MatchHistory maps={data.recent} teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="timeline" value={tab}><Suspense fallback={<PanelSkeleton />}><TimelineHome maps={data.recent} teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="agents" value={tab} className="space-y-4">
             <AgentTable agents={data.agents} />
             <CompositionPanel compositions={data.compositions} />
           </TabPanel>
-          <TabPanel base={base} id="opponents" value={tab}><Suspense fallback={<PanelSkeleton />}><OpponentsTab teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="trends" value={tab}><Suspense fallback={<PanelSkeleton />}><TrendsTab teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="heatmaps" value={tab}><Suspense fallback={<PanelSkeleton />}><HeatmapTab teamId={teamId} /></Suspense></TabPanel>
-          <TabPanel base={base} id="players" value={tab} className="space-y-4">
+          <TabPanel base={leafBase} id="opponents" value={tab}><Suspense fallback={<PanelSkeleton />}><OpponentsTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="trends" value={tab}><Suspense fallback={<PanelSkeleton />}><TrendsTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="heatmaps" value={tab}><Suspense fallback={<PanelSkeleton />}><HeatmapTab teamId={teamId} /></Suspense></TabPanel>
+          <TabPanel base={leafBase} id="players" value={tab} className="space-y-4">
             <PlayersPanel players={data.players} />
             <PlayerAgentTable rows={data.playerAgents} />
           </TabPanel>
-          <TabPanel base={base} id="roster" value={tab}><RosterPanel roster={data.roster} /></TabPanel>
         </>
       )}
     </div>

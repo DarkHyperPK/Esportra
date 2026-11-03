@@ -26,7 +26,7 @@ const ratings = {
   byMap: [{ index: 1, value: 60 }, { index: 2, value: 40 }, { index: 3, value: 80 }],
 };
 const team = { name: 'Nova', logoUrl: null, tag: 'NVA' };
-const view = () => render(<MemoryRouter initialEntries={['/x?team_id=t1']}><OverviewDashboard teamId="t1" team={team} recent={[]} fallback={<p>plain overview</p>} /></MemoryRouter>);
+const view = () => render(<MemoryRouter initialEntries={['/x?team_id=t1']}><OverviewDashboard teamId="t1" team={team} recent={[{ sessionId: 's9', gameNumber: 1, playedAt: null, map: 'Haven', opponent: 'Omega', result: 'win', roundsWon: 13, roundsLost: 5, tier: 'full' }]} fallback={<p>plain overview</p>} /></MemoryRouter>);
 
 describe('OverviewDashboard', () => {
   beforeEach(() => mocks.report.mockReset());
@@ -41,11 +41,12 @@ describe('OverviewDashboard', () => {
     expect(screen.getByRole('link', { name: /Alpha/ })).toHaveAttribute('href', expect.stringContaining('tab=player-reports&player=u1'));
     expect(screen.getByRole('link', { name: /Bravo/ })).toHaveTextContent('3 maps needed');
     const bars = screen.getByRole('region', { name: 'Map by map' });
-    expect(bars).toHaveTextContent('Average 60');
+    expect(bars).not.toHaveTextContent('Average');
     const rows = within(bars).getAllByRole('listitem');
     expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual([
       'Haven against Omega: won 13–9, rating 80', 'Lotus against Omega: lost 13–9, rating 40', 'Haven against Omega: won 13–9, rating 60',
     ]);
+    expect(screen.getByRole('link', { name: /Last scrim: Haven vs Omega/ })).toHaveAttribute('href', '/competitive/scrims/sessions/s9/games/1/report?team_id=t1');
     expect(screen.getByRole('region', { name: 'Focus' })).toHaveTextContent('Attack is the weak side');
   });
 
