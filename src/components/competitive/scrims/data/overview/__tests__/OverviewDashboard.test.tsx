@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OverviewDashboard from '../OverviewDashboard';
@@ -40,7 +40,12 @@ describe('OverviewDashboard', () => {
     expect(rating).toHaveAttribute('title', expect.stringContaining('Round win %: 55 → 75 (40%)'));
     expect(screen.getByRole('link', { name: /Alpha/ })).toHaveAttribute('href', expect.stringContaining('tab=player-reports&player=u1'));
     expect(screen.getByRole('link', { name: /Bravo/ })).toHaveTextContent('3 maps needed');
-    expect(screen.getByRole('region', { name: 'Map by map' })).toHaveTextContent('Average 60');
+    const bars = screen.getByRole('region', { name: 'Map by map' });
+    expect(bars).toHaveTextContent('Average 60');
+    const rows = within(bars).getAllByRole('listitem');
+    expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual([
+      'Haven against Omega: won 13–9, rating 80', 'Lotus against Omega: lost 13–9, rating 40', 'Haven against Omega: won 13–9, rating 60',
+    ]);
     expect(screen.getByRole('region', { name: 'Focus' })).toHaveTextContent('Attack is the weak side');
   });
 

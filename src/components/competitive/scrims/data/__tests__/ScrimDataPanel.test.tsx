@@ -62,7 +62,7 @@ describe('ScrimDataPanel', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data({ hasData: false, sample: { maps: 0, from: null, to: null }, coverage: coverage({ maps: 0, full: 0, screenshot: 0, scoreOnly: 0, awaitingConfirmation: 2 }) }) }));
     renderPanel();
     expect(screen.getByText(/No confirmed scrim maps yet/)).toBeInTheDocument();
-    expect(screen.getByText(/2 maps are waiting for the other team to confirm/)).toBeInTheDocument();
+    expect(screen.getByText('2 unconfirmed')).toHaveAttribute('title', expect.stringMatching(/2 maps are waiting for the other team to confirm/));
     expect(screen.queryByText('Win rate')).toBeNull();
   });
 
@@ -133,6 +133,6 @@ describe('ScrimDataPanel', () => {
   it('warns when only the most recent maps are included', () => {
     mocks.useScrimData.mockReturnValue(query({ data: data({ truncated: true }) }));
     renderPanel();
-    expect(screen.getByText(/Only the most recent maps are included/)).toBeInTheDocument();
+    expect(screen.getByText('latest maps only')).toHaveAttribute('title', expect.stringMatching(/Only the most recent maps are included/));
   });
 });

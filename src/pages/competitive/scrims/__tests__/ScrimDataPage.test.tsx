@@ -17,7 +17,7 @@ describe('ScrimDataPage', () => {
     mocks.teams.mockReturnValue({ data: [{ id: 't1', name: 'Alpha' }], isLoading: false });
     renderAt('/competitive/scrims/data');
     expect(screen.getByRole('heading', { name: 'Scrim Insights' })).toBeInTheDocument();
-    expect(screen.getByText(/Only your team can see this/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Scrim Insights' })).toHaveAttribute('title', expect.stringMatching(/Only your team can see this/));
     expect(screen.getByTestId('panel')).toHaveTextContent('t1');
   });
 

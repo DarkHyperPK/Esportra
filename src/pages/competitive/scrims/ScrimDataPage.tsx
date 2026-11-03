@@ -22,14 +22,9 @@ export default function ScrimDataPage() {
 
   return (
     <CompetitivePageShell>
-      <div className="space-y-6 px-4 pb-16 pt-6 lg:px-8 lg:pt-8">
-        <header className="space-y-3 border-b border-white/[0.08] pb-6">
-          <div>
-            <h1 className="font-heading text-[24px] font-bold leading-tight text-white">Scrim Insights</h1>
-            <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-zinc-400">
-              Your team’s scrims, one category at a time. Built from maps both teams confirmed. Only your team can see this.
-            </p>
-          </div>
+      <div className="space-y-4 px-4 pb-16 pt-5 lg:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-heading text-[20px] font-bold leading-tight text-white" title="Built from maps both teams confirmed. Only your team can see this.">Scrim Insights</h1>
           {teams.length > 1 && (
             <nav aria-label="Choose a team" className="flex flex-wrap gap-2">
               {teams.map((t) => (
@@ -45,7 +40,6 @@ export default function ScrimDataPage() {
 
         {isLoading ? null : team ? (
           <>
-            {teams.length > 1 && <p className="text-[13px] text-zinc-400">Showing <span className="text-white">{team.name}</span></p>}
             <ScrimDataPanel teamId={team.id} team={{ name: team.name, tag: team.tag ?? null, logoUrl: team.logo_url ?? team.logoUrl ?? null }} />
           </>
         ) : (
