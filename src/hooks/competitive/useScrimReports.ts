@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { competitiveApiClient } from '@/hooks/competitive/competitiveApiClient';
 import { scrimInsightsKeys } from '@/hooks/competitive/queryKeys';
 import { scrimPlayerReportSchema, scrimTeamReportSchema } from '@/schemas/scrimReport';
+import { scrimFightsSchema } from '@/schemas/scrimFights';
 import { scrimHeatmapSchema } from '@/schemas/scrimHeatmap';
 import { scrimTrendsSchema } from '@/schemas/scrimTrends';
 
@@ -59,6 +60,24 @@ export function useScrimHeatmap(teamId: string | undefined, q: HeatmapQuery) {
       return scrimHeatmapSchema.parse(await competitiveApiClient.get<unknown>(`/api/scrims/teams/${teamId}/heatmap?${params.toString()}`));
     },
     enabled: !!user?.id && !!teamId,
+    staleTime: 60_000,
+    retry: false,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Where the team wins and loses fights on one map, with how far the nearest teammate was at each death. Same access as the heatmap. */
+export function useScrimFights(teamId: string | undefined, q: { map: string | null; side: string | null }, enabled = true) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: scrimInsightsKeys.fights(teamId ?? '', q.map, q.side),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (q.map) params.set('map', q.map);
+      if (q.side) params.set('side', q.side);
+      return scrimFightsSchema.parse(await competitiveApiClient.get<unknown>(`/api/scrims/teams/${teamId}/fights?${params.toString()}`));
+    },
+    enabled: enabled && !!user?.id && !!teamId,
     staleTime: 60_000,
     retry: false,
     placeholderData: (prev) => prev,

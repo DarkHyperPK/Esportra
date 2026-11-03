@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitive/scrims/data/PanelStates';
-import { useScrimHeatmap } from '@/hooks/competitive/useScrimReports';
+import { useScrimFights, useScrimHeatmap } from '@/hooks/competitive/useScrimReports';
 import { cn } from '@/lib/utils';
 import { useMapMinimap } from '@/components/competitive/scrims/data/maps/useMapMinimap';
 import { HEAT_KINDS, heatSummary, type HeatKind } from '@/services/scrimInsights/heatmap';
+import { FightsMap } from './FightsMap';
 import { HeatmapCanvas } from './HeatmapCanvas';
 
+const VIEWS = [{ id: 'fights', label: 'Fights' }, { id: 'dots', label: 'Event dots' }] as const;
 const SIDES = [{ id: null, label: 'Both sides' }, { id: 'attack', label: 'Attack' }, { id: 'defense', label: 'Defense' }] as const;
 
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
@@ -20,10 +22,12 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
 
 /** Where the team's recorded events happened on each map. Positions at the moments Riot recorded, never movement. Loads when opened. */
 export default function HeatmapTab({ teamId }: { teamId: string }) {
+  const [view, setView] = useState<'fights' | 'dots'>('fights');
   const [kind, setKind] = useState<HeatKind>('kills');
   const [side, setSide] = useState<string | null>(null);
   const [map, setMap] = useState<string | null>(null);
   const q = useScrimHeatmap(teamId, { map, kind, side });
+  const fights = useScrimFights(teamId, { map, side }, view === 'fights');
   // With no map picked yet the API answers for the team's most-played map and says which; that is the map drawn.
   const chosen = map ?? q.data?.map ?? q.data?.availableMaps[0]?.map ?? null;
   const minimap = useMapMinimap(chosen);
@@ -39,18 +43,29 @@ export default function HeatmapTab({ teamId }: { teamId: string }) {
         <div role="group" aria-label="Map" className="flex flex-wrap gap-2">
           {data.availableMaps.map((m) => <Choice key={m.map} active={m.map === chosen} onClick={() => setMap(m.map)}>{`${m.map} · ${m.maps}`}</Choice>)}
         </div>
-        <div role="group" aria-label="What to show" title={`${help} Positions at the moments Riot recorded, not continuous movement.`} className="flex flex-wrap gap-2">
-          {HEAT_KINDS.map((k) => <Choice key={k.id} active={k.id === kind} onClick={() => setKind(k.id)}>{k.label}</Choice>)}
+        <div role="group" aria-label="View" className="flex flex-wrap gap-2">
+          {VIEWS.map((v) => <Choice key={v.id} active={v.id === view} onClick={() => setView(v.id)}>{v.label}</Choice>)}
         </div>
+        {view === 'dots' && (
+          <div role="group" aria-label="What to show" title={`${help} Positions at the moments Riot recorded, not continuous movement.`} className="flex flex-wrap gap-2">
+            {HEAT_KINDS.map((k) => <Choice key={k.id} active={k.id === kind} onClick={() => setKind(k.id)}>{k.label}</Choice>)}
+          </div>
+        )}
         <div role="group" aria-label="Side" className="flex flex-wrap gap-2">
           {SIDES.map((s) => <Choice key={s.label} active={s.id === side} onClick={() => setSide(s.id)}>{s.label}</Choice>)}
         </div>
       </div>
-      <p className="text-[13px] text-zinc-300" role="status">{heatSummary(kind, data.points.length, data.maps, chosen, side)}{data.truncated ? ' Showing the first 3,000 only.' : ''}</p>
       {minimap.status === 'loading' ? <PanelSkeleton /> : minimap.status === 'error' ? <PanelError onRetry={minimap.retry} /> : minimap.status === 'missing' ? (
         <PanelMessage>{`Map art for ${chosen ?? 'this map'} is not available, so the positions cannot be drawn.`}</PanelMessage>
+      ) : view === 'fights' ? (
+        fights.isError ? <PanelError onRetry={() => void fights.refetch()} />
+          : !fights.data ? <PanelSkeleton />
+          : <FightsMap art={minimap.art} transform={minimap.transform} fights={fights.data.fights} map={chosen} />
       ) : (
-        <HeatmapCanvas art={minimap.art} transform={minimap.transform} points={data.points} label={heatSummary(kind, data.points.length, data.maps, chosen, side)} />
+        <>
+          <p className="text-[13px] text-zinc-300" role="status">{heatSummary(kind, data.points.length, data.maps, chosen, side)}{data.truncated ? ' Showing the first 3,000 only.' : ''}</p>
+          <HeatmapCanvas art={minimap.art} transform={minimap.transform} points={data.points} label={heatSummary(kind, data.points.length, data.maps, chosen, side)} />
+        </>
       )}
     </div>
   );
