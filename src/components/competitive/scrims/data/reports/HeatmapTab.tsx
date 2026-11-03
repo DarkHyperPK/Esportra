@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitive/scrims/data/PanelStates';
 import { useScrimHeatmap } from '@/hooks/competitive/useScrimReports';
-import { useValorantMaps } from '@/hooks/useValorantCatalog';
 import { cn } from '@/lib/utils';
-import { mapNameFromRiotId } from '@/services/maps/valorantMapNames';
+import { useMapMinimap } from '@/components/competitive/scrims/data/maps/useMapMinimap';
 import { HEAT_KINDS, heatSummary, type HeatKind } from '@/services/scrimInsights/heatmap';
 import { HeatmapCanvas } from './HeatmapCanvas';
 
@@ -24,11 +23,10 @@ export default function HeatmapTab({ teamId }: { teamId: string }) {
   const [kind, setKind] = useState<HeatKind>('kills');
   const [side, setSide] = useState<string | null>(null);
   const [map, setMap] = useState<string | null>(null);
-  const { data: catalog } = useValorantMaps();
   const q = useScrimHeatmap(teamId, { map, kind, side });
   // With no map picked yet the API answers for the team's most-played map and says which; that is the map drawn.
   const chosen = map ?? q.data?.map ?? q.data?.availableMaps[0]?.map ?? null;
-  const art = useMemo(() => (catalog ?? []).find((m) => m.displayName?.toLowerCase() === chosen?.toLowerCase()) ?? (catalog ?? []).find((m) => !!chosen && mapNameFromRiotId(m.mapUrl) === chosen), [catalog, chosen]);
+  const minimap = useMapMinimap(chosen);
 
   if (q.isLoading) return <PanelSkeleton />;
   if (q.isError || !q.data) return <PanelError onRetry={() => void q.refetch()} />;
@@ -49,10 +47,10 @@ export default function HeatmapTab({ teamId }: { teamId: string }) {
         </div>
       </div>
       <p className="text-[13px] text-zinc-300" role="status">{heatSummary(kind, data.points.length, data.maps, chosen, side)}{data.truncated ? ' Showing the first 3,000 only.' : ''}</p>
-      {!art?.displayIcon ? (
+      {minimap.status === 'loading' ? <PanelSkeleton /> : minimap.status === 'error' ? <PanelError onRetry={minimap.retry} /> : minimap.status === 'missing' ? (
         <PanelMessage>{`Map art for ${chosen ?? 'this map'} is not available, so the positions cannot be drawn.`}</PanelMessage>
       ) : (
-        <HeatmapCanvas art={art.displayIcon} transform={art} points={data.points} label={heatSummary(kind, data.points.length, data.maps, chosen, side)} />
+        <HeatmapCanvas art={minimap.art} transform={minimap.transform} points={data.points} label={heatSummary(kind, data.points.length, data.maps, chosen, side)} />
       )}
     </div>
   );

@@ -143,7 +143,7 @@ export const useValorantAgents = (enabled = true) =>
     }, enabled, initialAgents);
 
 export const useValorantMaps = (enabled = true) =>
-    useCatalog('maps', async () => {
+    useCatalog('maps-v2', async () => {
         const maps = (await fetchList('/maps')).map(slimMap);
         registerMapCatalog(maps);
         return maps;

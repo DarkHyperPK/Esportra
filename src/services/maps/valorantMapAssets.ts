@@ -26,6 +26,13 @@ export function valorantMapSplash(mapName: string): string | null {
   return id ? `https://media.valorant-api.com/maps/${id}/splash.png` : null;
 }
 
+/** Riot's minimap picture for a known map, used only when the catalog list carries no icon for it. */
+export function valorantMapMinimap(mapName: string): string | null {
+  const key = mapName.trim().toLowerCase();
+  const id = VALORANT_MAP_IDS[key] ?? VALORANT_MAP_IDS[(mapNameFromRiotId(key) ?? '').toLowerCase()];
+  return id ? `https://media.valorant-api.com/maps/${id}/displayicon.png` : null;
+}
+
 /** Smallest source that still reads sharp on a tall map card at 1080p. */
 export const MIN_MAP_IMAGE = { width: 800, height: 600 };
 

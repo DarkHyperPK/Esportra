@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import { useMapMinimap } from '@/components/competitive/scrims/data/maps/useMapMinimap';
 import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitive/scrims/data/PanelStates';
 import { useScrimTimeline } from '@/hooks/competitive/useScrimTimeline';
-import { useValorantMaps } from '@/hooks/useValorantCatalog';
-import { mapNameFromRiotId } from '@/services/maps/valorantMapNames';
 import { clock, eventMarkers, roundEvents } from '@/services/scrimInsights/timeline';
 import { MatchHeatmap } from './MatchHeatmap';
 import { MatchMinimap } from './MatchMinimap';
@@ -14,11 +13,10 @@ interface Props { sessionId: string; gameNumber: number; teamId?: string }
 /** One map round by round: pick a round, click a moment on a player's lane, see everyone's recorded position on the minimap; the map's heatmap sits beside it. Loads when opened. */
 export default function TimelineTab({ sessionId, gameNumber, teamId }: Props) {
   const q = useScrimTimeline(sessionId, gameNumber, teamId);
-  const { data: catalog } = useValorantMaps();
   const [roundNum, setRoundNum] = useState<number | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const data = q.data;
-  const art = useMemo(() => (catalog ?? []).find((m) => m.displayName?.toLowerCase() === data?.map?.toLowerCase()) ?? (catalog ?? []).find((m) => !!data?.map && mapNameFromRiotId(m.mapUrl) === data.map), [catalog, data?.map]);
+  const minimap = useMapMinimap(data?.map);
 
   if (q.isLoading) return <PanelSkeleton />;
   if (q.isError || !data) return <PanelError onRetry={() => void q.refetch()} />;
@@ -37,13 +35,13 @@ export default function TimelineTab({ sessionId, gameNumber, teamId }: Props) {
       </p>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          {art?.displayIcon
-            ? <MatchMinimap art={art.displayIcon} transform={art} markers={markers} players={timeline.players} label={`Positions in round ${round.num}`} />
+          {minimap.status === 'loading' ? <PanelSkeleton /> : minimap.status === 'error' ? <PanelError onRetry={minimap.retry} /> : minimap.status === 'ready'
+            ? <MatchMinimap art={minimap.art} transform={minimap.transform} markers={markers} players={timeline.players} label={`Positions in round ${round.num}`} />
             : <PanelMessage>{`Map art for ${data.map ?? 'this map'} is not available, so positions cannot be drawn.`}</PanelMessage>}
           <PlayerLanes round={round} players={timeline.players} selected={event?.id ?? null} onSelect={setEventId} />
         </div>
         <div>
-          {art?.displayIcon && <MatchHeatmap timeline={timeline} art={art.displayIcon} transform={art} map={data.map ?? null} />}
+          {minimap.status === 'ready' && <MatchHeatmap timeline={timeline} art={minimap.art} transform={minimap.transform} map={data.map ?? null} />}
         </div>
       </div>
     </div>

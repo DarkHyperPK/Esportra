@@ -60,4 +60,28 @@ describe('HeatmapTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(refetch).toHaveBeenCalled();
   });
+
+  it('says the map art is missing only once the list has loaded without it, and falls back to the official picture when only the icon is absent', () => {
+    mocks.heat.mockReturnValue(q());
+    mocks.maps.mockReturnValue({ data: undefined, isError: false, refetch: vi.fn() });
+    const { unmount } = render(<HeatmapTab teamId="t1" />);
+    expect(screen.queryByText(/Map art for/)).toBeNull();
+    unmount();
+    mocks.maps.mockReturnValue({ data: [], isError: false, refetch: vi.fn() });
+    const second = render(<HeatmapTab teamId="t1" />);
+    expect(screen.getByText(/Map art for Lotus is not available/)).toBeInTheDocument();
+    second.unmount();
+    mocks.maps.mockReturnValue({ data: [{ displayName: 'Lotus', xMultiplier: 1, yMultiplier: 1, xScalarToAdd: 0, yScalarToAdd: 0 }], isError: false, refetch: vi.fn() });
+    render(<HeatmapTab teamId="t1" />);
+    expect(screen.getByTestId('canvas')).toBeInTheDocument();
+  });
+
+  it('offers a retry when the map list fails to load', () => {
+    mocks.heat.mockReturnValue(q());
+    const refetch = vi.fn();
+    mocks.maps.mockReturnValue({ data: undefined, isError: true, refetch });
+    render(<HeatmapTab teamId="t1" />);
+    fireEvent.click(screen.getByRole('button', { name: /try again|retry/i }));
+    expect(refetch).toHaveBeenCalled();
+  });
 });
