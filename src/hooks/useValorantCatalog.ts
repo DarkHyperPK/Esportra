@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { competitiveApiClient } from '@/hooks/competitive/competitiveApiClient';
 import { registerMapCatalog } from '@/services/maps/valorantMapNames';
 import { bundledValorantAgents, getValorantAgentIcon, getValorantRoleIcon, valorantUiAssetVersion } from '@/lib/valorantUiAssets';
 
@@ -65,6 +66,16 @@ async function fetchList(path: string): Promise<Raw[]> {
     if (!res.ok) throw new Error(`valorant-api ${path} ${res.status}`);
     const body = (await res.json()) as { data?: unknown };
     return Array.isArray(body.data) ? (body.data as Raw[]) : [];
+}
+
+/** The map list as our API serves it (valorant-api.com is not always reachable from a browser, e.g. blocked by CORS). Null when the API has none yet or fails, so the caller falls back to Riot's list. */
+async function mapsFromApi(): Promise<Raw[] | null> {
+    try {
+        const body = await competitiveApiClient.get<{ data?: Raw[] }>('/api/valorant/maps');
+        return Array.isArray(body.data) && body.data.length > 0 ? body.data : null;
+    } catch {
+        return null;
+    }
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : undefined);
@@ -143,8 +154,8 @@ export const useValorantAgents = (enabled = true) =>
     }, enabled, initialAgents);
 
 export const useValorantMaps = (enabled = true) =>
-    useCatalog('maps-v2', async () => {
-        const maps = (await fetchList('/maps')).map(slimMap);
+    useCatalog('maps-v3', async () => {
+        const maps = (await mapsFromApi() ?? await fetchList('/maps')).map(slimMap);
         registerMapCatalog(maps);
         return maps;
     }, enabled);

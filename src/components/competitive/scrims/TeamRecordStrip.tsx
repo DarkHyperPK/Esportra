@@ -13,9 +13,9 @@ import type { ScrimTeamRecord } from '@/types/competitive';
 
 interface TeamRecordStripProps {
   record: ScrimTeamRecord | null | undefined;
-  /** Rounded form pips, for the soft-cornered listing cards. */
+  /** Rounded form pips on the full strip. */
   soft?: boolean;
-  /** One compact line (no captions, small pips) for tight cards. */
+  /** One compact line (record and rates only, no form pips) for tight cards. */
   dense?: boolean;
   className?: string;
 }
@@ -58,23 +58,6 @@ export function TeamRecordStrip({ record, soft = false, dense = false, className
         <p className="min-w-0 flex-1 truncate text-[11px] tabular-nums text-zinc-400">
           {[view.winRate && `${view.winRate} win`, view.showRate && `${view.showRate} show`].filter(Boolean).join(' · ')}
         </p>
-        {view.form.length > 0 && (
-          <div className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
-            {view.form.map((pip, i) => (
-              <span
-                key={`${i}-${pip.result}`}
-                className={cn(
-                  'flex h-4 w-4 items-center justify-center border font-mono text-[9px] font-bold',
-                  soft && 'rounded',
-                  PIP_STYLE[pip.result],
-                  pip.isLatest && 'border-white/50',
-                )}
-              >
-                {pip.result}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
     );
   }

@@ -113,13 +113,13 @@ describe('ScrimOpponentCard', () => {
   } as ScrimListingEnriched);
 
   const card = (over: Partial<React.ComponentProps<typeof ScrimOpponentCard>> = {}) =>
-    wrap(<ScrimOpponentCard listing={listing()} fit={null} isOwner={false} hasTeam onOpen={vi.fn()} {...over} />);
+    wrap(<ScrimOpponentCard listing={listing()} isOwner={false} hasTeam onOpen={vi.fn()} {...over} />);
 
   it('leads with identity and the record', () => {
-    card({ fit: { label: 'Good fit', tone: 'success' } });
+    card();
     expect(screen.getByRole('heading', { name: 'Nova Esports' })).toBeInTheDocument();
     expect(screen.getByText('12-4')).toBeInTheDocument();
-    expect(screen.getByText('Good fit')).toBeInTheDocument();
+    expect(screen.queryByText('Good fit')).toBeNull();
     expect(screen.getByText(/16 scrims played/)).toBeInTheDocument();
   });
 

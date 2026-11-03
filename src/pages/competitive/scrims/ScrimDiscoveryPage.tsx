@@ -10,13 +10,12 @@ import { ScrimOpponentCard } from '@/components/competitive/scrims/listing/Scrim
 import { ScrimOpponentCardSkeleton } from '@/components/competitive/scrims/listing/ScrimOpponentCardSkeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscoverScrimsFiltered } from '@/hooks/competitive/useScrimDiscovery';
-import { useScrimListings } from '@/hooks/competitive/useScrims';
 import { useScrimUpNext } from '@/hooks/competitive/useScrimUpNext';
 import { useCatalogRankTiers, useCatalogRegions } from '@/hooks/competitive/useCatalog';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
 import type { ScrimListingEnriched } from '@/services/scrimDiscoveryUtils';
-import { fitLabelFor, sortListings, type DiscoverySort } from '@/services/scrimListingView';
+import { sortListings, type DiscoverySort } from '@/services/scrimListingView';
 import { pickLead } from '@/services/scrimUpNext';
 
 export default function ScrimDiscoveryPage() {
@@ -44,11 +43,6 @@ export default function ScrimDiscoveryPage() {
   const teams = (useMyTeamsSummary().data ?? []) as { id: string; primary_game_slug?: string | null }[];
   const hasTeam = teams.length > 0;
   const myTeamIds = new Set(teams.map((t) => t.id));
-  const myTeamId = (teams.find((t) => t.primary_game_slug === activeGame) ?? teams[0])?.id ?? '';
-  const myListing = (useScrimListings(myTeamId).data ?? []).find((l) => l.gameSlug === activeGame && l.status === 'open');
-  const mine = myListing
-    ? { regionKey: myListing.regionKey, minRankSortOrder: sortOrderOf(myListing.minRankKey), maxRankSortOrder: sortOrderOf(myListing.maxRankKey) }
-    : null;
 
   const query = useDiscoverScrimsFiltered({
     game: activeGame,
@@ -151,7 +145,6 @@ export default function ScrimDiscoveryPage() {
               >
                 <ScrimOpponentCard
                   listing={listing}
-                  fit={fitLabelFor(mine, { regionKey: listing.regionKey, minRankSortOrder: sortOrderOf(listing.minRankKey), maxRankSortOrder: sortOrderOf(listing.maxRankKey) })}
                   isOwner={!!listing.teamId && myTeamIds.has(listing.teamId)}
                   hasTeam={hasTeam}
                   onOpen={() => open(listing)}

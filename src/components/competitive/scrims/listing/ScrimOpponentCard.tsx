@@ -8,21 +8,16 @@
 
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { GameLogoImage } from '@/components/games/GameLogoImage';
-import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { cn } from '@/lib/utils';
-import { bestOfLabel, parseMembersPreview } from '@/services/scrimUtils';
+import { parseMembersPreview } from '@/services/scrimUtils';
 import { formatTimeWindow, listingAge, type ScrimListingEnriched } from '@/services/scrimDiscoveryUtils';
-import type { FitLabel } from '@/services/scrimListingView';
 import { TeamRecordStrip } from '../TeamRecordStrip';
-import { FitBadge } from './FitBadge';
 import { RankBand } from './RankBand';
 import { RosterFaces } from './RosterFaces';
 import { WeekDots } from './WeekDots';
 
 interface ScrimOpponentCardProps {
   listing: ScrimListingEnriched;
-  fit: FitLabel | null;
   isOwner: boolean;
   hasTeam: boolean;
   onOpen: () => void;
@@ -33,9 +28,7 @@ const CTA_BASE =
 const CTA_PRIMARY = `${CTA_BASE} bg-white text-black hover:bg-zinc-200`;
 const CTA_QUIET = `${CTA_BASE} border border-white/[0.14] text-white/80 hover:border-white/30 hover:text-white`;
 
-function Hero({ listing, fit, gameName, gameLogo, gameIcon }: {
-  listing: ScrimListingEnriched; fit: FitLabel | null; gameName: string; gameLogo?: string | null; gameIcon?: string | null;
-}) {
+function Hero({ listing }: { listing: ScrimListingEnriched }) {
   const cardArt = listing.captainCardUrl ?? null;
   const name = listing.teamName ?? 'Unknown team';
 
@@ -53,16 +46,6 @@ function Hero({ listing, fit, gameName, gameLogo, gameIcon }: {
       ) : null}
       {cardArt && <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />}
 
-      <div className="absolute left-2.5 right-2.5 top-2.5 flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-black/60 px-2 py-1">
-          {listing.gameSlug && (
-            <GameLogoImage gameName={listing.gameSlug} catalogLogo={gameLogo ?? undefined} catalogIcon={gameIcon ?? undefined} className="h-4 w-4 object-contain" />
-          )}
-          <span className="text-[11px] font-medium text-white/75">{gameName}</span>
-        </span>
-        <FitBadge fit={fit} soft />
-      </div>
-
       <div className="absolute inset-x-3.5 bottom-2.5 flex items-end gap-2.5">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/[0.18] bg-zinc-800 font-mono text-[13px] font-semibold text-white/70">
           {listing.teamLogoUrl ? <img src={listing.teamLogoUrl} alt="" className="h-full w-full object-cover" /> : name.slice(0, 2).toUpperCase()}
@@ -78,9 +61,7 @@ function Hero({ listing, fit, gameName, gameLogo, gameIcon }: {
   );
 }
 
-export function ScrimOpponentCard({ listing, fit, isOwner, hasTeam, onOpen }: ScrimOpponentCardProps) {
-  const catalog = useGameCatalogContext();
-  const game = catalog.games.find((g) => g.slug === listing.gameSlug);
+export function ScrimOpponentCard({ listing, isOwner, hasTeam, onOpen }: ScrimOpponentCardProps) {
   const members = useMemo(() => parseMembersPreview(listing.membersPreview as string | unknown[] | null), [listing.membersPreview]);
   const isOpen = listing.status === 'open';
   const timeLabel = listing.preferredTimeStart && listing.preferredTimeEnd
@@ -93,20 +74,12 @@ export function ScrimOpponentCard({ listing, fit, isOwner, hasTeam, onOpen }: Sc
 
   return (
     <article className="group flex w-full flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-card transition-colors duration-150 hover:border-white/[0.18] focus-within:border-white/[0.18]">
-      <Hero listing={listing} fit={fit} gameName={game?.name ?? listing.gameSlug ?? 'Scrim'} gameLogo={game?.logo} gameIcon={game?.icon} />
+      <Hero listing={listing} />
 
       <div className="flex flex-1 flex-col gap-3 p-3.5">
-        <TeamRecordStrip record={listing.record} soft dense />
+        <TeamRecordStrip record={listing.record} dense />
 
-        <div className="flex items-center justify-between gap-3">
-          <RankBand minName={listing.minRankDisplayName} maxName={listing.maxRankDisplayName} minIcon={listing.minRankIconUrl} maxIcon={listing.maxRankIconUrl} />
-          <span className="flex shrink-0 gap-1">
-            <span className="rounded-md border border-white/[0.1] px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-white/60">5V5</span>
-            <span className="rounded-md border border-white/[0.1] px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-white/60" aria-label={`Best of ${listing.bestOf ?? 1} series`}>
-              {bestOfLabel(listing.bestOf)}
-            </span>
-          </span>
-        </div>
+        <RankBand minName={listing.minRankDisplayName} maxName={listing.maxRankDisplayName} minIcon={listing.minRankIconUrl} maxIcon={listing.maxRankIconUrl} />
 
         <div className="flex items-center justify-between gap-3">
           <WeekDots days={listing.preferredDays} soft />
