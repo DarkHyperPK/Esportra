@@ -1,3 +1,5 @@
+import { mapNameFromRiotId } from './valorantMapNames';
+
 /** Riot's map UUIDs, keyed by lowercase map name (code names included). */
 const VALORANT_MAP_IDS: Record<string, string> = {
   abyss: "224b0a95-48b9-f703-1bd8-67aca101a61f",
@@ -19,7 +21,8 @@ const VALORANT_MAP_IDS: Record<string, string> = {
 
 /** Riot's full-resolution (1920x1080) splash for a Valorant map, if the map is known. */
 export function valorantMapSplash(mapName: string): string | null {
-  const id = VALORANT_MAP_IDS[mapName.trim().toLowerCase()];
+  const key = mapName.trim().toLowerCase();
+  const id = VALORANT_MAP_IDS[key] ?? VALORANT_MAP_IDS[(mapNameFromRiotId(key) ?? '').toLowerCase()];
   return id ? `https://media.valorant-api.com/maps/${id}/splash.png` : null;
 }
 

@@ -648,7 +648,8 @@ export const scrimHistoryKeys = {
   page: (teamId: string, page: number, pageSize: number) =>
     ['scrims', 'history', teamId, page, pageSize] as const,
   privacy: (teamId: string) => ['scrims', 'history-privacy', teamId] as const,
-  recentMatches: (sessionId: string) => ['scrims', 'recent-matches', sessionId] as const,
+  recentMatches: (sessionId: string, gameNumber?: number, showAll?: boolean) =>
+    ['scrims', 'recent-matches', sessionId, gameNumber ?? null, showAll ?? false] as const,
 };
 
 export function useScrimHistory(teamId: string, page: number, pageSize: number) {
@@ -686,15 +687,31 @@ export function useUpdateScrimHistoryPrivacy(teamId: string) {
   });
 }
 
-/** Recent Riot games the team can report a map from (same payload as the tournament Auto-fetch). */
-export function useScrimRecentMatches(sessionId: string, teamId: string) {
+/** What a recent-matches scan found, with the map the veto assigned to this game (when there is one). */
+export interface ScrimRecentMatches {
+  matches: RiotMatchCandidate[];
+  reason: string | null;
+  /** The map the veto assigned to this game, or null when there is no finished veto. */
+  expectedMap: string | null;
+  /** Games on other maps that were left out because of the veto. */
+  hiddenByVeto: number;
+}
+
+/**
+ * Recent Riot games the team can report a map from. With a game number, only games on the map the veto assigned
+ * to that game are listed unless `showAll` is set.
+ */
+export function useScrimRecentMatches(sessionId: string, teamId: string, gameNumber?: number, showAll = false) {
   return useQuery({
-    queryKey: scrimHistoryKeys.recentMatches(sessionId),
-    queryFn: async () => {
-      const res = await rawApiClient.get<{ matches?: RiotMatchCandidate[]; reason?: string }>(
-        `/api/scrims/sessions/${sessionId}/recent-matches?team_id=${encodeURIComponent(teamId)}`,
+    queryKey: scrimHistoryKeys.recentMatches(sessionId, gameNumber, showAll),
+    queryFn: async (): Promise<ScrimRecentMatches> => {
+      const params = new URLSearchParams({ team_id: teamId });
+      if (gameNumber !== undefined) params.set('game', String(gameNumber));
+      if (showAll) params.set('all', 'true');
+      const res = await rawApiClient.get<{ matches?: RiotMatchCandidate[]; reason?: string; expected_map?: string | null; hidden_by_veto?: number }>(
+        `/api/scrims/sessions/${sessionId}/recent-matches?${params.toString()}`,
       );
-      return { matches: res.matches ?? [], reason: res.reason ?? null };
+      return { matches: res.matches ?? [], reason: res.reason ?? null, expectedMap: res.expected_map ?? null, hiddenByVeto: res.hidden_by_veto ?? 0 };
     },
     enabled: false,
     staleTime: 0,

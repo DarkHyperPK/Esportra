@@ -1,4 +1,5 @@
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import { displayMapName } from '@/services/maps/valorantMapNames';
 import { VetoMapArt } from '@/components/tournament/map-veto/VetoMapArt';
 import { StatusPill, type Tone } from '@/components/ui/kit';
 import { valorantMapSplash } from '@/services/maps/valorantMapAssets';
@@ -47,12 +48,12 @@ export const MatchGameBreakdown = ({ game, source, reportedBy, shots, onOpenShot
     return (
         <div id={panelId} role="tabpanel" aria-labelledby={`${panelId}-tab-${game.key}`} className="space-y-6">
             <div className="relative isolate flex min-h-[9rem] items-end overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-                <VetoMapArt src={valorantMapSplash(game.mapName)} name={game.mapName} className="-z-10" />
+                <VetoMapArt src={valorantMapSplash(game.mapName)} name={displayMapName(game.mapName) ?? game.mapName} className="-z-10" />
                 <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-black/95 via-black/70 to-black/10" />
                 <div className="flex w-full items-end justify-between gap-4 p-5 sm:p-6">
                     <div className="min-w-0">
                         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-300">{game.mapKnown ? `Map ${game.gameNumber}` : 'Map not recorded'}</p>
-                        <p className="mt-1.5 truncate font-heading text-[34px] font-black leading-none tracking-tight text-white sm:text-[44px]">{game.mapName}</p>
+                        <p className="mt-1.5 truncate font-heading text-[34px] font-black leading-none tracking-tight text-white sm:text-[44px]">{displayMapName(game.mapName) ?? game.mapName}</p>
                     </div>
                     {hasScore ? (
                         <p className="shrink-0 font-heading text-[34px] font-black leading-none tabular-nums sm:text-[48px]" aria-label={`${team1Name} ${game.team1Score}, ${team2Name} ${game.team2Score}`}>

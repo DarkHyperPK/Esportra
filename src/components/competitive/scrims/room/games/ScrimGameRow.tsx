@@ -6,6 +6,7 @@ import { gameTurn } from '@/services/scrimGames';
 import type { ScrimGame, ScrimGameStatus } from '@/types/competitive';
 import { ScrimGameDataStatus } from '@/components/competitive/matches/ScrimGameDataStatus';
 import { ScrimGameDispute } from './ScrimGameDispute';
+import { displayMapName } from '@/services/maps/valorantMapNames';
 
 const MatchGameStatisticsPanel = lazy(() =>
   import('@/components/tournament/MatchGameStatisticsPanel').then((m) => ({ default: m.MatchGameStatisticsPanel })));
@@ -50,7 +51,7 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
     <li className="space-y-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[13px] font-semibold text-white">
-          Game {game.gameNumber}{game.mapName ? <span className="font-normal text-white/50"> · {game.mapName}</span> : null}
+          Game {game.gameNumber}{displayMapName(game.mapName) ? <span className="font-normal text-white/50"> · {displayMapName(game.mapName)}</span> : null}
         </p>
         <p className={cn('text-[12px] font-medium', status.tone)}>{status.label}</p>
       </div>

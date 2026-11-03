@@ -13,6 +13,7 @@ import { formatAbilityCasts, formatStat } from '@/types/scoreboardPlayer';
 import { resolveRoundResultCode, type EconomyTimelineEntry, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
 import { cn } from '@/lib/utils';
 import { useValorantAgents, useValorantMaps, useValorantTiers } from '@/hooks/useValorantCatalog';
+import { displayMapName, UNKNOWN_MAP } from '@/services/maps/valorantMapNames';
 
 interface MatchHistoryCardProps {
     matchData: EnrichedRiotMatchData;
@@ -382,7 +383,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
 
     const renderScoreboardTable = (players: EnrichedRiotMatchData['players']) => (
         <div className="overflow-x-auto rounded-none border border-white/[0.06] bg-[#111114]">
-            <table className="w-full border-collapse text-left text-[11px]">
+            <table className="w-full min-w-[760px] border-collapse text-left text-[11px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
                 <thead>
                     <tr className="border-b border-white/[0.08] bg-[#18181b]">
                         <th className="px-4 py-2.5 font-black uppercase tracking-tighter text-zinc-500">Player</th>
@@ -439,17 +440,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 : 'bg-[#111114] hover:bg-white/[0.03]'
                                     }`}
                                 >
-                                    <td className="px-4 py-2.5">
-                                        <div className="flex items-center gap-3">
+                                    <td className="sticky left-0 z-[1] max-w-[220px] bg-[#111114] px-4 py-2.5">
+                                        <div className="flex min-w-0 items-center gap-3">
                                             <div className="h-8 w-8 overflow-hidden rounded-none border border-white/[0.08] bg-black/40">
                                                 {agent?.displayIcon ? (
                                                     <img src={agent.displayIcon} loading="lazy" className="h-full w-full" alt="" />
                                                 ) : null}
                                             </div>
-                                            <div>
-                                                <div className="flex items-center gap-1 font-bold text-zinc-200">
-                                                    {p.gameName}{' '}
-                                                    <span className="font-normal text-zinc-500">#{p.tagLine}</span>
+                                            <div className="min-w-0">
+                                                <div className="flex min-w-0 items-center gap-1 font-bold text-zinc-200">
+                                                    <span className="truncate">{p.gameName}</span>
+                                                    <span className="shrink-0 font-normal text-zinc-500">#{p.tagLine}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -880,7 +881,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                         <div className="flex min-w-0 items-center gap-2">
                             <MapIcon className={cn('h-4 w-4 flex-shrink-0', resultTone.text)} />
                             <div className="truncate text-lg font-black leading-none text-white">
-                                {mapData?.displayName || 'Loading…'}
+                                {mapData?.displayName || displayMapName(matchData.matchInfo.mapId) || (valorantMaps ? UNKNOWN_MAP : 'Loading…')}
                             </div>
                             <span className={cn('hidden border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider sm:inline-flex', resultTone.badge)}>
                                 {isWin ? 'Win' : 'Loss'}
@@ -1030,7 +1031,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                     </div>
 
                     <div className="bg-[#111114] p-4 lg:p-5">
-                        <div className="mb-4 grid gap-4 bg-[#0b2a20] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
+                        <div className="mb-4 grid gap-4 bg-[#0b2a20] p-4 md:grid-cols-[120px_minmax(0,1fr)]">
                             <div className="hidden h-28 items-end justify-center md:flex">
                                 {selectedAgent?.displayIcon ? (
                                     <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85" alt="" />
@@ -1043,8 +1044,11 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                     {selectedRank?.smallIcon || selectedRank?.largeIcon ? (
                                         <img src={selectedRank.smallIcon || selectedRank.largeIcon} loading="lazy" className="h-6 w-6 object-contain" alt="" />
                                     ) : null}
+                                    <span className="ml-auto text-xs font-black uppercase tracking-wider text-zinc-300/70">
+                                        {formatRankName(selectedRank, selectedPlayer.competitiveTier)}
+                                    </span>
                                 </div>
-                                <div className="mt-4 grid grid-cols-3 gap-4 text-sm sm:grid-cols-6">
+                                <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-x-4 gap-y-3 text-sm">
                                     {[
                                         ['K/D/A', `${selectedPlayer.stats.kills} / ${selectedPlayer.stats.deaths} / ${selectedPlayer.stats.assists}`],
                                         ['K/D', selectedKd],
@@ -1055,13 +1059,10 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                     ].map(([label, value]) => (
                                         <div key={label}>
                                             <div className="text-[10px] font-black uppercase text-zinc-300/65">{label}</div>
-                                            <div className="text-lg font-black text-zinc-100">{value}</div>
+                                            <div className="whitespace-nowrap text-lg font-black tabular-nums text-zinc-100">{value}</div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                            <div className="text-right text-xs font-black uppercase tracking-wider text-zinc-300/70">
-                                {formatRankName(selectedRank, selectedPlayer.competitiveTier)}
                             </div>
                         </div>
 
@@ -1072,7 +1073,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                         type="button"
                                         onClick={() => setSelectedPuuid(matchMvp.player.puuid)}
                                         className={cn(
-                                            'group/mvp relative grid w-full overflow-hidden border bg-[#0a0a0c] text-left transition-[transform,border-color] duration-300 hover:-translate-y-0.5 motion-reduce:transition-none hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
+                                            'group/mvp relative grid w-full overflow-hidden border bg-[#0a0a0c] text-left transition-[transform,border-color] duration-300 hover:-translate-y-0.5 motion-reduce:transition-none hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)]',
                                             matchMvp.isTeamA
                                                 ? 'border-[#34d399]/35'
                                                 : 'border-[#f87171]/35',
@@ -1097,7 +1098,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 />
                                             ) : null}
                                         </div>
-                                        <div className="min-w-0 px-4 py-4">
+                                        <div className="min-w-0 overflow-hidden px-4 py-4">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className={cn(
                                                     'inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em]',
@@ -1143,7 +1144,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 ) : null}
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-x-5 gap-y-3 border-t border-white/5 px-4 py-4 md:border-l md:border-t-0">
+                                        <div className="col-span-full grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-x-5 gap-y-3 border-t border-white/5 px-4 py-4">
                                             {[
                                                 ['K/D/A', `${matchMvp.player.stats.kills} / ${matchMvp.player.stats.deaths} / ${matchMvp.player.stats.assists}`],
                                                 ['ACS', matchMvp.acs],
@@ -1152,9 +1153,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                                 ['HS%', `${formatStat(matchMvp.hsPct)}%`],
                                                 ['KAST', analytics ? `${matchMvp.kast}%` : '-'],
                                             ].map(([label, value]) => (
-                                                <div key={label} className="min-w-[72px]">
+                                                <div key={label} className="min-w-0">
                                                     <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</div>
-                                                    <div className="mt-0.5 font-mono text-base font-black text-zinc-100">{value}</div>
+                                                    <div className="mt-0.5 whitespace-nowrap font-mono text-base font-black tabular-nums text-zinc-100">{value}</div>
                                                 </div>
                                             ))}
                                         </div>

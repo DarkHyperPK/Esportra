@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, RefreshCcw, Search } from 'lucide-react';
 import { InlineNotice } from '@/components/ui/kit';
 import { RiotMatchCandidateList } from '@/components/tournament/RiotMatchCandidateList';
@@ -19,10 +19,18 @@ interface Props {
 
 /** Finds the map in Riot's match history and reports it with the full scoreboard, as the match room does. */
 export function ScrimAutoFetch({ sessionId, gameNumber, myTeamId, team1Id, team2Id, onDone }: Props) {
-  const recent = useScrimRecentMatches(sessionId, myTeamId);
+  const [showAll, setShowAll] = useState(false);
+  const recent = useScrimRecentMatches(sessionId, myTeamId, gameNumber, showAll);
+  const { refetch } = recent;
   const reportRiot = useReportScrimGameFromRiot(sessionId);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const matches = recent.data?.matches ?? null;
+  const expectedMap = recent.data?.expectedMap ?? null;
+  const hidden = recent.data?.hiddenByVeto ?? 0;
+
+  useEffect(() => {
+    if (showAll) void refetch();
+  }, [showAll, refetch]);
 
   async function pick(candidate: RiotMatchCandidate) {
     setSubmitError(null);
@@ -39,6 +47,11 @@ export function ScrimAutoFetch({ sessionId, gameNumber, myTeamId, team1Id, team2
       <p className="text-[13px] text-zinc-400">
         Play game {gameNumber} as a custom game, then fetch it from your Riot history. The other team confirms the result.
       </p>
+      {expectedMap && (
+        <p className="text-[13px] text-zinc-300">
+          {showAll ? `Showing every map. The veto assigned ${expectedMap} to game ${gameNumber}.` : `The veto assigned ${expectedMap} to game ${gameNumber}, so only ${expectedMap} games are listed.`}
+        </p>
+      )}
       <button
         type="button"
         onClick={() => void recent.refetch()}
@@ -56,7 +69,14 @@ export function ScrimAutoFetch({ sessionId, gameNumber, myTeamId, team1Id, team2
         <InlineNotice tone="critical">{getApiErrorMessage(recent.error, 'Could not reach Riot match history.')}</InlineNotice>
       )}
       {matches && matches.length === 0 && (
-        <InlineNotice tone="neutral">{recent.data?.reason ?? 'No recent custom games found. Make sure the game has finished.'}</InlineNotice>
+        <InlineNotice tone="neutral">
+          {recent.data?.reason ?? (expectedMap && !showAll ? `No recent ${expectedMap} games found. Make sure the game has finished.` : 'No recent custom games found. Make sure the game has finished.')}
+        </InlineNotice>
+      )}
+      {matches && expectedMap && !showAll && hidden > 0 && (
+        <button type="button" onClick={() => setShowAll(true)} className={ROOM_GHOST}>
+          Show all maps ({hidden} on other maps)
+        </button>
       )}
       {matches && matches.length > 0 && (
         <RiotMatchCandidateList candidates={matches} submitting={reportRiot.isPending} onSelect={(c) => void pick(c)} tone="neutral" compact />
