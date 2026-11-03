@@ -4,7 +4,6 @@ import { PanelError, PanelMessage, PanelSkeleton } from '@/components/competitiv
 import { useScrimGameInsights } from '@/hooks/competitive/useScrimGameInsights';
 import { useTabParam } from '@/hooks/useTabParam';
 import { TIER_LABEL, TIER_MEANING } from '@/services/scrimData/format';
-import { AbilityPanel, ObjectivePanel } from './AbilityObjectivePanels';
 import { CombatPanel } from './CombatPanel';
 import { DecisivePanel } from './DecisivePanel';
 import { EconomyPanel } from './EconomyPanel';
@@ -14,14 +13,15 @@ import { PlayerTable } from './PlayerTable';
 import { ReportHeader } from './ReportHeader';
 import { useReportAssets } from './useReportAssets';
 import { RoundTimeline } from './RoundTimeline';
+import { SpikePanel } from './SpikePanel';
 
 const TimelineTab = lazy(() => import('./timeline/TimelineTab'));
 
-const REPORT_TABS = ['scoreboard', 'timeline', 'rounds', 'decisive', 'kills', 'economy', 'utility'] as const;
+const REPORT_TABS = ['scoreboard', 'timeline', 'rounds', 'decisive', 'kills', 'economy', 'spike'] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
 const TABS: readonly (TabItem & { id: ReportTab })[] = [
   { id: 'scoreboard', label: 'Scoreboard' }, { id: 'timeline', label: 'Timeline' }, { id: 'rounds', label: 'Rounds' }, { id: 'decisive', label: 'Decisive moments' }, { id: 'kills', label: 'Kills & damage' },
-  { id: 'economy', label: 'Economy' }, { id: 'utility', label: 'Utility & spike' },
+  { id: 'economy', label: 'Economy' }, { id: 'spike', label: 'Spike & retakes' },
 ];
 
 interface Props { sessionId: string; gameNumber: number; teamId?: string }
@@ -53,7 +53,7 @@ export function ScrimGameReport({ sessionId, gameNumber, teamId }: Props) {
           <TabPanel base={base} id="decisive" value={tab}><DecisivePanel report={report} /></TabPanel>
           <TabPanel base={base} id="kills" value={tab} className="space-y-4"><KillFeedPanel report={report} assets={assets} /><CombatPanel report={report} /></TabPanel>
           <TabPanel base={base} id="economy" value={tab}><EconomyPanel report={report} assets={assets} /></TabPanel>
-          <TabPanel base={base} id="utility" value={tab} className="space-y-4"><AbilityPanel report={report} /><ObjectivePanel report={report} /></TabPanel>
+          <TabPanel base={base} id="spike" value={tab}><SpikePanel report={report} /></TabPanel>
           <details className="rounded-none border border-white/5 p-4 text-[12px] text-zinc-400">
             <summary className="cursor-pointer font-semibold text-zinc-300">How these figures are worked out</summary>
             <ul className="mt-2 space-y-1">{report.formulas.map((f) => <li key={f.id}>{f.text}</li>)}</ul>

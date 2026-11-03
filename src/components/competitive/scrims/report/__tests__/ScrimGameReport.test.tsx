@@ -67,7 +67,7 @@ describe('ScrimGameReport', () => {
     view();
     expect(screen.getByRole('heading', { name: 'Lotus' })).toBeInTheDocument();
     expect(screen.getByText(/Map veto: Lotus, picked by your team/)).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Timeline', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Utility & spike']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Scoreboard', 'Timeline', 'Rounds', 'Decisive moments', 'Kills & damage', 'Economy', 'Spike & retakes']);
     expect(screen.getByRole('region', { name: 'Scoreboard' })).toBeInTheDocument();
     expect(screen.getAllByText('Omega One').length).toBeGreaterThan(0);
     for (const hidden of ['Rounds', 'Opening duels', 'Kill feed', 'Economy', 'Abilities', 'Spike']) expect(screen.queryByRole('region', { name: hidden })).toBeNull();
@@ -85,8 +85,7 @@ describe('ScrimGameReport', () => {
     expect(screen.getByRole('region', { name: 'Damage and multi-kills' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Economy' }));
     expect(screen.getByRole('region', { name: 'Economy' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'Utility & spike' }));
-    expect(screen.getByRole('region', { name: 'Abilities' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Spike & retakes' }));
     expect(screen.getByRole('region', { name: 'Spike' })).toBeInTheDocument();
   });
 
