@@ -38,6 +38,7 @@ const data = (over: Partial<ScrimData> = {}): ScrimData => ({
 const query = (over: Record<string, unknown> = {}) => ({ isLoading: false, isError: false, data: undefined, refetch: vi.fn(), ...over });
 const renderPanel = (tab = '') => render(<MemoryRouter initialEntries={[`/x${tab ? `?tab=${tab}` : ''}`]}><ScrimDataPanel teamId="t1" /></MemoryRouter>);
 vi.mock('@/hooks/competitive/useScrimMapPicks', () => ({ useScrimMapPicks: () => ({ data: undefined }) }));
+vi.mock('../overview/OverviewDashboard', () => ({ default: ({ fallback }: { fallback: React.ReactNode }) => <>{fallback}</> }));
 vi.mock('@/hooks/useValorantMapCatalog', () => ({ useValorantMapCatalog: () => ({ data: [] }) }));
 
 beforeEach(() => mocks.useScrimData.mockReset());
@@ -65,14 +66,14 @@ describe('ScrimDataPanel', () => {
     expect(screen.queryByText('Win rate')).toBeNull();
   });
 
-  it('opens on an overview with what the data is built from, the sample, the record and recent maps, and one tab at a time', () => {
+  it('opens on an overview with what the data is built from, the sample, the record and recent maps, and one tab at a time', async () => {
     mocks.useScrimData.mockReturnValue(query({ data: data() }));
     renderPanel();
     expect(screen.getByText(/Based on 6 confirmed scrim maps/)).toBeInTheDocument();
     expect(screen.getByText(/small sample/)).toBeInTheDocument();
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Team report', 'Player reports', 'Maps', 'Timeline', 'Agents & comps', 'Opponents', 'Trends', 'Heatmaps', 'Players', 'Roster']);
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByLabelText('What your data is built from')).toHaveTextContent('full data');
+    expect(await screen.findByLabelText('What your data is built from')).toHaveTextContent('full data');
     expect(screen.getByTitle(/Auto-fetched from Riot/)).toBeInTheDocument();
     expect(screen.getByText('66.7%')).toBeInTheDocument();
     expect(screen.getByLabelText(/Recent form, newest first: Win, Loss, Win/)).toBeInTheDocument();

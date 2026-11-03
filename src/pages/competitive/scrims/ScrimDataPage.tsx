@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 interface TeamSummary {
   id: string;
   name: string;
+  tag?: string | null;
+  logo_url?: string | null;
+  logoUrl?: string | null;
 }
 
 /** "Scrim Insights": a team's own scrim record and what it can learn from it. For the team's members only. */
@@ -43,7 +46,7 @@ export default function ScrimDataPage() {
         {isLoading ? null : team ? (
           <>
             {teams.length > 1 && <p className="text-[13px] text-zinc-400">Showing <span className="text-white">{team.name}</span></p>}
-            <ScrimDataPanel teamId={team.id} />
+            <ScrimDataPanel teamId={team.id} team={{ name: team.name, tag: team.tag ?? null, logoUrl: team.logo_url ?? team.logoUrl ?? null }} />
           </>
         ) : (
           <PanelMessage>Join or create a team to see your scrim data.</PanelMessage>

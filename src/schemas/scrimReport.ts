@@ -44,9 +44,22 @@ const teamReport = z.object({
   buys: z.array(z.object({ buy: z.string(), roundsWon: rate })), players: z.array(playerRowSchema), coach: coachTeamSchema, highlights: z.array(highlightSchema),
 });
 
+const ratingPart = z.object({ key: z.string(), label: z.string(), value: num, score: num, weight: z.number() });
+const rating = z.object({ value: num, change: num, parts: z.array(ratingPart) });
+
+/** The Esportra rating (0–100) for the team, each player and each map. Players under 3 maps have a null value. */
+export const ratingsSchema = z.object({
+  team: rating,
+  players: z.array(z.object({ userId: z.string(), rating })),
+  byMap: z.array(z.object({ index: z.number(), value: num })),
+});
+export type Rating = z.infer<typeof rating>;
+export type TeamRatings = z.infer<typeof ratingsSchema>;
+
 /** The team report and who may see which players. A regular member gets their own row only. */
 export const scrimTeamReportSchema = z.object({
   teamId: z.string(), hasData: z.boolean(), staff: z.boolean(), viewerUserId: z.string(), maxMaps: z.number(), report: teamReport,
+  ratings: ratingsSchema.optional(),
 });
 
 const slice = z.object({ key: z.string(), maps: z.number(), wins: z.number(), winRatePct: num, acs: num, kd: num, rounds: z.number() });

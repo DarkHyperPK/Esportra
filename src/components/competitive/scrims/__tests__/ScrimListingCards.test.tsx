@@ -96,14 +96,13 @@ describe('DiscoveryToolbar', () => {
     fireEvent.click(within(list).getByRole('button', { name: 'Remove Europe filter' }));
     expect(onDismiss).toHaveBeenCalled();
   });
-  it('defaults to all games and only offers rank filters once one game is chosen', () => {
-    const onGameChange = vi.fn();
-    const { rerender } = wrap(<DiscoveryFilterPanel {...base} game="" onGameChange={onGameChange} />);
-    expect(screen.getByRole('button', { name: 'All games' })).toHaveAttribute('aria-pressed', 'true');
+  it('has one game dropdown that defaults to all games, and only offers rank filters once a game is chosen', () => {
+    const { rerender } = wrap(<DiscoveryFilterPanel {...base} game="" />);
+    expect(screen.getAllByRole('combobox', { name: 'Game' })).toHaveLength(1);
+    expect(screen.getByRole('combobox', { name: 'Game' })).toHaveTextContent('All games');
     expect(screen.queryByText('Min rank')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Valorant' }));
-    expect(onGameChange).toHaveBeenCalledWith('valorant');
-    rerender(<MemoryRouter><DiscoveryFilterPanel {...base} game="valorant" onGameChange={onGameChange} /></MemoryRouter>);
+    rerender(<MemoryRouter><DiscoveryFilterPanel {...base} game="valorant" /></MemoryRouter>);
+    expect(screen.getByRole('combobox', { name: 'Game' })).toHaveTextContent('Valorant');
     expect(screen.getByText('Min rank')).toBeInTheDocument();
   });
   it('shows no chip list when nothing is applied', () => {
