@@ -1,7 +1,8 @@
 /*
  * Product sidebar. A raised rail on the stage: one step lighter than the content, lit from
- * the top like the page behind it, with a faint hairline field, grouped navigation in mono
- * caps and an active row marked by a lit surface and one short rose tick (the cue colour).
+ * the top like the page behind it, with a faint hairline field. Items cluster by what they're
+ * for (play, compete, resources) with a quiet hairline between clusters — no caption needed —
+ * and the active row is marked by a lit surface and one short rose tick (the cue colour).
  */
 .product-sidebar {
   z-index: 30;
@@ -47,10 +48,9 @@
 .product-sidebar-brand-wrap.is-collapsed { flex-direction: column; justify-content: center; gap: 10px; padding: 14px 0 12px; }
 
 .product-sidebar-nav { min-height: 0; padding: 12px 10px; scrollbar-width: thin; scrollbar-color: #ffffff24 transparent; overscroll-behavior: contain; }
-.product-sidebar-group-label { display: flex; align-items: center; gap: 8px; padding: 0 10px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: #71717a; }
-.product-sidebar-group-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #ffffff14, transparent); }
-.product-sidebar-group-start:not(:first-child) { margin-top: 22px; }
-.product-sidebar.is-collapsed .product-sidebar-group-start:not(:first-child) { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff0d; }
+/* Clusters are set apart by space and a faint rule alone — no caption. */
+.product-sidebar-group-start:not(:first-child) { margin-top: 14px; padding-top: 14px; border-top: 1px solid #ffffff0d; }
+.product-sidebar.is-collapsed .product-sidebar-group-start:not(:first-child) { margin-top: 12px; padding-top: 12px; }
 
 .product-sidebar-item {
   position: relative;

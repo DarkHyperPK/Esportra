@@ -23,7 +23,7 @@ import './product-sidebar.css';
 interface NavItem { label: string; to: string }
 interface NavSection {
   id: string;
-  /** Heading shown above the first section of each group. */
+  /** Cluster key: items sharing one get a hairline rule before the first of them, no caption. */
   group: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -329,7 +329,6 @@ export function ProductSidebar() {
             const startsGroup = i === 0 || sections[i - 1].group !== section.group;
             return (
               <div key={section.id} className={startsGroup ? 'product-sidebar-group-start' : undefined}>
-                {startsGroup && !isCollapsed && <p className="product-sidebar-group-label">{section.group}</p>}
                 <SidebarSection section={section} collapsed={isCollapsed} onExpand={toggle} />
               </div>
             );
