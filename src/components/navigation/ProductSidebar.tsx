@@ -200,6 +200,7 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
 
 const PUBLIC_LINKS = [
   { label: 'Find Teammates', to: '/competitive/lfg', icon: Users },
+  { label: 'Scrims', to: '/competitive/scrims', icon: Crosshair },
   { label: 'Tournaments', to: '/tournaments', icon: Trophy },
   { label: 'Venues', to: '/venues/search', icon: MapPin },
   { label: 'Rankings', to: '/leaderboards', icon: BarChart2 },
