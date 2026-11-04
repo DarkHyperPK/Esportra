@@ -32,6 +32,7 @@ function UserMenuTrigger({ compact, children }: { compact: boolean; children: Re
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen, close]);
+
   return <button ref={trigger} type="button" aria-label="Account menu" aria-expanded={isOpen} onClick={() => setIsOpen(!isOpen)}
     className={`flex items-center text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 ${compact ? 'p-0' : 'gap-2 px-2 py-1.5'}`}>
     {children}
@@ -229,15 +230,9 @@ const UserMenu = ({
             </div>
           )}
 
-          <div className="space-y-0.5 bg-[#0a0a0c] p-1.5">
+          <div className="space-y-px bg-[#0a0a0c] p-2">
             <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
             <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
-            {/* Self-serve roles: setting up an organization grants organizer; listing a venue grants venue owner and sends the venue to admin review. */}
-            {!admin.isAdmin && userRole !== "organizer" && !hasOrganization && (
-              <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
-                Setup Organization
-              </JackMenuItem>
-            )}
             {!admin.isAdmin && userRole !== "venue_owner" && (
               <JackMenuItem
                 to="/venues/list-venue"
@@ -319,6 +314,14 @@ const UserMenu = ({
               </>
             )}
 
+            {!admin.isAdmin && userRole !== "organizer" && !hasOrganization && (
+              <>
+                <JackMenuDivider />
+                <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
+                  Setup Organization
+                </JackMenuItem>
+              </>
+            )}
           </div>
 
           <div className="border-t border-white/10 bg-[#0a0a0c] p-3">
