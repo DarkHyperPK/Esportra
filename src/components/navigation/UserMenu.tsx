@@ -18,7 +18,7 @@ import {
 } from "@/hooks/useNavTeamStatus";
 import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { deriveHasApprovedLicense, deriveHasOrganization, meRolesQueryKey } from "@/lib/meRoles";
-import { getStoredSessionRole } from "@/lib/sessionRole";
+import { getStoredSessionRole, userHasActiveRole } from "@/lib/sessionRole";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
 function UserMenuTrigger({ compact, children }: { compact: boolean; children: React.ReactNode }) {
@@ -106,6 +106,8 @@ const UserMenu = ({
   const hasApprovedLicense = deriveHasApprovedLicense(meRoles)
     || (!meRolesReady && (sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner'));
   const hasOrganization = deriveHasOrganization(meRoles);
+  // Amber dot = not done yet. Once the first listing grants venue_owner the dot goes away.
+  const hasVenueOwnerRole = userHasActiveRole(meRoles?.userRoles, "venue_owner");
 
   useEffect(() => {
     setAvatarFailed(false);
@@ -230,13 +232,18 @@ const UserMenu = ({
           <div className="space-y-0.5 bg-[#0a0a0c] p-1.5">
             <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
             <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
-            {/* Self-serve roles: listing a venue grants venue owner, setting up an organization grants organizer. */}
-            {!admin.isAdmin && userRole !== "venue_owner" && (
-              <JackMenuItem to="/venues/list-venue">List a Venue</JackMenuItem>
-            )}
+            {/* Self-serve roles: setting up an organization grants organizer; listing a venue grants venue owner and sends the venue to admin review. */}
             {!admin.isAdmin && userRole !== "organizer" && !hasOrganization && (
               <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
                 Setup Organization
+              </JackMenuItem>
+            )}
+            {!admin.isAdmin && userRole !== "venue_owner" && (
+              <JackMenuItem
+                to="/venues/list-venue"
+                trailing={meRolesReady && !hasVenueOwnerRole ? dot("amber") : undefined}
+              >
+                List a Venue
               </JackMenuItem>
             )}
 
