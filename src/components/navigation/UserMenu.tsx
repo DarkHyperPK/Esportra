@@ -230,8 +230,14 @@ const UserMenu = ({
           <div className="space-y-0.5 bg-[#0a0a0c] p-1.5">
             <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
             <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
-            {!admin.isAdmin && (
-              <JackMenuItem to="/verification">Your Roles</JackMenuItem>
+            {/* Self-serve roles: listing a venue grants venue owner, setting up an organization grants organizer. */}
+            {!admin.isAdmin && userRole !== "venue_owner" && (
+              <JackMenuItem to="/venues/list-venue">List a Venue</JackMenuItem>
+            )}
+            {!admin.isAdmin && userRole !== "organizer" && !hasOrganization && (
+              <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
+                Setup Organization
+              </JackMenuItem>
             )}
 
             {hasTeam ? (
@@ -306,20 +312,6 @@ const UserMenu = ({
               </>
             )}
 
-            {/* Self-serve roles: setting up an organization grants organizer, listing a venue grants venue owner. */}
-            {!admin.isAdmin && ((userRole !== "organizer" && !hasOrganization) || userRole !== "venue_owner") && (
-              <>
-                <JackMenuDivider />
-                {userRole !== "organizer" && !hasOrganization && (
-                  <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
-                    Setup Organization
-                  </JackMenuItem>
-                )}
-                {userRole !== "venue_owner" && (
-                  <JackMenuItem to="/venues/list-venue">List Your Venue</JackMenuItem>
-                )}
-              </>
-            )}
           </div>
 
           <div className="border-t border-white/10 bg-[#0a0a0c] p-3">
