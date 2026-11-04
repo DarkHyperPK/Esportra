@@ -3,7 +3,10 @@
 Reads motion/comp/timeline.json so every click, whoosh and hit lands on the picture's events.
 Writes a 48 kHz stereo 24-bit WAV.
 
-    python3 -I motion/audio/score.py motion/comp/timeline.json out.wav
+    python3 -I motion/audio/score.py motion/comp/timeline.json out.wav [540|1440]
+
+The width picks which click track to lay down: the 9:16 and 1:1 cuts play the 540 px
+interaction script, the 16:9 cut the 1440 px one.
 """
 import json
 import sys
@@ -17,6 +20,32 @@ rng = np.random.default_rng(7)
 
 tl = json.load(open(sys.argv[1]))
 OUT = sys.argv[2]
+WIDTH = sys.argv[3] if len(sys.argv) > 3 else "540"
+
+
+def build_events(tl, width):
+    ev = [{"t": t, "type": "word"} for t in tl["hook"]["words"]]
+    ev.append({"t": tl["hook"]["riser"][0], "type": "riser", "len": tl["hook"]["riser"][1]})
+    ev += [{"t": tl["hook"]["drop"], "type": "impact"}, {"t": 38.0, "type": "impact"}]
+    ev += [{"t": t, "type": "tick"} for t in tl["reveal"]["ticks"]]
+    ev += [{"t": b["start"], "type": "whoosh"} for b in tl["beats"] if b["start"] >= 6]
+    ev += [{"t": 20.5, "type": "riser", "len": 1.5}, {"t": 22.0, "type": "impact", "small": True}]
+    for sc in tl["screens"].values():
+        for st in sc.get(width) or sc["*"]:
+            if st.get("click"):
+                ev.append({"t": st["t"], "type": "click"})
+            elif st.get("hover"):
+                ev.append({"t": st["t"], "type": "hover"})
+            if st.get("keys"):
+                ev += [{"t": st["t"] - 0.24 + k * 0.06, "type": "key"} for k in range(4)]
+            if st.get("sfx"):
+                ev.append({"t": st["t"] + 0.04, "type": st["sfx"], "small": st["sfx"] == "impact"})
+            elif st.get("cam") and not st.get("click") and st["t"] % 2 != 0:
+                ev.append({"t": st["t"], "type": "whoosh", "small": True})
+    return sorted(ev, key=lambda e: e["t"])
+
+
+tl["events"] = build_events(tl, WIDTH)
 BPM = tl["bpm"]
 BEAT = 60 / BPM
 DUR = tl["duration"] + 1.2  # tail
@@ -178,6 +207,11 @@ def ui_tick(pitch=1.0):
             + hp(rng.standard_normal(n), 5000) * env_exp(n, 0.002) * 0.3)
 
 
+def ui_key():
+    n = int(0.04 * SR)
+    return hp(rng.standard_normal(n), 2500) * env_exp(n, 0.004) * 0.35 + np.sin(2 * np.pi * 3200 * t_arr(n)) * env_exp(n, 0.005) * 0.08
+
+
 def ui_hover():
     n = int(0.12 * SR)
     t = t_arr(n)
@@ -261,7 +295,7 @@ for ev in [e for e in tl["events"] if e["type"] == "word"]:
 place("music", supersaw([45, 52, 57], 2.0, cutoff=700) * np.linspace(0.3, 1, int(2.0 * SR))[:, None], 0.0, 0.35)
 
 # Groove from the drop (2s) to the outro hit (18s).
-GROOVE_START, GROOVE_END = 2.0, 18.0
+GROOVE_START, GROOVE_END = 2.0, 38.0
 step = BEAT / 4
 k = 0
 t = GROOVE_START
@@ -281,6 +315,12 @@ while t < GROOVE_END - 1e-6:
     if s16 % 2 == 1 or s16 == 0:
         oct_ = 12 if (beat_in_bar == 3 and s16 % 4 == 3) else 0
         place("bass", bass_note(root + 12 + oct_, step * 1.6), t, 0.55)
+    # second half (from the check-in lift): a lead on top and shaker 16ths
+    if t >= 22.0:
+        if s16 in (0, 3, 6, 10, 12):
+            lead = chord[(s16 // 3) % 3] + 24
+            place("music", pluck(lead, 0.3, 3800) * 0.9, t, 0.2, pan=0.1)
+        place("drums", bp(rng.standard_normal(int(0.04 * SR)), 5000, 12000) * env_exp(int(0.04 * SR), 0.01) * 0.25, t, 0.6, pan=-0.35)
     # arp: chord tones in 16ths, from bar 3 on
     if t >= 4.0:
         tones = chord + [chord[0] + 12, chord[1] + 12]
@@ -292,17 +332,17 @@ while t < GROOVE_END - 1e-6:
     t = GROOVE_START + k * step
 
 # Pad under the features, swelling every two bars.
-for bar in range(1, 9):
+for bar in range(1, 19):
     t0 = bar * 4 * BEAT
     pad = supersaw(CHORDS[bar % 4], 4 * BEAT, cutoff=1400, voices=7)
     pad *= adsr(len(pad), 0.25, 0.6, 0.8, 0.3)[:, None]
     place("music", pad, t0, 0.32)
 
 # Outro (18-20s): one big chord and the logo hit, then air.
-outro = supersaw([57, 64, 69, 72, 76], 2.6, cutoff=5200, voices=7) * env_exp(int(2.6 * SR), 0.9)[:, None]
-place("music", reverb(outro, wet=0.4, length=2.5), 18.0, 0.7)
-place("bass", bass_note(33, 1.4) * env_exp(int(1.4 * SR), 0.6), 18.0, 0.8)
-place("drums", kick(1.3), 18.0, 1.0)
+outro = supersaw([57, 64, 69, 72, 76], 4.2, cutoff=5200, voices=7) * env_exp(int(4.2 * SR), 1.4)[:, None]
+place("music", reverb(outro, wet=0.4, length=2.5), 38.0, 0.7)
+place("bass", bass_note(33, 1.4) * env_exp(int(1.4 * SR), 0.6), 38.0, 0.8)
+place("drums", kick(1.3), 38.0, 1.0)
 
 # Sound design on the picture's events.
 for ev in tl["events"]:
@@ -318,6 +358,8 @@ for ev in tl["events"]:
         place("sfx", ui_click(), at, 0.95)
     elif typ == "tick":
         place("sfx", ui_tick(1.0 + 0.06 * ((at * 4) % 6)), at, 0.8)
+    elif typ == "key":
+        place("sfx", ui_key(), at, 0.7, pan=0.15)
     elif typ == "hover":
         place("sfx", ui_hover(), at, 0.8)
     elif typ == "success":

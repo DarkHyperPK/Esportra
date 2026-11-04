@@ -1,35 +1,834 @@
 {
-  "bpm": 120,
-  "duration": 20,
-  "fps": 60,
-  "beats": [
-    { "id": "hook", "start": 0, "end": 2, "label": "The problem" },
-    { "id": "reveal", "start": 2, "end": 4, "label": "Product appears" },
-    { "id": "find", "start": 4, "end": 6, "label": "Find" },
-    { "id": "book", "start": 6, "end": 8, "label": "Book" },
-    { "id": "agree", "start": 8, "end": 10, "label": "Agree a time" },
-    { "id": "checkin", "start": 10, "end": 12, "label": "Check in" },
-    { "id": "veto", "start": 12, "end": 14, "label": "Map veto" },
-    { "id": "report", "start": 14, "end": 16, "label": "Report" },
-    { "id": "insights", "start": 16, "end": 18, "label": "Insights" },
-    { "id": "outro", "start": 18, "end": 20, "label": "Logo" }
+ "bpm": 120,
+ "duration": 42,
+ "fps": 60,
+ "beats": [
+  {
+   "id": "hook",
+   "start": 0,
+   "end": 2,
+   "label": "The problem"
+  },
+  {
+   "id": "reveal",
+   "start": 2,
+   "end": 6,
+   "label": "Product appears"
+  },
+  {
+   "id": "find",
+   "start": 6,
+   "end": 10,
+   "label": "Find"
+  },
+  {
+   "id": "book",
+   "start": 10,
+   "end": 14,
+   "label": "Book"
+  },
+  {
+   "id": "accept",
+   "start": 14,
+   "end": 18,
+   "label": "Accept"
+  },
+  {
+   "id": "chat",
+   "start": 18,
+   "end": 22,
+   "label": "Chat"
+  },
+  {
+   "id": "checkin",
+   "start": 22,
+   "end": 26,
+   "label": "Check in"
+  },
+  {
+   "id": "veto",
+   "start": 26,
+   "end": 30,
+   "label": "Veto"
+  },
+  {
+   "id": "report",
+   "start": 30,
+   "end": 34,
+   "label": "Report"
+  },
+  {
+   "id": "insights",
+   "start": 34,
+   "end": 38,
+   "label": "Insights"
+  },
+  {
+   "id": "outro",
+   "start": 38,
+   "end": 42,
+   "label": "Logo"
+  }
+ ],
+ "captions": {
+  "find": [
+   "Find",
+   "Filter by region. Compare records."
   ],
-  "events": [
-    { "t": 0.0, "type": "word" }, { "t": 0.5, "type": "word" }, { "t": 1.0, "type": "word" },
-    { "t": 1.5, "type": "word" }, { "t": 1.75, "type": "word" },
-    { "t": 1.25, "type": "riser", "len": 0.75 },
-    { "t": 2.0, "type": "impact" },
-    { "t": 2.5, "type": "tick" }, { "t": 2.75, "type": "tick" }, { "t": 3.0, "type": "tick" },
-    { "t": 3.25, "type": "tick" }, { "t": 3.5, "type": "tick" }, { "t": 3.75, "type": "tick" },
-    { "t": 4.0, "type": "whoosh" }, { "t": 6.0, "type": "whoosh" }, { "t": 7.0, "type": "whoosh", "small": true },
-    { "t": 8.0, "type": "whoosh" }, { "t": 10.0, "type": "whoosh" }, { "t": 12.0, "type": "whoosh" },
-    { "t": 14.0, "type": "whoosh" }, { "t": 16.0, "type": "whoosh" }, { "t": 18.0, "type": "whoosh" },
-    { "t": 5.0, "type": "click" }, { "t": 6.5, "type": "click" }, { "t": 7.5, "type": "click" },
-    { "t": 9.0, "type": "click" }, { "t": 11.0, "type": "click" }, { "t": 13.0, "type": "click" },
-    { "t": 14.5, "type": "click" }, { "t": 15.25, "type": "click" },
-    { "t": 16.75, "type": "hover" },
-    { "t": 7.55, "type": "success" }, { "t": 9.05, "type": "success" }, { "t": 11.05, "type": "success" },
-    { "t": 13.05, "type": "thud" }, { "t": 15.3, "type": "impact", "small": true },
-    { "t": 18.0, "type": "impact" }
+  "book": [
+   "Book",
+   "Scout them, pick a slot, send the offer."
+  ],
+  "accept": [
+   "Accept",
+   "Crimson Five says yes. The room opens."
+  ],
+  "chat": [
+   "Chat",
+   "Talk it out and drop the party code."
+  ],
+  "checkin": [
+   "Check in",
+   "Both teams in. The room goes live."
+  ],
+  "veto": [
+   "Veto",
+   "Ban and pick together, down to the decider."
+  ],
+  "report": [
+   "Report",
+   "Enter the score. They confirm it."
+  ],
+  "insights": [
+   "Insights",
+   "Your rating and report, map by map."
   ]
+ },
+ "hook": {
+  "words": [
+   0.0,
+   0.5,
+   1.0,
+   1.5,
+   1.75
+  ],
+  "riser": [
+   1.25,
+   0.75
+  ],
+  "drop": 2.0
+ },
+ "reveal": {
+  "ticks": [
+   3.0,
+   3.25,
+   3.5,
+   3.75,
+   4.0,
+   4.25,
+   4.5,
+   4.75
+  ]
+ },
+ "screens": {
+  "find": {
+   "540": [
+    {
+     "t": 6.0,
+     "state": "discovery-base",
+     "cam": [
+      [
+       "title",
+       "card0"
+      ]
+     ]
+    },
+    {
+     "t": 6.5,
+     "cursor": "filters",
+     "click": true,
+     "state": "discovery-sheet",
+     "cam": [
+      [
+       "sheet"
+      ],
+      20
+     ]
+    },
+    {
+     "t": 7.0,
+     "cursor": "region",
+     "click": true,
+     "state": "discovery-region-open",
+     "cam": [
+      [
+       "list",
+       "region"
+      ],
+      40
+     ]
+    },
+    {
+     "t": 7.35,
+     "cursor": "ap",
+     "hover": true,
+     "state": "discovery-region-hover"
+    },
+    {
+     "t": 7.5,
+     "click": true,
+     "state": "discovery-region-picked",
+     "cam": [
+      [
+       "sheet"
+      ],
+      20
+     ]
+    },
+    {
+     "t": 8.0,
+     "state": "discovery-filtered",
+     "cam": [
+      [
+       "count",
+       "card0"
+      ],
+      16
+     ]
+    },
+    {
+     "t": 8.9,
+     "cursor": "request",
+     "hover": true,
+     "state": "discovery-hover"
+    },
+    {
+     "t": 9.5,
+     "click": true,
+     "state": "discovery-modal",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0,
+      640
+     ]
+    }
+   ],
+   "1440": [
+    {
+     "t": 6.0,
+     "state": "discovery-base",
+     "cam": [
+      [
+       "title",
+       "card5",
+       "aside"
+      ],
+      0,
+      1010
+     ]
+    },
+    {
+     "t": 6.5,
+     "cursor": "region",
+     "click": true,
+     "state": "discovery-region-open",
+     "cam": [
+      [
+       "region",
+       "list",
+       "card0"
+      ],
+      30
+     ]
+    },
+    {
+     "t": 7.0,
+     "cursor": "ap",
+     "hover": true,
+     "state": "discovery-region-hover"
+    },
+    {
+     "t": 7.5,
+     "click": true,
+     "state": "discovery-filtered",
+     "cam": [
+      [
+       "count",
+       "card0",
+       "card1"
+      ],
+      30
+     ]
+    },
+    {
+     "t": 8.9,
+     "cursor": "request",
+     "hover": true,
+     "state": "discovery-hover",
+     "cam": [
+      [
+       "card0"
+      ],
+      40
+     ]
+    },
+    {
+     "t": 9.5,
+     "click": true,
+     "state": "discovery-modal",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0,
+      640
+     ]
+    }
+   ]
+  },
+  "book": {
+   "*": [
+    {
+     "t": 10.0,
+     "state": "discovery-modal",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0,
+      640
+     ]
+    },
+    {
+     "t": 10.45,
+     "cam": [
+      [
+       "recent"
+      ],
+      0,
+      330,
+      -40
+     ]
+    },
+    {
+     "t": 10.9,
+     "cam": [
+      [
+       "pick",
+       "slot"
+      ],
+      30,
+      330,
+      -20
+     ]
+    },
+    {
+     "t": 11.3,
+     "cursor": "slot",
+     "hover": true,
+     "state": "discovery-slot-hover"
+    },
+    {
+     "t": 11.5,
+     "click": true,
+     "state": "discovery-slot"
+    },
+    {
+     "t": 11.75,
+     "cam": [
+      [
+       "requestScrim"
+      ],
+      0,
+      200,
+      -120,
+      380
+     ]
+    },
+    {
+     "t": 11.85,
+     "cursor": "requestScrim",
+     "hover": true,
+     "state": "discovery-request-hover"
+    },
+    {
+     "t": 12.0,
+     "click": true,
+     "state": "discovery-offer",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ]
+    },
+    {
+     "t": 12.3,
+     "cursor": "msg",
+     "click": true
+    },
+    {
+     "t": 12.55,
+     "keys": true,
+     "state": "discovery-type1"
+    },
+    {
+     "t": 12.85,
+     "keys": true,
+     "state": "discovery-type2"
+    },
+    {
+     "t": 13.25,
+     "cursor": "send",
+     "hover": true,
+     "state": "discovery-send-hover"
+    },
+    {
+     "t": 13.5,
+     "click": true,
+     "state": "discovery-sent",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ],
+     "sfx": "success"
+    }
+   ]
+  },
+  "accept": {
+   "*": [
+    {
+     "t": 14.0,
+     "state": "workspace-base",
+     "cam": [
+      [
+       "header",
+       "offer"
+      ],
+      8
+     ]
+    },
+    {
+     "t": 14.6,
+     "cam": [
+      [
+       "offer"
+      ],
+      10
+     ]
+    },
+    {
+     "t": 15.0,
+     "cursor": "roster",
+     "hover": true
+    },
+    {
+     "t": 15.9,
+     "cursor": "accept",
+     "hover": true,
+     "state": "workspace-hover",
+     "cam": [
+      [
+       "accept"
+      ],
+      0,
+      230,
+      -60,
+      508
+     ]
+    },
+    {
+     "t": 16.5,
+     "click": true,
+     "state": "workspace-accepting",
+     "sfx": "success"
+    },
+    {
+     "t": 17.1,
+     "cam": [
+      [
+       "offer"
+      ],
+      10
+     ]
+    }
+   ]
+  },
+  "chat": {
+   "*": [
+    {
+     "t": 18.0,
+     "state": "room-base",
+     "cam": [
+      [
+       "faceoff",
+       "next"
+      ],
+      0
+     ]
+    },
+    {
+     "t": 18.5,
+     "cursor": "chatBtn",
+     "click": true,
+     "state": "room-chat",
+     "cam": [
+      [
+       "chat"
+      ],
+      12
+     ]
+    },
+    {
+     "t": 18.8,
+     "cursor": "input",
+     "click": true
+    },
+    {
+     "t": 19.05,
+     "keys": true,
+     "state": "room-chat-type1"
+    },
+    {
+     "t": 19.35,
+     "keys": true,
+     "state": "room-chat-type2"
+    },
+    {
+     "t": 19.5,
+     "cursor": "send",
+     "click": true,
+     "state": "room-chat-sent"
+    },
+    {
+     "t": 20.0,
+     "cursor": "close",
+     "click": true,
+     "state": "room-lobby",
+     "cam": [
+      [
+       "lobby"
+      ],
+      12
+     ]
+    },
+    {
+     "t": 20.3,
+     "cursor": "lobbyInput",
+     "click": true
+    },
+    {
+     "t": 20.55,
+     "keys": true,
+     "state": "room-lobby-type1"
+    },
+    {
+     "t": 20.8,
+     "keys": true,
+     "state": "room-lobby-type2"
+    },
+    {
+     "t": 21.0,
+     "cursor": "save",
+     "click": true,
+     "state": "room-lobby-saved",
+     "sfx": "success"
+    }
+   ]
+  },
+  "checkin": {
+   "*": [
+    {
+     "t": 22.0,
+     "state": "room-lobby-saved",
+     "cam": [
+      [
+       "checkin"
+      ],
+      10
+     ]
+    },
+    {
+     "t": 22.8,
+     "cursor": "checkinBtn",
+     "hover": true,
+     "state": "room-checkin-hover"
+    },
+    {
+     "t": 23.0,
+     "click": true,
+     "state": "room-waiting",
+     "cam": [
+      [
+       "checkin"
+      ],
+      10
+     ]
+    },
+    {
+     "t": 24.0,
+     "state": "room-live",
+     "cam": [
+      [
+       "faceoff",
+       "next"
+      ],
+      0
+     ],
+     "sfx": "success"
+    },
+    {
+     "t": 24.8,
+     "cam": [
+      [
+       "veto"
+      ],
+      14
+     ]
+    },
+    {
+     "t": 25.2,
+     "cursor": "openVeto",
+     "hover": true
+    },
+    {
+     "t": 25.5,
+     "click": true,
+     "state": "room-veto",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ]
+    }
+   ]
+  },
+  "veto": {
+   "*": [
+    {
+     "t": 26.0,
+     "state": "room-veto",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ]
+    },
+    {
+     "t": 26.45,
+     "cam": [
+      [
+       "haven"
+      ],
+      0,
+      440,
+      -120,
+      520
+     ]
+    },
+    {
+     "t": 26.8,
+     "cursor": "haven",
+     "hover": true,
+     "state": "room-veto-hover"
+    },
+    {
+     "t": 27.0,
+     "click": true,
+     "state": "room-veto-banned",
+     "sfx": "thud"
+    },
+    {
+     "t": 27.25,
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ]
+    },
+    {
+     "t": 27.6,
+     "state": "room-veto-oppban",
+     "sfx": "thud"
+    },
+    {
+     "t": 28.2,
+     "cursor": "sunset",
+     "hover": true,
+     "state": "room-veto-pick-hover",
+     "cam": [
+      [
+       "sunset"
+      ],
+      0,
+      440,
+      -120,
+      520
+     ]
+    },
+    {
+     "t": 28.5,
+     "click": true,
+     "state": "room-veto-done",
+     "cam": [
+      [
+       "dialog"
+      ],
+      0
+     ],
+     "sfx": "success"
+    }
+   ]
+  },
+  "report": {
+   "*": [
+    {
+     "t": 30.0,
+     "state": "room-manual",
+     "cam": [
+      [
+       "m1",
+       "reportBtn",
+       "mm"
+      ],
+      10,
+      null,
+      0,
+      null,
+      18
+     ]
+    },
+    {
+     "t": 30.4,
+     "cursor": "m1",
+     "click": true
+    },
+    {
+     "t": 30.65,
+     "keys": true,
+     "state": "room-manual-1"
+    },
+    {
+     "t": 30.9,
+     "cursor": "m2",
+     "click": true
+    },
+    {
+     "t": 31.15,
+     "keys": true,
+     "state": "room-manual-2"
+    },
+    {
+     "t": 31.4,
+     "cursor": "mm",
+     "click": true
+    },
+    {
+     "t": 31.7,
+     "keys": true,
+     "state": "room-manual-3"
+    },
+    {
+     "t": 32.0,
+     "cursor": "reportBtn",
+     "click": true,
+     "state": "room-reported",
+     "cam": [
+      [
+       "result"
+      ],
+      0,
+      300
+     ]
+    },
+    {
+     "t": 33.0,
+     "state": "room-confirmed",
+     "cam": [
+      [
+       "faceoff"
+      ],
+      0
+     ],
+     "sfx": "impact",
+     "cam1440": [
+      [
+       "faceoff"
+      ],
+      0,
+      null,
+      0,
+      null,
+      0,
+      760
+     ]
+    }
+   ]
+  },
+  "insights": {
+   "*": [
+    {
+     "t": 34.0,
+     "state": "insights-base",
+     "cam": [
+      [
+       "hero"
+      ],
+      0
+     ]
+    },
+    {
+     "t": 35.0,
+     "cam": [
+      [
+       "rosterRow"
+      ],
+      0,
+      262
+     ]
+    },
+    {
+     "t": 35.25,
+     "cursor": "roster0",
+     "hover": true,
+     "state": "insights-hover"
+    },
+    {
+     "t": 35.75,
+     "cursor": "teamTab",
+     "click": true,
+     "state": "insights-team",
+     "cam": [
+      [
+       "tabs",
+       "body"
+      ],
+      0,
+      560
+     ]
+    },
+    {
+     "t": 36.9,
+     "cursor": "mapsTab",
+     "click": true,
+     "state": "insights-maps",
+     "cam": [
+      [
+       "tabs",
+       "body"
+      ],
+      0,
+      560
+     ]
+    }
+   ]
+  }
+ }
 }

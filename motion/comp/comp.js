@@ -200,9 +200,10 @@
   }
 
   // ------------------------------------------------------------------ background + fx state
-  const IMPACTS = TL.events.filter((e) => e.type === 'impact').map((e) => ({ t: e.t, big: !e.small }));
-  const WORD_HITS = TL.events.filter((e) => e.type === 'word').map((e) => e.t);
-  const CLICKS = TL.events.filter((e) => e.type === 'click').map((e) => e.t);
+  const STEPS = Object.values(TL.screens).flatMap((sc) => sc[String(CAPW)] || sc['*']);
+  const IMPACTS = [{ t: TL.hook.drop, big: true }, { t: 38.0, big: true }, ...STEPS.filter((st) => st.sfx === 'impact').map((st) => ({ t: st.t, big: false }))];
+  const WORD_HITS = TL.hook.words;
+  const CLICKS = STEPS.filter((st) => st.click).map((st) => st.t);
 
   function shakeAt(t) {
     let x = 0; let y = 0;
@@ -242,7 +243,7 @@
 
   const FEATURES = TL.beats.filter((b) => !['hook', 'reveal', 'outro'].includes(b.id));
   const hudBar = el('div', 'abs', hud, { display: 'flex', gap: `${LAND ? 10 : 8}px` });
-  const SEG_W = LAND ? 132 : SQUARE ? 126 : 128;
+  const SEG_W = LAND ? 132 : 112;
   const segs = FEATURES.map((b) => {
     const seg = el('div', '', hudBar, { width: `${SEG_W}px` });
     const track = el('div', '', seg, { height: '3px', background: 'rgba(255,255,255,0.12)', position: 'relative', overflow: 'hidden' });
@@ -255,7 +256,7 @@
   hudBar.style.transform = `translate(${(W - barW) / 2}px, ${H - Z.pad - (SQUARE ? 6 : 26)}px)`;
 
   function updateHud(t) {
-    const on = prog(t, 2.55, 2.8) * (1 - prog(t, 17.85, 18.05));
+    const on = prog(t, 2.55, 2.8) * (1 - prog(t, 37.85, 38.05));
     hud.style.opacity = on;
     show(hud, on > 0.001);
     if (on <= 0.001) return;
@@ -380,152 +381,160 @@
     hook.style.opacity = 1 - prog(t, 1.97, 2.0);
   }
 
-  // ------------------------------------------------------------------ REVEAL (2-4s) + FIND (4-6s): the discovery page
+  // ------------------------------------------------------------------ REVEAL (2-6s): the discovery page builds itself
   const page = el('div', 'layer', world, { transformOrigin: '50% 50%' });
   const D = 'discovery-base';
+  const TICKS = TL.reveal.ticks;
   const PIECES = LAND
     ? [
-      ['title', { x: 0, y: 16, w: 760, h: 84 }, 2.5, [-700, 0]],
-      ['my', box(D, 'myScrims'), 2.56, [500, -200]],
-      ['aside', { x: 24, y: 120, w: 256, h: 270 }, 2.62, [-600, 120]],
-      ['up', box(D, 'upNext'), 2.75, [0, -520]],
-      ['count', box(D, 'count'), 2.9, [-400, 0]],
-      ['card0', box(D, 'card0'), 3.0, [0, 700]], ['card1', box(D, 'card1'), 3.12, [0, 800]], ['card2', box(D, 'card2'), 3.25, [600, 600]],
-      ['card3', box(D, 'card3'), 3.37, [-600, 600]], ['card4', box(D, 'card4'), 3.5, [0, 800]], ['card5', box(D, 'card5'), 3.62, [700, 500]],
+      ['title', { x: 0, y: 16, w: 760, h: 84 }, [-700, 0]], ['my', box(D, 'myScrims'), [500, -200]],
+      ['aside', { x: 24, y: 120, w: 256, h: 270 }, [-600, 120]], ['up', box(D, 'upNext'), [0, -520]],
+      ['count', box(D, 'count'), [-400, 0]], ['card0', box(D, 'card0'), [0, 700]], ['card1', box(D, 'card1'), [0, 800]],
+      ['card2', box(D, 'card2'), [600, 600]], ['card3', box(D, 'card3'), [-600, 600]], ['card4', box(D, 'card4'), [0, 800]],
+      ['card5', box(D, 'card5'), [700, 500]],
     ]
     : [
-      ['title', { x: 0, y: 16, w: 540, h: 80 }, 2.5, [-640, 0]],
-      ['my', box(D, 'myScrims'), 2.56, [640, 0]],
-      ['up', box(D, 'upNext'), 2.75, [0, -700]],
-      ['count', { x: 0, y: 424, w: 540, h: 104 }, 3.0, [-640, 0]],
-      ['card0', box(D, 'card0'), 3.25, [0, 900]],
-      ['card1', box(D, 'card1'), 3.5, [640, 500]],
-      ['card2', box(D, 'card2'), 3.75, [-640, 500]],
+      ['title', { x: 0, y: 16, w: 540, h: 80 }, [-640, 0]], ['my', box(D, 'myScrims'), [640, 0]],
+      ['up', box(D, 'upNext'), [0, -700]], ['count', { x: 0, y: 424, w: 540, h: 104 }, [-640, 0]],
+      ['card0', box(D, 'card0'), [0, 900]], ['card1', box(D, 'card1'), [640, 500]], ['card2', box(D, 'card2'), [-640, 500]],
     ];
-  const pieces = PIECES.map(([id, rect, at, from], i) => {
-    const keys = id === 'card0' ? [D, 'discovery-hover'] : [D];
-    const p = new Panel(page, keys, rect, { flat: !id.startsWith('card') && id !== 'up' });
+  const pieces = PIECES.map(([id, rect, from], i) => {
+    const at = LAND ? TICKS[0] + i * ((TICKS[TICKS.length - 1] - TICKS[0]) / (PIECES.length - 1)) : TICKS[Math.min(i, TICKS.length - 1)];
+    const p = new Panel(page, [D], rect, { flat: !id.startsWith('card') && id !== 'up' });
     return { id, rect, at, from, p, i };
   });
-  const card0 = pieces.find((x) => x.id === 'card0');
-
-  // Page camera: capture point (cx, cy) lands on frame point (fx, fy) at scale s.
   const PAGE_VIEW = LAND ? { s: 1.24, cx: 720, cy: 520, fx: W / 2, fy: H / 2 + 20 }
     : PORTRAIT ? { s: 1.78, cx: 270, cy: 360, fx: W / 2, fy: H / 2 + 60 }
       : { s: 1.62, cx: 270, cy: 300, fx: W / 2, fy: H / 2 + 40 };
-  const c0 = center(box(D, 'card0'));
-  const FIND_VIEW = { s: LAND ? 1.9 : PORTRAIT ? 1.86 : 1.75, cx: c0[0], cy: c0[1], fx: UIC.x, fy: UIC.y };
 
-  // Modal: a window onto the real scouting dialog that scrolls like the real one.
-  const dlg = box('discovery-modal', 'dialog');
-  const WIN_H = LAND ? 590 : PORTRAIT ? 630 : 380;
-  const modal = new Panel(world, ['discovery-modal', 'discovery-slot-hover', 'discovery-slot'], { x: dlg.x, y: dlg.y, w: dlg.w, h: WIN_H });
-  const modalS = Math.min(SMAX, Z.ui.w / dlg.w, Z.ui.h / WIN_H);
-  const pick = box('discovery-modal', 'pick');
-  const SCROLL = pick.y - dlg.y - 26;
-  const slotC = center(box('discovery-modal', 'slot'));
-
-  const offerBox = box('discovery-offer', 'dialog');
-  const sentBox = box('discovery-sent', 'dialog');
-  const offer = new Panel(world, ['discovery-offer', 'discovery-send-hover'], offerBox);
-  const sent = new Panel(world, ['discovery-sent'], sentBox);
-  const offerS = Math.min(SMAX, Z.ui.w / offerBox.w, Z.ui.h / offerBox.h);
-  const sendC = center(box('discovery-offer', 'send'));
-  const backdrop = el('div', 'layer', world, { background: 'rgba(9,9,11,0.72)', opacity: 0 });
-  world.insertBefore(backdrop, modal.el);
-
-  function pageCam(t) {
-    // Reveal: tilted plane flattening; Find: push into the Crimson Five card.
-    const p = E.inOutExpo(prog(t, 4.0, 4.6));
-    const v = {};
-    for (const k of ['s', 'cx', 'cy', 'fx', 'fy']) v[k] = lerp(PAGE_VIEW[k], FIND_VIEW[k], p);
-    return v;
-  }
-
-  function updatePage(t) {
-    const on = t >= 2.3 && t < 6.25;
+  function updateReveal(t) {
+    const on = t >= 2.8 && t < 6.1;
     show(page, on);
     if (!on) return;
-    const cam = pageCam(t);
-    const tilt = 1 - E.inOutCubic(prog(t, 2.5, 4.05));
-    page.style.transform = `perspective(2400px) rotateX(${tilt * 32}deg) rotateZ(${tilt * -9}deg) scale(${1 - tilt * 0.12})`;
-    const dim = E.outCubic(prog(t, 4.1, 4.5));
-    const exitP = E.inExpo(prog(t, 5.0, 5.3));
+    const cam = PAGE_VIEW;
+    const tilt = 1 - E.inOutCubic(prog(t, 2.9, 5.5));
+    const out = E.inExpo(prog(t, 5.8, 6.05));
+    page.style.transform = `perspective(2400px) rotateX(${tilt * 32}deg) rotateZ(${tilt * -9}deg) scale(${(1 - tilt * 0.12) * (1 + out * 0.6)})`;
+    page.style.opacity = 1 - out;
+    page.style.filter = out > 0.02 ? `blur(${out * 24}px)` : 'none';
     pieces.forEach(({ id, rect, at, from, p, i }) => {
       const [rx, ry] = center(rect);
-      const hx = cam.fx + cam.s * (rx - cam.cx);
-      const hy = cam.fy + cam.s * (ry - cam.cy);
       const e = prog(t, at, at + 0.42);
       const ee = E.outExpo(e);
-      const back = E.outBack(e);
       const isCard = id.startsWith('card');
-      const opBase = t < at ? 0 : clamp((t - at) / 0.06);
-      const focus = id === 'card0';
       p.set({
-        x: hx + from[0] * (1 - ee), y: hy + from[1] * (1 - ee), s: cam.s * (isCard ? lerp(0.8, 1, back) : 1),
-        rot: (1 - ee) * (i % 2 ? 7 : -7), rx: isCard ? (1 - ee) * 60 : 0,
-        op: opBase * (focus ? 1 : lerp(1, 0.16, dim)) * (1 - exitP * (focus ? 0.75 : 1)),
-        blur: (1 - ee) * 14 + (focus ? 0 : dim * 2.5) + exitP * 6,
-        mix: focus ? mixAt(t, [[0, D], [4.8, 'discovery-hover']]) : { [D]: 1 },
+        x: cam.fx + cam.s * (rx - cam.cx) + from[0] * (1 - ee), y: cam.fy + cam.s * (ry - cam.cy) + from[1] * (1 - ee),
+        s: cam.s * (isCard ? lerp(0.8, 1, E.outBack(e)) : 1), rot: (1 - ee) * (i % 2 ? 7 : -7), rx: isCard ? (1 - ee) * 60 : 0,
+        op: t < at ? 0 : clamp((t - at) / 0.06), blur: (1 - ee) * 14, mix: { [D]: 1 },
       });
     });
-    // Cursor: in from the corner, onto Request, click on the beat.
-    if (t >= 4.3 && t < 5.4) {
-      const req = center(box(D, 'request'));
-      const target = card0.p.map(req[0], req[1]);
-      const pos = travel(t, 4.35, 4.86, [W + 60, H * 0.9], target, -0.18);
-      setCursor(pos[0], pos[1], prog(t, 4.3, 4.4) * (1 - prog(t, 5.25, 5.4)), pressAt(t, 5.0));
-      ringAt(0, t, 5.0, target[0], target[1]);
-    }
   }
 
-  function updateModal(t) {
-    // FIND tail (5.0-6.0) and BOOK (6.0-7.1): scouting dialog, then scroll to Pick a time.
-    const on = t >= 5.0 && t < 7.12;
-    show(backdrop, t >= 4.95 && t < 8.25);
-    backdrop.style.opacity = E.outCubic(prog(t, 4.98, 5.3)) * (1 - E.inExpo(prog(t, 7.95, 8.15)));
-    if (!on) { modal.set({ x: 0, y: 0, op: 0 }); } else {
-      const enter = E.outExpo(prog(t, 5.02, 5.45));
-      const exit = E.inExpo(prog(t, 6.9, 7.06));
-      const scroll = E.inOutExpo(prog(t, 6.0, 6.36)) * SCROLL;
-      modal.set({
-        rect: { x: dlg.x, y: dlg.y + scroll, w: dlg.w, h: WIN_H },
-        x: UIC.x, y: UIC.y + (1 - enter) * H * 0.35 - exit * H * 0.55,
-        s: modalS * lerp(0.86, 1, enter) * (1 + 0.04 * E.outCubic(prog(t, 6.5, 6.9))),
-        rx: (1 - enter) * -25, op: clamp(prog(t, 5.02, 5.1)), blur: (1 - enter) * 10 + exit * 28,
-        mix: mixAt(t, [[0, 'discovery-modal'], [6.38, 'discovery-slot-hover'], [6.5, 'discovery-slot']]),
-      });
-      if (t >= 5.9) {
-        const target = modal.map(slotC[0], slotC[1]);
-        const pos = travel(t, 5.95, 6.42, [W * 0.92, H * 0.95], target, 0.15);
-        setCursor(pos[0], pos[1], prog(t, 5.9, 6.0) * (1 - prog(t, 6.85, 6.95)), pressAt(t, 6.5));
-        ringAt(1, t, 6.5, target[0], target[1]);
-      }
+  // ------------------------------------------------------------------ SCREENS (6-38s): one real interaction per beat
+  const MAN_KEYS = Object.keys(MAN);
+  function boxOf(key, name) {
+    const hit = MAN[key] && MAN[key].boxes[name];
+    if (hit) return hit;
+    const pre = key.split('-')[0];
+    const i = MAN_KEYS.indexOf(key);
+    for (let j = i; j >= 0; j -= 1) if (MAN_KEYS[j].startsWith(pre) && MAN[MAN_KEYS[j]].boxes[name]) return MAN[MAN_KEYS[j]].boxes[name];
+    for (let j = i; j < MAN_KEYS.length; j += 1) if (MAN_KEYS[j].startsWith(pre) && MAN[MAN_KEYS[j]].boxes[name]) return MAN[MAN_KEYS[j]].boxes[name];
+    throw new Error(`no box "${name}" near ${key}`);
+  }
+  /** Camera spec [names, pad, maxH, dy, minW, top] -> a rect in capture px. */
+  function camRect(spec, key) {
+    const [names, pad = 0, maxH = null, dy = 0, minW = null, top = 0, maxW = null] = spec;
+    const bs = names.map((n) => boxOf(key, n));
+    let x0 = Math.min(...bs.map((b) => b.x)) - pad;
+    let x1 = Math.max(...bs.map((b) => b.x + b.w)) + pad;
+    let y0 = Math.min(...bs.map((b) => b.y)) - pad - top;
+    let y1 = Math.max(...bs.map((b) => b.y + b.h)) + pad;
+    if (maxW && x1 - x0 > maxW) { const c = (x0 + x1) / 2; x0 = c - maxW / 2; x1 = c + maxW / 2; }
+    if (minW && x1 - x0 < minW) { const c = (x0 + x1) / 2; x0 = c - minW / 2; x1 = c + minW / 2; }
+    const shift = x0 < 0 ? -x0 : x1 > CAPW ? CAPW - x1 : 0;
+    x0 += shift; x1 += shift;
+    if (maxH) {
+      if (y1 - y0 < maxH) { const c = (y0 + y1) / 2; y0 = c - maxH / 2; y1 = c + maxH / 2; } else y1 = y0 + maxH;
     }
-    // Offer step, then the request goes out.
-    const on2 = t >= 6.95 && t < 8.15;
-    if (!on2) { offer.set({ x: 0, y: 0, op: 0 }); sent.set({ x: 0, y: 0, op: 0 }); return; }
-    const enter = E.outExpo(prog(t, 6.98, 7.3));
-    const exit = E.inExpo(prog(t, 7.9, 8.08));
-    const pop = 1 + 0.035 * Math.sin(Math.PI * prog(t, 7.5, 7.75));
-    const common = { x: UIC.x - exit * W * 0.6, y: UIC.y + (1 - enter) * H * 0.6, rx: (1 - enter) * 30, blur: (1 - enter) * 22 + exit * 30 };
-    offer.set({ ...common, s: offerS * pop, op: 1 - prog(t, 7.5, 7.56), mix: mixAt(t, [[0, 'discovery-offer'], [7.4, 'discovery-send-hover']]) });
-    const sentS = Math.min(SMAX, Z.ui.w / sentBox.w, Z.ui.h / sentBox.h, offerS);
-    sent.set({ ...common, s: sentS * pop, op: prog(t, 7.5, 7.56), mix: { 'discovery-sent': 1 } });
-    if (t >= 7.0 && t < 7.85) {
-      const target = offer.map(sendC[0], sendC[1]);
-      const pos = travel(t, 7.02, 7.42, [W * 0.25, H * 0.98], target, -0.12);
-      setCursor(pos[0], pos[1], prog(t, 7.0, 7.08) * (1 - prog(t, 7.72, 7.85)), pressAt(t, 7.5));
-      ringAt(0, t, 7.5, target[0], target[1]);
-    }
+    return { x: x0, y: y0 + dy, w: x1 - x0, h: y1 - y0 };
   }
 
-  // ------------------------------------------------------------------ ROOM beats: agree, check in, veto, report
-  function roomBeat(o) {
+  const STYLES = ['left', 'up', 'right', 'down'];
+  const SCREEN_IDS = Object.keys(TL.screens);
+  const screens = SCREEN_IDS.map((id, n) => {
+    const beat = TL.beats.find((b) => b.id === id);
+    const steps = TL.screens[id][String(CAPW)] || TL.screens[id]['*'];
     const g = el('div', 'layer', world);
-    const panels = o.rects.map((r) => new Panel(g, o.keys, r));
-    const lay = stack(o.rects, o.zone || Z.ui, o.gap ?? 26, o.sMax ?? SMAX);
-    return { ...o, g, panels, lay };
+    let cur = steps[0].state;
+    const states = []; const cams = []; const targets = []; const clicks = [];
+    let lastTarget = null;
+    steps.forEach((st) => {
+      if (st.state) { cur = st.state; if (!states.find((s) => s[1] === cur)) states.push([st.t, cur]); else states.push([st.t, cur]); }
+      const camSpec = st[`cam${CAPW}`] || st.cam;
+      if (camSpec) cams.push([st.t, camRect(camSpec, cur)]);
+      if (st.cursor) {
+        // Targets come from the state on screen before this step's own change.
+        const prevState = [...states].reverse().find((s) => s[0] < st.t || (s[0] === st.t && !st.state))?.[1] ?? cur;
+        const keyFor = st.state && st.click ? prevState : (st.state || prevState);
+        lastTarget = { t: st.t, pt: center(boxOf(keyFor, st.cursor)), click: !!st.click };
+        targets.push(lastTarget);
+      } else if (st.click && lastTarget) {
+        clicks.push({ t: st.t, pt: lastTarget.pt });
+      }
+      if (st.click && st.cursor) clicks.push({ t: st.t, pt: lastTarget.pt });
+    });
+    // Panel image stack in first-seen order; later states fade in over earlier ones.
+    const keys = [];
+    states.forEach(([, k]) => { if (!keys.includes(k)) keys.push(k); });
+    const seq = []; states.forEach(([ts, k]) => { if (!seq.length || seq[seq.length - 1][1] !== k) seq.push([ts, k]); });
+    const panel = new Panel(g, keys, cams[0][1]);
+    return { id, beat, g, panel, seq, cams, targets, clicks, style: STYLES[n % 4], keys };
+  });
+
+  function camAt(S, t) {
+    let r = S.cams[0][1];
+    for (let i = 1; i < S.cams.length; i += 1) {
+      const [ts, nr] = S.cams[i];
+      const p = E.inOutExpo(prog(t, ts - 0.04, ts + 0.42));
+      if (p <= 0) break;
+      r = { x: lerp(r.x, nr.x, p), y: lerp(r.y, nr.y, p), w: lerp(r.w, nr.w, p), h: lerp(r.h, nr.h, p) };
+    }
+    return r;
+  }
+
+  function updateScreen(t, S) {
+    const b = S.beat;
+    const on = t >= b.start - 0.08 && t < b.end + 0.08;
+    show(S.g, on);
+    if (!on) return;
+    const ee = enterExit(t, b, S.style);
+    const r = camAt(S, t);
+    const s = Math.min(SMAX, Z.ui.w / r.w, Z.ui.h / r.h);
+    const breathe = 1 + 0.015 * Math.sin((t - b.start) * 1.7);
+    const hold = S.id === 'insights' ? lerp(0.1, 1, prog(t, 34.42, 34.6)) : 1;
+    S.panel.set({
+      rect: r, x: UIC.x + ee.dx, y: UIC.y + ee.dy, s: s * breathe * lerp(0.9, 1, ee.e), rx: (1 - ee.e) * 24,
+      op: clamp(prog(t, b.start - 0.06, b.start + 0.06)) * hold, blur: ee.blur, mix: mixAt(t, S.seq),
+    });
+    // Cursor: travels target to target, pressing on the clicks.
+    if (S.targets.length) {
+      const first = S.targets[0];
+      const entry = S.style === 'left' ? [W + 60, H * 0.85] : S.style === 'right' ? [-60, H * 0.85] : [W * 0.85, H + 60];
+      let pos = entry;
+      let prevT = b.start + 0.2;
+      for (const tg of S.targets) {
+        const dest = S.panel.map(tg.pt[0], tg.pt[1]);
+        const t0 = Math.max(prevT + 0.05, tg.t - 0.5);
+        if (t < t0) break;
+        pos = travel(t, t0, tg.t - 0.06, pos, dest, 0.12);
+        prevT = tg.t;
+      }
+      void first;
+      const press = Math.max(0, ...S.clicks.map((c) => pressAt(t, c.t)));
+      const fade = prog(t, b.start + 0.15, b.start + 0.3) * (1 - prog(t, b.end - 0.18, b.end - 0.04));
+      setCursor(pos[0], pos[1], fade, press);
+      S.clicks.forEach((c, i) => { const [x, y] = S.panel.map(c.pt[0], c.pt[1]); ringAt(i % 2, t, c.t, x, y); });
+    }
   }
 
   function enterExit(t, b, style) {
@@ -537,166 +546,28 @@
     return { e, x, dx: (dx * k - dx * x) * W * 0.7, dy: (dy * k - dy * x) * H * 0.55, blur: k * 22 + x * 26 };
   }
 
-  function updateRoom(t, R) {
-    const b = R.beat;
-    const on = t >= b.start - 0.06 && t < b.end + 0.06;
-    show(R.g, on);
-    if (!on) return;
-    const ee = enterExit(t, b, R.style);
-    const mix = mixAt(t, R.states);
-    // Camera: lean in toward the action, release after the click.
-    const zIn = E.inOutCubic(prog(t, R.clicks[0] - 0.45, R.clicks[0] - 0.02)) * (1 - E.inOutCubic(prog(t, R.clicks[R.clicks.length - 1] + 0.15, b.end - 0.1)));
-    const zoom = 1 + (R.zoom ?? 0.1) * (SQUARE ? 0.35 : 1) * zIn;
-    const fi = R.focus ?? R.panels.length - 1;
-    const FL = R.lay[fi];
-    const fr = R.rects[fi];
-    let fpt = [UIC.x, UIC.y];
-    if (R.focusPt) {
-      const [px, py] = R.focusPt(t);
-      fpt = [FL.x + FL.s * (px - (fr.x + fr.w / 2)), FL.y + FL.s * (py - (fr.y + fr.h / 2))];
-    }
-    R.panels.forEach((p, i) => {
-      const L0 = R.lay[i];
-      const st = E.outExpo(prog(t, b.start + i * 0.07, b.start + 0.45 + i * 0.07));
-      const x = fpt[0] + (L0.x - fpt[0]) * zoom + ee.dx + (1 - st) * (i % 2 ? -90 : 90);
-      const y = fpt[1] + (L0.y - fpt[1]) * zoom + ee.dy + (1 - st) * 140;
-      const rect = R.rectsByTime && i === 1 ? R.rectsByTime(t) : undefined;
-      const yAnchor = rect && R.anchorTop ? ((rect.h - R.rects[i].h) / 2) * L0.s * zoom : 0;
-      p.set({ rect, x, y: y + yAnchor, s: L0.s * zoom * lerp(0.92, 1, st), rx: (1 - st) * 28, op: clamp(prog(t, b.start - 0.04, b.start + 0.06)) * (R.hold ? lerp(R.hold(t), 1, prog(t, 16.42, 16.6)) : 1), blur: ee.blur, mix });
-    });
-    if (R.cursor) R.cursor(t, R);
-    if (R.extra) R.extra(t, R, ee);
-  }
-
-  function clickTrack(R, t, targets, from) {
-    // targets: [[tClick, panelIndex, [cx, cy]], ...]
-    const b = R.beat;
-    let prev = from;
-    targets.forEach(([tc, pi0, pt], i) => {
-      const pi = pi0 < 0 ? R.panels.length + pi0 : pi0;
-      const tgt = R.panels[pi].map(pt[0], pt[1]);
-      const t0 = i === 0 ? b.start + 0.32 : targets[i - 1][0] + 0.1;
-      const t1 = tc - 0.1;
-      const nextStart = targets[i + 1] ? targets[i + 1][0] + 0.1 - (targets[i + 1][0] - tc) : b.end;
-      if (t >= t0 - 0.05 && t < (targets[i + 1] ? targets[i][0] + 0.1 : b.end)) {
-        const pos = travel(t, t0, t1, prev, tgt, i % 2 ? 0.14 : -0.14);
-        const fade = prog(t, b.start + 0.25, b.start + 0.36) * (1 - prog(t, b.end - 0.2, b.end - 0.08));
-        setCursor(pos[0], pos[1], fade, pressAt(t, tc));
-      }
-      ringAt(i % 2, t, tc, tgt[0], tgt[1]);
-      prev = tgt;
-      void nextStart;
-    });
-  }
-
-  const BEAT = Object.fromEntries(TL.beats.map((b) => [b.id, b]));
-  const B = (k, n) => box(k, n);
-  const cOf = (k, n) => center(B(k, n));
-
-  const agree = roomBeat({
-    beat: BEAT.agree, style: 'left',
-    keys: ['room-time-base', 'room-time-hover', 'room-time-accepted'],
-    states: [[0, 'room-time-base'], [8.84, 'room-time-hover'], [9.0, 'room-time-accepted']],
-    rects: LAND
-      ? [{ x: 32, y: 74, w: 1376, h: 161 }, { x: 32, y: 444, w: 760, h: 456 }]
-      : SQUARE ? [{ x: 16, y: 467, w: 508, h: 456 }]
-        : [{ x: 16, y: 66, w: 508, h: 377 }, { x: 16, y: 467, w: 508, h: 456 }],
-    clicks: [9.0], zoom: 0.07, focusPt: () => cOf('room-time-base', 'accept'),
-    cursor: (t, R) => clickTrack(R, t, [[9.0, -1, cOf('room-time-base', 'accept')]], [-80, H * 0.75]),
-  });
-
-  const checkin = roomBeat({
-    beat: BEAT.checkin, style: 'up',
-    keys: ['room-checkin-base', 'room-checkin-hover', 'room-checkin-checked'],
-    states: [[0, 'room-checkin-base'], [10.86, 'room-checkin-hover'], [11.0, 'room-checkin-checked']],
-    rects: LAND
-      ? [{ x: 32, y: 74, w: 1376, h: 180 }, { x: 32, y: 546, w: 760, h: 312 }]
-      : [{ x: 16, y: 66, w: 508, h: 150 }, { x: 16, y: 560, w: 508, h: 330 }],
-    clicks: [11.0], zoom: 0.1, focusPt: () => cOf('room-checkin-base', 'checkinBtn'),
-    cursor: (t, R) => clickTrack(R, t, [[11.0, 1, cOf('room-checkin-base', 'checkinBtn')]], [W + 80, H * 0.98]),
-  });
-
-  const vetoDlg = B('room-veto-dialog', 'dialog');
-  const veto = roomBeat({
-    beat: BEAT.veto, style: 'right',
-    keys: ['room-veto-dialog', 'room-veto-hover', 'room-veto-banned'],
-    states: [[0, 'room-veto-dialog'], [12.84, 'room-veto-hover'], [13.0, 'room-veto-banned']],
-    rects: LAND
-      ? [{ x: vetoDlg.x, y: vetoDlg.y + 88, w: vetoDlg.w, h: vetoDlg.h - 96 }]
-      : SQUARE ? [{ x: vetoDlg.x, y: vetoDlg.y + 178, w: vetoDlg.w, h: 64 }, { x: vetoDlg.x, y: 1490, w: vetoDlg.w, h: 370 }]
-        : [{ x: vetoDlg.x, y: vetoDlg.y + 170, w: vetoDlg.w, h: vetoDlg.h - 176 }],
-    clicks: [13.0], zoom: 0.1, focusPt: () => cOf('room-veto-dialog', 'haven'),
-    cursor: (t, R) => clickTrack(R, t, [[13.0, R.panels.length - 1, cOf('room-veto-dialog', 'haven')]], [-80, H * 0.4]),
-  });
-
-  const report = roomBeat({
-    beat: BEAT.report, style: 'down',
-    keys: ['room-report-base', 'room-report-hover', 'room-report-fetched', 'room-report-candidate-hover', 'room-report-reported'],
-    states: [[0, 'room-report-base'], [14.36, 'room-report-hover'], [14.5, 'room-report-fetched'], [15.12, 'room-report-candidate-hover'], [15.25, 'room-report-reported']],
-    rects: LAND
-      ? [{ x: 32, y: 74, w: 1376, h: 180 }, { x: 32, y: 462, w: 972, h: 560 }]
-      : SQUARE ? [{ x: 16, y: 66, w: 508, h: 150 }, { x: 16, y: 1240, w: 508, h: 300 }]
-        : [{ x: 16, y: 66, w: 508, h: 150 }, { x: 16, y: 979, w: 508, h: 560 }],
-    clicks: [14.5, 15.25], zoom: 0.08,
-    focusPt: (t) => (t < 14.75 ? cOf('room-report-base', 'fetch') : cOf('room-report-fetched', 'candidate')),
-    cursor: (t, R) => clickTrack(R, t, [[14.5, 1, cOf('room-report-base', 'fetch')], [15.25, 1, cOf('room-report-fetched', 'candidate')]], [W + 80, H * 0.6]),
-  });
-  {
-    // The result panel grows when the list arrives and collapses once the map is reported: the window follows it.
-    const full = report.rects[1];
-    const hAt = (t) => {
-      const base = LAND ? 381 : SQUARE ? 260 : 410;
-      const done = LAND ? 270 : SQUARE ? 250 : 275;
-      const grow = E.outExpo(prog(t, 14.5, 14.8));
-      const shrink = E.inOutExpo(prog(t, 15.26, 15.5));
-      return lerp(lerp(base, full.h, grow), done, shrink);
-    };
-    report.rectsByTime = (t) => ({ ...full, h: hAt(t) });
-    report.anchorTop = true;
-  }
-
-  // ------------------------------------------------------------------ INSIGHTS (16-18s)
-  const ins = roomBeat({
-    beat: BEAT.insights, style: 'left',
-    keys: ['insights-base', 'insights-hover'],
-    states: [[0, 'insights-base'], [16.72, 'insights-hover']],
-    rects: LAND
-      ? [B('insights-base', 'hero'), B('insights-base', 'rosterRow'), { x: 32, y: 621, w: 980, h: 290 }]
-      : [B('insights-base', 'hero'), { x: 16, y: 482, w: 508, h: 260 }],
-    clicks: [16.75], zoom: 0.08, focus: 0, focusPt: () => cOf('insights-base', 'rating'),
-    cursor: (t, R) => clickTrack(R, t, [[16.75, 1, cOf('insights-base', 'roster0')]], [-80, H * 0.9]),
-  });
+  // The Insights count-up: a giant 74 lands on the real rating.
+  const ins = screens.find((S) => S.id === 'insights');
   const count = el('div', 'display abs', world, { fontSize: `${PORTRAIT ? 620 : LAND ? 560 : 440}px`, lineHeight: '1', opacity: 0, letterSpacing: '-0.06em' });
-  const RATING = cOf('insights-base', 'rating');
+  const RATING = center(boxOf('insights-base', 'rating'));
   function updateCount(t) {
-    const on = t >= 15.98 && t < 16.75;
+    const on = t >= 33.98 && t < 34.75;
     show(count, on);
     if (!on) return;
-    const n = Math.round(74 * E.outCubic(prog(t, 16.02, 16.42)));
-    count.textContent = String(n);
+    count.textContent = String(Math.round(74 * E.outCubic(prog(t, 34.02, 34.42))));
     const r = count.getBoundingClientRect();
-    const target = ins.panels[0].map(RATING[0] - 18, RATING[1] + 4);
-    const land = E.inOutExpo(prog(t, 16.42, 16.64));
-    const finalS = (ins.panels[0].s * 74) / (PORTRAIT ? 620 : LAND ? 560 : 440);
+    const target = ins.panel.map(RATING[0] - 18, RATING[1] + 4);
+    const land = E.inOutExpo(prog(t, 34.42, 34.64));
+    const finalS = (ins.panel.s * 74) / (PORTRAIT ? 620 : LAND ? 560 : 440);
     const cx = lerp(UIC.x, target[0], land);
     const cy = lerp(UIC.y - (PORTRAIT ? 40 : 0), target[1], land);
-    const sc = lerp(lerp(1.25, 1, E.outExpo(prog(t, 15.98, 16.3))), finalS, land);
+    const sc = lerp(lerp(1.25, 1, E.outExpo(prog(t, 33.98, 34.3))), finalS, land);
     count.style.transform = `translate(${cx - r.width / 2}px, ${cy - r.height / 2}px) scale(${sc})`;
-    count.style.opacity = prog(t, 15.98, 16.04) * (1 - prog(t, 16.6, 16.7));
+    count.style.opacity = prog(t, 33.98, 34.04) * (1 - prog(t, 34.6, 34.7));
   }
-  // The insights cards wait behind the count, then the number lands on its real place.
-  ins.hold = () => 0.12;
 
   // ------------------------------------------------------------------ feature words
-  const CAPTIONS = {
-    find: ['Find', 'Compare records, then send a request.'],
-    book: ['Book', 'Pick an open slot. Send the offer.'],
-    agree: ['Agree', 'Crimson Five proposed a time.'],
-    checkin: ['Check in', 'If a team misses it, the scrim is cancelled.'],
-    veto: ['Veto', 'Ban and pick maps together.'],
-    report: ['Report', 'Fetch it from your Riot history.'],
-    insights: ['Insights', 'Built from maps both teams confirmed.'],
-  };
+  const CAPTIONS = TL.captions;
   const WORD_MAX = PORTRAIT ? 250 : SQUARE ? 150 : 200;
   const shade = el('div', 'abs', words, {
     width: `${W}px`, height: `${LAND ? H : Z.ui.y + 6}px`,
@@ -725,7 +596,7 @@
   });
 
   function updateWords(t) {
-    shade.style.opacity = prog(t, 3.9, 4.1) * (1 - prog(t, 17.9, 18.05));
+    shade.style.opacity = prog(t, 5.9, 6.1) * (1 - prog(t, 37.9, 38.05));
     featureWords.forEach(({ b, blk, tick, chars, capEl, eyebrow }) => {
       const on = t >= b.start - 0.02 && t < b.end + 0.02;
       show(blk, on);
@@ -779,10 +650,10 @@
   function updateLogo(t) {
     // Reveal: slam at 2.0, then shrink into the HUD corner by 2.75.
     const inReveal = t >= 2.0 && t < 2.8;
-    const inOutro = t >= 17.95;
+    const inOutro = t >= 37.95;
     show(logo, inReveal || inOutro);
-    show(shock, (t >= 2.0 && t < 2.6) || (t >= 18.0 && t < 18.6));
-    shards.style.opacity = 0.55 * prog(t, 2.0, 2.1) * (1 - prog(t, 2.6, 3.1)) + 0.5 * prog(t, 18.0, 18.3);
+    show(shock, (t >= 2.0 && t < 2.6) || (t >= 38.0 && t < 38.6));
+    shards.style.opacity = 0.55 * prog(t, 2.0, 2.1) * (1 - prog(t, 2.6, 3.1)) + 0.5 * prog(t, 38.0, 38.3);
     if (inReveal) {
       const slamP = E.outExpo(prog(t, 2.0, 2.22));
       const toHud = E.inOutExpo(prog(t, 2.42, 2.78));
@@ -802,27 +673,27 @@
       shock.style.transform = `translate(${W / 2 - 100}px, ${H / 2 - 100 - (inOutro && PORTRAIT ? 180 : 0)}px) scale(${0.4 + E.outExpo(p) * (Math.max(W, H) / 120)})`;
     };
     if (t >= 2.0 && t < 2.6) sh(2.0);
-    if (t >= 18.0 && t < 18.6) sh(18.0);
+    if (t >= 38.0 && t < 38.6) sh(38.0);
     hudLogo.style.opacity = prog(t, 2.74, 2.8);
     if (inOutro) {
-      const p = E.outExpo(prog(t, 18.0, 18.35));
+      const p = E.outExpo(prog(t, 38.0, 38.35));
       const ly = PORTRAIT ? H * 0.38 : SQUARE ? H * 0.36 : H * 0.36;
-      const drift = 1 + 0.03 * prog(t, 18.3, 20);
-      placeLogo(W / 2, ly, lerp(1.4, LAND ? 0.82 : 0.86, p) * drift, E.outExpo(prog(t, 18.12, 18.5)), prog(t, 18.0, 18.04));
+      const drift = 1 + 0.03 * prog(t, 38.3, 42);
+      placeLogo(W / 2, ly, lerp(1.4, LAND ? 0.82 : 0.86, p) * drift, E.outExpo(prog(t, 38.12, 38.5)), prog(t, 38.0, 38.04));
       const tb = tagline.getBoundingClientRect();
       const ty = ly + (MARK_H + WORD_H * 1.6) * 0.86 / 2 + (PORTRAIT ? 90 : 52);
       tagline.style.opacity = 1;
       tagline.style.transform = `translate(${W / 2 - tb.width / 2}px, ${ty}px)`;
       taglineChars.forEach((c, i) => {
-        const a = 18.25 + i * 0.025;
+        const a = 38.25 + i * 0.025;
         const q = E.outExpo(prog(t, a, a + 0.4));
         c.style.transform = `translateY(${(1 - q) * 60}px)`;
         c.style.opacity = q;
       });
       const ub = url.getBoundingClientRect();
-      url.style.opacity = prog(t, 18.7, 18.95);
+      url.style.opacity = prog(t, 38.7, 38.95);
       url.style.transform = `translate(${W / 2 - ub.width / 2}px, ${ty + tb.height + (PORTRAIT ? 64 : 40)}px)`;
-      urlTick.style.transform = `scaleX(${E.outExpo(prog(t, 18.75, 19.1))})`;
+      urlTick.style.transform = `scaleX(${E.outExpo(prog(t, 38.75, 39.1))})`;
     } else { tagline.style.opacity = 0; url.style.opacity = 0; }
   }
 
@@ -830,7 +701,7 @@
   const cue = el('div', 'abs', fx, { height: '4px', width: `${W}px`, background: 'var(--rose)', transformOrigin: '0 50%', opacity: 0 });
   function updateCue(t) {
     let shown = false;
-    FEATURES.concat([BEAT.outro]).forEach((b, i) => {
+    FEATURES.concat([TL.beats.find((x) => x.id === 'outro')]).forEach((b, i) => {
       const p = prog(t, b.start - 0.06, b.start + 0.16);
       if (p > 0 && p < 1) {
         shown = true;
@@ -844,7 +715,6 @@
   }
 
   // ------------------------------------------------------------------ frame
-  const ROOM_BEATS = [agree, checkin, veto, report, ins];
   window.renderFrame = (t) => {
     cursorOn = false;
     setCursor(0, 0, 0);
@@ -858,16 +728,14 @@
     grain.style.backgroundPosition = `${Math.floor(hash(Math.floor(t * 60)) * 960)}px ${Math.floor(hash(Math.floor(t * 60) + 9) * 540)}px`;
     flashEl.style.opacity = flashAt(t);
     updateHook(t);
-    updatePage(t);
-    updateModal(t);
-    ROOM_BEATS.forEach((R) => updateRoom(t, R));
+    updateReveal(t);
+    screens.forEach((S) => updateScreen(t, S));
     updateCount(t);
     updateWords(t);
     updateLogo(t);
     updateHud(t);
     updateCue(t);
-    // Insights panels and the room leave on the outro hit.
-    const out = E.inExpo(prog(t, 17.9, 18.06));
+    const out = E.inExpo(prog(t, 37.9, 38.06));
     ins.g.style.transform = `scale(${1 + out * 0.5})`;
     ins.g.style.opacity = 1 - out;
   };

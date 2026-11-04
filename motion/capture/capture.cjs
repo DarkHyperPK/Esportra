@@ -91,10 +91,10 @@ const SCENES = {
     ['hover', `${dialog} :text-is('Haven')`], ['shot', 'veto-hover', {}],
     ['click', `${dialog} :text-is('Haven')`], ['wait', 1500],
     ['shot', 'veto-banned', { dialog }],
-    ['ctl', 'oppBan'], ['wait', 1600],
+    ['ctl', 'oppBan'], ['wait', 1600], ['scroll', `${dialog} :text-is('Sunset') >> nth=-1`], ['wait', 300],
     ['shot', 'veto-oppban', { dialog, sunset: `${dialog} :text-is('Sunset') >> nth=-1` }],
     ['hover', `${dialog} :text-is('Sunset') >> nth=-1`], ['shot', 'veto-pick-hover', {}],
-    ['click', `${dialog} :text-is('Sunset') >> nth=-1`], ['wait', 1600],
+    ['click', `${dialog} :text-is('Sunset') >> nth=-1`], ['wait', 1600], ['scrolltop', `${dialog} [data-lenis-prevent]`], ['wait', 300],
     ['shot', 'veto-done', { dialog, series: `${dialog} :text('The series')` }],
     ['press', 'Escape'], ['wait', 700],
     ['shot', 'report', { ...room, manualTab: "[role='tab']:has-text('Enter manually')" }],
@@ -153,6 +153,8 @@ async function run(width) {
       if (kind === 'click') { await page.locator(a).first().click(); await page.waitForTimeout(120); }
       if (kind === 'keys') { await page.keyboard.type(a, { delay: 15 }); await page.waitForTimeout(150); }
       if (kind === 'press') { await page.keyboard.press(a); }
+      if (kind === 'scrolltop') { await page.locator(a).first().evaluate((n) => { n.scrollTop = 0; }); }
+      if (kind === 'scroll') { await page.locator(a).first().scrollIntoViewIfNeeded(); }
       if (kind === 'ctl') { await page.evaluate((n) => { window.__ctl[n](); return window.__qc.invalidateQueries(); }, a); }
       if (kind === 'shot') {
         const file = `${scene}-${a}.png`;
