@@ -51,7 +51,7 @@ export interface TeamMember {
 export interface BracketTeam {
     id: string;
     name: string;
-    seed: number;
+    seed?: number;
     eliminated?: boolean;
     logo_url?: string | null;
 }
