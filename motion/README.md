@@ -16,3 +16,5 @@ The UI in it is the real product: the scrim pages in `src/` rendered with sample
 - `motion/harness/fixtures/` holds the fictional sample data (house sample teams Night Owls and Crimson Five, plus four more). Mutations advance a small state machine, so a real click produces the real next state.
 - `assets/screens/` and `motion/out/` are generated and git-ignored; step 2 regenerates the screens exactly (fixed clock, reduced motion).
 - `motion/tools/vectorize_logo.py` traced `assets/logo/*.svg` from `public/brand/esportra-icon-512.png`.
+
+Other reels: the Find Teammates (LFG) reel lives in `motion/find-teammates/` (see its README).

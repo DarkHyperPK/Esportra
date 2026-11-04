@@ -1,0 +1,162 @@
+{
+ "viewport": {
+  "width": 1440,
+  "height": 900
+ },
+ "rects": {
+  "card": [
+   {
+    "x": 1028,
+    "y": 254.5,
+    "width": 380,
+    "height": 407.53125
+   }
+  ],
+  "save": [],
+  "more": [],
+  "nav": [
+   {
+    "x": 240,
+    "y": 0,
+    "width": 1200,
+    "height": 72
+   }
+  ],
+  "heading": [
+   {
+    "x": 240,
+    "y": 72,
+    "width": 1200,
+    "height": 155.5
+   }
+  ],
+  "filters": [],
+  "tools": [],
+  "seg": [
+   {
+    "x": 297,
+    "y": 252.5,
+    "width": 121.046875,
+    "height": 35
+   }
+  ],
+  "search": [],
+  "chips": [],
+  "grid": [
+   {
+    "x": 1028,
+    "y": 254.5,
+    "width": 380,
+    "height": 407.53125
+   }
+  ],
+  "sidebar": [
+   {
+    "x": 0,
+    "y": 0,
+    "width": 240,
+    "height": 900
+   },
+   {
+    "x": 1028,
+    "y": 227.5,
+    "width": 380,
+    "height": 434.53125
+   }
+  ],
+  "create": [
+   {
+    "x": 1277.203125,
+    "y": 15.5,
+    "width": 130.796875,
+    "height": 40
+   }
+  ],
+  "h1": [
+   {
+    "x": 272,
+    "y": 129,
+    "width": 489,
+    "height": 46
+   }
+  ],
+  "eyebrow": [
+   {
+    "x": 272,
+    "y": 104,
+    "width": 489,
+    "height": 15
+   },
+   {
+    "x": 1028,
+    "y": 227.5,
+    "width": 380,
+    "height": 15
+   }
+  ],
+  "agents": [
+   {
+    "x": 1047,
+    "y": 524.09375,
+    "width": 270,
+    "height": 63
+   }
+  ],
+  "metrics": [
+   {
+    "x": 1047,
+    "y": 429.5,
+    "width": 342,
+    "height": 51.59375
+   }
+  ],
+  "rank": [
+   {
+    "x": 1047,
+    "y": 393.5,
+    "width": 94.84375,
+    "height": 24
+   }
+  ],
+  "roles": [],
+  "hero": [
+   {
+    "x": 1029,
+    "y": 255.5,
+    "width": 378,
+    "height": 128
+   }
+  ],
+  "mobileFilter": [],
+  "roleSelect": [],
+  "teamTab": [],
+  "playersTab": [],
+  "applied": [],
+  "rankTrigger": [],
+  "bottomNav": [],
+  "form": [
+   {
+    "x": 272,
+    "y": 227.5,
+    "width": 732,
+    "height": 340
+   }
+  ],
+  "preview": [
+   {
+    "x": 1028,
+    "y": 227.5,
+    "width": 380,
+    "height": 434.53125
+   }
+  ],
+  "primary": [
+   {
+    "x": 896.34375,
+    "y": 502.5,
+    "width": 82.65625,
+    "height": 40
+   }
+  ]
+ }
+}

@@ -1,0 +1,101 @@
+{
+ "viewport": {
+  "width": 430,
+  "height": 932
+ },
+ "rects": {
+  "card": [],
+  "save": [],
+  "more": [],
+  "nav": [
+   {
+    "x": 0,
+    "y": 0,
+    "width": 430,
+    "height": 111
+   }
+  ],
+  "heading": [
+   {
+    "x": 0,
+    "y": 111,
+    "width": 430,
+    "height": 133.6875
+   }
+  ],
+  "filters": [],
+  "tools": [],
+  "seg": [
+   {
+    "x": 41,
+    "y": 269.6875,
+    "width": 121.046875,
+    "height": 35
+   }
+  ],
+  "search": [],
+  "chips": [],
+  "grid": [],
+  "sidebar": [],
+  "create": [
+   {
+    "x": 289.609375,
+    "y": 12,
+    "width": 124.390625,
+    "height": 44
+   }
+  ],
+  "h1": [
+   {
+    "x": 16,
+    "y": 164,
+    "width": 398,
+    "height": 32.1875
+   }
+  ],
+  "eyebrow": [
+   {
+    "x": 16,
+    "y": 139,
+    "width": 398,
+    "height": 15
+   }
+  ],
+  "agents": [],
+  "metrics": [],
+  "rank": [],
+  "roles": [],
+  "hero": [],
+  "mobileFilter": [],
+  "roleSelect": [],
+  "teamTab": [],
+  "playersTab": [],
+  "applied": [],
+  "rankTrigger": [],
+  "bottomNav": [
+   {
+    "x": 0,
+    "y": 876,
+    "width": 430,
+    "height": 56
+   }
+  ],
+  "form": [
+   {
+    "x": 16,
+    "y": 244.6875,
+    "width": 398,
+    "height": 350
+   }
+  ],
+  "preview": [],
+  "primary": [
+   {
+    "x": 41,
+    "y": 525.6875,
+    "width": 348,
+    "height": 44
+   }
+  ]
+ }
+}

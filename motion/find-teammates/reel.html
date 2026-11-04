@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Find Teammates Reel</title>
+<link rel="stylesheet" href="../../assets/fonts/fonts.css">
+<style>
+  :root { --black:#09090B; --field:#101013; --panel:#19191E; --ink:#FAFAFA; --label:#E4E4E7; --sec:#A1A1AA; --hint:#71717A; --rose:#F43F5E; }
+  html, body { margin:0; padding:0; background:var(--black); overflow:hidden; }
+  #root { position:relative; overflow:hidden; background:var(--black); font-family:Inter, system-ui, sans-serif; color:var(--ink); }
+  .abs { position:absolute; left:0; top:0; }
+  .crop { position:absolute; overflow:hidden; transform-origin:50% 50%; }
+  .crop > img, .layer { position:absolute; left:0; top:0; display:block; user-select:none; }
+  .mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; text-transform:uppercase; }
+  .display { font-family:Poppins, system-ui, sans-serif; font-weight:900; letter-spacing:-0.045em; line-height:0.92; white-space:nowrap; }
+  .heading { font-family:Poppins, system-ui, sans-serif; font-weight:800; letter-spacing:-0.04em; line-height:1.0; }
+  .mask { display:inline-block; overflow:hidden; vertical-align:top; padding:0.06em 0.04em 0.12em; margin:-0.06em -0.04em -0.12em; }
+  .mask > span { display:inline-block; }
+  #stageClip { position:absolute; overflow:hidden; perspective:2200px; perspective-origin:50% 50%; background:var(--field); }
+  #world { position:absolute; left:0; top:0; transform-origin:0 0; transform-style:preserve-3d; }
+  .frameLine { position:absolute; background:rgba(255,255,255,0.16); }
+  .corner { position:absolute; width:26px; height:26px; border-color:var(--ink); border-style:solid; border-width:0; }
+  .slot { position:absolute; box-sizing:border-box; }
+  .ray { position:absolute; left:0; top:0; height:3px; background:var(--rose); transform-origin:0 50%; border-radius:0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="reel.js"></script>
+</body>
+</html>

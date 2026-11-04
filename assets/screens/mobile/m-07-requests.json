@@ -1,0 +1,159 @@
+{
+ "viewport": {
+  "width": 430,
+  "height": 932
+ },
+ "rects": {
+  "card": [],
+  "save": [],
+  "more": [],
+  "nav": [
+   {
+    "x": 0,
+    "y": 0,
+    "width": 430,
+    "height": 111
+   }
+  ],
+  "heading": [
+   {
+    "x": 0,
+    "y": 111,
+    "width": 430,
+    "height": 133.6875
+   }
+  ],
+  "filters": [],
+  "tools": [
+   {
+    "x": 16,
+    "y": 244.6875,
+    "width": 398,
+    "height": 44
+   }
+  ],
+  "seg": [
+   {
+    "x": 16,
+    "y": 244.6875,
+    "width": 146.875,
+    "height": 44
+   }
+  ],
+  "search": [],
+  "chips": [],
+  "grid": [],
+  "sidebar": [],
+  "create": [
+   {
+    "x": 289.609375,
+    "y": 12,
+    "width": 124.390625,
+    "height": 44
+   }
+  ],
+  "h1": [
+   {
+    "x": 16,
+    "y": 164,
+    "width": 398,
+    "height": 32.1875
+   }
+  ],
+  "eyebrow": [
+   {
+    "x": 16,
+    "y": 139,
+    "width": 398,
+    "height": 15
+   }
+  ],
+  "agents": [],
+  "metrics": [],
+  "rank": [],
+  "roles": [],
+  "hero": [],
+  "mobileFilter": [],
+  "roleSelect": [],
+  "teamTab": [],
+  "playersTab": [],
+  "applied": [],
+  "rankTrigger": [],
+  "bottomNav": [
+   {
+    "x": 0,
+    "y": 876,
+    "width": 430,
+    "height": 56
+   }
+  ],
+  "row": [
+   {
+    "x": 17,
+    "y": 307.6875,
+    "width": 396,
+    "height": 186.6875
+   },
+   {
+    "x": 17,
+    "y": 494.375,
+    "width": 396,
+    "height": 186.6875
+   },
+   {
+    "x": 17,
+    "y": 681.0625,
+    "width": 396,
+    "height": 167.09375
+   }
+  ],
+  "accept": [
+   {
+    "x": 37,
+    "y": 429.375,
+    "width": 113.328125,
+    "height": 44
+   },
+   {
+    "x": 37,
+    "y": 616.0625,
+    "width": 113.328125,
+    "height": 44
+   },
+   {
+    "x": 37,
+    "y": 784.15625,
+    "width": 174,
+    "height": 44
+   }
+  ],
+  "panel": [
+   {
+    "x": 16,
+    "y": 306.6875,
+    "width": 398,
+    "height": 542.46875
+   }
+  ],
+  "rowActions": [
+   {
+    "x": 37,
+    "y": 429.375,
+    "width": 356,
+    "height": 44
+   },
+   {
+    "x": 37,
+    "y": 616.0625,
+    "width": 356,
+    "height": 44
+   },
+   {
+    "x": 37,
+    "y": 784.15625,
+    "width": 356,
+    "height": 44
+   }
+  ]
+ }
+}

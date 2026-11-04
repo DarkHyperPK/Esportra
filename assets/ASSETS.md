@@ -94,3 +94,49 @@ Two widths: 540 px (mobile layout, fills a 1080-wide frame at 2x) and 1440 px (d
 | `screens/1440/room-report-reported.png` | 1440px @2x | room-report-reported | back, faceoff, rail, next, schedule, checkin, veto, result, lobby, chat |
 | `screens/1440/insights-base.png` | 1440px @2x | insights-base | title, hero, tabs, roster0, roster1, rosterRow, mapBars, rating |
 | `screens/1440/insights-hover.png` | 1440px @2x | insights-hover | rosterRow, roster0 |
+---
+
+# Assets for the Find Teammates reel
+
+These are used by `motion/find-teammates/` (30 s, 120 BPM; 9:16, 1:1 and 16:9 from one timeline). Nothing in it is redrawn: every UI pixel in that video is a crop of a screen listed below.
+
+## Source note
+
+The live site (esportra.com, staging.esportra.com) is blocked by this environment's network policy. The screens were therefore captured from **the real app in this repo** (`npm run dev`, unmodified `src/`), driven by Playwright with a signed-in sample viewer. Backend responses come from fixtures (`motion/find-teammates/capture/fixtures.cjs`).
+
+- **Real:** layout, components, CSS, copy, the logo, and Valorant agent icons, rank and role icons and player-card art (from `media.valorant-api.com`, as the product loads them).
+- **Sample:** player and team names, Riot IDs, stats and descriptions. They are fictional.
+
+## Logo (`logo/`, additions)
+
+| File | What |
+|---|---|
+| `esportra-lockup-white-full.png` | Mark plus ESPORTRA wordmark, white on transparent, 1364×1400 (`design/source/assets/hud-previews/brand-lockup-full.png`) |
+| `esportra-wordmark-white.png` | Wordmark only, 1100×144 |
+| `esportra-mark-white-224.png` | Mark only, 224×195 |
+
+## Colours, fonts, textures
+
+- **Colours:** the shared palette above. The LFG surfaces also use field `#101013`, panel `#19191E`, selected-agent `#FDA4AF` and saved `#6EE7B7` (`src/components/competitive/lfg-glass.css`).
+- **Fonts:** the shared `fonts/fonts.css`. The reel uses Poppins 800/900 for display, Inter for running text, and `ui-monospace` captions as the product does.
+- **Textures:** the shared set plus `textures/spotlight.png`. The reel uses the hairline grid with its rose tick removed (`motion/find-teammates/grid-clean.png`), so rose stays reserved for the UI cue.
+
+## Game art (`game-art/`)
+
+`valorant-logo.png`, rank icons `ranks/3–27.webp` and role icons `roles/*.webp`, copied from `public/`.
+
+## Screens (`screens/desktop/` 1440×900 @3x, `screens/mobile/` 430×932 @3x)
+
+As with the scrim screens, the PNGs are generated and git-ignored; the `.json` next to each holds the viewport and element boxes (CSS px) used for crops, cursor targets and assembly. Regenerate them with `motion/find-teammates/capture/capture.cjs` (see `motion/find-teammates/README.md`). `screens/text-lines.json` holds the measured text lines used for the letter-by-letter typing reveals.
+
+| Prefix `d-` / `m-` | Feature moment |
+|---|---|
+| `01-discover` | Discover feed: player cards with rank, role, WR/K/D/HS%, agents |
+| `02-search` | Search typed: "duelist" |
+| `03a-filters-open` (mobile) | Filter sheet open |
+| `03b-role` · `03c-rank-open` · `03d-rank-scrolled` · `03e-filtered` | Role = Duelist, rank list with real icons, Diamond 1, applied chips |
+| `04a-save-before` · `04b-save-after` | Save listing (bookmark) |
+| `05-teams` | "Find a team": team cards, rank range, roster |
+| `06a-detail` · `06b-intro` · `06c-sent` | Listing drawer, introduction typed, request sent |
+| `07-requests` · `07b-accepted` | Requests inbox; Accept, then "Open conversation" |
+| `08a-create` · `08b0-step2` … `08b4-neon` | Create wizard: Duelist, Jett, Raze, Neon, with the live preview card |
