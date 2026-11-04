@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { messagingKeys, useConversationMessages, useConversationRealtime, useConversations, useMarkRead, useSendMessage } from '@/hooks/useMessaging';
 import type { Conversation } from '@/types/messaging';
 import { LfgMessageReference } from './LfgMessageReference';
+import { ScrimBookedCard } from './ScrimBookedCard';
+import { messagePreview, parseScrimBookedMessage } from './scrimBookedMessage';
 import './inbox.css';
 
 function displayName(conversation: Conversation, userId?: string) {
@@ -39,7 +41,7 @@ function ConversationList({ conversations, userId, selectedId }: { conversations
     <div className="inbox-conversation-list" data-lenis-prevent>{visible.length ? visible.map(item => {
       const name = displayName(item, userId);
       return <Link className={`inbox-conversation ${item.id === selectedId ? 'active' : ''}`} key={item.id} to={`/inbox/${item.id}`} aria-current={item.id === selectedId ? 'page' : undefined}>
-        <ConversationAvatar conversation={item} userId={userId} name={name} /><span className="inbox-conversation-copy"><span className="inbox-conversation-title"><strong>{name}</strong><time>{timeLabel(item.lastMessage?.createdAt || item.createdAt)}</time></span><span className="inbox-conversation-preview">{item.lastMessage?.content || 'Start the conversation'}</span></span>{item.unreadCount > 0 && <span className="inbox-unread" aria-label={`${item.unreadCount} unread messages`}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</span>}
+        <ConversationAvatar conversation={item} userId={userId} name={name} /><span className="inbox-conversation-copy"><span className="inbox-conversation-title"><strong>{name}</strong><time>{timeLabel(item.lastMessage?.createdAt || item.createdAt)}</time></span><span className="inbox-conversation-preview">{item.lastMessage?.content ? messagePreview(item.lastMessage.content) : 'Start the conversation'}</span></span>{item.unreadCount > 0 && <span className="inbox-unread" aria-label={`${item.unreadCount} unread messages`}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</span>}
       </Link>;
     }) : <div className="inbox-empty"><MessageSquare size={22} aria-hidden /><strong>{conversations.length ? 'No conversations match.' : 'No conversations yet.'}</strong><p>{conversations.length ? 'Try another search or filter.' : 'Accept an LFG request to start a conversation.'}</p>{!conversations.length && <Link to="/competitive/lfg/requests">View requests</Link>}</div>}</div>
   </>;
@@ -111,7 +113,7 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
           {(index === 0 || new Date(message.createdAt).toDateString() !== new Date(rows[index - 1].createdAt).toDateString()) && <div className="inbox-date"><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time></div>}
           <div className={`inbox-message ${message.senderId === userId ? 'own' : ''} ${message.listingReference ? 'has-listing' : ''}`}>
           {message.listingReference && <LfgMessageReference reference={message.listingReference} />}
-          <div className="inbox-message-bubble">{message.content}</div><time dateTime={message.createdAt}>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>{seenByMessage.has(message.id) && <span className="inbox-read-receipt">{conversation?.type === 'group' ? `Seen by ${seenByMessage.get(message.id)!.join(', ')}` : 'Seen'}</span>}
+          {(() => { const scrim = parseScrimBookedMessage(message.content); return scrim ? <ScrimBookedCard scrim={scrim} /> : <div className="inbox-message-bubble">{message.content}</div>; })()}<time dateTime={message.createdAt}>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>{seenByMessage.has(message.id) && <span className="inbox-read-receipt">{conversation?.type === 'group' ? `Seen by ${seenByMessage.get(message.id)!.join(', ')}` : 'Seen'}</span>}
         </div></Fragment>) : <div className="inbox-thread-state">Start the conversation.</div>}
       </>}
     </div>
