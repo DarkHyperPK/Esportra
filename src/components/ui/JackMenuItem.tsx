@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 
 /**
- * Sharp menu item used inside `FramerDropdownContent`.
+ * Quiet menu row used inside `FramerDropdownContent`: dark at rest, lit on hover and focus.
  * CTA slide-up behavior is intentionally reserved for JackButton.
  *
  * Must be rendered within a `FramerDropdownRoot` so it can close the
@@ -41,7 +41,7 @@ export function JackMenuItem({
       type="button"
       onClick={handleClick}
       className={cn(
-        "block w-full bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-matte-black transition-colors hover:bg-rose-500 hover:text-white",
+        "block w-full rounded-md px-3 py-2.5 text-left text-[13px] font-medium text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:bg-white/[0.08] focus-visible:text-white focus-visible:outline-none",
         className,
       )}
     >
@@ -54,4 +54,4 @@ export function JackMenuItem({
   );
 }
 
-export const JackMenuDivider = () => <div className="h-px bg-black/10" />;
+export const JackMenuDivider = () => <div className="mx-2 my-1 h-px bg-white/[0.08]" />;

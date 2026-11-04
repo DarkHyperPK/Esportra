@@ -1,0 +1,45 @@
+/*
+ * Stage ground. Fixed to the viewport (content scrolls over it), no animation,
+ * nothing a reader has to parse: depth comes from one light and a hairline field.
+ */
+.stage-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #09090b; overflow: hidden; }
+
+.stage-bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 96px 96px;
+  background-position: -1px -1px;
+  /* The field is clearest under the light and fades out toward the bottom. */
+  -webkit-mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, #000 30%, transparent 85%);
+}
+
+.stage-bg-light {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 55% -10%, rgba(220, 225, 255, 0.09), transparent 70%);
+}
+
+.stage-bg-grain {
+  position: absolute; inset: 0;
+  background-image: url('/noise.svg');
+  background-size: 300px 300px;
+  opacity: 0.05;
+  mix-blend-mode: screen;
+}
+
+.stage-bg-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 60%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+@media (max-width: 640px) {
+  /* Phones: a tighter grid and a narrower light so the field reads at 390px. */
+  .stage-bg-grid { background-size: 64px 64px; }
+  .stage-bg-light { background: radial-gradient(ellipse 120% 45% at 50% -8%, rgba(220, 225, 255, 0.1), transparent 70%); }
+}
+
+@media (prefers-contrast: more) {
+  .stage-bg-grid, .stage-bg-grain { display: none; }
+}

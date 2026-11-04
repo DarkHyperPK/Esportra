@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductSidebar } from '@/components/navigation/ProductSidebar';
 import { AppBottomNav } from '@/components/navigation/AppBottomNav';
+import { MobileTopBar } from '@/components/navigation/MobileTopBar';
 import { useAuth } from '@/hooks/useAuth';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
@@ -31,7 +32,7 @@ function isChromelessPath(pathname: string): boolean {
  * authenticated on a non-admin, non-chromeless route.
  *
  * Desktop: sidebar (left) + content (right).
- * Mobile: content + AppBottomNav bottom rail.
+ * Mobile: MobileTopBar (logo, notifications, account) + content + AppBottomNav bottom rail.
  * Otherwise: transparent Outlet passthrough.
  *
  * No max-w-* or mx-auto on any shell container (layout-viewport rule).
@@ -53,7 +54,8 @@ export function AppShell() {
     <>
       <div className="flex">
         <ProductSidebar />
-        <main className={`flex-1 min-w-0 ${!user && !pathname.startsWith('/auth/') ? 'pb-14 lg:pb-0' : ''}`}>
+        <main className={`flex-1 min-w-0 ${(user || !pathname.startsWith('/auth/')) ? 'pb-14 lg:pb-0' : ''}`}>
+          {!pathname.startsWith('/auth/') && <MobileTopBar />}
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -1,0 +1,26 @@
+/* Phone top bar: the same lit rail as the desktop sidebar, laid across the top. */
+.mobile-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 980;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: env(safe-area-inset-top, 0px) 12px 0 16px;
+  background:
+    radial-gradient(ellipse 80% 140% at 20% -40%, rgba(220, 225, 255, 0.08), transparent 70%),
+    rgba(13, 13, 16, 0.86);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, #ffffff05, #ffffff1f 30%, #ffffff1f 70%, #ffffff05) 1;
+}
+.mobile-top-bar-brand { display: flex; align-items: center; min-height: 44px; }
+.mobile-top-bar-brand img { object-fit: contain; }
+.mobile-top-bar-actions { display: flex; align-items: center; gap: 6px; }
+.mobile-top-bar-login { display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; font-size: 13px; font-weight: 500; color: #a1a1aa; }
+.mobile-top-bar-login:hover { color: #fafafa; }
+.mobile-top-bar a:focus-visible, .mobile-top-bar button:focus-visible { outline: 2px solid #fafafa; outline-offset: 2px; }
+@media (min-width: 1024px) { .mobile-top-bar { display: none; } }

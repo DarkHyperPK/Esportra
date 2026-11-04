@@ -227,7 +227,7 @@ const UserMenu = ({
             </div>
           )}
 
-          <div className="space-y-px bg-[#0a0a0c] p-2">
+          <div className="space-y-0.5 bg-[#0a0a0c] p-1.5">
             <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
             <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
             {!admin.isAdmin && (
