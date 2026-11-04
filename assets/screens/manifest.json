@@ -12,23 +12,17 @@
      "w": 508,
      "h": 30
     },
-    "myScrims": {
-     "x": 16,
-     "y": 102,
-     "w": 508,
-     "h": 40
-    },
     "upNext": {
      "x": 16,
      "y": 191,
      "w": 508,
      "h": 218
     },
-    "count": {
+    "filters": {
      "x": 16,
-     "y": 500,
-     "w": 508,
-     "h": 20
+     "y": 432,
+     "w": 94,
+     "h": 44
     },
     "card0": {
      "x": 16,
@@ -72,11 +66,116 @@
      "w": 234,
      "h": 40
     },
-    "filters": {
+    "myScrims": {
      "x": 16,
-     "y": 432,
-     "w": 94,
-     "h": 44
+     "y": 102,
+     "w": 508,
+     "h": 40
+    },
+    "count": {
+     "x": 16,
+     "y": 500,
+     "w": 508,
+     "h": 20
+    }
+   }
+  },
+  "discovery-sheet": {
+   "file": "540/discovery-sheet.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {
+    "sheet": {
+     "x": 0,
+     "y": 833,
+     "w": 540,
+     "h": 337
+    },
+    "region": {
+     "x": 24,
+     "y": 1022,
+     "w": 492,
+     "h": 40
+    }
+   }
+  },
+  "discovery-region-open": {
+   "file": "540/discovery-region-open.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {
+    "list": {
+     "x": 24,
+     "y": 880,
+     "w": 494,
+     "h": 138
+    },
+    "ap": {
+     "x": 29,
+     "y": 917,
+     "w": 484,
+     "h": 32
+    }
+   }
+  },
+  "discovery-region-hover": {
+   "file": "540/discovery-region-hover.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "discovery-region-picked": {
+   "file": "540/discovery-region-picked.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {
+    "sheet": {
+     "x": 0,
+     "y": 833,
+     "w": 540,
+     "h": 337
+    }
+   }
+  },
+  "discovery-filtered": {
+   "file": "540/discovery-filtered.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
+    "count": {
+     "x": 16,
+     "y": 542,
+     "w": 508,
+     "h": 20
+    },
+    "card0": {
+     "x": 16,
+     "y": 586,
+     "w": 508,
+     "h": 332
+    },
+    "card1": {
+     "x": 16,
+     "y": 934,
+     "w": 508,
+     "h": 302
+    },
+    "request": {
+     "x": 275,
+     "y": 863,
+     "w": 234,
+     "h": 40
+    },
+    "upNext": {
+     "x": 16,
+     "y": 191,
+     "w": 508,
+     "h": 218
     }
    }
   },
@@ -85,20 +184,7 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "request": {
-     "x": 275,
-     "y": 821,
-     "w": 234,
-     "h": 40
-    },
-    "card0": {
-     "x": 16,
-     "y": 544,
-     "w": 508,
-     "h": 332
-    }
-   }
+   "boxes": {}
   },
   "discovery-modal": {
    "file": "540/discovery-modal.png",
@@ -118,16 +204,16 @@
      "w": 74,
      "h": 36
     },
-    "requestScrim": {
-     "x": 404,
-     "y": 2277,
-     "w": 107,
-     "h": 40
-    },
     "pick": {
      "x": 33,
      "y": 1249,
      "w": 62,
+     "h": 18
+    },
+    "recent": {
+     "x": 33,
+     "y": 973,
+     "w": 474,
      "h": 18
     }
    }
@@ -137,14 +223,7 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 12,
-     "y": 470,
-     "w": 516,
-     "h": 1859
-    }
-   }
+   "boxes": {}
   },
   "discovery-slot": {
    "file": "540/discovery-slot.png",
@@ -157,12 +236,6 @@
      "y": 470,
      "w": 516,
      "h": 1859
-    },
-    "slot": {
-     "x": 46,
-     "y": 1313,
-     "w": 92,
-     "h": 36
     },
     "requestScrim": {
      "x": 404,
@@ -177,14 +250,7 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 12,
-     "y": 470,
-     "w": 516,
-     "h": 1859
-    }
-   }
+   "boxes": {}
   },
   "discovery-offer": {
    "file": "540/discovery-offer.png",
@@ -198,6 +264,12 @@
      "w": 516,
      "h": 563
     },
+    "msg": {
+     "x": 50,
+     "y": 1524,
+     "w": 440,
+     "h": 57
+    },
     "send": {
      "x": 384,
      "y": 1603,
@@ -206,19 +278,26 @@
     }
    }
   },
+  "discovery-type1": {
+   "file": "540/discovery-type1.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "discovery-type2": {
+   "file": "540/discovery-type2.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
   "discovery-send-hover": {
    "file": "540/discovery-send-hover.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 12,
-     "y": 1119,
-     "w": 516,
-     "h": 563
-    }
-   }
+   "boxes": {}
   },
   "discovery-sent": {
    "file": "540/discovery-sent.png",
@@ -234,124 +313,58 @@
     }
    }
   },
-  "room-time-base": {
-   "file": "540/room-time-base.png",
+  "workspace-base": {
+   "file": "540/workspace-base.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
+    "header": {
      "x": 16,
      "y": 24,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 16,
-     "y": 66,
      "w": 508,
-     "h": 140
+     "h": 137
     },
-    "rail": {
+    "offer": {
      "x": 16,
-     "y": 230,
+     "y": 229,
      "w": 508,
-     "h": 29
-    },
-    "next": {
-     "x": 16,
-     "y": 283,
-     "w": 508,
-     "h": 160
-    },
-    "schedule": {
-     "x": 16,
-     "y": 467,
-     "w": 508,
-     "h": 211
-    },
-    "veto": {
-     "x": 16,
-     "y": 693,
-     "w": 508,
-     "h": 0
-    },
-    "lobby": {
-     "x": 16,
-     "y": 693,
-     "w": 508,
-     "h": 153
+     "h": 423
     },
     "accept": {
      "x": 33,
-     "y": 616,
-     "w": 142,
-     "h": 44
+     "y": 574,
+     "w": 79,
+     "h": 36
+    },
+    "roster": {
+     "x": 46,
+     "y": 389,
+     "w": 37,
+     "h": 18
     }
    }
   },
-  "room-time-hover": {
-   "file": "540/room-time-hover.png",
+  "workspace-hover": {
+   "file": "540/workspace-hover.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 16,
-     "y": 66,
-     "w": 508,
-     "h": 140
-    },
-    "rail": {
-     "x": 16,
-     "y": 230,
-     "w": 508,
-     "h": 29
-    },
-    "next": {
-     "x": 16,
-     "y": 283,
-     "w": 508,
-     "h": 160
-    },
-    "schedule": {
-     "x": 16,
-     "y": 467,
-     "w": 508,
-     "h": 211
-    },
-    "veto": {
-     "x": 16,
-     "y": 693,
-     "w": 508,
-     "h": 0
-    },
-    "lobby": {
-     "x": 16,
-     "y": 693,
-     "w": 508,
-     "h": 153
-    }
-   }
+   "boxes": {}
   },
-  "room-time-accepted": {
-   "file": "540/room-time-accepted.png",
+  "workspace-accepting": {
+   "file": "540/workspace-accepting.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
+   "boxes": {}
+  },
+  "room-base": {
+   "file": "540/room-base.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -393,21 +406,81 @@
      "y": 938,
      "w": 508,
      "h": 153
+    },
+    "chatBtn": {
+     "x": 438,
+     "y": 1026,
+     "w": 86,
+     "h": 48
     }
    }
   },
-  "room-checkin-base": {
-   "file": "540/room-checkin-base.png",
+  "room-chat": {
+   "file": "540/room-chat.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {
+    "chat": {
+     "x": 144,
+     "y": 554,
+     "w": 380,
+     "h": 520
+    },
+    "input": {
+     "x": 157,
+     "y": 1021,
+     "w": 306,
+     "h": 40
+    },
+    "send": {
+     "x": 471,
+     "y": 1021,
+     "w": 40,
+     "h": 40
+    }
+   }
+  },
+  "room-chat-type1": {
+   "file": "540/room-chat-type1.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-chat-type2": {
+   "file": "540/room-chat-type2.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-chat-sent": {
+   "file": "540/room-chat-sent.png",
+   "width": 540,
+   "height": 1170,
+   "dsf": 2,
+   "boxes": {
+    "chat": {
+     "x": 144,
+     "y": 554,
+     "w": 380,
+     "h": 520
+    },
+    "close": {
+     "x": 479,
+     "y": 572,
+     "w": 28,
+     "h": 28
+    }
+   }
+  },
+  "room-lobby": {
+   "file": "540/room-lobby.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -430,27 +503,122 @@
      "x": 16,
      "y": 467,
      "w": 508,
-     "h": 87
+     "h": 132
     },
     "checkin": {
      "x": 16,
-     "y": 569,
+     "y": 615,
      "w": 508,
      "h": 308
     },
     "veto": {
      "x": 16,
-     "y": 893,
+     "y": 938,
      "w": 508,
      "h": 0
     },
     "lobby": {
      "x": 16,
-     "y": 893,
+     "y": 938,
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
+     "x": 438,
+     "y": 2656,
+     "w": 86,
+     "h": 48
+    },
+    "lobbyInput": {
+     "x": 33,
+     "y": 1006,
+     "w": 474,
+     "h": 40
+    },
+    "checkinBtn": {
+     "x": 33,
+     "y": 860,
+     "w": 474,
+     "h": 45
+    }
+   }
+  },
+  "room-lobby-type1": {
+   "file": "540/room-lobby-type1.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-lobby-type2": {
+   "file": "540/room-lobby-type2.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
+    "save": {
+     "x": 379,
+     "y": 1086,
+     "w": 128,
+     "h": 34
+    },
+    "lobby": {
+     "x": 16,
+     "y": 938,
+     "w": 508,
+     "h": 199
+    }
+   }
+  },
+  "room-lobby-saved": {
+   "file": "540/room-lobby-saved.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
+    "faceoff": {
+     "x": 16,
+     "y": 66,
+     "w": 508,
+     "h": 140
+    },
+    "rail": {
+     "x": 16,
+     "y": 230,
+     "w": 508,
+     "h": 29
+    },
+    "next": {
+     "x": 16,
+     "y": 283,
+     "w": 508,
+     "h": 160
+    },
+    "schedule": {
+     "x": 16,
+     "y": 467,
+     "w": 508,
+     "h": 132
+    },
+    "checkin": {
+     "x": 16,
+     "y": 615,
+     "w": 508,
+     "h": 308
+    },
+    "veto": {
+     "x": 16,
+     "y": 938,
+     "w": 508,
+     "h": 0
+    },
+    "lobby": {
+     "x": 16,
+     "y": 938,
+     "w": 508,
+     "h": 212
+    },
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
@@ -458,7 +626,7 @@
     },
     "checkinBtn": {
      "x": 33,
-     "y": 815,
+     "y": 860,
      "w": 474,
      "h": 45
     }
@@ -469,13 +637,14 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
+   "boxes": {}
+  },
+  "room-waiting": {
+   "file": "540/room-waiting.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -492,33 +661,33 @@
      "x": 16,
      "y": 283,
      "w": 508,
-     "h": 160
+     "h": 116
     },
     "schedule": {
      "x": 16,
-     "y": 467,
+     "y": 423,
      "w": 508,
      "h": 87
     },
     "checkin": {
      "x": 16,
-     "y": 569,
+     "y": 525,
      "w": 508,
-     "h": 308
+     "h": 306
     },
     "veto": {
      "x": 16,
-     "y": 893,
+     "y": 847,
      "w": 508,
      "h": 0
     },
     "lobby": {
      "x": 16,
-     "y": 893,
+     "y": 847,
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
@@ -526,86 +695,12 @@
     }
    }
   },
-  "room-checkin-checked": {
-   "file": "540/room-checkin-checked.png",
+  "room-live": {
+   "file": "540/room-live.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 16,
-     "y": 66,
-     "w": 508,
-     "h": 149
-    },
-    "rail": {
-     "x": 16,
-     "y": 239,
-     "w": 508,
-     "h": 29
-    },
-    "next": {
-     "x": 16,
-     "y": 292,
-     "w": 508,
-     "h": 178
-    },
-    "schedule": {
-     "x": 16,
-     "y": 494,
-     "w": 508,
-     "h": 87
-    },
-    "checkin": {
-     "x": 16,
-     "y": 596,
-     "w": 508,
-     "h": 46
-    },
-    "veto": {
-     "x": 16,
-     "y": 658,
-     "w": 508,
-     "h": 128
-    },
-    "result": {
-     "x": 16,
-     "y": 1024,
-     "w": 508,
-     "h": 401
-    },
-    "lobby": {
-     "x": 16,
-     "y": 802,
-     "w": 508,
-     "h": 199
-    },
-    "chat": {
-     "x": 438,
-     "y": 2656,
-     "w": 86,
-     "h": 48
-    }
-   }
-  },
-  "room-veto-base": {
-   "file": "540/room-veto-base.png",
-   "width": 540,
-   "height": 2800,
-   "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -654,7 +749,7 @@
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
@@ -668,8 +763,8 @@
     }
    }
   },
-  "room-veto-dialog": {
-   "file": "540/room-veto-dialog.png",
+  "room-veto": {
+   "file": "540/room-veto.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
@@ -686,11 +781,11 @@
      "w": 213,
      "h": 24
     },
-    "pool": {
-     "x": 28,
-     "y": 1497,
-     "w": 82,
-     "h": 28
+    "title": {
+     "x": 32,
+     "y": 955,
+     "w": 476,
+     "h": 23
     }
    }
   },
@@ -699,14 +794,7 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 11,
-     "y": 940,
-     "w": 518,
-     "h": 920
-    }
-   }
+   "boxes": {}
   },
   "room-veto-banned": {
    "file": "540/room-veto-banned.png",
@@ -722,18 +810,59 @@
     }
    }
   },
-  "room-report-base": {
-   "file": "540/room-report-base.png",
+  "room-veto-oppban": {
+   "file": "540/room-veto-oppban.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
+    "dialog": {
+     "x": 11,
+     "y": 940,
+     "w": 518,
+     "h": 920
     },
+    "sunset": {
+     "x": 193,
+     "y": 2011,
+     "w": 60,
+     "h": 17
+    }
+   }
+  },
+  "room-veto-pick-hover": {
+   "file": "540/room-veto-pick-hover.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-veto-done": {
+   "file": "540/room-veto-done.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
+    "dialog": {
+     "x": 11,
+     "y": 940,
+     "w": 518,
+     "h": 920
+    },
+    "series": {
+     "x": 28,
+     "y": 122,
+     "w": 88,
+     "h": 28
+    }
+   }
+  },
+  "room-report": {
+   "file": "540/room-report.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -782,32 +911,26 @@
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
      "h": 48
     },
-    "fetch": {
-     "x": 50,
-     "y": 1312,
-     "w": 169,
-     "h": 34
+    "manualTab": {
+     "x": 302,
+     "y": 1209,
+     "w": 120,
+     "h": 36
     }
    }
   },
-  "room-report-hover": {
-   "file": "540/room-report-hover.png",
+  "room-manual": {
+   "file": "540/room-manual.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -848,7 +971,7 @@
      "x": 16,
      "y": 979,
      "w": 508,
-     "h": 401
+     "h": 504
     },
     "lobby": {
      "x": 16,
@@ -856,100 +979,65 @@
      "w": 508,
      "h": 153
     },
-    "chat": {
-     "x": 438,
-     "y": 2656,
-     "w": 86,
-     "h": 48
-    }
-   }
-  },
-  "room-report-fetched": {
-   "file": "540/room-report-fetched.png",
-   "width": 540,
-   "height": 2800,
-   "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 16,
-     "y": 66,
-     "w": 508,
-     "h": 149
-    },
-    "rail": {
-     "x": 16,
-     "y": 239,
-     "w": 508,
-     "h": 29
-    },
-    "next": {
-     "x": 16,
-     "y": 292,
-     "w": 508,
-     "h": 178
-    },
-    "schedule": {
-     "x": 16,
-     "y": 494,
-     "w": 508,
-     "h": 87
-    },
-    "checkin": {
-     "x": 16,
-     "y": 596,
-     "w": 508,
-     "h": 46
-    },
-    "veto": {
-     "x": 16,
-     "y": 658,
-     "w": 508,
-     "h": 128
-    },
-    "result": {
-     "x": 16,
-     "y": 979,
-     "w": 508,
-     "h": 755
-    },
-    "lobby": {
-     "x": 16,
-     "y": 802,
-     "w": 508,
-     "h": 153
-    },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
      "h": 48
     },
-    "candidate": {
+    "m1": {
      "x": 50,
-     "y": 1400,
+     "y": 1283,
+     "w": 214,
+     "h": 40
+    },
+    "m2": {
+     "x": 276,
+     "y": 1283,
+     "w": 214,
+     "h": 40
+    },
+    "mm": {
+     "x": 50,
+     "y": 1357,
      "w": 440,
-     "h": 122
+     "h": 40
+    },
+    "reportBtn": {
+     "x": 50,
+     "y": 1409,
+     "w": 129,
+     "h": 40
     }
    }
   },
-  "room-report-candidate-hover": {
-   "file": "540/room-report-candidate-hover.png",
+  "room-manual-1": {
+   "file": "540/room-manual-1.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-manual-2": {
+   "file": "540/room-manual-2.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-manual-3": {
+   "file": "540/room-manual-3.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-reported": {
+   "file": "540/room-reported.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -990,7 +1078,7 @@
      "x": 16,
      "y": 979,
      "w": 508,
-     "h": 755
+     "h": 430
     },
     "lobby": {
      "x": 16,
@@ -998,7 +1086,7 @@
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
@@ -1006,18 +1094,12 @@
     }
    }
   },
-  "room-report-reported": {
-   "file": "540/room-report-reported.png",
+  "room-confirmed": {
+   "file": "540/room-confirmed.png",
    "width": 540,
    "height": 2800,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 16,
-     "y": 24,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 16,
      "y": 66,
@@ -1058,7 +1140,7 @@
      "x": 16,
      "y": 979,
      "w": 508,
-     "h": 263
+     "h": 401
     },
     "lobby": {
      "x": 16,
@@ -1066,11 +1148,17 @@
      "w": 508,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 438,
      "y": 2656,
      "w": 86,
      "h": 48
+    },
+    "tabs": {
+     "x": 33,
+     "y": 1099,
+     "w": 474,
+     "h": 44
     }
    }
   },
@@ -1098,14 +1186,14 @@
      "w": 508,
      "h": 45
     },
+    "teamTab": {
+     "x": 202,
+     "y": 95,
+     "w": 67,
+     "h": 44
+    },
     "roster0": {
      "x": 16,
-     "y": 482,
-     "w": 208,
-     "h": 260
-    },
-    "roster1": {
-     "x": 275,
      "y": 482,
      "w": 208,
      "h": 260
@@ -1135,18 +1223,57 @@
    "width": 540,
    "height": 2800,
    "dsf": 2,
+   "boxes": {}
+  },
+  "insights-team": {
+   "file": "540/insights-team.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
    "boxes": {
-    "rosterRow": {
+    "tabs": {
      "x": 16,
-     "y": 482,
+     "y": 95,
      "w": 508,
-     "h": 800
+     "h": 45
     },
-    "roster0": {
+    "sub": {
      "x": 16,
-     "y": 482,
-     "w": 208,
-     "h": 260
+     "y": 156,
+     "w": 508,
+     "h": 45
+    },
+    "mapsTab": {
+     "x": 94,
+     "y": 156,
+     "w": 67,
+     "h": 44
+    },
+    "body": {
+     "x": 16,
+     "y": 217,
+     "w": 508,
+     "h": 2312
+    }
+   }
+  },
+  "insights-maps": {
+   "file": "540/insights-maps.png",
+   "width": 540,
+   "height": 2800,
+   "dsf": 2,
+   "boxes": {
+    "body": {
+     "x": 16,
+     "y": 217,
+     "w": 508,
+     "h": 2939
+    },
+    "tabs": {
+     "x": 16,
+     "y": 95,
+     "w": 508,
+     "h": 45
     }
    }
   }
@@ -1164,29 +1291,17 @@
      "w": 402,
      "h": 30
     },
-    "myScrims": {
-     "x": 1309,
-     "y": 46,
-     "w": 99,
-     "h": 40
-    },
-    "aside": {
-     "x": 32,
-     "y": 111,
-     "w": 240,
-     "h": 1240
-    },
     "upNext": {
      "x": 296,
      "y": 135,
      "w": 1112,
      "h": 140
     },
-    "count": {
-     "x": 296,
-     "y": 298,
-     "w": 1112,
-     "h": 20
+    "aside": {
+     "x": 32,
+     "y": 111,
+     "w": 240,
+     "h": 1240
     },
     "card0": {
      "x": 296,
@@ -1229,6 +1344,89 @@
      "y": 619,
      "w": 160,
      "h": 40
+    },
+    "region": {
+     "x": 32,
+     "y": 243,
+     "w": 219,
+     "h": 40
+    },
+    "myScrims": {
+     "x": 1309,
+     "y": 46,
+     "w": 99,
+     "h": 40
+    },
+    "count": {
+     "x": 296,
+     "y": 298,
+     "w": 1112,
+     "h": 20
+    }
+   }
+  },
+  "discovery-region-open": {
+   "file": "1440/discovery-region-open.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "list": {
+     "x": 32,
+     "y": 287,
+     "w": 221,
+     "h": 138
+    },
+    "ap": {
+     "x": 37,
+     "y": 324,
+     "w": 211,
+     "h": 32
+    }
+   }
+  },
+  "discovery-region-hover": {
+   "file": "1440/discovery-region-hover.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "discovery-filtered": {
+   "file": "1440/discovery-filtered.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "count": {
+     "x": 296,
+     "y": 352,
+     "w": 1112,
+     "h": 20
+    },
+    "card0": {
+     "x": 296,
+     "y": 396,
+     "w": 360,
+     "h": 332
+    },
+    "card1": {
+     "x": 672,
+     "y": 396,
+     "w": 360,
+     "h": 332
+    },
+    "request": {
+     "x": 481,
+     "y": 673,
+     "w": 160,
+     "h": 40
+    },
+    "upNext": {
+     "x": 296,
+     "y": 135,
+     "w": 1112,
+     "h": 140
     }
    }
   },
@@ -1237,20 +1435,7 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
-   "boxes": {
-    "request": {
-     "x": 481,
-     "y": 619,
-     "w": 160,
-     "h": 40
-    },
-    "card0": {
-     "x": 296,
-     "y": 342,
-     "w": 360,
-     "h": 332
-    }
-   }
+   "boxes": {}
   },
   "discovery-modal": {
    "file": "1440/discovery-modal.png",
@@ -1270,16 +1455,16 @@
      "w": 74,
      "h": 36
     },
-    "requestScrim": {
-     "x": 936,
-     "y": 1277,
-     "w": 107,
-     "h": 40
-    },
     "pick": {
      "x": 401,
      "y": 755,
      "w": 62,
+     "h": 18
+    },
+    "recent": {
+     "x": 401,
+     "y": 479,
+     "w": 638,
      "h": 18
     }
    }
@@ -1289,14 +1474,7 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 380,
-     "y": 70,
-     "w": 680,
-     "h": 1260
-    }
-   }
+   "boxes": {}
   },
   "discovery-slot": {
    "file": "1440/discovery-slot.png",
@@ -1309,12 +1487,6 @@
      "y": 70,
      "w": 680,
      "h": 1260
-    },
-    "slot": {
-     "x": 414,
-     "y": 818,
-     "w": 92,
-     "h": 36
     },
     "requestScrim": {
      "x": 936,
@@ -1329,14 +1501,7 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 380,
-     "y": 70,
-     "w": 680,
-     "h": 1260
-    }
-   }
+   "boxes": {}
   },
   "discovery-offer": {
    "file": "1440/discovery-offer.png",
@@ -1350,6 +1515,12 @@
      "w": 680,
      "h": 563
     },
+    "msg": {
+     "x": 418,
+     "y": 824,
+     "w": 604,
+     "h": 57
+    },
     "send": {
      "x": 916,
      "y": 903,
@@ -1358,19 +1529,26 @@
     }
    }
   },
+  "discovery-type1": {
+   "file": "1440/discovery-type1.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "discovery-type2": {
+   "file": "1440/discovery-type2.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
   "discovery-send-hover": {
    "file": "1440/discovery-send-hover.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 380,
-     "y": 419,
-     "w": 680,
-     "h": 563
-    }
-   }
+   "boxes": {}
   },
   "discovery-sent": {
    "file": "1440/discovery-sent.png",
@@ -1386,124 +1564,58 @@
     }
    }
   },
-  "room-time-base": {
-   "file": "1440/room-time-base.png",
+  "workspace-base": {
+   "file": "1440/workspace-base.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
+    "header": {
+     "x": 92,
      "y": 32,
-     "w": 83,
-     "h": 18
+     "w": 1256,
+     "h": 77
     },
-    "faceoff": {
-     "x": 32,
-     "y": 74,
-     "w": 1376,
-     "h": 161
-    },
-    "rail": {
-     "x": 32,
-     "y": 259,
-     "w": 1376,
-     "h": 29
-    },
-    "next": {
-     "x": 32,
-     "y": 312,
-     "w": 1376,
-     "h": 108
-    },
-    "schedule": {
-     "x": 32,
-     "y": 444,
-     "w": 760,
-     "h": 211
-    },
-    "veto": {
-     "x": 32,
-     "y": 670,
-     "w": 760,
-     "h": 0
-    },
-    "lobby": {
-     "x": 32,
-     "y": 670,
-     "w": 760,
-     "h": 153
+    "offer": {
+     "x": 92,
+     "y": 177,
+     "w": 416,
+     "h": 455
     },
     "accept": {
-     "x": 49,
-     "y": 593,
-     "w": 142,
-     "h": 44
+     "x": 109,
+     "y": 554,
+     "w": 79,
+     "h": 36
+    },
+    "roster": {
+     "x": 122,
+     "y": 337,
+     "w": 37,
+     "h": 18
     }
    }
   },
-  "room-time-hover": {
-   "file": "1440/room-time-hover.png",
+  "workspace-hover": {
+   "file": "1440/workspace-hover.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "workspace-accepting": {
+   "file": "1440/workspace-accepting.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-base": {
+   "file": "1440/room-base.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 32,
-     "y": 74,
-     "w": 1376,
-     "h": 161
-    },
-    "rail": {
-     "x": 32,
-     "y": 259,
-     "w": 1376,
-     "h": 29
-    },
-    "next": {
-     "x": 32,
-     "y": 312,
-     "w": 1376,
-     "h": 108
-    },
-    "schedule": {
-     "x": 32,
-     "y": 444,
-     "w": 760,
-     "h": 211
-    },
-    "veto": {
-     "x": 32,
-     "y": 670,
-     "w": 760,
-     "h": 0
-    },
-    "lobby": {
-     "x": 32,
-     "y": 670,
-     "w": 760,
-     "h": 153
-    }
-   }
-  },
-  "room-time-accepted": {
-   "file": "1440/room-time-accepted.png",
-   "width": 1440,
-   "height": 1400,
-   "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -1545,21 +1657,81 @@
      "y": 915,
      "w": 760,
      "h": 153
+    },
+    "chatBtn": {
+     "x": 1330,
+     "y": 1328,
+     "w": 86,
+     "h": 48
     }
    }
   },
-  "room-checkin-base": {
-   "file": "1440/room-checkin-base.png",
+  "room-chat": {
+   "file": "1440/room-chat.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
+    "chat": {
+     "x": 1036,
+     "y": 856,
+     "w": 380,
+     "h": 520
     },
+    "input": {
+     "x": 1049,
+     "y": 1323,
+     "w": 306,
+     "h": 40
+    },
+    "send": {
+     "x": 1363,
+     "y": 1323,
+     "w": 40,
+     "h": 40
+    }
+   }
+  },
+  "room-chat-type1": {
+   "file": "1440/room-chat-type1.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-chat-type2": {
+   "file": "1440/room-chat-type2.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-chat-sent": {
+   "file": "1440/room-chat-sent.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "chat": {
+     "x": 1036,
+     "y": 856,
+     "w": 380,
+     "h": 520
+    },
+    "close": {
+     "x": 1371,
+     "y": 874,
+     "w": 28,
+     "h": 28
+    }
+   }
+  },
+  "room-lobby": {
+   "file": "1440/room-lobby.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -1582,27 +1754,122 @@
      "x": 32,
      "y": 444,
      "w": 760,
-     "h": 87
+     "h": 132
     },
     "checkin": {
      "x": 32,
-     "y": 546,
+     "y": 592,
      "w": 760,
      "h": 308
     },
     "veto": {
      "x": 32,
-     "y": 870,
+     "y": 915,
      "w": 760,
      "h": 0
     },
     "lobby": {
      "x": 32,
-     "y": 870,
+     "y": 915,
      "w": 760,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
+     "x": 1330,
+     "y": 1328,
+     "w": 86,
+     "h": 48
+    },
+    "lobbyInput": {
+     "x": 49,
+     "y": 983,
+     "w": 726,
+     "h": 40
+    },
+    "checkinBtn": {
+     "x": 49,
+     "y": 837,
+     "w": 726,
+     "h": 45
+    }
+   }
+  },
+  "room-lobby-type1": {
+   "file": "1440/room-lobby-type1.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-lobby-type2": {
+   "file": "1440/room-lobby-type2.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "save": {
+     "x": 647,
+     "y": 1063,
+     "w": 128,
+     "h": 34
+    },
+    "lobby": {
+     "x": 32,
+     "y": 915,
+     "w": 760,
+     "h": 199
+    }
+   }
+  },
+  "room-lobby-saved": {
+   "file": "1440/room-lobby-saved.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "faceoff": {
+     "x": 32,
+     "y": 74,
+     "w": 1376,
+     "h": 161
+    },
+    "rail": {
+     "x": 32,
+     "y": 259,
+     "w": 1376,
+     "h": 29
+    },
+    "next": {
+     "x": 32,
+     "y": 312,
+     "w": 1376,
+     "h": 108
+    },
+    "schedule": {
+     "x": 32,
+     "y": 444,
+     "w": 760,
+     "h": 132
+    },
+    "checkin": {
+     "x": 32,
+     "y": 592,
+     "w": 760,
+     "h": 308
+    },
+    "veto": {
+     "x": 32,
+     "y": 915,
+     "w": 760,
+     "h": 0
+    },
+    "lobby": {
+     "x": 32,
+     "y": 915,
+     "w": 760,
+     "h": 212
+    },
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
@@ -1610,7 +1877,7 @@
     },
     "checkinBtn": {
      "x": 49,
-     "y": 792,
+     "y": 837,
      "w": 726,
      "h": 45
     }
@@ -1621,13 +1888,14 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
+   "boxes": {}
+  },
+  "room-waiting": {
+   "file": "1440/room-waiting.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -1656,21 +1924,21 @@
      "x": 32,
      "y": 546,
      "w": 760,
-     "h": 308
+     "h": 306
     },
     "veto": {
      "x": 32,
-     "y": 870,
+     "y": 868,
      "w": 760,
      "h": 0
     },
     "lobby": {
      "x": 32,
-     "y": 870,
+     "y": 868,
      "w": 760,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
@@ -1678,86 +1946,12 @@
     }
    }
   },
-  "room-checkin-checked": {
-   "file": "1440/room-checkin-checked.png",
+  "room-live": {
+   "file": "1440/room-live.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 32,
-     "y": 74,
-     "w": 1376,
-     "h": 179
-    },
-    "rail": {
-     "x": 32,
-     "y": 277,
-     "w": 1376,
-     "h": 29
-    },
-    "next": {
-     "x": 32,
-     "y": 330,
-     "w": 1376,
-     "h": 108
-    },
-    "schedule": {
-     "x": 1028,
-     "y": 462,
-     "w": 380,
-     "h": 87
-    },
-    "checkin": {
-     "x": 1028,
-     "y": 564,
-     "w": 380,
-     "h": 65
-    },
-    "veto": {
-     "x": 1028,
-     "y": 645,
-     "w": 380,
-     "h": 128
-    },
-    "result": {
-     "x": 32,
-     "y": 462,
-     "w": 972,
-     "h": 381
-    },
-    "lobby": {
-     "x": 1028,
-     "y": 789,
-     "w": 380,
-     "h": 199
-    },
-    "chat": {
-     "x": 1330,
-     "y": 1328,
-     "w": 86,
-     "h": 48
-    }
-   }
-  },
-  "room-veto-base": {
-   "file": "1440/room-veto-base.png",
-   "width": 1440,
-   "height": 1400,
-   "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -1806,7 +2000,7 @@
      "w": 380,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
@@ -1820,8 +2014,8 @@
     }
    }
   },
-  "room-veto-dialog": {
-   "file": "1440/room-veto-dialog.png",
+  "room-veto": {
+   "file": "1440/room-veto.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
@@ -1838,11 +2032,11 @@
      "w": 116,
      "h": 28
     },
-    "pool": {
-     "x": 145,
-     "y": 837,
-     "w": 82,
-     "h": 28
+    "title": {
+     "x": 141,
+     "y": 255,
+     "w": 1158,
+     "h": 23
     }
    }
   },
@@ -1851,14 +2045,7 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
-   "boxes": {
-    "dialog": {
-     "x": 120,
-     "y": 240,
-     "w": 1200,
-     "h": 920
-    }
-   }
+   "boxes": {}
   },
   "room-veto-banned": {
    "file": "1440/room-veto-banned.png",
@@ -1874,18 +2061,59 @@
     }
    }
   },
-  "room-report-base": {
-   "file": "1440/room-report-base.png",
+  "room-veto-oppban": {
+   "file": "1440/room-veto-oppban.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
+    "dialog": {
+     "x": 120,
+     "y": 240,
+     "w": 1200,
+     "h": 920
     },
+    "sunset": {
+     "x": 839,
+     "y": 998,
+     "w": 60,
+     "h": 17
+    }
+   }
+  },
+  "room-veto-pick-hover": {
+   "file": "1440/room-veto-pick-hover.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-veto-done": {
+   "file": "1440/room-veto-done.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "dialog": {
+     "x": 120,
+     "y": 240,
+     "w": 1200,
+     "h": 920
+    },
+    "series": {
+     "x": 145,
+     "y": 435,
+     "w": 98,
+     "h": 28
+    }
+   }
+  },
+  "room-report": {
+   "file": "1440/room-report.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -1934,32 +2162,26 @@
      "w": 380,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
      "h": 48
     },
-    "fetch": {
-     "x": 66,
-     "y": 775,
-     "w": 169,
-     "h": 34
+    "manualTab": {
+     "x": 318,
+     "y": 692,
+     "w": 120,
+     "h": 36
     }
    }
   },
-  "room-report-hover": {
-   "file": "1440/room-report-hover.png",
+  "room-manual": {
+   "file": "1440/room-manual.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -2000,7 +2222,7 @@
      "x": 32,
      "y": 462,
      "w": 972,
-     "h": 381
+     "h": 504
     },
     "lobby": {
      "x": 1028,
@@ -2008,100 +2230,65 @@
      "w": 380,
      "h": 153
     },
-    "chat": {
-     "x": 1330,
-     "y": 1328,
-     "w": 86,
-     "h": 48
-    }
-   }
-  },
-  "room-report-fetched": {
-   "file": "1440/room-report-fetched.png",
-   "width": 1440,
-   "height": 1400,
-   "dsf": 2,
-   "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
-    "faceoff": {
-     "x": 32,
-     "y": 74,
-     "w": 1376,
-     "h": 179
-    },
-    "rail": {
-     "x": 32,
-     "y": 277,
-     "w": 1376,
-     "h": 29
-    },
-    "next": {
-     "x": 32,
-     "y": 330,
-     "w": 1376,
-     "h": 108
-    },
-    "schedule": {
-     "x": 1028,
-     "y": 462,
-     "w": 380,
-     "h": 87
-    },
-    "checkin": {
-     "x": 1028,
-     "y": 564,
-     "w": 380,
-     "h": 65
-    },
-    "veto": {
-     "x": 1028,
-     "y": 645,
-     "w": 380,
-     "h": 128
-    },
-    "result": {
-     "x": 32,
-     "y": 462,
-     "w": 972,
-     "h": 746
-    },
-    "lobby": {
-     "x": 1028,
-     "y": 789,
-     "w": 380,
-     "h": 153
-    },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
      "h": 48
     },
-    "candidate": {
+    "m1": {
      "x": 66,
-     "y": 863,
+     "y": 766,
+     "w": 446,
+     "h": 40
+    },
+    "m2": {
+     "x": 524,
+     "y": 766,
+     "w": 446,
+     "h": 40
+    },
+    "mm": {
+     "x": 66,
+     "y": 840,
      "w": 904,
-     "h": 128
+     "h": 40
+    },
+    "reportBtn": {
+     "x": 66,
+     "y": 892,
+     "w": 129,
+     "h": 40
     }
    }
   },
-  "room-report-candidate-hover": {
-   "file": "1440/room-report-candidate-hover.png",
+  "room-manual-1": {
+   "file": "1440/room-manual-1.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-manual-2": {
+   "file": "1440/room-manual-2.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-manual-3": {
+   "file": "1440/room-manual-3.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {}
+  },
+  "room-reported": {
+   "file": "1440/room-reported.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -2142,7 +2329,7 @@
      "x": 32,
      "y": 462,
      "w": 972,
-     "h": 746
+     "h": 379
     },
     "lobby": {
      "x": 1028,
@@ -2150,7 +2337,7 @@
      "w": 380,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
@@ -2158,18 +2345,12 @@
     }
    }
   },
-  "room-report-reported": {
-   "file": "1440/room-report-reported.png",
+  "room-confirmed": {
+   "file": "1440/room-confirmed.png",
    "width": 1440,
    "height": 1400,
    "dsf": 2,
    "boxes": {
-    "back": {
-     "x": 32,
-     "y": 32,
-     "w": 83,
-     "h": 18
-    },
     "faceoff": {
      "x": 32,
      "y": 74,
@@ -2210,7 +2391,7 @@
      "x": 32,
      "y": 462,
      "w": 972,
-     "h": 263
+     "h": 381
     },
     "lobby": {
      "x": 1028,
@@ -2218,11 +2399,17 @@
      "w": 380,
      "h": 153
     },
-    "chat": {
+    "chatBtn": {
      "x": 1330,
      "y": 1328,
      "w": 86,
      "h": 48
+    },
+    "tabs": {
+     "x": 49,
+     "y": 582,
+     "w": 938,
+     "h": 44
     }
    }
   },
@@ -2250,14 +2437,14 @@
      "w": 1376,
      "h": 45
     },
+    "teamTab": {
+     "x": 218,
+     "y": 95,
+     "w": 67,
+     "h": 44
+    },
     "roster0": {
      "x": 32,
-     "y": 345,
-     "w": 208,
-     "h": 260
-    },
-    "roster1": {
-     "x": 309,
      "y": 345,
      "w": 208,
      "h": 260
@@ -2287,18 +2474,57 @@
    "width": 1440,
    "height": 1400,
    "dsf": 2,
+   "boxes": {}
+  },
+  "insights-team": {
+   "file": "1440/insights-team.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
    "boxes": {
-    "rosterRow": {
+    "tabs": {
      "x": 32,
-     "y": 345,
+     "y": 95,
      "w": 1376,
-     "h": 260
+     "h": 45
     },
-    "roster0": {
+    "sub": {
      "x": 32,
-     "y": 345,
-     "w": 208,
-     "h": 260
+     "y": 156,
+     "w": 1376,
+     "h": 45
+    },
+    "mapsTab": {
+     "x": 110,
+     "y": 156,
+     "w": 67,
+     "h": 44
+    },
+    "body": {
+     "x": 32,
+     "y": 217,
+     "w": 1376,
+     "h": 1571
+    }
+   }
+  },
+  "insights-maps": {
+   "file": "1440/insights-maps.png",
+   "width": 1440,
+   "height": 1400,
+   "dsf": 2,
+   "boxes": {
+    "body": {
+     "x": 32,
+     "y": 217,
+     "w": 1376,
+     "h": 1169
+    },
+    "tabs": {
+     "x": 32,
+     "y": 95,
+     "w": 1376,
+     "h": 45
     }
    }
   }

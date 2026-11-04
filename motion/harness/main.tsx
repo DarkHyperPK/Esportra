@@ -48,6 +48,8 @@ async function boot() {
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, refetchInterval: false, staleTime: Infinity } },
   });
   scene.seed?.(qc);
+  // Capture hooks: the capture script plays the opponent (advance the fixture state) and refetches.
+  Object.assign(window, { __qc: qc, __ctl: scene.control ?? {} });
 
   const ctx = {
     AuthContext: AuthContext as React.Context<unknown>,

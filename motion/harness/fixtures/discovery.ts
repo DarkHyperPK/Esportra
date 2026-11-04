@@ -81,7 +81,11 @@ function slotsFor(listingId: string) {
   const out = [];
   const base = new Date(NOW);
   base.setUTCHours(15, 0, 0, 0);
-  for (let d = 1; d <= 6; d += 1) {
+  out.push({
+    id: 'slot-tonight', listingId, startsAt: new Date(base.getTime() + HOUR).toISOString(), endsAt: new Date(base.getTime() + 3 * HOUR).toISOString(),
+    status: 'available', createdAt: iso(-DAY), bookedByTeamId: null,
+  });
+  for (let d = 1; d <= 5; d += 1) {
     for (const h of [0, 2]) {
       const start = new Date(base.getTime() + d * DAY + h * HOUR);
       const booked = (d === 2 && h === 0) || (d === 4 && h === 2);
@@ -131,7 +135,11 @@ export function teamHistory(teamId: string) {
 
 export const discoveryRoutes: Route[] = [
   ...catalogRoutes,
-  [/^\/api\/scrims\/discover/, () => discoveryListings()],
+  [/^\/api\/scrims\/discover/, (u) => {
+    const region = u.searchParams.get('region_key');
+    const min = Number(u.searchParams.get('min_rank_sort_order') ?? 0);
+    return discoveryListings().filter((l) => (!region || l.regionKey === region) && (!min || (rank(l.maxRankKey ?? '').sortOrder >= min)));
+  }],
   [/^\/api\/scrims\/listings\/[^/]+\/offer$/, (u) => ({
     id: 'offer-1', listingId: u.pathname.split('/')[4], offeringTeamId: ME.id, status: 'pending', proposedAt: null,
     proposedDurationMinutes: 120, notes: null, createdAt: iso(0), updatedAt: iso(0),

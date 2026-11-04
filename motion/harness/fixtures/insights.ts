@@ -120,4 +120,5 @@ export const insightsRoutes: Route[] = [
   [/^\/api\/scrims\/teams\/[^/]+\/data/, () => scrimData()],
   [/^\/api\/scrims\/teams\/[^/]+\/report/, () => teamReport()],
   [/^\/api\/scrims\/up-next/, () => ({ items: [], total: 0 })],
+  [/^\/api\/scrims\/teams\/[^/]+\/map-picks/, () => []],
 ];

@@ -4,7 +4,7 @@
  * Anything without a fixture is recorded on window.__unmocked and answered 404.
  */
 
-export type Handler = (url: URL, init?: RequestInit) => unknown;
+export type Handler = (url: URL, init?: RequestInit) => unknown | Promise<unknown>;
 export type Route = [RegExp, Handler];
 
 declare global {
@@ -27,7 +27,7 @@ export function installMockFetch(routes: Route[]) {
     window.__requests.push(key);
     for (const [re, handler] of routes) {
       if (re.test(`${url.pathname}${url.search}`)) {
-        const body = handler(url, init);
+        const body = await handler(url, init);
         return new Response(JSON.stringify(body ?? null), {
           status: 200,
           headers: { 'content-type': 'application/json' },
