@@ -2,7 +2,7 @@
 .lfg-workspace button, .lfg-workspace a, .lfg-mobile-detail button, .lfg-mobile-detail a { touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .lfg-workspace button, .lfg-mobile-detail button { user-select:none; }
 .lfg-mobile-detail { overscroll-behavior:contain; padding-bottom:env(safe-area-inset-bottom); background:#15151b!important; }
-.lfg-workspace::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; background:#101013; }
+/* No opaque fill here: CompetitivePageShell's StageBackground is the ground for this page. */
 .lfg-nav { display:flex; align-items:center; gap:32px; min-height:72px; padding:12px 32px; border-bottom:1px solid #ffffff18; background:#0d0d10d9; }
 .lfg-wordmark { font-family:var(--font-heading),sans-serif; font-weight:900; font-size:24px; letter-spacing:-.05em; color:#fff; }
 .lfg-wordmark span { color:#f43f5e; }
