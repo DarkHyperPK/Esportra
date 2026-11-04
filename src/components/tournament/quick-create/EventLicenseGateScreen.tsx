@@ -83,7 +83,7 @@ export function EventLicenseGateScreen({ reason, resetsAt }: EventLicenseGateScr
           <>
             Free accounts can create 2 events per month.
             {formattedDate && ` Your quota resets on ${formattedDate}.`}{' '}
-            Contact us for Organizer Pro, which removes the monthly limit.
+            Need more events this month? Contact us.
           </>
         ) : (
           'The free tier supports events up to 32 teams. Brackets above this size are priced per event. Contact us to discuss pricing for your event size.'

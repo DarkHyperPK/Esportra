@@ -24,7 +24,7 @@ const FAQPage = () => {
     {
       category: 'General',
       question: "Is Esportra free to use?",
-      answer: "Yes. Creating an account, joining tournaments, forming teams, and browsing venues is completely free. Tournament organizers may charge entry fees for specific events, and some organizer features require a license."
+      answer: "Yes. Creating an account, joining tournaments, forming teams, and browsing venues is completely free. Tournament organizers may charge entry fees for specific events, and some organizer features need Organizer Pro."
     },
     {
       category: 'General',
@@ -71,7 +71,7 @@ const FAQPage = () => {
     {
       category: 'Tournaments',
       question: "Can I host paid tournaments?",
-      answer: "Yes. Verified organizers with an active license can create tournaments with entry fees and prize pools. Payment processing and distribution is handled through the platform."
+      answer: "Yes. Organizers can create tournaments with entry fees and prize pools. Payment processing and distribution is handled through the platform."
     },
     {
       category: 'Tournaments',
@@ -80,8 +80,8 @@ const FAQPage = () => {
     },
     {
       category: 'Tournaments',
-      question: "How do organizer licenses work?",
-      answer: "Tournament organizers need a license to access advanced features like paid tournaments, custom branding, and analytics. Licenses are managed through the platform — visit your organizer dashboard for details."
+      question: "Do I need a license to organize tournaments?",
+      answer: "No. Set up your organization and you get the organizer role straight away. Free accounts can create 2 events a month with up to 32 teams each. Organizer Pro is enabled per event and unlocks custom veto sequences, Discord DMs to teams and desktop broadcast. Contact us to add it to an event, or for brackets above 32 teams."
     },
     // Venues
     {
@@ -92,7 +92,7 @@ const FAQPage = () => {
     {
       category: 'Venues',
       question: "How do I list my venue?",
-      answer: "Sign up as a venue owner, then go to your Venue Dashboard and click 'List a Venue'. Fill in your venue details, upload photos, set your station count and pricing, then submit for review. Our team approves listings within 48 hours."
+      answer: "Sign in and choose 'List Your Venue' from the Venues menu. Fill in your venue details, upload photos, set your station count and pricing, then submit for review. You become a venue owner as soon as you list, and players can book the venue once our team has verified it, usually within 48 hours."
     },
     // Partnerships
     {

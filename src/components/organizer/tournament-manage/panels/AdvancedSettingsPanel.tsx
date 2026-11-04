@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
-import { useEventLicenseQuota } from '@/hooks/useEventLicenseQuota';
+import { useTournamentOrganizerPro } from '@/hooks/useTournamentOrganizerPro';
 import { OrganizerProLock } from '@/components/ui/OrganizerProLock';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import TournamentMapPoolSelector, { type TournamentMapOption } from '@/components/tournament/wizard/TournamentMapPoolSelector';
@@ -39,7 +39,7 @@ const SCORE_OPTIONS: { value: ScoreReportedBy; label: string; description: strin
 export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: AdvancedSettingsPanelProps) {
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
-  const { isOrganizerPro } = useEventLicenseQuota();
+  const { isOrganizerPro } = useTournamentOrganizerPro(tournament.id);
   const [saving, setSaving] = useState(false);
   const [selectedMapIds, setSelectedMapIds] = useState<string[]>([]);
   const savedMapIdsRef = useRef<string[]>([]);

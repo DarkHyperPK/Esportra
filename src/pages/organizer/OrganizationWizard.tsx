@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { meRolesQueryKey } from '@/lib/meRoles';
+import { useActivateGrantedRole } from '@/hooks/useActivateGrantedRole';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -48,9 +47,9 @@ const STEPS = [
 
 const OrganizationWizard: React.FC = () => {
     const { user } = useAuth();
+    const activateGrantedRole = useActivateGrantedRole();
     const { toast } = useToast();
     const navigate = useNavigate();
-    const queryClient = useQueryClient();
     const requireVerification = useRequireVerification();
 
     const [currentStep, setCurrentStep] = useState(1);
@@ -156,8 +155,10 @@ const OrganizationWizard: React.FC = () => {
             // Notify other components that org was created
             window.dispatchEvent(new Event('organizationCreated'));
 
-            // Refetch roles so ProtectedRoute sees the new organizer role before navigation.
-            await queryClient.refetchQueries({ queryKey: meRolesQueryKey });
+            // The server grants organizer with the org. Refresh roles and make organizer the
+            // active role, otherwise the user is still in Player mode and the organizer
+            // routes below redirect to /unauthorized.
+            await activateGrantedRole('organizer');
 
             toast({ title: 'Success!', description: 'Your organization has been created.' });
             navigate('/organizer/tournaments');

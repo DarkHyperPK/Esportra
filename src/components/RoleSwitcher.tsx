@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeRoles } from '@/hooks/useMeRoles';
-import { meRolesQueryKey } from '@/lib/meRoles';
 import { useToast } from "@/hooks/use-toast";
-import VerificationRequestForm from '@/components/VerificationRequestForm';
 import { JackButton } from '@/components/ui/JackButton';
 import { cn } from '@/lib/utils';
 
@@ -80,11 +77,8 @@ export const RoleSwitcherDialog: React.FC<{
   const { currentRole, isLoading, switchRole } = useRole();
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [reason, setReason] = useState('');
-  const [showVerificationForm, setShowVerificationForm] = useState(false);
-  const [verificationRequestedRole, setVerificationRequestedRole] = useState<'organizer' | 'venue_owner'>('organizer');
   const [verificationStatus, setVerificationStatus] = useState<{
     organizer: boolean;
     venue_owner: boolean;
@@ -126,24 +120,9 @@ export const RoleSwitcherDialog: React.FC<{
       return;
     }
 
-    if (verificationSystemReady) {
-      if (newRole === 'organizer' && !verificationStatus.organizer) {
-        setVerificationRequestedRole('organizer');
-        setShowVerificationForm(true);
-        // Do not close the main dialog yet if we are showing another dialog on top?
-        // Actually showing verification form on top. We can keep the main dialog open or close it.
-        // Existing logic closed it.
-        onOpenChange(false);
-        return;
-      }
-
-      if (newRole === 'venue_owner' && !verificationStatus.venue_owner) {
-        setVerificationRequestedRole('venue_owner');
-        setShowVerificationForm(true);
-        onOpenChange(false);
-        return;
-      }
-    }
+    // Organizer and venue owner are self-serve (set up an organization / list a venue),
+    // and their tiles only render once the role is granted, so there is nothing to apply for here.
+    if (newRole !== 'casual' && verificationSystemReady && !verificationStatus[newRole]) return;
 
     setSwitching(true);
     const success = await switchRole(newRole, reason || undefined);
@@ -188,7 +167,7 @@ export const RoleSwitcherDialog: React.FC<{
                 role="organizer"
                 isCurrent={currentRole === "organizer"}
                 disabled={switching}
-                badge={currentRole === "organizer" ? "Active" : "Licensed"}
+                badge={currentRole === "organizer" ? "Active" : undefined}
                 onClick={() => currentRole !== "organizer" && handleRoleSwitch("organizer")}
               />
             )}
@@ -198,7 +177,7 @@ export const RoleSwitcherDialog: React.FC<{
                 role="venue_owner"
                 isCurrent={currentRole === "venue_owner"}
                 disabled={switching}
-                badge={currentRole === "venue_owner" ? "Active" : "Licensed"}
+                badge={currentRole === "venue_owner" ? "Active" : undefined}
                 onClick={() => currentRole !== "venue_owner" && handleRoleSwitch("venue_owner")}
               />
             )}
@@ -216,30 +195,6 @@ export const RoleSwitcherDialog: React.FC<{
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showVerificationForm} onOpenChange={setShowVerificationForm}>
-        <DialogContent className="z-[1060] max-h-[90vh] max-w-4xl overflow-y-auto overscroll-contain rounded-none border border-rose-500/40 bg-[#0a0a0c] p-6" data-lenis-prevent>
-          <DialogHeader>
-            <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-rose-400">
-              License gate
-            </div>
-            <DialogTitle className="font-heading text-2xl font-black uppercase tracking-tight text-white">
-              Verification Required
-            </DialogTitle>
-            <DialogDescription className="text-sm text-zinc-400">
-              To access organizer features you need to be verified. Submit your
-              business information for review.
-            </DialogDescription>
-          </DialogHeader>
-          <VerificationRequestForm
-            requestedRole={verificationRequestedRole}
-            onSuccess={() => {
-              setShowVerificationForm(false);
-              void queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
-            }}
-            onCancel={() => setShowVerificationForm(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

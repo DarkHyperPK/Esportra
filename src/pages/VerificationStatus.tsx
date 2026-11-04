@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { fetchMeRoles, isApprovedVerifiedRole } from '@/lib/meRoles';
+import { fetchMeRoles } from '@/lib/meRoles';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useNavigate } from 'react-router-dom';
@@ -68,10 +68,8 @@ const VerificationStatus: React.FC = () => {
       setRequests(requestData || []);
       setVerifiedRoles(rolesData?.verifiedRoles || []);
       setAssignedRoles(rolesData?.userRoles || []);
-      const _ = (rolesData?.verifiedRoles || []).some((role: any) => role.role === 'venue_owner' && isApprovedVerifiedRole(role));
-      void _;
     } catch {
-      toast({ title: 'Error', description: 'Failed to fetch verification status', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Could not load your roles. Refresh to try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -135,10 +133,10 @@ const VerificationStatus: React.FC = () => {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] uppercase tracking-wider text-rose-300 mb-3">
                   <Shield className="w-3.5 h-3.5" />
-                  Account Status
+                  Account Roles
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Verification Status</h1>
-                <p className="text-zinc-400">Your current role and verification status on the platform.</p>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Your Roles</h1>
+                <p className="text-zinc-400">No license or application needed. Set up an organization to run tournaments, or list a venue to take bookings.</p>
               </div>
               <Button onClick={() => navigate(-1)} variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
                 Back
@@ -166,7 +164,10 @@ const VerificationStatus: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     <Badge variant="outline" className="text-gray-400 border-gray-600 w-fit">Not active</Badge>
-                    <p className="text-gray-400 text-sm">Create an organization to get the organizer role.</p>
+                    <p className="text-gray-400 text-sm">Set up your organization and you get the organizer role straight away.</p>
+                    <JackButton size="sm" onClick={() => navigate('/organizer/setup-organization')}>
+                      Set up organization
+                    </JackButton>
                   </div>
                 )}
               </CardContent>
@@ -191,7 +192,10 @@ const VerificationStatus: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     <Badge variant="outline" className="text-gray-400 border-gray-600 w-fit">Not active</Badge>
-                    <p className="text-gray-400 text-sm">List your venue — it becomes bookable once admin verifies it.</p>
+                    <p className="text-gray-400 text-sm">List your venue to get the venue owner role. Players can book it once our team has verified the listing.</p>
+                    <JackButton size="sm" onClick={() => navigate('/venues/list-venue')}>
+                      List a venue
+                    </JackButton>
                   </div>
                 )}
               </CardContent>
@@ -201,7 +205,7 @@ const VerificationStatus: React.FC = () => {
           {requests.length > 0 && (
             <Card className="bg-[#0a0a0c] border-white/10">
               <CardHeader>
-                <CardTitle className="text-white">Application History</CardTitle>
+                <CardTitle className="text-white">Past license applications</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

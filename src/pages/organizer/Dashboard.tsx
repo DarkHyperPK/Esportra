@@ -133,7 +133,7 @@ const OrganizerDashboard = () => {
   const [activeTab, setActiveTabState] = useState(defaultTab);
   const [orgSection, setOrgSection] = useState<OrgSettingsSection>("profile");
   const { data: stats, isLoading: statsLoading } = useOrganizerStats();
-  const { quota, isLoading: quotaLoading } = useEventLicenseQuota();
+  const { quota, isLoading: quotaLoading, isError: quotaError } = useEventLicenseQuota();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState("");
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
@@ -333,12 +333,11 @@ const OrganizerDashboard = () => {
         {!staffOnlyView && activeTab !== "organization" && (
           quotaLoading ? (
             <div className="w-52 h-3 bg-white/[0.05] animate-pulse mt-2" role="status" aria-label="Loading quota" />
-          ) : (
+          ) : quotaError ? null : (
             <QuotaIndicator
               used={quota.usedThisMonth}
               limit={quota.monthlyLimit}
               resetsAt={quota.resetsAt}
-              isOrganizerPro={quota.isOrganizerPro}
             />
           )
         )}

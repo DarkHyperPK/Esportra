@@ -21,7 +21,7 @@ const FAIL_OPEN: EventLicenseQuota = {
  * On any error, returns isOrganizerPro=true to fail open — never block on network error.
  */
 export function useEventLicenseQuota() {
-  const { data, isLoading } = useQuery<EventLicenseQuota>({
+  const { data, isLoading, isError } = useQuery<EventLicenseQuota>({
     queryKey: ['event-license-quota'],
     queryFn: () => apiClient.get<EventLicenseQuota>('/api/my/event-licenses/quota'),
     staleTime: 60_000,
@@ -34,5 +34,7 @@ export function useEventLicenseQuota() {
     quota: data ?? FAIL_OPEN,
     isOrganizerPro: data?.isOrganizerPro ?? true,
     isLoading,
+    /** True when the quota could not be read; `quota` then holds fail-open defaults, not real counts. */
+    isError,
   };
 }

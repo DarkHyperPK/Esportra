@@ -2,7 +2,6 @@ interface QuotaIndicatorProps {
   used: number;
   limit: number;
   resetsAt: string; // ISO 8601
-  isOrganizerPro: boolean;
 }
 
 function formatResetDate(iso: string): string {
@@ -19,12 +18,12 @@ function formatResetDate(iso: string): string {
 
 /**
  * Displays the organizer's monthly event quota.
- * Hidden entirely when isOrganizerPro is true.
+ * Organizer Pro is licensed per tournament and does not lift the monthly
+ * free-event limit (the backend trigger counts every new event), so the
+ * indicator shows for every organizer.
  * Shows an amber warning band when the monthly limit is reached.
  */
-export function QuotaIndicator({ used, limit, resetsAt, isOrganizerPro }: QuotaIndicatorProps) {
-  if (isOrganizerPro) return null;
-
+export function QuotaIndicator({ used, limit, resetsAt }: QuotaIndicatorProps) {
   const atLimit = used >= limit;
   const formattedDate = formatResetDate(resetsAt);
 

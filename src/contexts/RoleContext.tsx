@@ -12,7 +12,7 @@ import {
   setStoredSessionRole,
   syncStoredSessionRole,
 } from '@/lib/sessionRole';
-import { RoleContext, type RoleContextType, type UserRole } from '@/contexts/role-context';
+import { RoleContext, type RoleContextType, type SwitchRoleOptions, type UserRole } from '@/contexts/role-context';
 
 export type { UserRole };
 
@@ -106,7 +106,11 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     }
   }, [user?.id, profile?.role]);
 
-  const switchRole = React.useCallback(async (newRole: UserRole, _reason?: string): Promise<boolean> => {
+  const switchRole = React.useCallback(async (
+    newRole: UserRole,
+    _reason?: string,
+    options?: SwitchRoleOptions,
+  ): Promise<boolean> => {
     if (!user) {
       toast({
         title: 'Error',
@@ -139,6 +143,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     }
 
     if (newRole === currentRole) {
+      if (options?.quiet) return true;
       toast({
         title: 'Already in Role',
         description: `You are already in ${newRole} mode`,
@@ -198,11 +203,13 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       setCurrentRole(newRole);
       setStoredSessionRole(user.id, newRole);
 
-      toast({
-        title: 'Role Switched',
-        description: `Successfully switched to ${newRole} mode`,
-        variant: 'default',
-      });
+      if (!options?.quiet) {
+        toast({
+          title: 'Role Switched',
+          description: `Successfully switched to ${newRole} mode`,
+          variant: 'default',
+        });
+      }
       return true;
     } catch (error) {
       console.error('Error switching role:', error);

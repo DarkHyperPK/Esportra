@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useActivateGrantedRole } from '@/hooks/useActivateGrantedRole';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
@@ -107,6 +108,7 @@ interface VenueFormState {
 
 const ListVenue = () => {
   const { user } = useAuth();
+  const activateGrantedRole = useActivateGrantedRole();
   const { toast } = useToast();
   const navigate = useNavigate();
   // Lazy initialization for currentStep from localStorage
@@ -259,6 +261,10 @@ const ListVenue = () => {
 
       localStorage.removeItem('venue_list_data');
       localStorage.removeItem('venue_list_step');
+
+      // Listing a venue grants venue_owner on the server; switch to it so the
+      // venue owner tools are active when the dashboard opens.
+      await activateGrantedRole('venue_owner');
 
       navigate('/venues/dashboard');
     } catch (error: any) {

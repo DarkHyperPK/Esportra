@@ -626,7 +626,7 @@ function LicensesTab({ userId }: { userId: string | undefined }) {
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-12 text-center max-w-2xl">
       <Award className="w-10 h-10 mx-auto mb-3 text-gray-700" />
       <p className="text-gray-400 font-medium">No licenses assigned yet</p>
-      <p className="text-gray-600 text-sm mt-1">Apply for a license through the verification process.</p>
+      <p className="text-gray-600 text-sm mt-1">Organizer and venue owner roles don't need a license. Set up an organization or list a venue to get them.</p>
     </div>
   );
 

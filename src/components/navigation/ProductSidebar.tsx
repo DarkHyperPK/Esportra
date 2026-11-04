@@ -55,7 +55,12 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     );
   }
   const venueItems: NavItem[] = [{ label: 'Find Venues', to: '/venues/search' }];
-  if (canManageVenues) venueItems.push({ label: 'My Venue', to: '/venues/manage' });
+  // Listing is self-serve (the first listing grants venue_owner), so everyone signed in sees it.
+  venueItems.push(
+    canManageVenues
+      ? { label: 'My Venue', to: '/venues/manage' }
+      : { label: 'List a Venue', to: '/venues/list-venue' },
+  );
 
   return [
     {

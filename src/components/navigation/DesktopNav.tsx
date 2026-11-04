@@ -86,11 +86,11 @@ const DesktopNav = ({
               <div className="space-y-px bg-[#0a0a0c]">
                 <JackItem to="/venues/search">Find Venues</JackItem>
                 <JackItem to="/venues/featured">Featured Venues</JackItem>
-                {canManageVenues && (
+                {(user || canManageVenues) && (
                   <>
                     <JackDivider />
                     <JackItem to="/venues/list-venue">List Your Venue</JackItem>
-                    <JackItem to="/venues/dashboard">Venue Dashboard</JackItem>
+                    {canManageVenues && <JackItem to="/venues/dashboard">Venue Dashboard</JackItem>}
                   </>
                 )}
               </div>

@@ -27,7 +27,7 @@ export const organizerGuideSections: GuideSection[] = [
     id: 'getting-started',
     icon: <BookOpen className="w-5 h-5" />,
     title: 'Getting Started',
-    description: 'Get verified, set up your organization, and bring on staff.',
+    description: 'Set up your organization and bring on staff.',
     steps: [
       {
         title: 'Create your Esportra account',
@@ -35,15 +35,9 @@ export const organizerGuideSections: GuideSection[] = [
         navigation: 'Home → Sign Up → Complete Profile',
       },
       {
-        title: 'Apply for an Organizer License',
-        content: 'Head to the Verification Portal and apply under the Organizer section. Fill in your organization details, experience level, planned tournament types, and links to events you\'ve run before.',
-        navigation: 'Verification Portal (/verification) → Apply for License → Submit',
-        tip: 'Applications are typically reviewed within 1–3 business days. You\'ll receive an email notification once a decision is made.',
-      },
-      {
         title: 'Set up your organization',
-        content: 'Once your license is approved, the organization setup wizard walks you through naming your organization and completing your public organizer profile. After that, everything is managed from the organizer dashboard.',
-        navigation: 'Organizer Dashboard (/organizer/dashboard) → Setup Wizard (/organizer/setup-organization)',
+        content: 'The organization setup wizard walks you through naming your organization and completing your public organizer profile. No license or application is needed: you get the organizer role as soon as your organization is created, and everything is then managed from the organizer dashboard.',
+        navigation: 'Account menu → Setup Organization (/organizer/setup-organization)',
       },
       {
         title: 'Invite your staff by email',

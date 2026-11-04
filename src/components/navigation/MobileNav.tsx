@@ -108,10 +108,10 @@ const MobileNav = ({
                       <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
                         <JackSubItem to="/venues/search">Find Venues</JackSubItem>
                         <JackSubItem to="/venues/featured">Featured Venues</JackSubItem>
-                        {canManageVenues && (
+                        {(user || canManageVenues) && (
                           <>
                             <JackSubItem to="/venues/list-venue">List Your Venue</JackSubItem>
-                            <JackSubItem to="/venues/manage">Manage Venues</JackSubItem>
+                            {canManageVenues && <JackSubItem to="/venues/manage">Manage Venues</JackSubItem>}
                           </>
                         )}
                       </div>

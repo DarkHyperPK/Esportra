@@ -494,14 +494,17 @@ const AppContent = React.memo(() => {
                   <Route path="analytics" element={<Navigate to="/admin/tools/analytics" replace />} />
                 </Route>
 
-                {/* Venue Owner Routes */}
+                {/* Venue Owner Routes. Open to any signed-in user: listing a venue is self-serve
+                    (the server grants venue_owner on the first listing), the dashboard only
+                    shows the caller's own venues, and every write is owner-checked server-side.
+                    A venue stays hidden from players until an admin approves it. */}
                 <Route path="/venue-owner/dashboard" element={
-                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                  <ProtectedRoute>
                     <VenueOwnerDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/venues/dashboard" element={
-                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                  <ProtectedRoute>
                     <VenueOwnerDashboard />
                   </ProtectedRoute>
                 } />
@@ -695,13 +698,13 @@ const AppContent = React.memo(() => {
                 <Route path="/venues/featured" element={<FeaturedVenues />} />
                 <Route path="/venues/:slug" element={<VenueDetails />} />
                 <Route path="/venues/list-venue" element={
-                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                  <ProtectedRoute>
                     <ListVenue />
                   </ProtectedRoute>
                 } />
                 <Route path="/venues/manage" element={<Navigate to="/venues/dashboard" replace />} />
                 <Route path="/venues/edit/:id" element={
-                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                  <ProtectedRoute>
                     <EditVenue />
                   </ProtectedRoute>
                 } />

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 import {
-  deriveHasApprovedLicense,
+  deriveHasOrganization,
   fetchMeRoles,
   meRolesQueryKey,
 } from "@/lib/meRoles";
@@ -46,12 +46,13 @@ const HeroSection = () => {
     enabled: !!user,
     staleTime: 60_000,
   });
-  const hasApprovedLicense = !!user && deriveHasApprovedLicense(meRoles);
+  // Organizer is self-serve: setting up an organization grants the role.
+  const hasOrganization = !!user && deriveHasOrganization(meRoles);
   const hostTournamentHref = !user
     ? "/auth/signup"
-    : hasApprovedLicense
+    : hasOrganization
       ? "/tournaments/create"
-      : "/verification";
+      : "/organizer/setup-organization";
 
   // Ensure video is playing and handle initial mute/volume
   useEffect(() => {

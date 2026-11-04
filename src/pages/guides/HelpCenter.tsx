@@ -50,7 +50,7 @@ const ENTRIES: HelpEntry[] = [
     roleLabel: 'For organizers',
     title: 'Organizer Playbook',
     description:
-      'License application to post-event analytics — the seven-step creation wizard, bracket generation and publishing, live match ops, dispute rulings.',
+      'Organization setup to post-event analytics — the seven-step creation wizard, bracket generation and publishing, live match ops, dispute rulings.',
     status: 'available',
   },
   {
@@ -72,7 +72,7 @@ const ENTRIES: HelpEntry[] = [
     roleLabel: 'Resources',
     title: 'FAQ & Answers',
     description:
-      'Quick answers about licenses, formats, entry fees and platform rules — before you dig into a full handbook.',
+      'Quick answers about Organizer Pro, formats, entry fees and platform rules — before you dig into a full handbook.',
     href: '/about/faq',
     ctaLabel: 'Browse the FAQ',
     status: 'available',

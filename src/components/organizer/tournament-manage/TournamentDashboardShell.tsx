@@ -4,7 +4,7 @@
  * Outer layout shell for the tournament dashboard.
  * CommandShell > CommandPageGrid with rail and content column.
  * Header (identity + actions) sits above every panel; the rail only navigates.
- * Mobile drawer for < 768px breakpoint, with a sticky publish bar for drafts.
+ * Mobile drawer below the lg breakpoint, with a sticky publish bar for drafts on phones.
  * Includes CompletionBanner, dirty-state navigation guard.
  */
 
@@ -41,10 +41,6 @@ import { MobileDrawer } from './MobileDrawer';
 import { CompletionBanner } from './CompletionBanner';
 import { PublishButton } from './PublishButton';
 import Footer from '@/components/Footer';
-
-// ── Brand constants ───────────────────────────────────────────────────────────
-
-const NOISE_BG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C%2Ffilter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C%2Fsvg%3E")`;
 
 // ── Dirty State Context ────────────────────────────────────────────────────────
 
@@ -181,19 +177,9 @@ export function TournamentDashboardShell({
           className="gap-3 py-3 pl-0 xl:pl-0"
           rail={
             <>
-              {/* Desktop Rail */}
-              <CommandRail className="hidden md:block" style={{ backgroundColor: '#08080a', position: 'relative' }}>
-                {/* Top rose glow */}
-                <div className="absolute inset-x-0 top-0 h-32 pointer-events-none" aria-hidden="true"
-                  style={{ background: 'radial-gradient(ellipse 100% 35% at 50% 0%, rgba(244,63,94,0.22) 0%, transparent 65%)' }} />
-                {/* Bottom rose bleed */}
-                <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none" aria-hidden="true"
-                  style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(244,63,94,0.12) 0%, transparent 70%)' }} />
-                {/* Noise texture */}
-                <div className="absolute inset-0 pointer-events-none opacity-[0.07]" aria-hidden="true"
-                  style={{ backgroundImage: NOISE_BG, backgroundSize: '128px 128px' }} />
-                {/* Nav content above decoration layers */}
-                <div className="relative">{nav}</div>
+              {/* Desktop Rail: plain surface, sticky, scrolls on its own when the nav is taller than the viewport. */}
+              <CommandRail className="hidden max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain px-0 py-0 shadow-none [scrollbar-width:thin] lg:block">
+                {nav}
               </CommandRail>
 
               {/* Mobile Drawer */}
@@ -201,8 +187,8 @@ export function TournamentDashboardShell({
             </>
           }
         >
-          {/* Mobile Header Bar */}
-          <div className="flex items-center gap-3 border border-white/10 bg-card/90 p-2 md:hidden">
+          {/* Mobile / tablet header bar (the rail only shows from lg, where the grid gives it a column) */}
+          <div className="flex items-center gap-3 border border-white/10 bg-card/90 p-2 lg:hidden">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}

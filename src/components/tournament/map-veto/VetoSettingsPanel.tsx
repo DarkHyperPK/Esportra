@@ -5,13 +5,14 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CtaButton } from '@/components/ui/app-buttons';
 import { useVetoSettings } from '@/hooks/useVetoSettings';
-import { useEventLicenseQuota } from '@/hooks/useEventLicenseQuota';
+import { useTournamentOrganizerPro } from '@/hooks/useTournamentOrganizerPro';
 import { OrganizerProLock } from '@/components/ui/OrganizerProLock';
 import { VetoStepRow } from './VetoStepRow';
 import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
 
 interface VetoSettingsPanelProps {
   matchId: string;
+  tournamentId: string;
   vetoStatus: string;
   team1Name: string;
   team2Name: string;
@@ -20,6 +21,7 @@ interface VetoSettingsPanelProps {
 
 export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
   matchId,
+  tournamentId,
   vetoStatus,
   team1Name,
   team2Name,
@@ -43,7 +45,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
     dismissExternalUpdateWarning,
   } = useVetoSettings({ matchId, vetoStatus, enabled: true });
 
-  const { isOrganizerPro } = useEventLicenseQuota();
+  const { isOrganizerPro } = useTournamentOrganizerPro(tournamentId);
 
   const lastPickSideIdx = localSteps.reduce<number>(
     (acc, s, i) => (s.action === 'pick_side' ? i : acc),

@@ -207,6 +207,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const settingsPanel = effectiveIsOrganizer ? (
     <VetoSettingsPanel
       matchId={matchId}
+      tournamentId={tournamentId}
       vetoStatus={veto.status}
       team1Name={team1Name}
       team2Name={team2Name}
