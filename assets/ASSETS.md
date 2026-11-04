@@ -98,7 +98,7 @@ Two widths: 540 px (mobile layout, fills a 1080-wide frame at 2x) and 1440 px (d
 
 # Assets for the Find Teammates reel
 
-These are used by `motion/find-teammates/` (30 s, 120 BPM; 9:16, 1:1 and 16:9 from one timeline). Nothing in it is redrawn: every UI pixel in that video is a crop of a screen listed below.
+These are used by `motion/find-teammates/` (33.3 s at 108 BPM; 9:16, 1:1 and 16:9 from one timeline). Nothing in it is redrawn: every UI pixel in that video is a crop of a screen listed below.
 
 ## Source note
 

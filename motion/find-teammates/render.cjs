@@ -1,4 +1,4 @@
-// Full render: node render.cjs <fmt> [fps] → build/find-teammates-<fmt>.mp4 (H.264 + AAC soundtrack)
+// Full render: node render.cjs <fmt> [fps]  (playback length = 30 s timeline / speed 0.9 ≈ 33.3 s) → build/find-teammates-<fmt>.mp4 (H.264 + AAC soundtrack)
 // Frames are rendered deterministically via window.renderAt(t) and piped straight into ffmpeg.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -10,7 +10,7 @@ const path = require('path');
   const [W, H] = { '9x16': [1080, 1920], '1x1': [1080, 1080], '16x9': [1920, 1080] }[fmt];
   const out = path.join(__dirname, 'build', `find-teammates-${fmt}.mp4`);
   const audio = path.join(__dirname, 'build', 'soundtrack.wav');
-  const total = Math.round(30 * fps);
+  const total = Math.round((30 / 0.9) * fps);
 
   const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y',
     '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'png', '-i', '-',

@@ -1,4 +1,4 @@
-"""Original 30 s soundtrack for the Find Teammates reel: 120 BPM, F minor, synthesized in code.
+"""Original soundtrack for the Find Teammates reel: 108 BPM (the 120 BPM timeline at 0.9 speed), F minor, synthesized in code.
 
 Reads sfx.json (cue list exported from the timeline) so UI clicks, keystrokes, hits and
 whooshes land on exactly the frames the picture uses. Writes build/soundtrack.wav (48 kHz stereo).
@@ -9,8 +9,10 @@ import numpy as np
 from scipy.signal import butter, sosfilt, fftconvolve
 
 SR = 48000
-DUR = 30.0
-N = int(SR * DUR)
+DUR = 30.0           # timeline seconds (authored at 120 BPM)
+SPEED = 0.9          # playback speed: 120 → 108 BPM
+TS = 1 / SPEED       # timeline seconds → real seconds
+N = int(round(SR * DUR * TS))
 BEAT = 0.5
 BAR = 2.0
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -24,8 +26,8 @@ DRUMS, BASS, MUSIC, SFX, VERB = bus(), bus(), bus(), bus(), bus()
 
 
 def place(b, t, sig, pan=0.0, gain=1.0, send=0.0):
-    """Mix mono or stereo `sig` into bus `b` at time t (s). Equal-power pan."""
-    i = int(round(t * SR))
+    """Mix mono or stereo `sig` into bus `b` at timeline time t (scaled to real time). Equal-power pan."""
+    i = int(round(t * TS * SR))
     if i >= N or i + (sig.shape[-1]) <= 0:
         return
     if sig.ndim == 1:
@@ -257,16 +259,16 @@ def music():
         t0 = bar * BAR
         c = PROG[bar % 4]
         cutoff = 900 + 3100 * min(1, (t0 - 4.0) / 4.0) if t0 < 8 else 5200
-        place(MUSIC, t0, supersaw(CH[c], BAR, cutoff=cutoff, g=0.55), send=0.25)
+        place(MUSIC, t0, supersaw(CH[c], BAR * TS, cutoff=cutoff, g=0.55), send=0.25)
     # build bar: chord with closing filter, stopping before the impact gap
-    place(MUSIC, 26.0, supersaw(CH['Eb'], 0.94, cutoff=2400, g=0.5), send=0.3)
+    place(MUSIC, 26.0, supersaw(CH['Eb'], 0.94 * TS, cutoff=2400, g=0.5), send=0.3)
     # bass: rolling 16ths, skipping the kick
     for s in np.arange(4.0, 26.94, 0.125):
         if int(round(s / 0.125)) % 4 == 0:
             continue
         c = chord_at(s) if s < 26 else 'Eb'
         g = 0.55 if s < 8 else 0.7
-        place(BASS, s, bass_note(ROOT[c], 0.11, g, cutoff=420 if s < 8 else 620))
+        place(BASS, s, bass_note(ROOT[c], 0.11 * TS, g, cutoff=420 if s < 8 else 620))
     # lead arp 16ths from the first feature onward, an octave lift from bar 12
     pat = [0, 1, 2, 1, 2, 0, 1, 2, 0, 2, 1, 2, 1, 0, 2, 1]
     for k, s in enumerate(np.arange(8.0, 26.0, 0.125)):
@@ -275,8 +277,8 @@ def music():
         acc = 1.0 if k % 4 == 0 else 0.7
         place(MUSIC, s, pluck(m, 0.2, 0.34 * acc), pan=0.35 * np.sin(k * 0.7), send=0.22)
     # outro: big held chord
-    place(MUSIC, 27.0, supersaw(CH['Fm'] + [77], 2.9, cutoff=4200, g=0.75) * np.exp(-tt(2.9) / 1.4), send=0.45)
-    place(BASS, 27.0, sub808(29, 2.5, 0.9, glide=0.6))
+    place(MUSIC, 27.0, supersaw(CH['Fm'] + [77], 2.9 * TS, cutoff=4200, g=0.75) * np.exp(-tt(2.9 * TS) / (1.4 * TS)), send=0.45)
+    place(BASS, 27.0, sub808(29, 2.5 * TS, 0.9, glide=0.6))
 
 
 def stab(name, t, g=1.0, up=0, d=0.28, gate=None):
@@ -311,9 +313,9 @@ def cues():
         elif k == 'tick':
             place(SFX, t, blip(2400, 3200, 0.04, 0.35), pan=0.3)
         elif k == 'riser':
-            d = c.get('len', 0.6)
+            d = c.get('len', 0.6) * TS
             if t > 20:
-                d = 26.94 - t
+                d = (26.94 - t) * TS
             place(SFX, t, riser(d, 0.55), send=0.3)
         elif k == 'boom':
             place(DRUMS, t, kick(1.2, f0=120, f1=32, tau=0.6, drive=3.0), gain=1.0)
@@ -352,7 +354,7 @@ def cues():
 
 
 def sidechain():
-    tk = np.array(sorted(KICKS))
+    tk = np.array(sorted(KICKS)) * TS
     t = np.arange(N) / SR
     idx = np.searchsorted(tk, t, side='right') - 1
     valid = idx >= 0
@@ -377,7 +379,7 @@ def main():
     # the impact gaps: silence everything except reverb just before the drops
     gate = np.ones(N)
     for a, b in ((3.89, 4.0), (26.94, 27.0)):
-        i0, i1 = int(a * SR), int(b * SR)
+        i0, i1 = int(a * TS * SR), int(b * TS * SR)
         gate[i0:i1] = np.linspace(1, 0, i1 - i0) ** 4
     mix = DRUMS * gate + (BASS * sc) * gate * 0.95 + (MUSIC * sc) * gate * 0.8 + SFX * 0.9
     mix += reverb(VERB) * 0.35
@@ -386,7 +388,7 @@ def main():
     peak = np.abs(mix).max()
     mix = mix / peak * 1.25
     mix = np.tanh(mix * 1.15) / np.tanh(1.15)
-    fade = np.ones(N); f0 = int(29.65 * SR); fade[f0:] = np.linspace(1, 0, N - f0) ** 1.5
+    fade = np.ones(N); f0 = int(29.65 * TS * SR); fade[f0:] = np.linspace(1, 0, N - f0) ** 1.5
     mix *= fade
     mix *= 0.97 / np.abs(mix).max()
     os.makedirs(os.path.join(HERE, 'build'), exist_ok=True)

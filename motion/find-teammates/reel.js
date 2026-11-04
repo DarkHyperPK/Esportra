@@ -6,6 +6,9 @@
 const Q = new URLSearchParams(location.search);
 const FMT = Q.get('fmt') || '9x16';
 const DUR = 30, BEAT = 0.5, FPS = Number(Q.get('fps') || 30);
+// Timeline is authored at 120 BPM over 30 s; SPEED plays it back slower (0.9 → 108 BPM, 33.3 s).
+const SPEED = Number(Q.get('speed') || 0.9);
+const REAL_DUR = DUR / SPEED;
 const A = '../../assets/';
 const FORMATS = {
   '9x16': { W: 1080, H: 1920, src: 'm', stage: { x: 56, y: 660, w: 968, h: 1120 }, cap: { x: 64, w: 952, size: 118, eb: 24, gap: 44, mode: 'above' }, cur: 74, hudY: 92, barY: 1842, logoW: 560 },
@@ -831,8 +834,8 @@ function hudUpdate(h, t) {
   Object.assign(h.barBg.style, { left: px(bx), top: px(by), width: px(bw) });
   Object.assign(h.barFg.style, { left: px(bx), top: px(by), width: px(bw * t / DUR) });
   h.ticks.forEach((k, i) => Object.assign(k.style, { left: px(bx + (bw * i) / 15 - 1), top: px(by - 4), background: t >= i * 2 ? 'var(--ink)' : 'rgba(255,255,255,0.3)' }));
-  const f = Math.floor(t * FPS) % FPS; const s = Math.floor(t);
-  h.tc.textContent = `00:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')} · 120 BPM · Bar ${String(Math.floor(t / 2) + 1).padStart(2, '0')}`;
+  const rt = t / SPEED; const f = Math.floor(rt * FPS + 1e-6) % FPS; const s = Math.floor(rt + 1e-6);
+  h.tc.textContent = `00:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')} · ${Math.round(120 * SPEED)} BPM · Bar ${String(Math.floor(t / 2) + 1).padStart(2, '0')}`;
   Object.assign(h.tc.style, { left: px(bx), top: px(by + 14) });
   winLabelR.textContent = `${String(Math.floor(t / 2) + 1).padStart(2, '0')} / 15`;
 }
@@ -865,7 +868,7 @@ function assemblyCam(a, t) {
   return camLerp(start, full, E.outCubic(prog(t, 5.0, 7.3)));
 }
 
-function renderAt(t) {
+function renderFrame(t) {
   managed.forEach(e => { e.style.display = 'none'; });
   cursor.style.display = 'none'; ripples.forEach(r => (r.style.display = 'none')); burst.style.display = 'none';
   hook.style.display = 'none'; endc.style.opacity = 1;
@@ -920,7 +923,7 @@ function renderAt(t) {
   let shx = 0, shy = 0;
   (sc?.clicks || []).forEach((c, i) => { if (t >= c) { const u = t - c; const a = 5 * Math.exp(-u * 20); shx += a * Math.sin(u * 70 + i); shy += a * Math.cos(u * 55 + i); } });
   // motion blur from camera speed
-  const prev = t - 1 / FPS;
+  const prev = t - SPEED / FPS;
   let blur = 0;
   if (t >= 7.6 && t < 27) { const pc = camFor(prev) || cam; const d = Math.hypot((cam.cx - pc.cx) * cam.z, (cam.cy - pc.cy) * cam.z) + Math.abs(Math.log(cam.z / pc.z)) * S.w; blur = clamp((d - 18) * 0.07, 0, 7); }
   world.style.filter = blur > 0.3 ? `blur(${blur.toFixed(2)}px)` : '';
@@ -1002,9 +1005,10 @@ window.READY = (async () => {
   SCENES.forEach(s => s.cap && (vis(s.cap.box), placeCaption(s.cap), vis(s.cap.box, false)));
   vis(ASM.cap.box); placeCaption(ASM.cap); vis(ASM.cap.box, false);
   timelineSfx();
-  window.SFX = SFX;
+  window.SFX = SFX; window.SPEED = SPEED; window.REAL_DUR = REAL_DUR;
   window.SCENE_TIMES = SCENES.map(s => ({ id: s.id, t0: s.t0, t1: s.t1 }));
-  renderAt(Number(Q.get('t') || 0));
+  renderFrame(Number(Q.get("t") || 0) * SPEED);
   return true;
 })();
-window.renderAt = renderAt;
+// public API takes real (playback) seconds
+window.renderAt = t => renderFrame(t * SPEED);

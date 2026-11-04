@@ -27,21 +27,21 @@
 <div class="wrap">
   <div class="eyebrow"><span class="dot"></span>Esportra / Find Teammates reel</div>
   <h1>Contact sheet: one frame per beat.</h1>
-  <div class="sub"><b>30 s · 120 BPM · 15 bars.</b> One timeline, three framings. Every UI pixel is a crop of the real app's screens; cursor clicks land on the beat.</div>
+  <div class="sub"><b>33.3 s · 108 BPM · 15 bars.</b> One timeline, three framings. Every UI pixel is a crop of the real app's screens; cursor clicks land on the beat.</div>
   <div id="sections"></div>
 </div>
 <script>
-const beats = [
-  ['01', 'Hook', 3.3, 'Still looking for a fifth?'],
-  ['02', 'Product appears', 6.3, 'Logo slam, UI assembles'],
-  ['03', 'Search', 9.2, 'Click + type “duelist”'],
-  ['04', 'Filter', 12.0, 'Role chip, rank list → Diamond 1'],
-  ['05', 'Save', 14.6, 'Bookmark click + burst'],
-  ['06', 'Teams', 16.95, 'Tab click → rosters'],
-  ['07', 'Connect', 19.8, 'Drawer + intro typing'],
-  ['08', 'Requests', 22.15, 'Accept → connected'],
-  ['09', 'Create', 25.6, 'Role + agents → live preview'],
-  ['10', 'End card', 28.9, 'Find your next team.'],
+const beats = [ // real playback seconds (timeline at 0.9 speed)
+  ['01', 'Hook', '3.67', 'Still looking for a fifth?'],
+  ['02', 'Product appears', '7.00', 'Logo slam, UI assembles'],
+  ['03', 'Search', '10.22', 'Click + type “duelist”'],
+  ['04', 'Filter', '13.33', 'Role chip, rank list → Diamond 1'],
+  ['05', 'Save', '16.22', 'Bookmark click + burst'],
+  ['06', 'Teams', '18.83', 'Tab click → rosters'],
+  ['07', 'Connect', '22.00', 'Drawer + intro typing'],
+  ['08', 'Requests', '24.61', 'Accept → connected'],
+  ['09', 'Create', '28.44', 'Role + agents → live preview'],
+  ['10', 'End card', '32.11', 'Find your next team.'],
 ];
 const fmts = [['9x16', '9:16 · 1080×1920 (primary)'], ['1x1', '1:1 · 1080×1080'], ['16x9', '16:9 · 1920×1080']];
 const root = document.getElementById('sections');
@@ -50,9 +50,9 @@ for (const [f, label] of fmts) {
   h.innerHTML = `<h2>${label}</h2>`; root.appendChild(h);
   const g = document.createElement('div'); g.className = 'grid'; root.appendChild(g);
   for (const [n, name, t, what] of beats) {
-    const file = `build/contact/${f}-${(Number.isInteger(t) ? t.toFixed(1) : String(t)).padStart(5, '0')}.png`;
+    const file = `build/contact/${f}-${t.padStart(5, "0")}.png`;
     const fig = document.createElement('figure');
-    fig.innerHTML = `<img src="${file}"><figcaption><span class="n">${n}</span><span>${name}</span><span class="t">${t.toFixed(2)}s</span></figcaption>`;
+    fig.innerHTML = `<img src="${file}"><figcaption><span class="n">${n}</span><span>${name}</span><span class="t">${t}s</span></figcaption>`;
     if (f === '9x16') fig.title = what;
     g.appendChild(fig);
   }
