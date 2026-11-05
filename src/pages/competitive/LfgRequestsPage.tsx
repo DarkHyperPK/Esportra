@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAcceptInterest, useDeclineInterest, useLfgInbox, useWithdrawInterest } from '@/hooks/competitive/useLfg';
 import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
+import { usePeekStore } from '@/stores/peekStore';
 import type { LfgInboxEntry } from '@/types/competitive';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 
@@ -13,10 +14,12 @@ function RequestAvatar({ item }: { item: LfgInboxEntry }) {
 
 function RequestRow({ item, received }: { item: LfgInboxEntry; received: boolean }) {
   const navigate = useNavigate();
+  const openPeek = usePeekStore(s => s.openPeek);
   const accept = useAcceptInterest(item.listingId);
   const decline = useDeclineInterest(item.listingId);
   const withdraw = useWithdrawInterest(item.listingId);
   const [error, setError] = useState('');
+  const counterpartId = received ? item.fromUserId : item.toUserId;
   async function respond(action: 'accept' | 'decline' | 'withdraw') {
     setError('');
     try {
@@ -26,7 +29,10 @@ function RequestRow({ item, received }: { item: LfgInboxEntry; received: boolean
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update request. Try again.'); }
   }
   const pending = accept.isPending || decline.isPending || withdraw.isPending;
-  return <article className="lfg-row"><RequestAvatar item={item} /><div className="lfg-row-body"><h2 className="lfg-name">{item.counterpartUsername || 'Player'}</h2><p className="lfg-sub">{item.listingName || 'Listing'} · {item.gameSlug} · {{ expressed: 'Pending', accepted: 'Connected', withdrawn: 'Withdrawn', declined: 'Declined', blocked: 'Unavailable' }[item.status]}</p>{item.message && <p className="lfg-description" style={{ marginTop:8 }}>{item.message}</p>}{error && <p className="lfg-error" role="alert">{error}</p>}</div><div className="lfg-row-actions">
+  return <article className="lfg-row"><RequestAvatar item={item} /><div className="lfg-row-body">
+    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(counterpartId)}>{item.counterpartUsername || 'Player'}</button>
+    <p className="lfg-sub">{item.listingName || 'Listing'} · {item.gameSlug} · {{ expressed: 'Pending', accepted: 'Connected', withdrawn: 'Withdrawn', declined: 'Declined', blocked: 'Unavailable' }[item.status]}</p>{item.message && <p className="lfg-description" style={{ marginTop:8 }}>{item.message}</p>}{error && <p className="lfg-error" role="alert">{error}</p>}</div><div className="lfg-row-actions">
+    <button className="lfg-button" type="button" onClick={() => openPeek(counterpartId)}>View Profile</button>
     {item.status === 'expressed' && (received ? <><button className="lfg-button lfg-button-primary" type="button" disabled={pending} onClick={() => void respond('accept')}>{accept.isPending ? 'Connecting…' : 'Accept'}</button><button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('decline')}>{decline.isPending ? 'Declining…' : 'Decline'}</button></> : <button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('withdraw')}>{withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}</button>)}
     {item.status === 'accepted' && item.conversationId && <Link className="lfg-button lfg-button-primary" to={`/inbox/${item.conversationId}`}>Open conversation</Link>}
     {received && <Link className="lfg-button" to={`/competitive/lfg/${item.listingId}`}>View listing</Link>}

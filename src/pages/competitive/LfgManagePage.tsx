@@ -10,6 +10,7 @@ import { LfgListingDetail } from '@/components/competitive/LfgListingDetail';
 import { LfgListingCard } from '@/components/competitive/LfgListingCard';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 import { LfgMetrics } from '@/components/competitive/LfgMetrics';
+import { usePeekStore } from '@/stores/peekStore';
 import type { LfgInterest } from '@/types/competitive';
 
 function RequestAvatar({ interest }: { interest: LfgInterest }) {
@@ -32,6 +33,7 @@ export default function LfgManagePage() {
   const remove = useDeleteLfgListing(id);
   const accept = useAcceptInterest(id);
   const decline = useDeclineInterest(id);
+  const openPeek = usePeekStore(s => s.openPeek);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
   async function action(type: 'publish' | 'pause' | 'delete' | 'accept' | 'decline', interestId?: string) {
@@ -53,7 +55,7 @@ export default function LfgManagePage() {
                 <RequestAvatar interest={item} />
                 <div className="lfg-row-body">
                   <div className="flex items-center gap-2">
-                    <Link to={`/profile/${item.fromUserId}`} className="lfg-name hover:underline">{item.username || 'Player'}</Link>
+                    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(item.fromUserId)}>{item.username || 'Player'}</button>
                     {item.riotGameName && <span className="text-[11px] text-white/35">{item.riotGameName}#{item.riotTagLine}</span>}
                   </div>
                   <p className="lfg-sub">
@@ -65,7 +67,7 @@ export default function LfgManagePage() {
                   {item.message && <p className="lfg-description">{item.message}</p>}
                 </div>
                 <div className="lfg-row-actions">
-                  <Link className="lfg-button" to={`/profile/${item.fromUserId}`}>View Profile</Link>
+                  <button className="lfg-button" type="button" onClick={() => openPeek(item.fromUserId)}>View Profile</button>
                   {item.status === 'expressed' && <>
                     <button className="lfg-button lfg-button-primary" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('accept', item.id)}>Accept</button>
                     <button className="lfg-button" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('decline', item.id)}>Decline</button>
