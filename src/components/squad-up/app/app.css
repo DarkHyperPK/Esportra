@@ -12,7 +12,8 @@
 /* Phones and tablets: one column at a time, like a dating app. */
 .su-app-grid[data-tab=duo] > :not(.su-col-duo), .su-app-grid[data-tab=lobby] > :not(.su-col-lobby), .su-app-grid[data-tab=matches] > :not(.su-col-matches) { display:none; }
 .su-col-duo .su-stack { height:calc(100dvh - 300px); min-height:420px; max-height:640px; }
-.su-actions-live { position:sticky; bottom:12px; z-index:5; }
+.su-actions-live { position:sticky; bottom:calc(68px + env(safe-area-inset-bottom, 0px)); z-index:5; }
+@media (min-width:1024px) { .su-actions-live { bottom:12px; } }
 @media (min-width:1100px) {
   .su-app-tabs { display:none; }
   .su-app-grid { grid-template-columns:minmax(0, 1fr) 440px minmax(0, 320px); }

@@ -11,7 +11,7 @@ import { competitiveApiClient as api } from '@/hooks/competitive/competitiveApiC
 import { apiClient } from '@/lib/apiClient';
 import { squadUpAdminKeys } from './queryKeys';
 import {
-  adminMatchSchema, adminOverviewSchema, adminReportDetailSchema, adminReportListSchema, adminRestrictionSchema, adminSessionSchema,
+  adminLobbySchema, adminMatchSchema, adminOverviewSchema, adminReportDetailSchema, adminReportListSchema, adminRestrictionSchema, adminSessionSchema,
   type ResolveReportInput,
 } from '@/schemas/squadUpAdmin';
 
@@ -111,5 +111,25 @@ export function useLiftSquadUpRestriction() {
   return useMutation({
     mutationFn: (id: string) => apiClient.post(`${BASE}/restrictions/${id}/lift`),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: squadUpAdminKeys.all() }); },
+  });
+}
+
+export function useSquadUpAdminLobbies() {
+  return useQuery({
+    queryKey: squadUpAdminKeys.lobbies(),
+    queryFn: async () => z.array(adminLobbySchema).parse(await api.get<unknown>(`${BASE}/lobbies`)),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  });
+}
+
+export function useCloseSquadUpLobbyAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post(`${BASE}/lobbies/${id}/close`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: squadUpAdminKeys.lobbies() });
+      void qc.invalidateQueries({ queryKey: ['admin', 'squad-up', 'overview'] });
+    },
   });
 }

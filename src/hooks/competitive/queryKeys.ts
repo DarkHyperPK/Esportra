@@ -39,6 +39,7 @@ export const squadUpKeys = {
   reportsMine: () => ['squad-up', 'reports-mine'] as const,
   blocks: () => ['squad-up', 'blocks'] as const,
   publicStats: () => ['squad-up', 'public-stats'] as const,
+  lobbies: () => ['squad-up', 'lobbies'] as const,
   lobbyBoard: (filters: string) => ['squad-up', 'lobbies', filters] as const,
   lobbyMine: () => ['squad-up', 'lobbies', 'mine'] as const,
 };
@@ -51,6 +52,7 @@ export const squadUpAdminKeys = {
   reports: (status: string, offset: number) => ['admin', 'squad-up', 'reports', status, offset] as const,
   reportDetail: (id: string) => ['admin', 'squad-up', 'report', id] as const,
   restrictions: () => ['admin', 'squad-up', 'restrictions'] as const,
+  lobbies: () => ['admin', 'squad-up', 'lobbies'] as const,
 };
 
 export const competitiveProfileKeys = {

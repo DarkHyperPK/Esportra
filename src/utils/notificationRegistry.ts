@@ -59,6 +59,9 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   squad_up_report_resolved: kind(CheckCircle2, 'success', 'competitive', 'Report reviewed'),
   squad_up_warning: kind(AlertTriangle, 'warning', 'competitive', 'Squad Up warning'),
   squad_up_restricted: kind(ShieldAlert, 'critical', 'competitive', 'Squad Up restricted'),
+  squad_up_lobby_request: kind(Users, 'accent', 'competitive', 'Lobby request'),
+  squad_up_lobby_accepted: kind(CheckCircle2, 'success', 'competitive', 'Lobby accepted'),
+  squad_up_lobby_full: kind(Trophy, 'success', 'competitive', 'Lobby full'),
   // Competitive — Scrims
   scrim_offer_received: kind(Swords, 'accent', 'competitive', 'Scrim offer'),
   scrim_offer_accepted: kind(CheckCircle2, 'success', 'competitive', 'Scrim accepted'),

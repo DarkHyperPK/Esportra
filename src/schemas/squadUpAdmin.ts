@@ -3,14 +3,18 @@ import { z } from 'zod';
 export const adminRegionSchema = z.object({ region: z.string(), players: z.number(), avgTier: z.number() });
 export const adminDaySchema = z.object({
   day: z.string(), sessionsStarted: z.number(), swipesRight: z.number(), swipesLeft: z.number(), matches: z.number(),
+  lobbiesOpened: z.number().optional(), lobbiesFilled: z.number().optional(),
 });
 
 export const adminOverviewSchema = z.object({
   flag: z.object({ id: z.string(), enabled: z.boolean() }).nullable(),
-  live: z.object({ activePlayers: z.number(), byRegion: z.array(adminRegionSchema) }),
+  live: z.object({
+    activePlayers: z.number(), byRegion: z.array(adminRegionSchema),
+    competitive: z.number().optional(), unrated: z.number().optional(), openLobbies: z.number().optional(),
+  }),
   totals: z.object({
     days: z.number(), sessionsStarted: z.number(), swipesRight: z.number(), swipesLeft: z.number(),
-    matches: z.number(), matchRate: z.number(),
+    matches: z.number(), matchRate: z.number(), lobbiesOpened: z.number().optional(), lobbiesFilled: z.number().optional(),
   }),
   series: z.array(adminDaySchema),
   reports: z.object({
@@ -22,7 +26,8 @@ export type AdminOverview = z.infer<typeof adminOverviewSchema>;
 export type AdminDay = z.infer<typeof adminDaySchema>;
 
 export const adminSessionSchema = z.object({
-  userId: z.string(), username: z.string().nullable().optional(), region: z.string(), competitiveTier: z.number(),
+  userId: z.string(), username: z.string().nullable().optional(), region: z.string(), competitiveTier: z.number().nullable(),
+  mode: z.string().optional(), countryCode: z.string().nullable().optional(),
   micOn: z.boolean(), slotsNeeded: z.number(), startedAt: z.string(), lastHeartbeat: z.string(),
   likesSent: z.number(), passesSent: z.number(),
 });
@@ -34,6 +39,13 @@ export const adminMatchSchema = z.object({
   user2Id: z.string(), user2Username: z.string().nullable().optional(),
 });
 export type AdminMatch = z.infer<typeof adminMatchSchema>;
+
+export const adminLobbySchema = z.object({
+  id: z.string(), hostId: z.string(), hostUsername: z.string().nullable().optional(), title: z.string(), mode: z.string(),
+  region: z.string(), countryCode: z.string().nullable().optional(), openSlots: z.number(), status: z.string(), createdAt: z.string(),
+  acceptedCount: z.number(), pendingCount: z.number(),
+});
+export type AdminLobby = z.infer<typeof adminLobbySchema>;
 
 export const REPORT_ACTIONS = ['dismiss', 'warn', 'squad_up_ban', 'suspend'] as const;
 export type ReportAction = (typeof REPORT_ACTIONS)[number];

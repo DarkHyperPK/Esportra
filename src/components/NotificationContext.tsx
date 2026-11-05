@@ -171,8 +171,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       announceSquadUpLike(queryClient, count);
     };
 
+    // A lobby this user hosts or joined changed (request, accept, leave, close). Refetch lobby views now.
+    const onSquadUpLobbyUpdated = () => {
+      void queryClient.invalidateQueries({ queryKey: squadUpKeys.lobbies() });
+    };
+
     hub.on('NewNotification', onNewNotification);
     hub.on('SquadUpLike', onSquadUpLike);
+    hub.on('SquadUpLobbyUpdated', onSquadUpLobbyUpdated);
     hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
     hub.on('ForceLogout', onForceLogout);
@@ -181,6 +187,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       hub.off('NewNotification', onNewNotification);
       hub.off('SquadUpLike', onSquadUpLike);
+      hub.off('SquadUpLobbyUpdated', onSquadUpLobbyUpdated);
       hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
       hub.off('ForceLogout', onForceLogout);

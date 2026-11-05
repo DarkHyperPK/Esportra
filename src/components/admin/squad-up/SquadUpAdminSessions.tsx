@@ -22,13 +22,14 @@ export function SquadUpAdminSessions({ sessions, canManage, ending, onEnd }: Squ
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-zinc-400">
-              <tr><th scope="col">Player</th><th scope="col">Region</th><th scope="col">Tier</th><th scope="col">Mic</th><th scope="col">Needs</th>
+              <tr><th scope="col">Player</th><th scope="col">Mode</th><th scope="col">Shard</th><th scope="col">Country</th><th scope="col">Tier</th><th scope="col">Mic</th><th scope="col">Needs</th>
                 <th scope="col">Likes / passes</th><th scope="col">Started</th>{canManage && <th scope="col"><span className="sr-only">Actions</span></th>}</tr>
             </thead>
             <tbody>{sessions.map((row) => (
               <tr key={row.userId} className="border-t border-white/[0.06]">
                 <td className="py-1.5">{row.username ?? row.userId.slice(0, 8)}</td>
-                <td className="uppercase">{row.region}</td><td>{row.competitiveTier}</td>
+                <td className="capitalize">{row.mode ?? 'competitive'}</td>
+                <td className="uppercase">{row.region}</td><td>{row.countryCode ?? '—'}</td><td className="tabular-nums">{row.competitiveTier ?? 'Unranked'}</td>
                 <td>{row.micOn ? 'On' : 'Off'}</td><td>{row.slotsNeeded}</td>
                 <td>{row.likesSent} / {row.passesSent}</td>
                 <td>{formatDistanceToNow(new Date(row.startedAt), { addSuffix: true })}</td>

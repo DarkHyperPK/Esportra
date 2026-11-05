@@ -7,15 +7,19 @@ export function SquadUpAdminStats({ overview }: { overview: AdminOverview }) {
   const peak = Math.max(1, ...series.map((day) => day.swipesRight + day.swipesLeft));
   const tiles = [
     { label: 'Live now', value: num(live.activePlayers) },
+    { label: 'Competitive / Unrated', value: `${num(live.competitive ?? 0)} / ${num(live.unrated ?? 0)}` },
+    { label: 'Open lobbies', value: num(live.openLobbies ?? 0) },
     { label: `Sessions (${totals.days}d)`, value: num(totals.sessionsStarted) },
     { label: 'Right swipes', value: num(totals.swipesRight) },
     { label: 'Left swipes', value: num(totals.swipesLeft) },
     { label: 'Matches', value: num(totals.matches) },
     { label: 'Match rate', value: `${totals.matchRate}%` },
+    { label: `Lobbies opened (${totals.days}d)`, value: num(totals.lobbiesOpened ?? 0) },
+    { label: 'Lobbies filled', value: num(totals.lobbiesFilled ?? 0) },
   ];
   return (
     <div className="space-y-6">
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {tiles.map((tile) => (
           <div key={tile.label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
             <dt className="text-[11px] uppercase tracking-wider text-zinc-400">{tile.label}</dt>
@@ -46,7 +50,7 @@ export function SquadUpAdminStats({ overview }: { overview: AdminOverview }) {
                   <span className="h-2 bg-white/[0.06]" role="img" aria-label={`${swipes} swipes`}>
                     <span className="block h-2 bg-rose-500" style={{ width: `${Math.round((swipes / peak) * 100)}%` }} />
                   </span>
-                  <span>{swipes} swipes · {day.matches} matches</span>
+                  <span>{swipes} swipes · {day.matches} matches · {day.lobbiesFilled ?? 0} lobbies filled</span>
                 </li>
               );
             })}</ul>

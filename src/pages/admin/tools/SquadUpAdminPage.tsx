@@ -2,7 +2,7 @@
  * SquadUpAdminPage — Admin Centre control for Squad Up (live teammate finder).
  *
  * squad_up:view        — stats, live sessions, matches, player reports and their screenshots
- * squad_up:manage      — decide reports (dismiss / warn / remove from Squad Up), end sessions, lift restrictions
+ * squad_up:manage      — decide reports (dismiss / warn / remove from Squad Up), end sessions, close lobbies, lift restrictions
  * users:ban            — additionally needed to suspend the whole account from a report
  * feature_flags:toggle — switch the feature on or off (the same flag as Feature Flags > Squad Up)
  */
@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { SquadUpAdminOverview } from '@/components/admin/squad-up/SquadUpAdminOverview';
 import { SquadUpAdminReports } from '@/components/admin/squad-up/SquadUpAdminReports';
 import { SquadUpAdminRestrictions } from '@/components/admin/squad-up/SquadUpAdminRestrictions';
+import { SquadUpAdminLobbies } from '@/components/admin/squad-up/SquadUpAdminLobbies';
 
 export default function SquadUpAdminPage() {
   const { can } = useAdminAccess();
@@ -53,11 +54,15 @@ export default function SquadUpAdminPage() {
 
       <TabBar base={base} label="Squad Up sections" value={tab} onChange={setTab} tabs={[
         { id: 'overview', label: 'Overview' },
+        { id: 'lobbies', label: 'Lobbies', count: overview.data?.live.openLobbies },
         { id: 'reports', label: 'Reports', count: overview.data?.reports?.open },
         { id: 'restrictions', label: 'Restrictions' },
       ]} />
       <TabPanel base={base} id="overview" value={tab}>
         <SquadUpAdminOverview overview={overview} days={days} onDaysChange={setDays} canManage={canManage} />
+      </TabPanel>
+      <TabPanel base={base} id="lobbies" value={tab}>
+        <SquadUpAdminLobbies canManage={canManage} />
       </TabPanel>
       <TabPanel base={base} id="reports" value={tab}>
         <SquadUpAdminReports canManage={canManage} canSuspend={can('users:ban')} />
