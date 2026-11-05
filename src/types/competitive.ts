@@ -1073,6 +1073,35 @@ export interface AdminScrimDisputeRow {
   gameNumber?: number | null;
 }
 
+export interface AdminScrimDisputeDetail extends AdminScrimDisputeRow {
+  responderNotes: string | null;
+  resolvedBy: string | null;
+  resolvedByUsername: string | null;
+  team1Id: string;
+  team2Id: string;
+  bestOf: number | null;
+  team1Score: number;
+  team2Score: number;
+  sessionStatus: string;
+  matchFormat: string | null;
+}
+
+export interface AdminScrimDisputeGame {
+  gameNumber: number;
+  status: string;
+  mapName: string | null;
+  team1Score: number;
+  team2Score: number;
+  winnerSlot: number | null;
+  source: string;
+  screenshotUrls: string[] | null;
+  notes: string | null;
+  reportedAt: string;
+  confirmedAt: string | null;
+  autoConfirmed: boolean;
+  disputedByTeamId: string | null;
+}
+
 export interface ScrimResultReport {
   id: string;
   sessionId: string;

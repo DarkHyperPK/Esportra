@@ -11,6 +11,8 @@ import type {
   ScrimSlot,
   ScrimDispute,
   AdminScrimDisputeRow,
+  AdminScrimDisputeDetail,
+  AdminScrimDisputeGame,
   ScrimDisputeOutcome,
   PracticeSession,
   PracticeAttendance,
@@ -34,6 +36,7 @@ export const scrimKeys = {
   slots: (listingId: string) => ['scrims', 'slots', listingId] as const,
   sessionDispute: (sessionId: string) => ['scrims', 'dispute', sessionId] as const,
   adminDisputes: (status: string, page: number) => ['admin', 'scrims', 'disputes', status, page] as const,
+  adminDisputeDetail: (id: string) => ['admin', 'scrims', 'dispute-detail', id] as const,
 };
 
 export const practiceKeys = {
@@ -581,6 +584,19 @@ export function useAdminScrimDisputes(status: string, page: number, enabled: boo
         `/api/admin/scrims/disputes?status=${encodeURIComponent(status)}&page=${page}&pageSize=20`,
       ),
     enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Full dispute detail with session context and per-game results. */
+export function useAdminScrimDisputeDetail(id: string | null) {
+  return useQuery({
+    queryKey: id ? scrimKeys.adminDisputeDetail(id) : ['admin', 'scrims', 'dispute-detail', null],
+    queryFn: () =>
+      rawApiClient.get<{ dispute: AdminScrimDisputeDetail; games: AdminScrimDisputeGame[] }>(
+        `/api/admin/scrims/disputes/${id}`,
+      ),
+    enabled: !!id,
     staleTime: 30_000,
   });
 }

@@ -9,10 +9,10 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
-import { useAdminResetScrimTime, useAdminScrimDisputes, useResolveScrimDispute } from '@/hooks/competitive/useScrims';
+import { useAdminResetScrimTime, useAdminScrimDisputes, useAdminScrimDisputeDetail, useResolveScrimDispute } from '@/hooks/competitive/useScrims';
 import { InlineNotice } from '@/components/ui/kit';
-import { Loader2 } from 'lucide-react';
-import type { AdminScrimDisputeRow, ScrimDisputeOutcome } from '@/types/competitive';
+import { Loader2, X } from 'lucide-react';
+import type { AdminScrimDisputeRow, AdminScrimDisputeGame, ScrimDisputeOutcome } from '@/types/competitive';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -197,14 +197,213 @@ function ResetTimeButton({ sessionId }: { sessionId: string }) {
   );
 }
 
+// ── DisputeDetailSheet ────────────────────────────────────────────────────────
+
+function GameRow({ game, team1Name, team2Name }: { game: AdminScrimDisputeGame; team1Name: string | null; team2Name: string | null }) {
+  const winner =
+    game.winnerSlot === 1 ? (team1Name ?? 'Team 1')
+    : game.winnerSlot === 2 ? (team2Name ?? 'Team 2')
+    : game.status === 'disputed' ? 'Disputed'
+    : '—';
+
+  return (
+    <div className="grid grid-cols-[auto_1fr_auto_auto] gap-x-3 gap-y-0.5 items-start py-2 border-b border-white/[0.05] last:border-0 text-[13px]">
+      <span className="text-zinc-500 font-mono w-6">G{game.gameNumber}</span>
+      <div className="min-w-0">
+        <span className="text-white/80">{game.mapName ?? '—'}</span>
+        {game.notes && <p className="text-[11px] text-zinc-500 truncate">{game.notes}</p>}
+      </div>
+      <span className="text-white/60 tabular-nums">{game.team1Score}–{game.team2Score}</span>
+      <div className="text-right space-y-0.5">
+        <span className={[
+          'text-[11px] font-semibold',
+          game.status === 'disputed' ? 'text-amber-300' : game.status === 'confirmed' ? 'text-emerald-300' : 'text-zinc-400',
+        ].join(' ')}>
+          {winner}
+        </span>
+        {game.screenshotUrls?.length ? (
+          <div className="flex gap-1 justify-end flex-wrap">
+            {game.screenshotUrls.map((url, i) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer noopener" className="text-[10px] text-sky-300 underline underline-offset-2 hover:text-sky-200">
+                Shot {i + 1}
+              </a>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function DisputeDetailSheet({ disputeId, onClose }: { disputeId: string; onClose: () => void }) {
+  const { data, isLoading, isError, refetch } = useAdminScrimDisputeDetail(disputeId);
+  const dispute = data?.dispute;
+  const games = data?.games ?? [];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Dispute details"
+      className="fixed inset-0 z-50 flex items-start justify-end bg-black/60"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative h-full w-full max-w-xl bg-zinc-950 border-l border-white/[0.08] overflow-y-auto flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/[0.08] sticky top-0 bg-zinc-950 z-10">
+          <h2 className="font-heading text-[17px] font-bold text-white">Dispute Details</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1.5 text-zinc-400 hover:text-white transition-colors rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 p-5 space-y-6">
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-zinc-400 text-sm py-8 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading details…
+            </div>
+          ) : isError ? (
+            <InlineNotice tone="critical" action={
+              <button onClick={() => void refetch()} className="text-[12px] border border-white/[0.08] text-white/55 hover:text-white px-3 py-1 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+                Retry
+              </button>
+            }>
+              Could not load dispute details.
+            </InlineNotice>
+          ) : dispute ? (
+            <>
+              {/* Session info */}
+              <section>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-3">Match</h3>
+                <div className="bg-white/[0.03] border border-white/[0.06] p-4 space-y-2">
+                  <div className="flex items-center gap-3 text-[14px] text-white font-medium">
+                    <span>{dispute.team1Name ?? '—'}</span>
+                    <span className="tabular-nums text-white/50">{dispute.team1Score}–{dispute.team2Score}</span>
+                    <span>{dispute.team2Name ?? '—'}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-zinc-400">
+                    {dispute.gameSlug && <span className="font-mono uppercase tracking-[0.15em] text-[10px] text-white/35 bg-white/[0.05] px-1.5 py-0.5">{dispute.gameSlug.toUpperCase()}</span>}
+                    {dispute.bestOf && <span>Best of {dispute.bestOf}</span>}
+                    {dispute.matchFormat && <span>{dispute.matchFormat}</span>}
+                    <span className={[
+                      'font-semibold',
+                      dispute.sessionStatus === 'completed' ? 'text-emerald-300' :
+                      dispute.sessionStatus === 'in_progress' ? 'text-sky-300' : 'text-zinc-400',
+                    ].join(' ')}>
+                      {dispute.sessionStatus.replace('_', ' ')}
+                    </span>
+                  </div>
+                  {dispute.scheduledAt && (
+                    <p className="text-[12px] text-zinc-500">
+                      Scheduled: {new Date(dispute.scheduledAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              {/* Dispute info */}
+              <section>
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-3">Dispute</h3>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                    <span className={[
+                      'px-2 py-0.5 font-semibold text-[11px] uppercase tracking-[0.12em] border',
+                      dispute.status === 'open' ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' :
+                      dispute.status === 'escalated' ? 'bg-rose-500/10 border-rose-500/30 text-rose-200' :
+                      'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
+                    ].join(' ')}>
+                      {dispute.status}
+                    </span>
+                    {dispute.gameNumber != null && (
+                      <span className="bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-200">
+                        Game {dispute.gameNumber}
+                      </span>
+                    )}
+                    <span className="text-zinc-400">raised by {dispute.raisedByTeamName ?? dispute.raisedByTeamId.slice(0, 8)}</span>
+                  </div>
+                  <p className="text-[14px] text-white/80">{dispute.reason}</p>
+                  <p className="text-[11px] text-zinc-500">
+                    Raised {formatDistanceToNow(new Date(dispute.createdAt), { addSuffix: true })}
+                  </p>
+                </div>
+              </section>
+
+              {/* Evidence */}
+              {((dispute.evidenceUrls?.length ?? 0) + (dispute.responderEvidenceUrls?.length ?? 0)) > 0 && (
+                <section>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-3">Evidence</h3>
+                  <div className="space-y-2">
+                    <EvidenceLinks label={`${dispute.raisedByTeamName ?? 'Raised by'}`} urls={dispute.evidenceUrls} />
+                    <EvidenceLinks label="Other team" urls={dispute.responderEvidenceUrls} />
+                    {dispute.responderNotes && (
+                      <p className="text-[13px] text-zinc-400 italic">&ldquo;{dispute.responderNotes}&rdquo;</p>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Per-game results */}
+              {games.length > 0 && (
+                <section>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-3">
+                    Games ({games.length})
+                  </h3>
+                  <div className="bg-white/[0.02] border border-white/[0.06] px-3 divide-y divide-white/[0.04]">
+                    {games.map((g) => (
+                      <GameRow key={g.gameNumber} game={g} team1Name={dispute.team1Name} team2Name={dispute.team2Name} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Resolution */}
+              {dispute.status === 'resolved' && (
+                <section>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-3">Resolution</h3>
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2">
+                    {dispute.outcome && (
+                      <p className="font-semibold text-emerald-300 text-[13px] uppercase tracking-[0.12em]">
+                        {dispute.outcome.replace('_', ' ')}
+                      </p>
+                    )}
+                    {dispute.resolvedByUsername && (
+                      <p className="text-[12px] text-zinc-400">Resolved by <span className="text-white/70">{dispute.resolvedByUsername}</span></p>
+                    )}
+                    {dispute.resolvedAt && (
+                      <p className="text-[12px] text-zinc-500">
+                        {new Date(dispute.resolvedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    )}
+                    {dispute.resolutionNotes && (
+                      <p className="text-[13px] text-white/70 mt-1">{dispute.resolutionNotes}</p>
+                    )}
+                  </div>
+                </section>
+              )}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DisputeRow ────────────────────────────────────────────────────────────────
 
 function DisputeRow({
   dispute,
   onResolve,
+  onView,
 }: {
   dispute: AdminScrimDisputeRow;
   onResolve: () => void;
+  onView: () => void;
 }) {
   const evidenceCount =
     (dispute.evidenceUrls?.length ?? 0) + (dispute.responderEvidenceUrls?.length ?? 0);
@@ -238,22 +437,30 @@ function DisputeRow({
           <span>{timeSince}</span>
         </div>
       </div>
-      {dispute.status !== 'resolved' && (
-        <div className="flex shrink-0 flex-wrap gap-2">
-        <ResetTimeButton sessionId={dispute.sessionId} />
+      <div className="flex shrink-0 flex-wrap gap-2 items-center">
         <button
-          onClick={onResolve}
+          onClick={onView}
           className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-3 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors shrink-0"
         >
-          Resolve
+          View
         </button>
-        </div>
-      )}
-      {dispute.status === 'resolved' && dispute.outcome && (
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">
-          {dispute.outcome.replace('_', ' ')}
-        </span>
-      )}
+        {dispute.status !== 'resolved' && (
+          <>
+            <ResetTimeButton sessionId={dispute.sessionId} />
+            <button
+              onClick={onResolve}
+              className="text-[13px] border border-white/[0.08] text-white/55 hover:text-white px-3 py-1.5 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors shrink-0"
+            >
+              Resolve
+            </button>
+          </>
+        )}
+        {dispute.status === 'resolved' && dispute.outcome && (
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">
+            {dispute.outcome.replace('_', ' ')}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -265,6 +472,7 @@ export default function ScrimDisputeAdminPage() {
   const [statusTab, setStatusTab] = useState<StatusTab>('open');
   const [page, setPage] = useState(1);
   const [resolveTarget, setResolveTarget] = useState<AdminScrimDisputeRow | null>(null);
+  const [detailTargetId, setDetailTargetId] = useState<string | null>(null);
 
   const canView = can('disputes:view');
   const query = useAdminScrimDisputes(statusTab, page, !loading && canView);
@@ -344,6 +552,7 @@ export default function ScrimDisputeAdminPage() {
                 key={dispute.id}
                 dispute={dispute}
                 onResolve={() => setResolveTarget(dispute)}
+                onView={() => setDetailTargetId(dispute.id)}
               />
             ))}
           </div>
@@ -377,6 +586,9 @@ export default function ScrimDisputeAdminPage() {
 
       {resolveTarget && (
         <ResolveModal dispute={resolveTarget} onClose={() => setResolveTarget(null)} />
+      )}
+      {detailTargetId && (
+        <DisputeDetailSheet disputeId={detailTargetId} onClose={() => setDetailTargetId(null)} />
       )}
     </div>
   );
