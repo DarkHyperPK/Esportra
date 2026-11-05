@@ -26,13 +26,13 @@ export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters | null; 
   const leave = useLeaveLobby();
   const [creating, setCreating] = useState(false);
   const failed = [request, accept, decline, kick, close, leave].find((action) => action.isError);
+  const hostingId = hosting?.id;
 
   // Close the lobby when the host navigates away from Squad Up without clicking Close.
   useEffect(() => {
-    if (!hosting) return;
-    const id = hosting.id;
-    return () => { closeLobbyDirect(id); };
-  }, [hosting?.id]);
+    if (!hostingId) return;
+    return () => { closeLobbyDirect(hostingId); };
+  }, [hostingId]);
   const busy = [request, accept, decline, kick, close, leave].some((action) => action.isPending);
 
   if (hosting) {
