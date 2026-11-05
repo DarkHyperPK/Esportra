@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useOrgStaffContext } from '@/hooks/useOrgStaffContext';
+import { useLfgPendingCount } from '@/hooks/competitive/useLfg';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { useToast } from '@/hooks/use-toast';
 import { JackButton } from '@/components/ui/JackButton';
@@ -20,7 +21,7 @@ import './product-sidebar.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface NavItem { label: string; to: string }
+interface NavItem { label: string; to: string; badge?: number }
 interface NavSection {
   id: string;
   /** Cluster key: items sharing one get a hairline rule before the first of them, no caption. */
@@ -44,7 +45,7 @@ function isSectionActive(section: NavSection, pathname: string): boolean {
   return section.items.some(item => isItemActive(pathname, item.to));
 }
 
-function buildSections(canManageTournaments: boolean, canManageVenues: boolean): NavSection[] {
+function buildSections(canManageTournaments: boolean, canManageVenues: boolean, lfgPendingCount = 0): NavSection[] {
   const tournamentItems: NavItem[] = [
     { label: 'Browse', to: '/tournaments' },
   ];
@@ -71,8 +72,9 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     {
       id: 'find-teammates', group: 'Play', label: 'Find Teammates', icon: Users,
       items: [
-        { label: 'Squad Up · Live now', to: '/competitive/squad-up' },
-        { label: 'Browse listings', to: '/competitive/lfg' },
+        { label: 'Squad Up', to: '/competitive/squad-up' },
+        { label: 'LFG', to: '/competitive/lfg' },
+        { label: 'Requests', to: '/competitive/lfg/requests', badge: lfgPendingCount },
       ],
     },
     {
@@ -194,6 +196,11 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
             )}
           >
             {item.label}
+            {!!item.badge && item.badge > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-rose-500 text-[10px] font-semibold text-white px-1" aria-label={`${item.badge} pending`}>
+                {item.badge}
+              </span>
+            )}
           </Link>
         );
       })}</div>
@@ -206,7 +213,7 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
 // ─── Logged-out sidebar ───────────────────────────────────────────────────────
 
 const PUBLIC_LINKS = [
-  { label: 'Squad Up · Live', to: '/competitive/squad-up', icon: Zap },
+  { label: 'Squad Up', to: '/competitive/squad-up', icon: Zap },
   { label: 'Find Teammates', to: '/competitive/lfg', icon: Users },
   { label: 'Scrims', to: '/competitive/scrims', icon: Crosshair },
   { label: 'Tournaments', to: '/tournaments', icon: Trophy },
@@ -318,9 +325,11 @@ export function ProductSidebar() {
     }
   }
 
+  const pendingCount = useLfgPendingCount(!!user);
+
   if (!user) return <LoggedOutSidebar />;
 
-  const sections = buildSections(canManageTournaments, canManageVenues);
+  const sections = buildSections(canManageTournaments, canManageVenues, pendingCount.data?.pending_count ?? 0);
 
   return (
     <aside

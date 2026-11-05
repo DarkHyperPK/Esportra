@@ -61,6 +61,15 @@ export function useLfgInbox(direction: 'received' | 'sent', game?: string, offse
   });
 }
 
+export function useLfgPendingCount(enabled = true) {
+  return useQuery({
+    queryKey: lfgKeys.pendingCount(),
+    queryFn: () => apiClient.get<{ pending_count: number }>('/api/competitive/lfg/interests/pending-count'),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
 export function useSetLfgSaved() {
   const qc = useQueryClient();
   return useMutation({

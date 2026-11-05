@@ -414,6 +414,19 @@ export interface LfgInterest {
   message: string | null;
   status: LfgInterestStatus;
   createdAt: string;
+  competitiveTier: number | null;
+  competitiveTierName: string | null;
+  winCount: number | null;
+  lossCount: number | null;
+  winRate: number | null;
+  kdRatio: number | null;
+  hsPct: number | null;
+  matchesAnalyzed: number | null;
+  popularAgents: string | null;
+  statsSyncStatus: string | null;
+  playerCardId: string | null;
+  riotGameName: string | null;
+  riotTagLine: string | null;
 
   // Deprecated — required for legacy component compat until T11-T13
   /** @deprecated Use fromUserId */

@@ -145,8 +145,8 @@ const DesktopNav = ({
               </FramerDropdownTrigger>
               <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
                 <div className="space-y-px bg-[#0a0a0c]">
-                  <JackItem to="/competitive/squad-up">Squad Up · Live now</JackItem>
-                  <JackItem to="/competitive/lfg">Browse listings</JackItem>
+                  <JackItem to="/competitive/squad-up">Squad Up</JackItem>
+                  <JackItem to="/competitive/lfg">LFG</JackItem>
                 </div>
               </FramerDropdownContent>
             </FramerDropdownRoot>
@@ -165,7 +165,7 @@ const DesktopNav = ({
               <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
                 <div className="space-y-px bg-[#0a0a0c]">
                   <JackItem to="/competitive/discover">Discover Players</JackItem>
-                  <JackItem to="/competitive/squad-up">Squad Up · Live now</JackItem>
+                  <JackItem to="/competitive/squad-up">Squad Up</JackItem>
                   <JackItem to="/competitive/find-teammates">Find Teammates</JackItem>
                   <JackDivider />
                   <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>

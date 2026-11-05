@@ -1,6 +1,6 @@
-import type { LfgListing } from '@/types/competitive';
+interface StatsSource { winRate?: number | null; kdRatio?: number | null; hsPct?: number | null }
 
-export function LfgMetrics({ listing }: { listing: Pick<LfgListing, 'winRate' | 'kdRatio' | 'hsPct'> }) {
+export function LfgMetrics({ listing }: { listing: StatsSource }) {
   const metrics = [
     ['WR', listing.winRate == null ? '\u2014' : `${Math.round(Number(listing.winRate))}%`],
     ['K/D', listing.kdRatio == null ? '\u2014' : Number(listing.kdRatio).toFixed(2)],

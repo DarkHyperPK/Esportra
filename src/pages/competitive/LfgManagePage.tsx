@@ -9,6 +9,7 @@ import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
 import { LfgListingDetail } from '@/components/competitive/LfgListingDetail';
 import { LfgListingCard } from '@/components/competitive/LfgListingCard';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
+import { LfgMetrics } from '@/components/competitive/LfgMetrics';
 import type { LfgInterest } from '@/types/competitive';
 
 function RequestAvatar({ interest }: { interest: LfgInterest }) {
@@ -48,7 +49,30 @@ export default function LfgManagePage() {
       <div className="lfg-manage-layout"><div className="lfg-manage-preview lfg-grid"><LfgListingCard listing={listing.data} roles={withLfgStaffRoles(listing.data?.gameSlug || '', roles.data ?? [])} selected={false} onSelect={() => {}} onSave={() => {}} savePending={false} isOwn={own} preview /></div><div className="lfg-panel lfg-manage-details"><LfgListingDetail listing={listing.data} roles={withLfgStaffRoles(listing.data?.gameSlug || '', roles.data ?? [])} currentUserId={user?.id} showOwnerLink={false} inline />
         {own && <div style={{ padding:'0 20px 20px' }}><div className="lfg-row-actions">{['draft','published','paused'].includes(listing.data.status) && <Link className="lfg-button" to={`/competitive/lfg/${id}/edit`}>{expired ? 'Extend expiry' : 'Edit'}</Link>}{!expired && listing.data.status === 'published' && <button className="lfg-button" type="button" disabled={pause.isPending} onClick={() => void action('pause')}>Pause</button>}{!expired && ['draft','paused'].includes(listing.data.status) && <button className="lfg-button lfg-button-primary" type="button" disabled={publish.isPending} onClick={() => void action('publish')}>{listing.data.status === 'draft' ? 'Publish' : 'Resume'}</button>}{confirm ? <><button className="lfg-button" type="button" disabled={remove.isPending} onClick={() => void action('delete')}>Confirm delete</button><button className="lfg-button" type="button" onClick={() => setConfirm(false)}>Cancel</button></> : <button className="lfg-button" type="button" onClick={() => setConfirm(true)}>Delete</button>}</div>{confirm && <p className="lfg-sub" style={{ marginTop:8 }}>Deleting this listing also removes its requests.</p>}</div>}
       </div></div>
-      {own && <section className="lfg-manage-requests"><div className="lfg-manage-requests-heading"><h2 className="lfg-name">Requests</h2><Link className="lfg-button" to="/competitive/lfg/requests">All requests</Link></div>{interests.isLoading ? <div className="lfg-panel lfg-empty">Loading requests…</div> : interests.isError ? <div className="lfg-panel lfg-empty"><strong>Requests could not load.</strong><button className="lfg-button" type="button" onClick={() => void interests.refetch()}>Try again</button></div> : !interests.data?.length ? <div className="lfg-panel lfg-empty">No requests yet.</div> : <div className="lfg-panel">{interests.data.map(item => <article className="lfg-row" key={item.id}><RequestAvatar interest={item} /><div className="lfg-row-body"><strong>{item.username || 'Player'}</strong><p className="lfg-sub">{item.status}{item.regionDisplayName ? ` · ${item.regionDisplayName}` : ''}</p><p className="lfg-description">{item.message}</p></div>{item.status === 'expressed' && <div className="lfg-row-actions"><button className="lfg-button lfg-button-primary" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('accept', item.id)}>Accept</button><button className="lfg-button" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('decline', item.id)}>Decline</button></div>}{item.status === 'accepted' && <Link className="lfg-button" to="/competitive/lfg/requests">Open request</Link>}</article>)}</div>}</section>}
+      {own && <section className="lfg-manage-requests"><div className="lfg-manage-requests-heading"><h2 className="lfg-name">Requests</h2><Link className="lfg-button" to="/competitive/lfg/requests">All requests</Link></div>{interests.isLoading ? <div className="lfg-panel lfg-empty">Loading requests…</div> : interests.isError ? <div className="lfg-panel lfg-empty"><strong>Requests could not load.</strong><button className="lfg-button" type="button" onClick={() => void interests.refetch()}>Try again</button></div> : !interests.data?.length ? <div className="lfg-panel lfg-empty">No requests yet.</div> : <div className="lfg-panel">{interests.data.map(item => <article className="lfg-row" key={item.id}>
+                <RequestAvatar interest={item} />
+                <div className="lfg-row-body">
+                  <div className="flex items-center gap-2">
+                    <Link to={`/profile/${item.fromUserId}`} className="lfg-name hover:underline">{item.username || 'Player'}</Link>
+                    {item.riotGameName && <span className="text-[11px] text-white/35">{item.riotGameName}#{item.riotTagLine}</span>}
+                  </div>
+                  <p className="lfg-sub">
+                    {item.competitiveTierName ?? item.rankTierDisplayName ?? 'Unranked'}
+                    {item.regionDisplayName ? ` · ${item.regionDisplayName}` : ''}
+                    {item.matchesAnalyzed ? ` · ${item.matchesAnalyzed} matches` : ''}
+                  </p>
+                  {(item.winRate != null || item.kdRatio != null) && <LfgMetrics listing={item} />}
+                  {item.message && <p className="lfg-description">{item.message}</p>}
+                </div>
+                <div className="lfg-row-actions">
+                  <Link className="lfg-button" to={`/profile/${item.fromUserId}`}>View Profile</Link>
+                  {item.status === 'expressed' && <>
+                    <button className="lfg-button lfg-button-primary" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('accept', item.id)}>Accept</button>
+                    <button className="lfg-button" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('decline', item.id)}>Decline</button>
+                  </>}
+                  {item.status === 'accepted' && <Link className="lfg-button" to="/competitive/lfg/requests">Open request</Link>}
+                </div>
+              </article>)}</div>}</section>}
     </>}{error && <p className="lfg-error" role="alert">{error}</p>}
   </div></LfgWorkspace>;
 }

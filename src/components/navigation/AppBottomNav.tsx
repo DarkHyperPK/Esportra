@@ -64,7 +64,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     label: 'Competitive',
     items: [
       { label: 'Discover Players', to: '/competitive/discover' },
-      { label: 'Squad Up · Live now', to: '/competitive/squad-up' },
+      { label: 'Squad Up', to: '/competitive/squad-up' },
       { label: 'Find Teammates', to: '/competitive/find-teammates' },
     ],
   },
