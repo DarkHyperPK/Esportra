@@ -292,6 +292,7 @@ export function ProductSidebar() {
     currentRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create') || staffAssignments.length > 0;
 
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true');
+  const [hovering, setHovering] = useState(false);
   const { pathname } = useLocation();
   const isTournamentDashboard = pathname.startsWith('/organizer/tournaments/');
   const isCompetitivePage = pathname.startsWith('/competitive/');
@@ -306,7 +307,7 @@ export function ProductSidebar() {
     wasCompetitivePage.current = isCompetitivePage;
   }, [isCompetitivePage]);
 
-  const isCollapsed = collapsed || isTournamentDashboard;
+  const isCollapsed = (collapsed && !hovering) || isTournamentDashboard;
 
   function toggle() {
     setCollapsed(prev => {
@@ -337,6 +338,8 @@ export function ProductSidebar() {
         'product-sidebar hidden lg:flex flex-col shrink-0 sticky top-0 self-start h-[100dvh]',
         isCollapsed ? 'w-[52px] is-collapsed' : 'w-[240px]',
       )}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
     >
       <div className="relative flex flex-col h-full">
         <ProductSidebarBrand collapsed={isCollapsed} onToggle={toggle} />

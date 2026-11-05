@@ -23,6 +23,12 @@ function ConversationAvatar({ conversation, userId, name }: { conversation?: Con
   return <span className="inbox-avatar" aria-hidden>{url && !failed ? <img src={url} alt="" onError={() => setFailed(true)} /> : name.slice(0, 2).toUpperCase()}</span>;
 }
 
+function SenderAvatar({ sender }: { sender: { avatarUrl: string | null; username: string; fullName: string | null } | null }) {
+  const [failed, setFailed] = useState(false);
+  const initials = (sender?.username || sender?.fullName || 'P').slice(0, 2).toUpperCase();
+  return <span className="inbox-avatar inbox-msg-avatar" aria-hidden>{sender?.avatarUrl && !failed ? <img src={sender.avatarUrl} alt="" onError={() => setFailed(true)} /> : initials}</span>;
+}
+
 function timeLabel(value?: string) {
   if (!value || Number.isNaN(Date.parse(value))) return '';
   const date = new Date(value);
@@ -111,10 +117,13 @@ function MessageThread({ id, userId, conversation }: { id: string; userId?: stri
         {messages.isFetchNextPageError && <div className="inbox-thread-state" role="alert">Earlier messages could not load. Try again.</div>}
         {rows.length ? rows.map((message, index) => <Fragment key={message.id}>
           {(index === 0 || new Date(message.createdAt).toDateString() !== new Date(rows[index - 1].createdAt).toDateString()) && <div className="inbox-date"><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time></div>}
+          <div className={`inbox-message-row ${message.senderId === userId ? 'own' : ''}`}>
+          {conversation?.type === 'group' && message.senderId !== userId && <SenderAvatar sender={message.sender} />}
           <div className={`inbox-message ${message.senderId === userId ? 'own' : ''} ${message.listingReference ? 'has-listing' : ''}`}>
+          {conversation?.type === 'group' && message.senderId !== userId && <span className="inbox-msg-sender">{message.sender?.username || 'Player'}</span>}
           {message.listingReference && <LfgMessageReference reference={message.listingReference} />}
           {(() => { const scrim = parseScrimBookedMessage(message.content); return scrim ? <ScrimBookedCard scrim={scrim} /> : <div className="inbox-message-bubble">{message.content}</div>; })()}<time dateTime={message.createdAt}>{timeLabel(message.createdAt)}{message.isEdited ? ' · Edited' : ''}</time>{seenByMessage.has(message.id) && <span className="inbox-read-receipt">{conversation?.type === 'group' ? `Seen by ${seenByMessage.get(message.id)!.join(', ')}` : 'Seen'}</span>}
-        </div></Fragment>) : <div className="inbox-thread-state">Start the conversation.</div>}
+        </div></div></Fragment>) : <div className="inbox-thread-state">Start the conversation.</div>}
       </>}
     </div>
     <span className="sr-only" role="status">{showLatest ? 'New messages arrived. Use the New messages button to jump to the latest reply.' : ''}</span>

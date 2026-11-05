@@ -169,7 +169,7 @@ export function ScrimOfferForm({
           )}
         </Field>
         {/* Format is locked by the listing — shown plainly so the request is informed */}
-        <Field label="Match format" htmlFor={`obf-${listingId}`} optional>
+        <Field label="Match format" htmlFor={`obf-${listingId}`}>
           <div
             id={`obf-${listingId}`}
             className="flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/60"

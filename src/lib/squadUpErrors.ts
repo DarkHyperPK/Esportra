@@ -3,6 +3,7 @@ import { ApiError } from '@/lib/apiClient';
 const START_MESSAGES: Record<string, string> = {
   RIOT_NOT_LINKED: 'Link your Riot account first. Squad Up pairs you with players near your Valorant rank.',
   NOT_RANKED: 'Competitive needs a current Valorant rank with synced stats. Pick Unrated to play without one.',
+  STATS_NOT_SYNCED: 'Your Valorant rank is still syncing. Try again in a moment.',
   INVALID_AREA: 'Pick where you live.',
   NOTE_TOO_LONG: 'Keep your line under 100 characters.',
   REGION_UNKNOWN: 'We could not detect your Valorant region yet. Re-sync your Riot account and try again.',
