@@ -9,10 +9,11 @@ const SWIPE_DISTANCE = 120;
 interface SquadUpDeckProps {
   card: SquadUpCardData;
   onSwipe: (card: SquadUpCardData, direction: 'right' | 'left') => void;
+  onReport?: (card: SquadUpCardData) => void;
   disabled?: boolean;
 }
 
-export function SquadUpDeck({ card, onSwipe, disabled = false }: SquadUpDeckProps) {
+export function SquadUpDeck({ card, onSwipe, onReport, disabled = false }: SquadUpDeckProps) {
   const reduced = useLfgReducedMotion();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-8, 8]);
@@ -42,7 +43,7 @@ export function SquadUpDeck({ card, onSwipe, disabled = false }: SquadUpDeckProp
           initial={reduced ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <SquadUpCard card={card} />
+          <SquadUpCard card={card} onReport={onReport ? () => onReport(card) : undefined} />
         </motion.div>
       </div>
       <div className="squad-actions">

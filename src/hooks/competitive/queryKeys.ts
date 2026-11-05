@@ -36,6 +36,8 @@ export const squadUpKeys = {
   stats: () => ['squad-up', 'stats'] as const,
   /** Transient app-wide popup state (match / liked-you); never fetched from the server */
   popup: () => ['squad-up', 'popup'] as const,
+  reportsMine: () => ['squad-up', 'reports-mine'] as const,
+  blocks: () => ['squad-up', 'blocks'] as const,
 };
 
 export const squadUpAdminKeys = {
@@ -43,6 +45,9 @@ export const squadUpAdminKeys = {
   overview: (days: number) => ['admin', 'squad-up', 'overview', days] as const,
   sessions: () => ['admin', 'squad-up', 'sessions'] as const,
   matches: () => ['admin', 'squad-up', 'matches'] as const,
+  reports: (status: string, offset: number) => ['admin', 'squad-up', 'reports', status, offset] as const,
+  reportDetail: (id: string) => ['admin', 'squad-up', 'report', id] as const,
+  restrictions: () => ['admin', 'squad-up', 'restrictions'] as const,
 };
 
 export const competitiveProfileKeys = {

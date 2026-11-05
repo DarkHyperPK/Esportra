@@ -10,7 +10,10 @@ import { z } from 'zod';
 import { competitiveApiClient as api } from '@/hooks/competitive/competitiveApiClient';
 import { apiClient } from '@/lib/apiClient';
 import { squadUpAdminKeys } from './queryKeys';
-import { adminMatchSchema, adminOverviewSchema, adminSessionSchema } from '@/schemas/squadUpAdmin';
+import {
+  adminMatchSchema, adminOverviewSchema, adminReportDetailSchema, adminReportListSchema, adminRestrictionSchema, adminSessionSchema,
+  type ResolveReportInput,
+} from '@/schemas/squadUpAdmin';
 
 const BASE = '/api/admin/squad-up';
 
@@ -61,5 +64,52 @@ export function useToggleSquadUpFlag() {
       void qc.invalidateQueries({ queryKey: squadUpAdminKeys.all() });
       void qc.invalidateQueries({ queryKey: ['platform-features'] });
     },
+  });
+}
+
+export function useSquadUpAdminReports(status: 'open' | 'resolved' | 'all', offset: number) {
+  return useQuery({
+    queryKey: squadUpAdminKeys.reports(status, offset),
+    queryFn: async () => adminReportListSchema.parse(await api.get<unknown>(`${BASE}/reports?status=${status}&limit=25&offset=${offset}`)),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  });
+}
+
+/** Detail carries 5-minute signed screenshot URLs, so it refetches before they expire. */
+export function useSquadUpAdminReport(id: string | null) {
+  return useQuery({
+    queryKey: squadUpAdminKeys.reportDetail(id ?? 'none'),
+    enabled: !!id,
+    queryFn: async () => adminReportDetailSchema.parse(await api.get<unknown>(`${BASE}/reports/${id}`)),
+    refetchInterval: 240_000,
+    staleTime: 0,
+  });
+}
+
+export function useResolveSquadUpReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ResolveReportInput }) =>
+      apiClient.post(`${BASE}/reports/${id}/resolve`, { action: input.action, note: input.note, duration_hours: input.durationHours }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: squadUpAdminKeys.all() });
+    },
+  });
+}
+
+export function useSquadUpAdminRestrictions() {
+  return useQuery({
+    queryKey: squadUpAdminKeys.restrictions(),
+    queryFn: async () => z.array(adminRestrictionSchema).parse(await api.get<unknown>(`${BASE}/restrictions`)),
+    staleTime: 15_000,
+  });
+}
+
+export function useLiftSquadUpRestriction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post(`${BASE}/restrictions/${id}/lift`),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: squadUpAdminKeys.all() }); },
   });
 }

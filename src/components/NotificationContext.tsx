@@ -111,6 +111,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         announceSquadUpMatchFromNotification(queryClient, { title: stub.title, message: stub.message, data });
       }
 
+      // A restriction takes effect immediately: refresh the Squad Up state so the page stops showing the deck.
+      if (stub.type === 'squad_up_restricted') {
+        void queryClient.invalidateQueries({ queryKey: squadUpKeys.presence() });
+        toast({ title: stub.title, description: stub.message || undefined, variant: 'destructive', duration: 10000 });
+      }
+      if (stub.type === 'squad_up_warning') {
+        toast({ title: stub.title, description: stub.message || undefined, duration: 10000 });
+      }
+      if (stub.type === 'squad_up_report_resolved') {
+        void queryClient.invalidateQueries({ queryKey: squadUpKeys.reportsMine() });
+      }
+
       // Being removed is high-signal — surface it immediately, not just as a badge
       if (stub.type === 'team_member_removed') {
         toast({

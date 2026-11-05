@@ -56,6 +56,9 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   lfg_interest_received: kind(Users, 'accent', 'competitive', 'LFG Interest'),
   lfg_interest_accepted: kind(CheckCircle2, 'success', 'competitive', 'LFG accepted'),
   lfg_swipe_match: kind(Users, 'success', 'competitive', 'Squad Up match'),
+  squad_up_report_resolved: kind(CheckCircle2, 'success', 'competitive', 'Report reviewed'),
+  squad_up_warning: kind(AlertTriangle, 'warning', 'competitive', 'Squad Up warning'),
+  squad_up_restricted: kind(ShieldAlert, 'critical', 'competitive', 'Squad Up restricted'),
   // Competitive — Scrims
   scrim_offer_received: kind(Swords, 'accent', 'competitive', 'Scrim offer'),
   scrim_offer_accepted: kind(CheckCircle2, 'success', 'competitive', 'Scrim accepted'),

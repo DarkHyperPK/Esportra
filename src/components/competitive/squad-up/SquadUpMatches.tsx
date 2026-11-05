@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { SquadUpMatch } from '@/schemas/squadUp';
 
-export function SquadUpMatches({ matches }: { matches: SquadUpMatch[] }) {
+export function SquadUpMatches({ matches, onReport }: { matches: SquadUpMatch[]; onReport?: (match: SquadUpMatch) => void }) {
   return (
     <aside className="lfg-panel squad-matches" aria-label="Recent matches">
       <h3>Matches (24h)</h3>
@@ -13,7 +13,10 @@ export function SquadUpMatches({ matches }: { matches: SquadUpMatch[] }) {
               {match.matchedUsername}
               {match.riotGameName && <span className="squad-muted"> · {match.riotGameName}#{match.riotTagLine ?? ''}</span>}
             </span>
-            {match.conversationId && <Link className="lfg-button" to={`/inbox/${match.conversationId}`}>Chat</Link>}
+            <span className="squad-row-actions">
+              {match.conversationId && <Link className="lfg-button" to={`/inbox/${match.conversationId}`}>Chat</Link>}
+              {onReport && <button type="button" className="lfg-button" aria-label={`Report ${match.matchedUsername}`} onClick={() => onReport(match)}>Report</button>}
+            </span>
           </div>
         ))}
     </aside>

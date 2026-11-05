@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSquadUpMatches } from '@/hooks/competitive/useSquadUp';
+import type { ReportTarget } from '@/hooks/competitive/useSquadUpReport';
+import { SquadUpReportDialog } from './SquadUpReportDialog';
 import { dismissSquadUpLike, dismissSquadUpMatch, useSquadUpPopupState } from '@/hooks/competitive/squadUpPopups';
 
 import './squad-up.css';
@@ -18,6 +20,7 @@ export function SquadUpPopupHost() {
   const { pathname } = useLocation();
   const { toast } = useToast();
   const { match, like } = useSquadUpPopupState();
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   const matches = useSquadUpMatches(!!match && !match.details);
   const details = match?.details ?? matches.data?.find((item) => item.matchId === match?.matchId) ?? null;
   const riotId = details?.riotGameName ? `${details.riotGameName}#${details.riotTagLine ?? ''}` : null;
@@ -35,7 +38,14 @@ export function SquadUpPopupHost() {
     });
   }, [like, pathname, qc, toast, navigate]);
 
+  function reportMatched() {
+    if (!details) return;
+    setReporting({ userId: details.matchedUserId, username: details.matchedUsername, matchId: details.matchId });
+    dismissSquadUpMatch(qc);
+  }
+
   return (
+    <>
     <Dialog open={!!match} onOpenChange={(open) => { if (!open) dismissSquadUpMatch(qc); }}>
       <DialogContent>
         <DialogTitle>{match?.title ?? "It's a match!"}</DialogTitle>
@@ -53,8 +63,11 @@ export function SquadUpPopupHost() {
               Open chat
             </Link>
           )}
+          {details && <button type="button" className="lfg-button" onClick={reportMatched}>Report</button>}
         </div>
       </DialogContent>
     </Dialog>
+    <SquadUpReportDialog target={reporting} onClose={() => setReporting(null)} />
+    </>
   );
 }

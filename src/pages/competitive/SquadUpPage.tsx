@@ -11,6 +11,9 @@ import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
 import { SquadUpDeck } from '@/components/competitive/squad-up/SquadUpDeck';
 import { SquadUpMatches } from '@/components/competitive/squad-up/SquadUpMatches';
 import { SquadUpStartPanel } from '@/components/competitive/squad-up/SquadUpStartPanel';
+import { SquadUpReportDialog } from '@/components/competitive/squad-up/SquadUpReportDialog';
+import { SquadUpSafetyPanel } from '@/components/competitive/squad-up/SquadUpSafetyPanel';
+import type { ReportTarget } from '@/hooks/competitive/useSquadUpReport';
 import { SquadUpSummary } from '@/components/competitive/squad-up/SquadUpSummary';
 import { squadUpStartErrorMessage, squadUpSwipeErrorMessage } from '@/lib/squadUpErrors';
 import type { SquadUpCard, SquadUpStats } from '@/schemas/squadUp';
@@ -35,6 +38,7 @@ export default function SquadUpPage() {
   const savedStats = useSquadUpStats(ended);
   const [leftStats, setLeftStats] = useState<SquadUpStats | null>(null);
   const [swipeError, setSwipeError] = useState('');
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
 
   function onSwipe(card: SquadUpCard, direction: 'right' | 'left') {
     setSwipeError('');
@@ -67,7 +71,8 @@ export default function SquadUpPage() {
         notice={presence.isError ? 'We could not check your Squad Up status. You can still start.' : undefined} onStart={(input) => start.mutate(input)} />;
     }
     return <DeckView cards={cards.data} loading={cards.isLoading} error={cards.isError} busy={swipe.isPending} swipeError={swipeError}
-      pendingLikes={presence.data?.pendingLikes ?? 0} leaving={end.isPending} onSwipe={onSwipe} onLeave={leave} onRetry={() => void cards.refetch()} />;
+      pendingLikes={presence.data?.pendingLikes ?? 0} leaving={end.isPending} onSwipe={onSwipe}
+      onReport={(card) => setReporting({ userId: card.userId, username: card.username })} onLeave={leave} onRetry={() => void cards.refetch()} />;
   }
 
   return (
@@ -76,9 +81,14 @@ export default function SquadUpPage() {
       <div className="squad-shell">
         <div className="squad-layout">
           <div>{body()}</div>
-          <SquadUpMatches matches={matches.data ?? []} />
+          <div className="squad-side">
+            <SquadUpMatches matches={matches.data ?? []}
+              onReport={(match) => setReporting({ userId: match.matchedUserId, username: match.matchedUsername, matchId: match.matchId })} />
+            <SquadUpSafetyPanel enabled={!!user && enabled} />
+          </div>
         </div>
       </div>
+      <SquadUpReportDialog target={reporting} onClose={() => setReporting(null)} />
     </LfgWorkspace>
   );
 }
@@ -86,10 +96,10 @@ export default function SquadUpPage() {
 interface DeckViewProps {
   cards: SquadUpCard[] | undefined; loading: boolean; error: boolean; busy: boolean; swipeError: string;
   pendingLikes: number; leaving: boolean;
-  onSwipe: (card: SquadUpCard, direction: 'right' | 'left') => void; onLeave: () => void; onRetry: () => void;
+  onSwipe: (card: SquadUpCard, direction: 'right' | 'left') => void; onReport: (card: SquadUpCard) => void; onLeave: () => void; onRetry: () => void;
 }
 
-function DeckView({ cards, loading, error, busy, swipeError, pendingLikes, leaving, onSwipe, onLeave, onRetry }: DeckViewProps) {
+function DeckView({ cards, loading, error, busy, swipeError, pendingLikes, leaving, onSwipe, onReport, onLeave, onRetry }: DeckViewProps) {
   const top = cards?.[0];
   return (
     <section className="squad-deck-view" aria-label="Squad Up deck" style={{ display: 'grid', gap: 16 }}>
@@ -103,7 +113,7 @@ function DeckView({ cards, loading, error, busy, swipeError, pendingLikes, leavi
       {loading && !top && <div className="lfg-panel lfg-empty" aria-live="polite">Finding players…</div>}
       {error && !top && <div className="lfg-panel lfg-empty"><strong>Players could not load.</strong><button type="button" className="lfg-button" onClick={onRetry}>Try again</button></div>}
       {!loading && !error && !top && <div className="lfg-panel lfg-empty" aria-live="polite"><strong>No one new right now.</strong>Stay on this page. We check for new players every few seconds.</div>}
-      {top && <SquadUpDeck card={top} onSwipe={onSwipe} disabled={busy} />}
+      {top && <SquadUpDeck card={top} onSwipe={onSwipe} onReport={onReport} disabled={busy} />}
     </section>
   );
 }

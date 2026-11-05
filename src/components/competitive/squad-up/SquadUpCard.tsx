@@ -1,3 +1,4 @@
+import { Flag } from 'lucide-react';
 import { resolveLfgAvatar } from '@/lib/lfgAvatar';
 import { getRankIconUrl } from '@/lib/valorantRanks';
 import { parsePopularAgents, resolveAgent } from '@/lib/valorantAgents';
@@ -11,7 +12,7 @@ const SYNERGY: Record<SynergyLabel, { text: string; tone: 'success' | 'neutral' 
 
 const pct = (value: number | null | undefined) => (value == null ? '—' : `${Math.round(value)}%`);
 
-export function SquadUpCard({ card }: { card: SquadUpCardData }) {
+export function SquadUpCard({ card, onReport }: { card: SquadUpCardData; onReport?: () => void }) {
   const avatar = resolveLfgAvatar(card.avatarUrl, card.avatarSeed, card.avatarStyle);
   const rankIcon = card.competitiveTier >= 3 ? getRankIconUrl(card.competitiveTier - 3) : null;
   const agents = parsePopularAgents(card.popularAgents).slice(0, 3);
@@ -19,6 +20,11 @@ export function SquadUpCard({ card }: { card: SquadUpCardData }) {
   const riotId = card.riotGameName ? `${card.riotGameName}#${card.riotTagLine ?? ''}` : null;
   return (
     <article className="lfg-panel squad-card" aria-label={`${card.username}, ${card.competitiveTierName ?? 'unranked'}`}>
+      {onReport && (
+        <button type="button" className="lfg-button squad-card-flag" aria-label={`Report ${card.username}`} title="Report this player" onClick={onReport}>
+          <Flag size={14} aria-hidden />
+        </button>
+      )}
       <div className="squad-card-top">
         <span className="squad-avatar">
           {avatar ? <img src={avatar} alt="" /> : card.username.slice(0, 2).toUpperCase()}
