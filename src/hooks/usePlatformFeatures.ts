@@ -17,6 +17,7 @@ export const FEATURES = {
   ghostMode: 'ghost-mode',
   competitiveProfiles: 'competitive_profiles',
   lfg: 'lfg',
+  lfgQueue: 'lfg_queue',
   navV2: 'nav_v2',
   scrims: 'scrims',
 } as const;
@@ -41,7 +42,7 @@ export function usePlatformFeatures() {
   );
 
   const localOverrides: Set<FeatureKey> = new Set(
-    import.meta.env.DEV ? (['nav_v2', 'competitive_profiles', 'lfg', 'recruitment', 'tryouts', 'scrims', 'scouting'] as FeatureKey[]) : []
+    import.meta.env.DEV ? (['nav_v2', 'competitive_profiles', 'lfg', 'lfg_queue', 'recruitment', 'tryouts', 'scrims', 'scouting'] as FeatureKey[]) : []
   );
 
   return {

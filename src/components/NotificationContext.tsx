@@ -11,6 +11,7 @@ import { NotificationContext, type Notification } from '@/contexts/notification-
 import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { useToast } from '@/hooks/use-toast';
 import { shouldRefreshScrims } from '@/services/scrimLive';
+import { lfgQueueKeys } from '@/hooks/competitive/queryKeys';
 
 export type { Notification };
 
@@ -99,6 +100,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
       if (shouldRefreshScrims(stub.type)) {
         queryClient.invalidateQueries({ queryKey: ['scrims'] });
+      }
+
+      // A Queue Now match from the other player's swipe: refresh the deck and match list, and tell the user.
+      if (stub.type === 'lfg_swipe_match') {
+        void queryClient.invalidateQueries({ queryKey: lfgQueueKeys.all() });
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        toast({ title: stub.title, description: stub.message || undefined, duration: 8000 });
       }
 
       // Being removed is high-signal — surface it immediately, not just as a badge

@@ -79,6 +79,7 @@ const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 // Competitive
 const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
 const LfgDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/LfgDiscoveryPage"));
+const LfgQueuePage = lazyWithRetry(() => import("./pages/competitive/LfgQueuePage"));
 const LfgRequestsPage = lazyWithRetry(() => import("./pages/competitive/LfgRequestsPage"));
 const LfgMyListingsPage = lazyWithRetry(() => import("./pages/competitive/LfgMyListingsPage"));
 const LfgCreateWizardPage = lazyWithRetry(() => import("./pages/competitive/LfgCreateWizardPage"));
@@ -591,6 +592,7 @@ const AppContent = React.memo(() => {
                     </ProtectedRoute>
                   } />
                   <Route path="lfg" element={<LfgDiscoveryPage />} />
+                  <Route path="lfg/queue" element={<ProtectedRoute><LfgQueuePage /></ProtectedRoute>} />
                   <Route path="lfg/requests" element={<ProtectedRoute><LfgRequestsPage /></ProtectedRoute>} />
                   <Route path="lfg/create" element={
                     <ProtectedRoute>

@@ -26,6 +26,16 @@ export const lfgKeys = {
   saved: (game?: string) => ['lfg', 'saved', game] as const,
 };
 
+export const lfgQueueKeys = {
+  /** Everything under Queue Now — use after a match or when the session ends */
+  all: () => ['lfg-queue'] as const,
+  /** Presence probe (heartbeat) — also tells us whether a session exists */
+  presence: () => ['lfg-queue', 'presence'] as const,
+  cards: () => ['lfg-queue', 'cards'] as const,
+  matches: () => ['lfg-queue', 'matches'] as const,
+  stats: () => ['lfg-queue', 'stats'] as const,
+};
+
 export const competitiveProfileKeys = {
   /** Player profile search */
   search: (filters: PlayerSearchFilters) =>
