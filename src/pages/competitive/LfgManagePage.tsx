@@ -55,7 +55,7 @@ export default function LfgManagePage() {
                 <RequestAvatar interest={item} />
                 <div className="lfg-row-body">
                   <div className="flex items-center gap-2">
-                    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(item.fromUserId)}>{item.username || 'Player'}</button>
+                    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(item.fromUserId, listing.data?.gameSlug)}>{item.username || 'Player'}</button>
                     {item.riotGameName && <span className="text-[11px] text-white/35">{item.riotGameName}#{item.riotTagLine}</span>}
                   </div>
                   <p className="lfg-sub">
@@ -67,7 +67,7 @@ export default function LfgManagePage() {
                   {item.message && <p className="lfg-description">{item.message}</p>}
                 </div>
                 <div className="lfg-row-actions">
-                  <button className="lfg-button" type="button" onClick={() => openPeek(item.fromUserId)}>View Profile</button>
+                  <button className="lfg-button" type="button" onClick={() => openPeek(item.fromUserId, listing.data?.gameSlug)}>View Profile</button>
                   {item.status === 'expressed' && <>
                     <button className="lfg-button lfg-button-primary" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('accept', item.id)}>Accept</button>
                     <button className="lfg-button" type="button" disabled={accept.isPending || decline.isPending} onClick={() => void action('decline', item.id)}>Decline</button>

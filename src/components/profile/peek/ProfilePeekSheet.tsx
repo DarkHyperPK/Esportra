@@ -22,7 +22,7 @@ import { AlertTriangle } from 'lucide-react';
  * Animation begins immediately on open — skeleton shown before data arrives.
  */
 export function ProfilePeekSheet(): React.JSX.Element {
-  const { peekUserId, closePeek } = usePeekStore();
+  const { peekUserId, peekGameSlug, closePeek } = usePeekStore();
   const reduced = useReducedMotion();
 
   // Mobile drag-to-dismiss
@@ -74,9 +74,9 @@ export function ProfilePeekSheet(): React.JSX.Element {
   });
 
   const gameStatsQuery = useQuery({
-    queryKey: ['peek-game-stats', peekUserId],
-    queryFn: () => apiClient.get<Record<string, unknown>>(`/api/profiles/${peekUserId}/game-stats?game=valorant`),
-    enabled: !!peekUserId,
+    queryKey: ['peek-game-stats', peekUserId, peekGameSlug],
+    queryFn: () => apiClient.get<Record<string, unknown>>(`/api/profiles/${peekUserId}/game-stats?game=${encodeURIComponent(peekGameSlug!)}`),
+    enabled: !!peekUserId && !!peekGameSlug,
     staleTime: 60 * 1000,
   });
 
@@ -207,6 +207,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                   tournamentHistory={historyQuery.data?.items ?? []}
                   teams={teamsQuery.data ?? []}
                   gameStats={gameStatsQuery.data ?? null}
+                  gameSlug={peekGameSlug}
                   onClose={closePeek}
                 />
               )}
@@ -272,6 +273,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                   tournamentHistory={historyQuery.data?.items ?? []}
                   teams={teamsQuery.data ?? []}
                   gameStats={gameStatsQuery.data ?? null}
+                  gameSlug={peekGameSlug}
                   onClose={closePeek}
                 />
               )}

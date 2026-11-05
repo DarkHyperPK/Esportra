@@ -2,12 +2,14 @@ import { create } from 'zustand';
 
 interface PeekStore {
   peekUserId: string | null;
-  openPeek: (userId: string) => void;
+  peekGameSlug: string | null;
+  openPeek: (userId: string, gameSlug?: string) => void;
   closePeek: () => void;
 }
 
 export const usePeekStore = create<PeekStore>((set) => ({
   peekUserId: null,
-  openPeek: (userId: string) => set({ peekUserId: userId }),
-  closePeek: () => set({ peekUserId: null }),
+  peekGameSlug: null,
+  openPeek: (userId: string, gameSlug?: string) => set({ peekUserId: userId, peekGameSlug: gameSlug ?? null }),
+  closePeek: () => set({ peekUserId: null, peekGameSlug: null }),
 }));

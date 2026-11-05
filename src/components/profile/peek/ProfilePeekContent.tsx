@@ -32,6 +32,7 @@ interface ProfilePeekContentProps {
   tournamentHistory: import('@/types/profile').TournamentHistoryEntryDto[];
   teams: import('@/types/profile').TeamMembershipDto[];
   gameStats: GameStatsData | null;
+  gameSlug: string | null;
   onClose: () => void;
 }
 
@@ -46,6 +47,7 @@ export function ProfilePeekContent({
   tournamentHistory,
   teams,
   gameStats,
+  gameSlug,
   onClose,
 }: ProfilePeekContentProps): React.JSX.Element {
   const navigate = useNavigate();
@@ -238,7 +240,7 @@ export function ProfilePeekContent({
         {gameStats && (gameStats.win_rate != null || gameStats.competitive_tier_name) && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              Valorant
+              {gameSlug ? gameSlug.charAt(0).toUpperCase() + gameSlug.slice(1) : 'Game Stats'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               {gameStats.rank_tier_icon_url && (

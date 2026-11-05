@@ -30,9 +30,9 @@ function RequestRow({ item, received }: { item: LfgInboxEntry; received: boolean
   }
   const pending = accept.isPending || decline.isPending || withdraw.isPending;
   return <article className="lfg-row"><RequestAvatar item={item} /><div className="lfg-row-body">
-    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(counterpartId)}>{item.counterpartUsername || 'Player'}</button>
+    <button type="button" className="lfg-name hover:underline text-left" onClick={() => openPeek(counterpartId, item.gameSlug)}>{item.counterpartUsername || 'Player'}</button>
     <p className="lfg-sub">{item.listingName || 'Listing'} · {item.gameSlug} · {{ expressed: 'Pending', accepted: 'Connected', withdrawn: 'Withdrawn', declined: 'Declined', blocked: 'Unavailable' }[item.status]}</p>{item.message && <p className="lfg-description" style={{ marginTop:8 }}>{item.message}</p>}{error && <p className="lfg-error" role="alert">{error}</p>}</div><div className="lfg-row-actions">
-    <button className="lfg-button" type="button" onClick={() => openPeek(counterpartId)}>View Profile</button>
+    <button className="lfg-button" type="button" onClick={() => openPeek(counterpartId, item.gameSlug)}>View Profile</button>
     {item.status === 'expressed' && (received ? <><button className="lfg-button lfg-button-primary" type="button" disabled={pending} onClick={() => void respond('accept')}>{accept.isPending ? 'Connecting…' : 'Accept'}</button><button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('decline')}>{decline.isPending ? 'Declining…' : 'Decline'}</button></> : <button className="lfg-button" type="button" disabled={pending} onClick={() => void respond('withdraw')}>{withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}</button>)}
     {item.status === 'accepted' && item.conversationId && <Link className="lfg-button lfg-button-primary" to={`/inbox/${item.conversationId}`}>Open conversation</Link>}
     {received && <Link className="lfg-button" to={`/competitive/lfg/${item.listingId}`}>View listing</Link>}
