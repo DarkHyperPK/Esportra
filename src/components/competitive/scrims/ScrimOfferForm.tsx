@@ -12,10 +12,6 @@ import { InlineNotice, Field } from '@/components/ui/kit';
 import { Button } from '@/components/ui/button';
 import { useMakeOffer } from '@/hooks/competitive/useScrims';
 import { useMyTeamsSummary } from '@/hooks/useNavTeamStatus';
-import {
-  bestOfLabel,
-  winsNeeded,
-} from '@/services/scrimUtils';
 import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
 
 interface ScrimOfferFormProps {
@@ -44,7 +40,6 @@ function formatProposedAt(iso: string): string {
 export function ScrimOfferForm({
   listingId,
   gameSlug,
-  bestOf,
   prefilledProposedAt,
   slotId,
   onClose,
@@ -152,37 +147,21 @@ export function ScrimOfferForm({
           {teamIdError}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Suggested time" htmlFor={`oat-${listingId}`} optional>
-          {prefilledProposedAt ? (
-            <div className="flex h-10 items-center rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/70">
-              {formatProposedAt(prefilledProposedAt)}
-            </div>
-          ) : (
-            <input
-              id={`oat-${listingId}`}
-              type="datetime-local"
-              value={proposedAt}
-              onChange={(e) => setProposedAt(e.target.value)}
-              className="h-10 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
-            />
-          )}
-        </Field>
-        {/* Format is locked by the listing — shown plainly so the request is informed */}
-        <Field label="Match format" htmlFor={`obf-${listingId}`}>
-          <div
-            id={`obf-${listingId}`}
-            className="flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/60"
-          >
-            <span className="font-mono text-[12px] font-semibold tracking-[0.14em] text-white/70">
-              {bestOfLabel(bestOf).toUpperCase()}
-            </span>
-            <span className="text-[11px] text-white/35">
-              first to {winsNeeded(bestOf)}, set by listing
-            </span>
+      <Field label="Suggested time" htmlFor={`oat-${listingId}`} optional>
+        {prefilledProposedAt ? (
+          <div className="flex h-10 items-center rounded-lg border border-white/[0.08] bg-black/20 px-3 text-[13px] text-white/70">
+            {formatProposedAt(prefilledProposedAt)}
           </div>
-        </Field>
-      </div>
+        ) : (
+          <input
+            id={`oat-${listingId}`}
+            type="datetime-local"
+            value={proposedAt}
+            onChange={(e) => setProposedAt(e.target.value)}
+            className="h-10 w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 text-[13px] text-white focus:outline-none focus:border-white/30 [color-scheme:dark]"
+          />
+        )}
+      </Field>
       <Field label="Message to team" htmlFor={`on-${listingId}`} optional>
         <textarea
           id={`on-${listingId}`}

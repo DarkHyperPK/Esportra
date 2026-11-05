@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CommandButton } from '@/components/management/CommandSurface';
 import {
-  useAcceptLobbyRequest, useCloseLobby, useCreateLobby, useDeclineLobbyRequest, useKickFromLobby, useLeaveLobby,
-  useLobbyBoard, useMyLobbies, useRequestLobbySlot,
+  closeLobbyDirect, useAcceptLobbyRequest, useCloseLobby, useCreateLobby, useDeclineLobbyRequest, useKickFromLobby,
+  useLeaveLobby, useLobbyBoard, useMyLobbies, useRequestLobbySlot,
 } from '@/hooks/competitive/useSquadUpLobbies';
 import { squadUpLobbyErrorMessage } from '@/lib/squadUpErrors';
 import type { SquadUpFilters } from '@/schemas/squadUp';
@@ -26,6 +26,13 @@ export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters | null; 
   const leave = useLeaveLobby();
   const [creating, setCreating] = useState(false);
   const failed = [request, accept, decline, kick, close, leave].find((action) => action.isError);
+
+  // Close the lobby when the host navigates away from Squad Up without clicking Close.
+  useEffect(() => {
+    if (!hosting) return;
+    const id = hosting.id;
+    return () => { closeLobbyDirect(id); };
+  }, [hosting?.id]);
   const busy = [request, accept, decline, kick, close, leave].some((action) => action.isPending);
 
   if (hosting) {

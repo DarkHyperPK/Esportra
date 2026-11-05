@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { competitiveApiClient as api } from '@/hooks/competitive/competitiveApiClient';
 import { squadUpKeys } from './queryKeys';
-import { createLobbySchema, lobbySchema, myLobbiesSchema, type CreateLobbyInput } from '@/schemas/squadUpLobby';
+import { createLobbySchema, lobbySchema, myLobbiesSchema, type CreateLobbyInput, type MyLobbies } from '@/schemas/squadUpLobby';
 import type { SquadUpFilters } from '@/schemas/squadUp';
 
 const BASE = '/api/competitive/lfg/swipe/lobbies';
@@ -66,7 +66,37 @@ export const useAcceptLobbyRequest = () =>
   useLobbyAction(({ lobbyId, userId }: { lobbyId: string; userId: string }) => api.post(`${BASE}/${lobbyId}/requests/${userId}/accept`));
 export const useDeclineLobbyRequest = () =>
   useLobbyAction(({ lobbyId, userId }: { lobbyId: string; userId: string }) => api.post(`${BASE}/${lobbyId}/requests/${userId}/decline`));
-export const useLeaveLobby = () => useLobbyAction((lobbyId: string) => api.post(`${BASE}/${lobbyId}/leave`));
 export const useKickFromLobby = () =>
   useLobbyAction(({ lobbyId, userId }: { lobbyId: string; userId: string }) => api.post(`${BASE}/${lobbyId}/kick/${userId}`));
-export const useCloseLobby = () => useLobbyAction((lobbyId: string) => api.post(`${BASE}/${lobbyId}/close`));
+
+export function useLeaveLobby() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lobbyId: string) => api.post(`${BASE}/${lobbyId}/leave`),
+    onSuccess: (_data, lobbyId) => {
+      qc.setQueryData<MyLobbies>(squadUpKeys.lobbyMine(), (old) => {
+        if (!old) return old;
+        if (old.hosting?.id === lobbyId) return { ...old, hosting: null, members: [] };
+        return { ...old, joined: old.joined.filter((l) => l.id !== lobbyId) };
+      });
+    },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: LOBBIES }); },
+  });
+}
+
+export function useCloseLobby() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lobbyId: string) => api.post(`${BASE}/${lobbyId}/close`),
+    onSuccess: () => {
+      qc.setQueryData<MyLobbies>(squadUpKeys.lobbyMine(), (old) =>
+        old ? { ...old, hosting: null, members: [] } : old);
+    },
+    onSettled: () => { void qc.invalidateQueries({ queryKey: LOBBIES }); },
+  });
+}
+
+/** Call directly (not as a mutation) to close a lobby on component unmount. */
+export function closeLobbyDirect(lobbyId: string): void {
+  void api.post(`${BASE}/${lobbyId}/close`).catch(() => {});
+}
