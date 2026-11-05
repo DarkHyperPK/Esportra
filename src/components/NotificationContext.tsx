@@ -176,9 +176,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       void queryClient.invalidateQueries({ queryKey: squadUpKeys.lobbies() });
     };
 
+    // A compatible player joined Squad Up — refresh the card deck so it appears without a page reload.
+    const onSquadUpPoolUpdated = () => {
+      void queryClient.invalidateQueries({ queryKey: squadUpKeys.cards() });
+    };
+
     hub.on('NewNotification', onNewNotification);
     hub.on('SquadUpLike', onSquadUpLike);
     hub.on('SquadUpLobbyUpdated', onSquadUpLobbyUpdated);
+    hub.on('SquadUpPoolUpdated', onSquadUpPoolUpdated);
     hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
     hub.on('ForceLogout', onForceLogout);
@@ -188,6 +194,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       hub.off('NewNotification', onNewNotification);
       hub.off('SquadUpLike', onSquadUpLike);
       hub.off('SquadUpLobbyUpdated', onSquadUpLobbyUpdated);
+      hub.off('SquadUpPoolUpdated', onSquadUpPoolUpdated);
       hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
       hub.off('ForceLogout', onForceLogout);
