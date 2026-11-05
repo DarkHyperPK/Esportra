@@ -2,7 +2,7 @@ import { useReducer, useRef } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
 import { CommandButton } from '@/components/management/CommandSurface';
 import { SwipeStack, type SwipeStackHandle } from '../shared/SwipeStack';
-import { PlayerSlate } from '../shared/PlayerSlate';
+import { SquadUpPlayerCard } from '../shared/SquadUpPlayerCard';
 import { LobbyRail } from '../shared/LobbyRail';
 import { DEMO_PLAYERS } from './demoData';
 import { demoReducer, initialDemoState, SQUAD_SIZE } from './demoState';
@@ -20,7 +20,7 @@ export function DemoDuo() {
       <div className="su-demo-stage">
         {state.deck.length > 0 ? (
           <SwipeStack ref={stack} items={state.deck} getId={(p) => p.id} label="Sample players"
-            renderCard={(p) => <PlayerSlate player={p} />} onSwipe={(p, direction) => dispatch({ type: 'swipe', id: p.id, direction })}
+            renderCard={(p) => <SquadUpPlayerCard player={p} />} onSwipe={(p, direction) => dispatch({ type: 'swipe', id: p.id, direction })}
             disabled={!!state.justMatched} />
         ) : (
           <div className="su-demo-empty">

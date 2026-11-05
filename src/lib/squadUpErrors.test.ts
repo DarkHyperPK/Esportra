@@ -7,7 +7,9 @@ vi.mock('@/lib/supabase', () => ({ supabase: { auth: { getSession: vi.fn().mockR
 describe('SquadUp Now error messages', () => {
   it('explains each reason joining the squadUp can be refused', () => {
     expect(squadUpStartErrorMessage(new ApiError(422, { error: 'RIOT_NOT_LINKED' }, 'x'))).toMatch(/Link your Riot account/);
-    expect(squadUpStartErrorMessage(new ApiError(422, { error: 'NOT_RANKED' }, 'x'))).toMatch(/ranked/);
+    expect(squadUpStartErrorMessage(new ApiError(422, { error: 'NOT_RANKED' }, 'x'))).toMatch(/Unrated/);
+    expect(squadUpStartErrorMessage(new ApiError(400, { error: 'INVALID_AREA' }, 'x'))).toBe('Pick where you live.');
+    expect(squadUpStartErrorMessage(new ApiError(400, { error: 'NOTE_TOO_LONG' }, 'x'))).toMatch(/100 characters/);
     expect(squadUpStartErrorMessage(new ApiError(422, { error: 'REGION_UNKNOWN' }, 'x'))).toMatch(/region/);
     expect(squadUpStartErrorMessage(new Error('boom'))).toBe('boom');
   });

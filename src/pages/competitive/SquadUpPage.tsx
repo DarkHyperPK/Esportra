@@ -9,14 +9,12 @@ import { useSquadUpPublicStats } from '@/hooks/competitive/useSquadUpPublicStats
 import { useSquadUpFilters } from '@/hooks/competitive/useSquadUpFilters';
 import { useSquadUpIdle } from '@/hooks/competitive/useSquadUpIdle';
 import { CommandButton } from '@/components/management/CommandSurface';
-import CountryPickerModal from '@/components/auth/CountryPickerModal';
 import { SquadUpLanding } from '@/components/squad-up/landing/SquadUpLanding';
 import { SquadUpApp } from '@/components/squad-up/app/SquadUpApp';
 import { SquadUpSetupSheet, type SetupValues } from '@/components/squad-up/app/SquadUpSetupSheet';
 import { StillLookingDialog } from '@/components/squad-up/app/StillLookingDialog';
 import { SquadUpSummary } from '@/components/competitive/squad-up/SquadUpSummary';
 import { squadUpStartErrorMessage } from '@/lib/squadUpErrors';
-import { ApiError } from '@/lib/apiClient';
 import type { SquadUpStats } from '@/schemas/squadUp';
 
 const SIGN_IN = `/auth/signin?redirect=${encodeURIComponent('/competitive/squad-up')}`;
@@ -30,7 +28,7 @@ export default function SquadUpPage() {
   const features = usePlatformFeatures();
   const enabled = !features.isLoading && features.isEnabled(FEATURES.squadUp);
   const ownCountry = profile?.country_code?.toUpperCase() ?? null;
-  const { filters, remember } = useSquadUpFilters(ownCountry);
+  const { setup: lastSetup, filters, remember } = useSquadUpFilters(ownCountry);
   const stats = useSquadUpPublicStats(enabled);
   const presence = useSquadUpPresence(!!user && enabled);
   const inDuo = presence.data?.active === true;
@@ -45,16 +43,13 @@ export default function SquadUpPage() {
   const endedStats = useSquadUpStats(duoEnded);
   const [setupOpen, setSetupOpen] = useState(false);
   const [leftStats, setLeftStats] = useState<SquadUpStats | null>(null);
-  const [pendingStart, setPendingStart] = useState<SetupValues | null>(null);
-  const needsCountry = start.error instanceof ApiError && (start.error.body as { error?: string } | null)?.error === 'COUNTRY_REQUIRED';
 
   const ping = useCallback(() => { stillHere.mutate(); }, [stillHere]);
   const idle = useSquadUpIdle(live, ping);
 
   function goLive(values: SetupValues) {
-    setPendingStart(values);
-    start.mutate(values, {
-      onSuccess: () => { remember({ game: values.game, mode: values.mode, wantedCountries: values.wantedCountries, minTier: values.minTier, maxTier: values.maxTier }); setSetupOpen(false); setLeftStats(null); setWasInDuo(false); idle.markActive(true); },
+    start.mutate({ ...values, note: values.note || undefined }, {
+      onSuccess: () => { remember(values); setSetupOpen(false); setLeftStats(null); setWasInDuo(false); idle.markActive(true); },
     });
   }
 
@@ -63,12 +58,9 @@ export default function SquadUpPage() {
   }
 
   const setup = (
-    <SquadUpSetupSheet key={setupOpen ? 'open' : 'closed'} open={setupOpen} onOpenChange={setSetupOpen} ownCountry={ownCountry} initial={filters}
-      pending={start.isPending} error={start.isError && !needsCountry ? squadUpStartErrorMessage(start.error) : undefined}
+    <SquadUpSetupSheet key={setupOpen ? 'open' : 'closed'} open={setupOpen} onOpenChange={setSetupOpen} initial={lastSetup}
+      pending={start.isPending} error={start.isError ? squadUpStartErrorMessage(start.error) : undefined}
       submitLabel={inDuo ? 'Update and keep looking' : 'Go live'} onSubmit={goLive} />
-  );
-  const countryPrompt = needsCountry && pendingStart && (
-    <CountryPickerModal onSave={() => { start.reset(); goLive(pendingStart); }} />
   );
 
   if (user && enabled && (live || duoEnded)) {
@@ -79,7 +71,6 @@ export default function SquadUpPage() {
           duoEnded={<SquadUpSummary stats={leftStats ?? endedStats.data} onRestart={() => setSetupOpen(true)} />} />
         <StillLookingDialog open={idle.prompt && live} onStay={() => { stillHere.mutate(); idle.markActive(true); }} onLeave={leave} />
         {setup}
-        {countryPrompt}
       </>
     );
   }
@@ -94,7 +85,6 @@ export default function SquadUpPage() {
     <>
       <SquadUpLanding stats={stats.data} action={action} />
       {user && setup}
-      {countryPrompt}
     </>
   );
 }

@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Check, X } from 'lucide-react';
 import { CommandButton } from '@/components/management/CommandSurface';
 import { SwipeStack, type SwipeStackHandle } from '../shared/SwipeStack';
-import { PlayerSlate } from '../shared/PlayerSlate';
+import { SquadUpPlayerCard } from '../shared/SquadUpPlayerCard';
 import { toSlatePlayer } from '@/lib/squadUpSlate';
 import type { SquadUpCard } from '@/schemas/squadUp';
 
@@ -31,7 +31,7 @@ export function DuoPanel({ cards, loading, error, busy, swipeError, pendingLikes
       {deck.length > 0 ? (
         <>
           <SwipeStack ref={stack} items={deck} getId={(card) => card.userId} label="Players looking now" disabled={busy}
-            renderCard={(card) => <PlayerSlate player={toSlatePlayer(card)} onReport={() => onReport(card)} />}
+            renderCard={(card) => <SquadUpPlayerCard player={toSlatePlayer(card)} onReport={() => onReport(card)} />}
             onSwipe={onSwipe} />
           <div className="su-actions su-actions-live">
             <CommandButton variant="secondary" size="lg" disabled={busy} onClick={() => stack.current?.swipe('left')}><X size={18} aria-hidden /> Pass</CommandButton>

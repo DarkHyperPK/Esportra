@@ -19,7 +19,7 @@ const acceptedMember = z.object({
 export const lobbySchema = z.object({
   id: z.string(), hostId: z.string(), hostUsername: optionalString, hostAvatarUrl: optionalString, hostAvatarSeed: optionalString,
   hostAvatarStyle: optionalString, hostTier: z.number().nullable().optional(), hostTierName: optionalString,
-  title: z.string(), mode: squadUpModeSchema, region: z.string(), countryCode: z.string(), wantedCountries: z.array(z.string()),
+  title: z.string(), mode: squadUpModeSchema, region: z.string(), countryCode: optionalString, area: optionalString,
   minTier: z.number().nullable().optional(), maxTier: z.number().nullable().optional(),
   openSlots: z.number(), acceptedCount: z.number(), wantedRoles: z.array(z.string()), micRequired: z.boolean(),
   status: z.enum(['open', 'full', 'closed']), createdAt: z.string(), myStatus: optionalString, conversationId: optionalString,
@@ -37,7 +37,7 @@ export const myLobbiesSchema = z.object({
 });
 export type MyLobbies = z.infer<typeof myLobbiesSchema>;
 
-/** Opening a lobby: what the team still needs. Mode, countries and rank come from the player's filters. */
+/** Opening a lobby: what the team still needs. Mode, area and rank come from the player's filters. */
 export const createLobbySchema = z.object({
   title: z.string().trim().max(60, 'Keep the title under 60 characters.'),
   openSlots: z.number().int().min(1).max(4),

@@ -6,7 +6,7 @@
 .su-lobby-card h3, .su-host h3, .su-create-lobby h3 { font-family:var(--font-heading), Poppins, sans-serif; font-weight:800; font-size:18px; }
 .su-host h4 { font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
 .su-count { min-width:20px; height:20px; display:inline-grid; place-items:center; padding:0 6px; background:#f43f5e; color:#fff; font-size:11px; font-variant-numeric:tabular-nums; }
-.su-flags { display:inline-flex; gap:4px; margin-top:6px; }
+.su-flags { display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:11px; color:#a1a1aa; }
 .su-flags img { width:20px; height:14px; object-fit:cover; }
 .su-lobby-ask { display:grid; gap:10px; }
 .su-status { font-size:13px; color:#e4e4e7; }

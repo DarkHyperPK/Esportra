@@ -26,9 +26,9 @@ export function LobbyCard({ lobby, myId, busy, onRequest }: LobbyCardProps) {
           {lobby.hostTierName ? `${lobby.hostTierName} host` : 'Unranked host'} · {lobby.mode === 'competitive' ? 'Competitive' : 'Unrated'} · {open} {open === 1 ? 'slot' : 'slots'} open
           {lobby.micRequired ? ' · Mic required' : ''}
         </p>
-        <span className="su-flags">{lobby.wantedCountries.slice(0, 6).map((code) => (
-          <img key={code} src={getCountryFlagUrl(code)} alt={countryName(code)} title={countryName(code)} loading="lazy" />
-        ))}</span>
+        {lobby.countryCode && (
+          <span className="su-flags"><img src={getCountryFlagUrl(lobby.countryCode)} alt="" loading="lazy" /> Host in {countryName(lobby.countryCode)}</span>
+        )}
       </header>
       <LobbyRail slots={slots} wanted={wanted} label="Lobby" />
       {lobby.myStatus === 'requested' ? <p className="su-status" role="status">Request sent. The host will accept or decline.</p>

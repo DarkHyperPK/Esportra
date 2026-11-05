@@ -6,7 +6,7 @@ import { CommandButton } from '@/components/management/CommandSurface';
 import { announceSquadUpMatch } from '@/hooks/competitive/squadUpPopups';
 import { useSquadUpCards, useSquadUpMatches, useSquadUpSwipe } from '@/hooks/competitive/useSquadUp';
 import type { ReportTarget } from '@/hooks/competitive/useSquadUpReport';
-import { countryName } from '@/lib/countryAreas';
+import { areaLabel } from '@/lib/countryAreas';
 import { squadUpSwipeErrorMessage } from '@/lib/squadUpErrors';
 import type { SquadUpCard, SquadUpFilters } from '@/schemas/squadUp';
 import { SquadUpMatches } from '@/components/competitive/squad-up/SquadUpMatches';
@@ -21,7 +21,8 @@ type Tab = 'duo' | 'lobby' | 'matches';
 
 interface SquadUpAppProps {
   myId?: string | null;
-  filters: SquadUpFilters;
+  /** Null only if this browser forgot the setup while the player is live; lobby browsing then waits for Edit. */
+  filters: SquadUpFilters | null;
   inDuo: boolean;
   pendingLikes: number;
   /** Shown in the Duo column when the Duo session has ended (for example when every slot filled). */
@@ -58,11 +59,10 @@ export function SquadUpApp({ myId, filters, inDuo, pendingLikes, duoEnded, leavi
     });
   }
 
-  const summary = [
-    filters.mode === 'competitive' ? 'Competitive' : 'Unrated',
-    filters.wantedCountries.length === 1 ? countryName(filters.wantedCountries[0]) : `${filters.wantedCountries.length} countries`,
-    filters.mode === 'competitive' && (filters.minTier || filters.maxTier) ? 'Custom ranks' : filters.mode === 'competitive' ? 'Near my rank' : null,
-  ].filter(Boolean).join(', ');
+  const summary = filters
+    ? [filters.mode === 'competitive' ? 'Competitive' : 'Unrated', areaLabel(filters.area), filters.mode === 'competitive' ? 'Near my rank' : null]
+      .filter(Boolean).join(', ')
+    : '';
   const matchCount = matches.data?.length ?? 0;
 
   return (
@@ -74,7 +74,7 @@ export function SquadUpApp({ myId, filters, inDuo, pendingLikes, duoEnded, leavi
           <span className="su-hint">{summary}</span>
         </div>
         <div className="su-row">
-          <CommandButton variant="ghost" size="sm" onClick={onEditFilters}><SlidersHorizontal size={14} aria-hidden /> Filters</CommandButton>
+          <CommandButton variant="ghost" size="sm" onClick={onEditFilters}><SlidersHorizontal size={14} aria-hidden /> Edit</CommandButton>
           <CommandButton variant="secondary" size="sm" disabled={leaving} onClick={onLeave}>{leaving ? 'Leaving…' : 'Leave'}</CommandButton>
         </div>
       </header>

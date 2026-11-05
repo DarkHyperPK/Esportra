@@ -28,29 +28,29 @@ export function SquadUpReportImages({ files, onChange, disabled = false }: Squad
 
   return (
     <div
-      className="squad-report-images"
+      className="su-report-drop"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => { event.preventDefault(); if (!disabled) add(Array.from(event.dataTransfer.files)); }}
       onPaste={(event) => { if (!disabled) add(Array.from(event.clipboardData.files)); }}
     >
-      <div className="squad-report-thumbs">
+      <div className="su-report-thumbs">
         {previews.map(({ file, url }, index) => (
-          <figure key={`${file.name}-${index}`} className="squad-report-thumb">
+          <figure key={`${file.name}-${index}`} className="su-report-thumb">
             <img src={url} alt={`Screenshot ${index + 1}: ${file.name}`} />
             <button type="button" aria-label={`Remove ${file.name}`} disabled={disabled}
               onClick={() => onChange(files.filter((_, i) => i !== index))}><X size={12} aria-hidden /></button>
           </figure>
         ))}
         {files.length < MAX_REPORT_FILES && (
-          <button type="button" className="squad-report-add" disabled={disabled} onClick={() => input.current?.click()}>
+          <button type="button" className="su-report-add" disabled={disabled} onClick={() => input.current?.click()}>
             <ImagePlus size={18} aria-hidden /> Add screenshot
           </button>
         )}
       </div>
       <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden
         aria-label="Choose screenshots" onChange={(event) => { add(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
-      <p className="squad-hint">{files.length}/{MAX_REPORT_FILES} screenshots. PNG, JPG or WebP, 10 MB each. You can also drag or paste them here.</p>
-      {problem && <p className="squad-error" role="alert">{problem}</p>}
+      <p className="su-report-hint">{files.length}/{MAX_REPORT_FILES} · PNG, JPG or WebP up to 10 MB. Drag, paste or tap to add.</p>
+      {problem && <p className="su-report-error" role="alert">{problem}</p>}
     </div>
   );
 }

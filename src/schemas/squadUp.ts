@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AREA_IDS } from '@/lib/countryAreas';
 
 export const SQUAD_UP_GAMES = [{ slug: 'valorant', name: 'Valorant', live: true }] as const;
 export const squadUpModeSchema = z.enum(['competitive', 'unrated']);
@@ -9,11 +10,15 @@ export const MIN_TIER = 3;
 export const MAX_TIER = 27;
 const tier = z.number().int().min(MIN_TIER).max(MAX_TIER);
 
+export const areaSchema = z.enum(AREA_IDS);
+export const NOTE_MAX = 100;
+export const noteSchema = z.string().trim().max(NOTE_MAX, `Keep it under ${NOTE_MAX} characters.`);
+
 /** What a player wants from Squad Up right now. Checked here and again by the server. */
 export const squadUpFiltersSchema = z.object({
   game: z.literal('valorant'),
   mode: squadUpModeSchema,
-  wantedCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1, 'Pick at least one country.').max(60),
+  area: areaSchema,
   minTier: tier.nullable().optional(),
   maxTier: tier.nullable().optional(),
 }).refine((value) => value.minTier == null || value.maxTier == null || value.minTier <= value.maxTier, {
@@ -21,13 +26,14 @@ export const squadUpFiltersSchema = z.object({
 });
 export type SquadUpFilters = z.infer<typeof squadUpFiltersSchema>;
 
-/** Form input for entering the Squad Up deck. Filters are optional so older callers keep working. */
+/** Form input for going live: where you live is required; everything else has a default. */
 export const startSquadUpSchema = z.object({
   micOn: z.boolean(),
   slotsNeeded: z.number().int().min(1).max(4),
   game: z.literal('valorant').optional(),
   mode: squadUpModeSchema.optional(),
-  wantedCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).max(60).optional(),
+  area: areaSchema,
+  note: noteSchema.optional(),
   minTier: tier.nullable().optional(),
   maxTier: tier.nullable().optional(),
 });
@@ -44,7 +50,8 @@ export const squadUpSessionSchema = z.object({
   slotsNeeded: z.number(),
   mode: squadUpModeSchema.optional(),
   countryCode: z.string().nullable().optional(),
-  wantedCountries: z.array(z.string()).optional(),
+  area: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
   minTier: z.number().nullable().optional(),
   maxTier: z.number().nullable().optional(),
 });
@@ -63,6 +70,10 @@ export const squadUpCardSchema = z.object({
   competitiveTierName: nullableString,
   mode: squadUpModeSchema.optional(),
   countryCode: nullableString,
+  area: nullableString,
+  note: nullableString,
+  playerCardId: nullableString,
+  profileBannerUrl: nullableString,
   winRate: nullableNumber,
   kdRatio: nullableNumber,
   hsPct: nullableNumber,

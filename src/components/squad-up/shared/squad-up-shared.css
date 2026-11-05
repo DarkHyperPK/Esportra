@@ -9,38 +9,28 @@
 .su-stack-top { cursor:grab; }
 .su-stack-top:active { cursor:grabbing; }
 
-.su-slate { position:relative; height:100%; display:flex; flex-direction:column; gap:14px; padding:20px; background:#111114;
-  box-shadow:inset 0 0 0 1px #ffffff14; color:#fafafa; overflow:hidden; user-select:none; }
-.su-slate-head { display:flex; align-items:center; gap:14px; }
-.su-slate-avatar { width:64px; height:64px; flex-shrink:0; border-radius:999px; overflow:hidden; display:grid; place-items:center; background:#27272a; font-weight:800; }
-.su-slate-avatar img { width:100%; height:100%; object-fit:cover; }
-.su-slate-id { min-width:0; flex:1; }
-.su-slate-id h3 { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:26px; line-height:1.05; letter-spacing:-.02em; overflow-wrap:anywhere; }
-.su-slate-id p { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:6px; color:#a1a1aa; font-size:13px; }
-.su-slate-country { display:inline-flex; align-items:center; gap:6px; }
-.su-slate-country img { width:18px; height:12px; object-fit:cover; }
-.su-slate-report { width:34px; height:34px; display:grid; place-items:center; color:#a1a1aa; box-shadow:inset 0 0 0 1px #ffffff1f; }
-.su-slate-report:hover { color:#fafafa; background:#ffffff0a; }
-.su-slate-report:focus-visible { outline:2px solid #fafafa; outline-offset:2px; }
-.su-slate-cue { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#fda4af; }
-.su-slate-rank { display:flex; align-items:center; gap:10px; padding:12px 0; border-block:1px solid #ffffff12; }
-.su-slate-rank img { width:34px; height:34px; object-fit:contain; }
-.su-slate-rank-none { width:34px; height:34px; box-shadow:inset 0 0 0 1px #ffffff26; }
-.su-slate-rank strong { font-family:var(--font-heading), Poppins, sans-serif; font-weight:700; font-size:18px; }
-.su-slate-rank .su-caption { margin-left:auto; }
-.su-slate-stats { display:grid; grid-template-columns:repeat(3, 1fr); }
-.su-slate-stats > div { padding:2px 12px; border-left:1px solid #ffffff12; }
-.su-slate-stats > div:first-child { padding-left:0; border-left:0; }
-.su-slate-stats dd { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:26px; font-variant-numeric:tabular-nums; margin-top:2px; }
-.su-slate-agents { display:flex; gap:10px; }
-.su-slate-agents li { display:flex; align-items:center; gap:8px; font-size:12px; color:#d4d4d8; }
-.su-slate-agents img { width:32px; height:32px; background:#27272a; object-fit:cover; }
-.su-slate-note { color:#d4d4d8; font-size:14px; line-height:1.5; }
-.su-slate-tags { margin-top:auto; display:flex; flex-wrap:wrap; gap:6px; }
-.su-slate-tags li { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; font-size:12px; color:#e4e4e7; box-shadow:inset 0 0 0 1px #ffffff1f; }
+/* Player card: the Find Teammates listing card, filling the stack, plus Squad Up's own details. */
+.su-pcard { position:relative; height:100%; display:flex; flex-direction:column; gap:8px; user-select:none; -webkit-user-select:none; }
+.su-pcard img { -webkit-user-drag:none; pointer-events:none; }
+.su-pcard .lfg-compact-card { flex:1; min-height:0; display:flex; flex-direction:column; box-shadow:0 30px 60px -20px #000c; }
+.su-pcard .lfg-compact-hero { flex:none; height:min(190px, 30%); }
+.su-pcard .lfg-compact-hero .lfg-avatar { width:44px; height:44px; }
+.su-pcard .lfg-compact-hero .lfg-compact-name .lfg-name { font-size:20px; }
+.su-pcard .lfg-compact-content { flex:1; display:flex; flex-direction:column; min-height:0; }
+.su-pcard .lfg-compact-description { -webkit-line-clamp:3; font-size:13px; }
+.su-pcard .lfg-compact-bottom { margin-top:auto; }
+.su-pcard-cue { position:absolute; top:12px; left:12px; z-index:3; display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+  background:#09090bd9; color:#fecdd3; font-size:12px; font-weight:600; backdrop-filter:blur(6px); }
+.su-pcard-report { position:absolute; top:10px; right:10px; z-index:3; width:36px; height:36px; display:grid; place-items:center; border-radius:10px;
+  color:#e4e4e7; background:#151519d9; }
+.su-pcard-report:hover { color:#fafafa; background:#27272a; }
+.su-pcard-report:focus-visible { outline:2px solid #fafafa; outline-offset:2px; }
+.su-pcard-tags { display:flex; flex-wrap:wrap; gap:6px; flex:none; }
+.su-pcard-tags li { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; font-size:12px; color:#e4e4e7; border-radius:999px; background:#ffffff0d; }
+.su-pcard-tags li.is-good { color:#fecdd3; background:#f43f5e1f; }
 
 /* Swipe feedback: a hard diagonal wipe from the side the card is heading to. */
-.su-wipe { position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; padding:22px; }
+.su-wipe { position:absolute; inset:0 0 40px; pointer-events:none; display:flex; align-items:center; padding:22px; border-radius:16px; z-index:4; }
 .su-wipe span { font:800 14px/1 ui-monospace, SFMono-Regular, monospace; letter-spacing:.24em; text-transform:uppercase; padding:12px 18px; transform:skewX(-12deg); box-shadow:0 10px 30px #00000080; }
 .su-wipe-up { justify-content:center; background:linear-gradient(115deg, #f43f5e38 0 38%, transparent 38%); box-shadow:inset 0 0 0 2px #f43f5e; }
 .su-wipe-up span { background:#f43f5e; color:#fff; }
@@ -50,11 +40,6 @@
 .su-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:400px; margin:0 auto; }
 
 @media (prefers-reduced-motion: reduce) { .su-dot { animation:none; } }
-@media (max-width:640px) {
-  .su-slate { padding:16px; gap:12px; }
-  .su-slate-id h3 { font-size:22px; }
-  .su-slate-stats dd { font-size:22px; }
-}
 
 /* Lobby rail: a 5-stack as five square slots. */
 .su-rail { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px; }

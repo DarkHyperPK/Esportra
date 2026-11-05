@@ -1,78 +1,82 @@
 import { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { CommandButton } from '@/components/management/CommandSurface';
-import { squadUpFiltersSchema, type SquadUpFilters, type SquadUpMode } from '@/schemas/squadUp';
-import { CountryPicker } from './CountryPicker';
-import { RankRange } from './RankRange';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { NOTE_MAX, type SquadUpMode } from '@/schemas/squadUp';
+import { squadUpSetupSchema, type SquadUpSetup } from '@/hooks/competitive/useSquadUpFilters';
+import type { AreaId } from '@/lib/countryAreas';
+import { AreaPicker } from './AreaPicker';
 
-export interface SetupValues extends SquadUpFilters { micOn: boolean; slotsNeeded: number }
+export type SetupValues = SquadUpSetup;
 
 interface SquadUpSetupSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  ownCountry?: string | null;
-  initial?: Partial<SetupValues>;
+  initial: Partial<SquadUpSetup>;
   pending: boolean;
   error?: string;
   submitLabel: string;
-  onSubmit: (values: SetupValues) => void;
+  onSubmit: (values: SquadUpSetup) => void;
 }
 
-/** Everything Squad Up needs before you go live: game, mode, countries, rank range, mic and how many you need. */
-export function SquadUpSetupSheet({ open, onOpenChange, ownCountry, initial, pending, error, submitLabel, onSubmit }: SquadUpSetupSheetProps) {
-  const [mode, setMode] = useState<SquadUpMode>(initial?.mode ?? 'competitive');
-  const [countries, setCountries] = useState<string[]>(initial?.wantedCountries ?? (ownCountry ? [ownCountry] : []));
-  const [range, setRange] = useState({ minTier: initial?.minTier ?? null, maxTier: initial?.maxTier ?? null });
-  const [micOn, setMicOn] = useState(initial?.micOn ?? true);
-  const [slots, setSlots] = useState(initial?.slotsNeeded ?? 1);
+/**
+ * The quick setup: what you want to play, where you live, one optional line for your card, how many you need,
+ * mic. Everything is pre-filled from last time, so going live is usually a single tap.
+ */
+export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error, submitLabel, onSubmit }: SquadUpSetupSheetProps) {
+  const wide = useMediaQuery('(min-width: 768px)');
+  const [mode, setMode] = useState<SquadUpMode>(initial.mode ?? 'competitive');
+  const [area, setArea] = useState<AreaId | undefined>(initial.area);
+  const [note, setNote] = useState(initial.note ?? '');
+  const [slots, setSlots] = useState(initial.slotsNeeded ?? 1);
+  const [micOn, setMicOn] = useState(initial.micOn ?? true);
   const [formError, setFormError] = useState('');
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    const parsed = squadUpFiltersSchema.safeParse({ game: 'valorant', mode, wantedCountries: countries, ...(mode === 'competitive' ? range : {}) });
-    if (!parsed.success) { setFormError(parsed.error.issues[0]?.message ?? 'Check your choices.'); return; }
+    const parsed = squadUpSetupSchema.safeParse({ game: 'valorant', mode, area, note, slotsNeeded: slots, micOn, minTier: null, maxTier: null });
+    if (!parsed.success) { setFormError(area ? parsed.error.issues[0]?.message ?? 'Check your choices.' : 'Pick where you live.'); return; }
     setFormError('');
-    onSubmit({ ...parsed.data, micOn, slotsNeeded: slots });
+    onSubmit(parsed.data);
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="su-sheet w-full overflow-y-auto sm:max-w-lg">
-        <SheetTitle className="su-sheet-title">Set up Squad Up</SheetTitle>
-        <SheetDescription className="su-hint">You only see players who also want you: same mode, countries you both picked, and ranks you both accept.</SheetDescription>
+      <SheetContent side={wide ? 'right' : 'bottom'} className="su-sheet w-full overflow-y-auto sm:max-w-md">
+        <p className="su-caption">Valorant · more games soon</p>
+        <SheetTitle className="su-sheet-title">Go live</SheetTitle>
+        <SheetDescription className="su-hint">Players on your Valorant server who live where you do, looking right now.</SheetDescription>
         <form className="su-setup" onSubmit={submit}>
-          <fieldset><legend>Game</legend>
-            <div className="su-choice" role="radiogroup" aria-label="Game">
-              <button type="button" role="radio" aria-checked>Valorant</button>
-              <button type="button" disabled aria-disabled><Lock size={12} aria-hidden /> More games coming</button>
-            </div>
-          </fieldset>
-          <fieldset><legend>What do you want to play?</legend>
-            <div className="su-choice" role="radiogroup" aria-label="Mode">
-              {(['competitive', 'unrated'] as const).map((item) => (
-                <button key={item} type="button" role="radio" aria-checked={mode === item} onClick={() => setMode(item)}>
-                  {item === 'competitive' ? 'Competitive (ranked)' : 'Unrated'}
-                </button>
-              ))}
-            </div>
-            <p className="su-hint">{mode === 'competitive' ? 'Needs a current rank. You see players near it, or set a range below.' : 'Rank doesn\'t matter, and unranked players can join.'}</p>
-          </fieldset>
-          <fieldset><legend>Who do you want to play with?</legend>
-            <CountryPicker value={countries} onChange={setCountries} ownCountry={ownCountry} />
-            <p className="su-hint">You also only see players on your Valorant server region (for example AP or EU), because you can't party across regions.</p>
-          </fieldset>
-          {mode === 'competitive' && (
-            <fieldset><legend>Rank range</legend><RankRange minTier={range.minTier} maxTier={range.maxTier} onChange={setRange} /></fieldset>
-          )}
-          <fieldset><legend>Players you need</legend>
+          <div className="su-mode" role="radiogroup" aria-label="What you want to play">
+            {(['competitive', 'unrated'] as const).map((item) => (
+              <button key={item} type="button" role="radio" aria-checked={mode === item} onClick={() => setMode(item)}>
+                <strong>{item === 'competitive' ? 'Competitive' : 'Unrated'}</strong>
+                <span>{item === 'competitive' ? 'Near your rank' : 'Any rank, unranked welcome'}</span>
+              </button>
+            ))}
+          </div>
+
+          <fieldset><legend>Where do you live?</legend><AreaPicker value={area} onChange={setArea} /></fieldset>
+
+          <label className="su-note">
+            <span>Your line <small>optional · shown on your card</small></span>
+            <input value={note} maxLength={NOTE_MAX} onChange={(event) => setNote(event.target.value)} placeholder="I smoke, you entry. Evenings PKT." />
+            <small className="su-count-text" aria-live="polite">{note.length}/{NOTE_MAX}</small>
+          </label>
+
+          <div className="su-setup-row">
             <div className="su-choice" role="radiogroup" aria-label="Players you need">
+              <span className="su-caption">Need</span>
               {[1, 2, 3, 4].map((count) => (
-                <button key={count} type="button" role="radio" aria-checked={slots === count} onClick={() => setSlots(count)}>{count}</button>
+                <button key={count} type="button" role="radio" aria-checked={slots === count} aria-label={`${count} ${count === 1 ? 'player' : 'players'}`} onClick={() => setSlots(count)}>{count}</button>
               ))}
             </div>
-          </fieldset>
-          <label className="su-check"><input type="checkbox" checked={micOn} onChange={(event) => setMicOn(event.target.checked)} /> I can talk on mic</label>
+            <button type="button" className="su-mic" aria-pressed={micOn} onClick={() => setMicOn(!micOn)}>
+              {micOn ? <Mic size={15} aria-hidden /> : <MicOff size={15} aria-hidden />} {micOn ? 'Mic on' : 'No mic'}
+            </button>
+          </div>
+
           {(formError || error) && <p className="su-error" role="alert">{formError || error}</p>}
           <CommandButton type="submit" variant="primary" size="lg" slide disabled={pending}>{pending ? 'Going live…' : submitLabel}</CommandButton>
         </form>

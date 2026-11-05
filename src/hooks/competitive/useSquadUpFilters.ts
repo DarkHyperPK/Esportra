@@ -1,27 +1,45 @@
 import { useCallback, useState } from 'react';
-import { squadUpFiltersSchema, type SquadUpFilters } from '@/schemas/squadUp';
+import { z } from 'zod';
+import { areaOf } from '@/lib/countryAreas';
+import { noteSchema, squadUpFiltersSchema, type SquadUpFilters } from '@/schemas/squadUp';
 
-const KEY = 'squad-up:filters';
+const KEY = 'squad-up:setup';
 
-export const defaultFilters = (ownCountry?: string | null): SquadUpFilters => ({
-  game: 'valorant', mode: 'competitive', wantedCountries: ownCountry ? [ownCountry] : [], minTier: null, maxTier: null,
-});
+/** Everything the quick setup asks for. Filters plus what the card shows (note, mic, players needed). */
+export const squadUpSetupSchema = squadUpFiltersSchema.and(z.object({
+  micOn: z.boolean(),
+  slotsNeeded: z.number().int().min(1).max(4),
+  note: noteSchema,
+}));
+export type SquadUpSetup = z.infer<typeof squadUpSetupSchema>;
+
+/** A first-time setup. The area comes from the profile country when there is one; otherwise the player picks it. */
+export function defaultSetup(ownCountry?: string | null): Partial<SquadUpSetup> & Omit<SquadUpSetup, 'area'> {
+  const area = ownCountry ? areaOf(ownCountry)?.id : undefined;
+  return { game: 'valorant', mode: 'competitive', ...(area ? { area } : {}), micOn: true, slotsNeeded: 1, note: '' };
+}
+
+function readStored(): SquadUpSetup | null {
+  try {
+    const parsed = squadUpSetupSchema.safeParse(JSON.parse(localStorage.getItem(KEY) ?? 'null'));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null; // storage unavailable or corrupt: fall back to defaults
+  }
+}
 
 /**
- * The filters the player last went live with, remembered in this browser only (a convenience: the server keeps
- * the real session). Used to label the session and to filter the lobby board after a reload.
+ * The setup the player last went live with, remembered in this browser only (a convenience: the server keeps
+ * the real session), so going live again is one tap. `filters` is null until an area is known.
  */
 export function useSquadUpFilters(ownCountry?: string | null) {
-  const [filters, setFilters] = useState<SquadUpFilters>(() => {
-    try {
-      const parsed = squadUpFiltersSchema.safeParse(JSON.parse(localStorage.getItem(KEY) ?? 'null'));
-      if (parsed.success) return parsed.data;
-    } catch { /* storage unavailable or corrupt: fall back to defaults */ }
-    return defaultFilters(ownCountry);
-  });
-  const remember = useCallback((next: SquadUpFilters) => {
-    setFilters(next);
+  const [setup, setSetup] = useState(() => readStored() ?? defaultSetup(ownCountry));
+  const remember = useCallback((next: SquadUpSetup) => {
+    setSetup(next);
     try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* storage is optional */ }
   }, []);
-  return { filters, remember };
+  const filters: SquadUpFilters | null = setup.area
+    ? { game: 'valorant', mode: setup.mode, area: setup.area, minTier: setup.minTier ?? null, maxTier: setup.maxTier ?? null }
+    : null;
+  return { setup, filters, remember };
 }

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, EyeOff, Link2, ShieldAlert } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { useSubmitSquadUpReport, type ReportTarget } from '@/hooks/competitive/useSquadUpReport';
 import { squadUpReportErrorMessage } from '@/lib/squadUpErrors';
 import { MAX_REPORT_DETAILS, REPORT_REASONS, reportFormSchema, type ReportReason } from '@/schemas/squadUpReport';
 import { SquadUpReportImages } from './SquadUpReportImages';
 import './squad-up.css';
+import './report.css';
 
 interface SquadUpReportDialogProps {
   target: ReportTarget | null;
@@ -15,7 +17,7 @@ interface SquadUpReportDialogProps {
 export function SquadUpReportDialog({ target, onClose }: SquadUpReportDialogProps) {
   return (
     <Dialog open={!!target} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="squad-report-dialog">
+      <DialogContent className="su-report-dialog">
         {/* Keyed by player so a new report always starts blank. */}
         {target && <ReportForm key={target.userId} target={target} onClose={onClose} />}
       </DialogContent>
@@ -42,50 +44,68 @@ function ReportForm({ target, onClose }: { target: ReportTarget; onClose: () => 
 
   if (submit.isSuccess) {
     return (
-      <div className="squad-report-done" role="status">
-        <CheckCircle2 size={28} aria-hidden />
-        <DialogTitle>Report sent</DialogTitle>
-        <DialogDescription>
+      <div className="su-report-done" role="status">
+        <CheckCircle2 size={32} aria-hidden />
+        <DialogTitle className="su-report-title">Report sent</DialogTitle>
+        <DialogDescription className="su-report-sub">
           Thank you. Our team will review it{hidePlayer ? ` and ${target.username} will not appear for you again` : ''}.
           We will let you know when it is reviewed.
         </DialogDescription>
-        <button type="button" className="lfg-button lfg-button-primary" onClick={onClose}>Done</button>
+        <CommandButton variant="primary" size="md" onClick={onClose}>Done</CommandButton>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="squad-report-form">
-      <DialogTitle>Report {target.username}</DialogTitle>
-      <DialogDescription>Reports are private. {target.username} is never told who reported them.</DialogDescription>
-      <fieldset className="squad-report-reasons" disabled={submit.isPending}>
-        <legend>What happened?</legend>
+    <form onSubmit={onSubmit} className="su-report-form">
+      <header className="su-report-head">
+        <span className="su-report-icon" aria-hidden><ShieldAlert size={18} /></span>
+        <div>
+          <DialogTitle className="su-report-title">Report {target.username}</DialogTitle>
+          <DialogDescription className="su-report-sub">Private. {target.username} is never told who reported them.</DialogDescription>
+        </div>
+      </header>
+
+      <fieldset className="su-report-reasons" disabled={submit.isPending}>
+        <legend className="su-report-label">What happened?</legend>
         {REPORT_REASONS.map((item) => (
-          <label key={item.value}><input type="radio" name="reason" value={item.value} checked={reason === item.value} onChange={() => setReason(item.value)} /> {item.label}</label>
+          <label key={item.value} className="su-report-reason">
+            <input type="radio" name="reason" value={item.value} checked={reason === item.value} onChange={() => setReason(item.value)} />
+            <span>{item.label}</span>
+          </label>
         ))}
       </fieldset>
-      <label className="lfg-field">Details
-        <textarea className="lfg-input" rows={3} maxLength={MAX_REPORT_DETAILS} value={details} disabled={submit.isPending}
+
+      <label className="su-report-field">
+        <span className="su-report-label">Details <small>{details.length}/{MAX_REPORT_DETAILS}</small></span>
+        <textarea rows={3} maxLength={MAX_REPORT_DETAILS} value={details} disabled={submit.isPending}
           placeholder="What did they say or do? When did it happen?" onChange={(event) => setDetails(event.target.value)} />
-        <span className="squad-hint">{details.length}/{MAX_REPORT_DETAILS}</span>
       </label>
-      <div className="lfg-field">Screenshots (proof)
+
+      <div className="su-report-field">
+        <span className="su-report-label">Screenshots <small>proof helps us act faster</small></span>
         <SquadUpReportImages files={files} onChange={setFiles} disabled={submit.isPending} />
       </div>
-      <label className="lfg-field">Link to a clip or other proof (optional)
-        <input className="lfg-input" type="url" inputMode="url" placeholder="https://" value={proofLink} disabled={submit.isPending}
-          onChange={(event) => setProofLink(event.target.value)} />
+
+      <label className="su-report-field">
+        <span className="su-report-label">Link to a clip <small>optional</small></span>
+        <span className="su-report-input-icon">
+          <Link2 size={15} aria-hidden />
+          <input type="url" inputMode="url" placeholder="https://" value={proofLink} disabled={submit.isPending}
+            onChange={(event) => setProofLink(event.target.value)} />
+        </span>
       </label>
-      <label className="squad-report-hide">
+
+      <label className="su-report-toggle">
         <input type="checkbox" checked={hidePlayer} disabled={submit.isPending} onChange={(event) => setHidePlayer(event.target.checked)} />
-        Also hide this player from me
+        <EyeOff size={15} aria-hidden />
+        <span>Also hide this player from me</span>
       </label>
-      {(fieldError || submit.isError) && <p className="squad-error" role="alert">{fieldError || squadUpReportErrorMessage(submit.error)}</p>}
-      <div className="squad-actions">
-        <button type="button" className="lfg-button" disabled={submit.isPending} onClick={onClose}>Cancel</button>
-        <button type="submit" className="lfg-button lfg-button-primary" disabled={submit.isPending}>
-          {submit.isPending ? 'Sending…' : 'Send report'}
-        </button>
+
+      {(fieldError || submit.isError) && <p className="su-report-error" role="alert">{fieldError || squadUpReportErrorMessage(submit.error)}</p>}
+      <div className="su-report-actions">
+        <CommandButton type="button" variant="ghost" size="md" disabled={submit.isPending} onClick={onClose}>Cancel</CommandButton>
+        <CommandButton type="submit" variant="primary" size="md" disabled={submit.isPending}>{submit.isPending ? 'Sending…' : 'Send report'}</CommandButton>
       </div>
     </form>
   );

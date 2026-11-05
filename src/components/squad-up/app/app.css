@@ -34,22 +34,36 @@
 .su-app .lfg-button { border-radius:0; }
 
 /* Setup sheet and dialogs */
-.su-sheet { background:#09090b !important; color:#fafafa; border-left:1px solid #ffffff14 !important; }
-.su-sheet-title { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:24px; }
-.su-setup { display:grid; gap:24px; margin-top:20px; }
-.su-setup fieldset { border:0; padding:0; display:grid; gap:10px; }
+.su-sheet { background:#09090b !important; color:#fafafa; border-color:#ffffff14 !important; }
+.su-sheet[data-side=bottom], .su-sheet.inset-x-0 { max-height:92dvh; }
+.su-sheet-title { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:28px; letter-spacing:-.02em; margin-top:4px; }
+.su-setup { display:grid; gap:20px; margin-top:18px; padding-bottom:env(safe-area-inset-bottom, 0px); }
+.su-setup fieldset { border:0; padding:0; display:grid; gap:8px; min-width:0; }
 .su-setup legend { font-size:13px; font-weight:600; color:#e4e4e7; margin-bottom:8px; }
+.su-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.su-mode button, .su-areas button { display:grid; gap:2px; text-align:left; padding:12px 14px; box-shadow:inset 0 0 0 1px #ffffff1f; transition:background .15s, box-shadow .15s; }
+.su-mode button strong { font:700 15px/1.2 var(--font-heading), Poppins, sans-serif; }
+.su-mode button span, .su-areas button span { font-size:11px; color:#a1a1aa; }
+.su-mode button[aria-checked=true], .su-areas button[aria-checked=true] { background:#fafafa; color:#09090b; box-shadow:none; }
+.su-mode button[aria-checked=true] span, .su-areas button[aria-checked=true] span { color:#3f3f46; }
+.su-mode button:hover:not([aria-checked=true]), .su-areas button:hover:not([aria-checked=true]) { background:#ffffff0a; }
+.su-areas { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.su-areas button { padding:10px 12px; }
+.su-areas button strong { font-size:13px; font-weight:600; line-height:1.25; }
+.su-mode button:focus-visible, .su-areas button:focus-visible, .su-mic:focus-visible { outline:2px solid #fafafa; outline-offset:2px; }
+.su-note { display:grid; gap:6px; font-size:13px; font-weight:600; color:#e4e4e7; position:relative; }
+.su-note small { font-weight:400; color:#71717a; }
+.su-note input { width:100%; min-height:44px; padding:10px 12px; background:#111114; color:#fafafa; box-shadow:inset 0 0 0 1px #ffffff1f; font-size:14px; font-weight:400; }
+.su-note input:focus-visible { outline:2px solid #fafafa; outline-offset:1px; }
+.su-count-text { justify-self:end; font-variant-numeric:tabular-nums; }
+.su-setup-row { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.su-setup-row .su-choice { align-items:center; }
+.su-setup-row .su-choice button { min-width:40px; justify-content:center; }
+.su-mic { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; font-size:13px; box-shadow:inset 0 0 0 1px #ffffff1f; }
+.su-mic[aria-pressed=true] { background:#fafafa; color:#09090b; box-shadow:none; }
 .su-input { width:100%; min-height:40px; padding:8px 12px; background:#111114; color:#fafafa; box-shadow:inset 0 0 0 1px #ffffff1f; font-size:14px; }
 .su-input:focus-visible { outline:2px solid #fafafa; outline-offset:1px; }
 .su-field { display:grid; gap:6px; font-size:13px; color:#d4d4d8; }
 .su-check { display:flex; align-items:center; gap:10px; font-size:14px; }
-.su-rank-range { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.su-countries { display:grid; gap:8px; }
-.su-countries-list { max-height:280px; overflow-y:auto; box-shadow:inset 0 0 0 1px #ffffff14; }
-.su-countries-list details { border-bottom:1px solid #ffffff0f; }
-.su-countries-list summary { display:flex; justify-content:space-between; padding:10px 12px; cursor:pointer; font-size:14px; }
-.su-countries-list ul { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); padding:0 12px 10px; }
-.su-countries-list label { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; cursor:pointer; }
-.su-countries-list img { width:18px; height:12px; object-fit:cover; }
-.su-area-all { margin:0 12px 6px; font-size:12px; color:#e4e4e7; text-decoration:underline; text-underline-offset:3px; }
+@media (max-width:420px) { .su-areas { grid-template-columns:1fr; } .su-areas button span { display:none; } .su-areas { grid-template-columns:1fr 1fr; } }
 .su-dialog-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:12px; }

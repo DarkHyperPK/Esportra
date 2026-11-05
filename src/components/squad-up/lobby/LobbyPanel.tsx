@@ -13,7 +13,7 @@ import { CreateLobbyForm } from './CreateLobbyForm';
 import './lobby.css';
 
 /** Lobby mode: your own lobby if you host one, the lobbies you asked to join, and the board of open lobbies. */
-export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters; myId?: string | null }) {
+export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters | null; myId?: string | null }) {
   const mine = useMyLobbies(true);
   const hosting = mine.data?.hosting ?? null;
   const board = useLobbyBoard(filters, !hosting);
@@ -59,21 +59,21 @@ export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters; myId?: 
       {creating ? (
         <CreateLobbyForm pending={create.isPending} error={create.isError ? squadUpLobbyErrorMessage(create.error) : undefined}
           onCancel={() => setCreating(false)}
-          onCreate={(input) => create.mutate({ input, filters }, { onSuccess: () => setCreating(false) })} />
+          onCreate={(input) => { if (filters) create.mutate({ input, filters }, { onSuccess: () => setCreating(false) }); }} />
       ) : (
         <div className="su-lobbies-head">
-          <p className="su-hint">{lobbies.length > 0 ? `${lobbies.length} open ${lobbies.length === 1 ? 'lobby fits' : 'lobbies fit'} your filters.` : ''}</p>
-          <CommandButton variant="secondary" size="md" onClick={() => setCreating(true)}>Open a lobby</CommandButton>
+          <p className="su-hint">{lobbies.length > 0 ? `${lobbies.length} open ${lobbies.length === 1 ? 'lobby fits' : 'lobbies fit'} your setup.` : ''}</p>
+          <CommandButton variant="secondary" size="md" disabled={!filters} onClick={() => setCreating(true)}>Open a lobby</CommandButton>
         </div>
       )}
       {board.isLoading ? <p className="su-hint" role="status">Finding lobbies…</p>
         : board.isError ? <p className="su-error" role="alert">{squadUpLobbyErrorMessage(board.error)}</p>
         : lobbies.length === 0 ? (
-          <div className="su-empty"><p><strong>No open lobbies match right now.</strong></p><p>Open your own: players who fit your filters will see it straight away.</p></div>
+          <div className="su-empty"><p><strong>No open lobbies match right now.</strong></p><p>Open your own: players who fit will see it straight away.</p></div>
         ) : (
           <div className="su-lobby-grid">
             {lobbies.map((lobby) => (
-              <LobbyCard key={lobby.id} lobby={lobby} myId={myId} busy={busy} onRequest={(item, roleKey) => request.mutate({ lobbyId: item.id, roleKey })} />
+              <LobbyCard key={lobby.id} lobby={lobby} myId={myId} busy={busy} onRequest={(item, roleKey) => request.mutate({ lobbyId: item.id, roleKey, area: filters?.area })} />
             ))}
           </div>
         )}

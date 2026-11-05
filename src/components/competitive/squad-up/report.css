@@ -1,0 +1,46 @@
+/* Squad Up report dialog: self-contained so it looks right on any page (stage black, square, one primary action). */
+.su-report-dialog { max-width:520px; max-height:92dvh; overflow-y:auto; padding:24px; background:#09090b; color:#fafafa; border:1px solid #ffffff1a; border-radius:0; }
+.su-report-form, .su-report-done { display:grid; gap:20px; }
+.su-report-done { justify-items:start; }
+.su-report-done svg { color:#34d399; }
+.su-report-head { display:flex; gap:12px; align-items:flex-start; padding-right:28px; }
+.su-report-icon { width:36px; height:36px; flex:none; display:grid; place-items:center; color:#fbbf24; background:#fbbf2414; }
+.su-report-title { font:700 20px/1.2 var(--font-heading), Poppins, sans-serif; letter-spacing:-.01em; }
+.su-report-sub { margin-top:4px; color:#a1a1aa; font-size:13px; }
+.su-report-label { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px; font-size:13px; font-weight:600; color:#e4e4e7; }
+.su-report-label small { font-weight:400; font-size:11px; color:#71717a; font-variant-numeric:tabular-nums; }
+.su-report-reasons { border:0; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:6px; min-width:0; }
+.su-report-reasons legend { float:left; width:100%; }
+.su-report-reason { position:relative; display:flex; align-items:center; min-height:44px; padding:10px 12px; font-size:13px; color:#d4d4d8;
+  box-shadow:inset 0 0 0 1px #ffffff1f; cursor:pointer; transition:background .15s; }
+.su-report-reason:hover { background:#ffffff08; }
+.su-report-reason input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+.su-report-reason:has(input:checked) { background:#fafafa; color:#09090b; box-shadow:none; font-weight:600; }
+.su-report-reason:has(input:focus-visible) { outline:2px solid #fafafa; outline-offset:2px; }
+.su-report-field { display:grid; min-width:0; }
+.su-report-field textarea, .su-report-input-icon { width:100%; background:#111114; color:#fafafa; box-shadow:inset 0 0 0 1px #ffffff1f; font-size:14px; }
+.su-report-field textarea { min-height:88px; padding:10px 12px; resize:vertical; line-height:1.5; }
+.su-report-field textarea::placeholder, .su-report-input-icon input::placeholder { color:#52525b; }
+.su-report-field textarea:focus-visible, .su-report-input-icon:focus-within { outline:2px solid #fafafa; outline-offset:1px; }
+.su-report-input-icon { display:flex; align-items:center; gap:8px; padding:0 12px; min-height:44px; color:#71717a; }
+.su-report-input-icon input { flex:1; min-width:0; background:transparent; color:#fafafa; outline:none; height:42px; }
+.su-report-drop { display:grid; gap:8px; }
+.su-report-thumbs { display:flex; flex-wrap:wrap; gap:8px; }
+.su-report-thumb { position:relative; width:84px; height:64px; margin:0; overflow:hidden; box-shadow:inset 0 0 0 1px #ffffff26; }
+.su-report-thumb img { width:100%; height:100%; object-fit:cover; }
+.su-report-thumb button { position:absolute; top:4px; right:4px; width:22px; height:22px; display:grid; place-items:center; border-radius:999px; background:#09090bd9; color:#fff; }
+.su-report-add { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:64px; padding:0 16px; flex:1 1 160px;
+  border:1px dashed #ffffff33; color:#d4d4d8; font-size:13px; background:#ffffff05; }
+.su-report-add:hover:not(:disabled) { border-color:#ffffff80; color:#fff; }
+.su-report-add:focus-visible { outline:2px solid #fafafa; outline-offset:2px; }
+.su-report-hint { color:#71717a; font-size:11px; }
+.su-report-toggle { display:flex; align-items:center; gap:10px; padding:12px; font-size:13px; color:#e4e4e7; background:#111114; cursor:pointer; }
+.su-report-toggle input { width:16px; height:16px; accent-color:#fafafa; }
+.su-report-toggle svg { color:#a1a1aa; }
+.su-report-error { color:#fca5a5; font-size:13px; }
+.su-report-actions { display:flex; justify-content:flex-end; gap:8px; }
+@media (max-width:480px) {
+  .su-report-dialog { padding:20px 16px; }
+  .su-report-reasons { grid-template-columns:1fr; }
+  .su-report-actions > * { flex:1; }
+}

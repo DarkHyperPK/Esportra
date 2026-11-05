@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideSwipe, exitX, swipeThreshold } from './swipeMath';
+import { decideSwipe, dragProgress, exitX, grabTilt, swipeThreshold } from './swipeMath';
 
 describe('swipeMath', () => {
   it('scales the distance threshold with card width, clamped to 80–140px', () => {
@@ -31,5 +31,18 @@ describe('swipeMath', () => {
   it('flings the card fully off screen on its own side', () => {
     expect(exitX('right', 390)).toBe(720);
     expect(exitX('left', 1440)).toBe(-1728);
+  });
+
+  it('reports drag progress toward the commit point, capped at 1', () => {
+    expect(dragProgress(0, 400)).toBe(0);
+    expect(dragProgress(-56, 400)).toBeCloseTo(0.5);
+    expect(dragProgress(500, 400)).toBe(1);
+  });
+
+  it('tilts with the drag and flips when the card is held by its bottom edge', () => {
+    expect(grabTilt(200, false)).toBe(10);
+    expect(grabTilt(200, true)).toBe(-10);
+    expect(grabTilt(-1000, false)).toBe(-18);
+    expect(grabTilt(0, true)).toBe(0);
   });
 });

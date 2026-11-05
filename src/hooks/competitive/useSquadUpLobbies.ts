@@ -16,7 +16,7 @@ const BASE = '/api/competitive/lfg/swipe/lobbies';
 const LOBBIES = ['squad-up', 'lobbies'] as const;
 
 export function lobbyBoardQuery(filters: SquadUpFilters): string {
-  const params = new URLSearchParams({ mode: filters.mode, countries: filters.wantedCountries.join(',') });
+  const params = new URLSearchParams({ mode: filters.mode, area: filters.area });
   if (filters.minTier != null) params.set('min_tier', String(filters.minTier));
   if (filters.maxTier != null) params.set('max_tier', String(filters.maxTier));
   return params.toString();
@@ -55,12 +55,13 @@ function useLobbyAction<TVars>(run: (vars: TVars) => Promise<unknown>) {
 export function useCreateLobby() {
   return useLobbyAction(async ({ input, filters }: { input: CreateLobbyInput; filters: SquadUpFilters }) => {
     const body = createLobbySchema.parse(input);
-    return lobbySchema.parse(await api.post<unknown>(BASE, { ...body, ...filters }));
+    return lobbySchema.parse(await api.post<unknown>(BASE, { ...body, game: filters.game, mode: filters.mode, area: filters.area, minTier: filters.minTier, maxTier: filters.maxTier }));
   });
 }
 
 export const useRequestLobbySlot = () =>
-  useLobbyAction(({ lobbyId, roleKey }: { lobbyId: string; roleKey?: string | null }) => api.post(`${BASE}/${lobbyId}/requests`, { roleKey: roleKey ?? null }));
+  useLobbyAction(({ lobbyId, roleKey, area }: { lobbyId: string; roleKey?: string | null; area?: string | null }) =>
+    api.post(`${BASE}/${lobbyId}/requests`, { roleKey: roleKey ?? null, area: area ?? null }));
 export const useAcceptLobbyRequest = () =>
   useLobbyAction(({ lobbyId, userId }: { lobbyId: string; userId: string }) => api.post(`${BASE}/${lobbyId}/requests/${userId}/accept`));
 export const useDeclineLobbyRequest = () =>

@@ -5,7 +5,7 @@ import { lobbySchema, type LobbyMember } from '@/schemas/squadUpLobby';
 import { LobbyHostPanel } from './LobbyHostPanel';
 
 const lobby = lobbySchema.parse({
-  id: 'l1', hostId: 'me', title: 'Comp tonight', mode: 'competitive', region: 'ap', countryCode: 'PK', wantedCountries: ['PK'],
+  id: 'l1', hostId: 'me', title: 'Comp tonight', mode: 'competitive', region: 'ap', countryCode: 'PK', area: 'south-asia',
   openSlots: 4, acceptedCount: 1, wantedRoles: ['controller'], micRequired: true, status: 'open', createdAt: '2026-11-05T10:00:00Z',
   conversationId: 'c1', membersJson: '[{"user_id":"u2","username":"Joined"}]',
 });

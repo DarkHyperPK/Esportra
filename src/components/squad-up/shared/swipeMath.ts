@@ -21,3 +21,14 @@ export function exitX(direction: SwipeDirection, viewportWidth: number): number 
   const distance = Math.max(viewportWidth, 600) * 1.2;
   return direction === 'right' ? distance : -distance;
 }
+
+/** 0 at rest, 1 once the card has travelled far enough that letting go commits the swipe. */
+export function dragProgress(offsetX: number, cardWidth: number): number {
+  return Math.min(1, Math.abs(offsetX) / swipeThreshold(cardWidth));
+}
+
+/** Rotation for a drag: about 1° per 20px, capped at 18°. Grabbed by the bottom, the card pivots the other way. */
+export function grabTilt(offsetX: number, grabbedLow: boolean): number {
+  const degrees = Math.max(-18, Math.min(18, offsetX / 20));
+  return (grabbedLow ? -degrees : degrees) || 0;
+}
