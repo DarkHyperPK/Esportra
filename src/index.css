@@ -393,19 +393,20 @@ html[data-reduce-motion="true"] .jack-button-motion * {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-esports-dark;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded-full;
+  @apply rounded-full bg-white/10;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-esports-accent/50;
+  @apply bg-white/20;
 }
 
 /* Gradient text */

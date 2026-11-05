@@ -111,7 +111,8 @@ const TopCard = forwardRef<SwipeStackHandle, TopCardProps>(({ children, reduced,
     setLeaving(true);
     buzz(14);
     if (reduced) { onDone(direction); return; }
-    void animate(x, exitX(direction, window.innerWidth), { type: 'spring', stiffness: 220, damping: 30, velocity: x.getVelocity() })
+    const vel = Math.max(Math.abs(x.getVelocity()), 800) * (direction === 'right' ? 1 : -1);
+    void animate(x, exitX(direction, window.innerWidth), { type: 'spring', stiffness: 400, damping: 35, velocity: vel })
       .then(() => onDone(direction));
   }
 

@@ -16,9 +16,9 @@ export function decideSwipe(offsetX: number, velocityX: number, cardWidth: numbe
   return null;
 }
 
-/** Where a card flies to when it leaves: past the viewport edge on its side. */
+/** Where a card flies to when it leaves: just past the viewport edge. */
 export function exitX(direction: SwipeDirection, viewportWidth: number): number {
-  const distance = Math.max(viewportWidth, 600) * 1.2;
+  const distance = viewportWidth * 1.15 + 60;
   return direction === 'right' ? distance : -distance;
 }
 
