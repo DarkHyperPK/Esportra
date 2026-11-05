@@ -57,11 +57,11 @@ describe('Squad Up hooks', () => {
     api.post.mockResolvedValue({ id: 's1', region: 'na', competitiveTier: 15, micOn: true, slotsNeeded: 2 });
     const { wrapper } = setup();
     const { result } = renderHook(() => useStartSquadUp(), { wrapper });
-    await act(async () => { await expect(result.current.mutateAsync({ micOn: true, slotsNeeded: 9, area: 'south-asia' })).rejects.toThrow(); });
-    await act(async () => { await expect(result.current.mutateAsync({ micOn: true, slotsNeeded: 2, area: 'south-asia', note: 'x'.repeat(101) })).rejects.toThrow(); });
+    await act(async () => { await expect(result.current.mutateAsync({ micOn: true, slotsNeeded: 9, areas: ['south-asia'] })).rejects.toThrow(); });
+    await act(async () => { await expect(result.current.mutateAsync({ micOn: true, slotsNeeded: 2, areas: ['south-asia'], note: 'x'.repeat(101) })).rejects.toThrow(); });
     expect(api.post).not.toHaveBeenCalled();
-    await act(async () => { await result.current.mutateAsync({ micOn: true, slotsNeeded: 2, area: 'south-asia', note: '  I smoke  ' }); });
-    expect(api.post).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session', { micOn: true, slotsNeeded: 2, area: 'south-asia', note: 'I smoke' });
+    await act(async () => { await result.current.mutateAsync({ micOn: true, slotsNeeded: 2, areas: ['south-asia'], note: '  I smoke  ' }); });
+    expect(api.post).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session', { micOn: true, slotsNeeded: 2, areas: ['south-asia'], note: 'I smoke' });
   });
 
   it('removes a swiped card immediately and puts it back when the swipe fails', async () => {

@@ -1,18 +1,21 @@
 import { COUNTRY_AREAS, type AreaId } from '@/lib/countryAreas';
 
 interface AreaPickerProps {
-  value?: AreaId;
-  onChange: (area: AreaId) => void;
+  value: AreaId[];
+  onChange: (areas: AreaId[]) => void;
 }
 
-/** "Where do you live?" One tap. You meet players who picked the same area. */
+/** "Where do you play?" — tap one or more regions. You meet players who share any region with you. */
 export function AreaPicker({ value, onChange }: AreaPickerProps) {
+  function toggle(id: AreaId) {
+    onChange(value.includes(id) ? value.filter((a) => a !== id) : [...value, id]);
+  }
+
   return (
-    <div className="su-areas" role="radiogroup" aria-label="Where you live">
+    <div className="su-areas" role="group" aria-label="Regions you play in">
       {COUNTRY_AREAS.map((area) => (
-        <button key={area.id} type="button" role="radio" aria-checked={value === area.id} onClick={() => onChange(area.id)}>
+        <button key={area.id} type="button" role="checkbox" aria-checked={value.includes(area.id)} onClick={() => toggle(area.id)}>
           <strong>{area.label}</strong>
-          <span>{area.short}</span>
         </button>
       ))}
     </div>

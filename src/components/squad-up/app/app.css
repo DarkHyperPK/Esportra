@@ -44,12 +44,12 @@
 .su-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .su-mode button, .su-areas button { display:grid; gap:2px; text-align:left; padding:12px 14px; box-shadow:inset 0 0 0 1px #ffffff1f; transition:background .15s, box-shadow .15s; }
 .su-mode button strong { font:700 15px/1.2 var(--font-heading), Poppins, sans-serif; }
-.su-mode button span, .su-areas button span { font-size:11px; color:#a1a1aa; }
+.su-mode button span { font-size:11px; color:#a1a1aa; }
 .su-mode button[aria-checked=true], .su-areas button[aria-checked=true] { background:#fafafa; color:#09090b; box-shadow:none; }
-.su-mode button[aria-checked=true] span, .su-areas button[aria-checked=true] span { color:#3f3f46; }
+.su-mode button[aria-checked=true] span { color:#3f3f46; }
 .su-mode button:hover:not([aria-checked=true]), .su-areas button:hover:not([aria-checked=true]) { background:#ffffff0a; }
 .su-areas { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.su-areas button { padding:10px 12px; }
+.su-areas button { padding:10px 12px; align-items:center; }
 .su-areas button strong { font-size:13px; font-weight:600; line-height:1.25; }
 .su-mode button:focus-visible, .su-areas button:focus-visible, .su-mic:focus-visible { outline:2px solid #fafafa; outline-offset:2px; }
 .su-note { display:grid; gap:6px; font-size:13px; font-weight:600; color:#e4e4e7; position:relative; }

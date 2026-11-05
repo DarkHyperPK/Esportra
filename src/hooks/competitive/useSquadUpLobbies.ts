@@ -16,7 +16,7 @@ const BASE = '/api/competitive/lfg/swipe/lobbies';
 const LOBBIES = ['squad-up', 'lobbies'] as const;
 
 export function lobbyBoardQuery(filters: SquadUpFilters): string {
-  const params = new URLSearchParams({ mode: filters.mode, area: filters.area });
+  const params = new URLSearchParams({ mode: filters.mode, area: filters.areas[0] });
   if (filters.minTier != null) params.set('min_tier', String(filters.minTier));
   if (filters.maxTier != null) params.set('max_tier', String(filters.maxTier));
   return params.toString();
@@ -55,7 +55,7 @@ function useLobbyAction<TVars>(run: (vars: TVars) => Promise<unknown>) {
 export function useCreateLobby() {
   return useLobbyAction(async ({ input, filters }: { input: CreateLobbyInput; filters: SquadUpFilters }) => {
     const body = createLobbySchema.parse(input);
-    return lobbySchema.parse(await api.post<unknown>(BASE, { ...body, game: filters.game, mode: filters.mode, area: filters.area, minTier: filters.minTier, maxTier: filters.maxTier }));
+    return lobbySchema.parse(await api.post<unknown>(BASE, { ...body, game: filters.game, mode: filters.mode, area: filters.areas[0], minTier: filters.minTier, maxTier: filters.maxTier }));
   });
 }
 

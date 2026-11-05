@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { animate, motion, useMotionValue, useTransform, type MotionValue, type PanInfo } from 'framer-motion';
+import { animate, motion, useMotionValue, useTransform, type MotionValue } from 'framer-motion';
 import { useLfgReducedMotion } from '@/hooks/competitive/useLfgReducedMotion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { decideSwipe, dragProgress, exitX, grabTilt, type SwipeDirection } from './swipeMath';
@@ -86,6 +86,15 @@ const TopCard = forwardRef<SwipeStackHandle, TopCardProps>(({ children, reduced,
   const [leaving, setLeaving] = useState(false);
   const width = () => card.current?.offsetWidth ?? 360;
 
+  // Pointer-based drag tracking — bypasses framer-motion's direction-detection threshold so the
+  // card responds on the very first pixel of movement.
+  const dragActive = useRef(false);
+  const pointerStartX = useRef(0);
+  const cardStartX = useRef(0);
+  const dragVelocity = useRef(0);
+  const lastMoveTime = useRef(0);
+  const lastMoveX = useRef(0);
+
   // Grabbed low, the card pivots the other way, like holding a real card by its bottom edge.
   const rotate = useTransform(x, (value) => grabTilt(value, grabbedLow.current));
   const passWipe = useTransform(x, [-140, -24], [1, 0]);
@@ -108,12 +117,35 @@ const TopCard = forwardRef<SwipeStackHandle, TopCardProps>(({ children, reduced,
 
   useImperativeHandle(ref, () => ({ swipe: fling }));
 
+  function resetTilt() { void animate(tiltX, 0, { duration: 0.3 }); void animate(tiltY, 0, { duration: 0.3 }); }
+
   function onPointerDown(event: React.PointerEvent) {
     const box = card.current?.getBoundingClientRect();
     grabbedLow.current = !!box && event.clientY > box.top + box.height * 0.6;
+
+    if (disabled || leaving || reduced) return;
+    dragActive.current = true;
+    pointerStartX.current = event.clientX;
+    cardStartX.current = x.get();
+    dragVelocity.current = 0;
+    lastMoveTime.current = performance.now();
+    lastMoveX.current = event.clientX;
+    // Capture so the card keeps tracking if the pointer leaves the element.
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resetTilt();
   }
 
   function onPointerMove(event: React.PointerEvent) {
+    if (dragActive.current) {
+      const now = performance.now();
+      const dt = now - lastMoveTime.current;
+      const newX = cardStartX.current + (event.clientX - pointerStartX.current);
+      if (dt > 0) dragVelocity.current = ((event.clientX - lastMoveX.current) / dt) * 1000;
+      lastMoveTime.current = now;
+      lastMoveX.current = event.clientX;
+      x.set(newX);
+      return;
+    }
     if (!finePointer || reduced || x.get() !== 0) return;
     const box = card.current?.getBoundingClientRect();
     if (!box) return;
@@ -121,19 +153,19 @@ const TopCard = forwardRef<SwipeStackHandle, TopCardProps>(({ children, reduced,
     tiltX.set(-((event.clientY - box.top) / box.height - 0.5) * 8);
   }
 
-  function resetTilt() { void animate(tiltX, 0, { duration: 0.3 }); void animate(tiltY, 0, { duration: 0.3 }); }
-
-  function onDragEnd(_event: unknown, info: PanInfo) {
-    const direction = decideSwipe(info.offset.x, info.velocity.x, width());
+  function onPointerUp() {
+    if (!dragActive.current) return;
+    dragActive.current = false;
+    const offsetX = x.get() - cardStartX.current;
+    const direction = decideSwipe(offsetX, dragVelocity.current, width());
     if (direction) fling(direction);
     else void animate(x, 0, { type: 'spring', stiffness: 520, damping: 30 });
   }
 
   return (
     <motion.div ref={card} className="su-stack-card su-stack-top"
-      style={reduced ? { zIndex: 20 } : { x, rotate, rotateX: tiltX, rotateY: tiltY, zIndex: 20, transformPerspective: 900 }}
-      drag={reduced || disabled || leaving ? false : 'x'} dragMomentum={false} onDragStart={resetTilt} onDragEnd={onDragEnd}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerLeave={resetTilt}
+      style={reduced ? { zIndex: 20 } : { x, rotate, rotateX: tiltX, rotateY: tiltY, zIndex: 20, transformPerspective: 900, touchAction: 'none' }}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onPointerLeave={resetTilt}
       whileTap={reduced || disabled ? undefined : { scale: 1.015 }}
       initial={reduced ? { opacity: 0 } : false} animate={reduced ? { opacity: 1 } : undefined}>
       {children}

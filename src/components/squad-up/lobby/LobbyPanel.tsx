@@ -73,7 +73,7 @@ export function LobbyPanel({ filters, myId }: { filters: SquadUpFilters | null; 
         ) : (
           <div className="su-lobby-grid">
             {lobbies.map((lobby) => (
-              <LobbyCard key={lobby.id} lobby={lobby} myId={myId} busy={busy} onRequest={(item, roleKey) => request.mutate({ lobbyId: item.id, roleKey, area: filters?.area })} />
+              <LobbyCard key={lobby.id} lobby={lobby} myId={myId} busy={busy} onRequest={(item, roleKey) => request.mutate({ lobbyId: item.id, roleKey, area: filters?.areas[0] })} />
             ))}
           </div>
         )}

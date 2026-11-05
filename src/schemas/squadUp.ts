@@ -18,7 +18,7 @@ export const noteSchema = z.string().trim().max(NOTE_MAX, `Keep it under ${NOTE_
 export const squadUpFiltersSchema = z.object({
   game: z.literal('valorant'),
   mode: squadUpModeSchema,
-  area: areaSchema,
+  areas: z.array(areaSchema).min(1, 'Pick at least one region.'),
   minTier: tier.nullable().optional(),
   maxTier: tier.nullable().optional(),
 }).refine((value) => value.minTier == null || value.maxTier == null || value.minTier <= value.maxTier, {
@@ -26,13 +26,13 @@ export const squadUpFiltersSchema = z.object({
 });
 export type SquadUpFilters = z.infer<typeof squadUpFiltersSchema>;
 
-/** Form input for going live: where you live is required; everything else has a default. */
+/** Form input for going live: at least one region is required; everything else has a default. */
 export const startSquadUpSchema = z.object({
   micOn: z.boolean(),
   slotsNeeded: z.number().int().min(1).max(4),
   game: z.literal('valorant').optional(),
   mode: squadUpModeSchema.optional(),
-  area: areaSchema,
+  areas: z.array(areaSchema).min(1, 'Pick at least one region.'),
   note: noteSchema.optional(),
   minTier: tier.nullable().optional(),
   maxTier: tier.nullable().optional(),
@@ -51,6 +51,7 @@ export const squadUpSessionSchema = z.object({
   mode: squadUpModeSchema.optional(),
   countryCode: z.string().nullable().optional(),
   area: z.string().nullable().optional(),
+  areas: z.array(z.string()).nullable().optional(),
   note: z.string().nullable().optional(),
   minTier: z.number().nullable().optional(),
   maxTier: z.number().nullable().optional(),

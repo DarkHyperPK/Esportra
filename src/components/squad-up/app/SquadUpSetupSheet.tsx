@@ -27,7 +27,7 @@ interface SquadUpSetupSheetProps {
 export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error, submitLabel, onSubmit }: SquadUpSetupSheetProps) {
   const wide = useMediaQuery('(min-width: 768px)');
   const [mode, setMode] = useState<SquadUpMode>(initial.mode ?? 'competitive');
-  const [area, setArea] = useState<AreaId | undefined>(initial.area);
+  const [areas, setAreas] = useState<AreaId[]>(initial.areas ?? []);
   const [note, setNote] = useState(initial.note ?? '');
   const [slots, setSlots] = useState(initial.slotsNeeded ?? 1);
   const [micOn, setMicOn] = useState(initial.micOn ?? true);
@@ -35,8 +35,8 @@ export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error,
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    const parsed = squadUpSetupSchema.safeParse({ game: 'valorant', mode, area, note, slotsNeeded: slots, micOn, minTier: null, maxTier: null });
-    if (!parsed.success) { setFormError(area ? parsed.error.issues[0]?.message ?? 'Check your choices.' : 'Pick where you live.'); return; }
+    const parsed = squadUpSetupSchema.safeParse({ game: 'valorant', mode, areas, note, slotsNeeded: slots, micOn, minTier: null, maxTier: null });
+    if (!parsed.success) { setFormError(areas.length ? parsed.error.issues[0]?.message ?? 'Check your choices.' : 'Pick at least one region.'); return; }
     setFormError('');
     onSubmit(parsed.data);
   }
@@ -57,7 +57,7 @@ export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error,
             ))}
           </div>
 
-          <fieldset><legend>Where do you live?</legend><AreaPicker value={area} onChange={setArea} /></fieldset>
+          <fieldset><legend>Where do you play?</legend><AreaPicker value={areas} onChange={setAreas} /></fieldset>
 
           <label className="su-note">
             <span>Your line <small>optional · shown on your card</small></span>

@@ -60,7 +60,7 @@ export function SquadUpApp({ myId, filters, inDuo, pendingLikes, duoEnded, leavi
   }
 
   const summary = filters
-    ? [filters.mode === 'competitive' ? 'Competitive' : 'Unrated', areaLabel(filters.area), filters.mode === 'competitive' ? 'Near my rank' : null]
+    ? [filters.mode === 'competitive' ? 'Competitive' : 'Unrated', filters.areas.map(areaLabel).join(', '), filters.mode === 'competitive' ? 'Near my rank' : null]
       .filter(Boolean).join(', ')
     : '';
   const matchCount = matches.data?.length ?? 0;
