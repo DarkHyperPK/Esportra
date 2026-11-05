@@ -28,16 +28,23 @@ describe('Squad Up hooks', () => {
   beforeEach(() => { vi.resetAllMocks(); });
 
   it('treats a 200 heartbeat as in the squadUp and a 404 as not in the squadUp', async () => {
-    api.post.mockResolvedValueOnce({ pendingLikes: 2 });
+    api.post.mockResolvedValueOnce({ pendingLikes: 2, inSession: true, hostingLobby: false });
     const first = setup();
     const active = renderHook(() => useSquadUpPresence(true), { wrapper: first.wrapper });
-    await waitFor(() => expect(active.result.current.data).toEqual({ active: true, pendingLikes: 2 }));
+    await waitFor(() => expect(active.result.current.data).toEqual({ active: true, pendingLikes: 2, hostingLobby: false }));
     expect(api.post).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session/heartbeat');
 
     api.post.mockRejectedValueOnce(notFound());
     const second = setup();
     const inactive = renderHook(() => useSquadUpPresence(true), { wrapper: second.wrapper });
-    await waitFor(() => expect(inactive.result.current.data).toEqual({ active: false, pendingLikes: 0 }));
+    await waitFor(() => expect(inactive.result.current.data).toEqual({ active: false, pendingLikes: 0, hostingLobby: false }));
+  });
+
+  it('keeps presence alive for a host with a lobby but no Duo session', async () => {
+    api.post.mockResolvedValueOnce({ pendingLikes: 0, inSession: false, hostingLobby: true });
+    const { wrapper } = setup();
+    const host = renderHook(() => useSquadUpPresence(true), { wrapper });
+    await waitFor(() => expect(host.result.current.data).toEqual({ active: false, pendingLikes: 0, hostingLobby: true }));
   });
 
   it('does not probe presence until enabled', () => {

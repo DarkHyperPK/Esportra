@@ -1,0 +1,54 @@
+.su-app { background:#09090b; color:#fafafa; min-height:100dvh; display:flex; flex-direction:column; }
+.su-app-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid #ffffff12; flex-wrap:wrap; }
+.su-app-title { display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap; }
+.su-app-title h1 { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:20px; letter-spacing:-.02em; }
+.su-app-tabs { display:grid; grid-template-columns:repeat(3, 1fr); border-bottom:1px solid #ffffff12; }
+.su-app-tabs button { padding:12px 8px; font:700 11px/1 ui-monospace, SFMono-Regular, monospace; letter-spacing:.14em; text-transform:uppercase; color:#a1a1aa; border-bottom:2px solid transparent; }
+.su-app-tabs button[aria-selected=true] { color:#fafafa; border-bottom-color:#fafafa; }
+.su-app-tabs button:focus-visible { outline:2px solid #fafafa; outline-offset:-2px; }
+.su-app-grid { flex:1; display:grid; }
+.su-col { padding:16px; min-width:0; display:grid; gap:16px; align-content:start; }
+.su-col-title { display:none; font-family:var(--font-heading), Poppins, sans-serif; font-weight:800; font-size:16px; }
+/* Phones and tablets: one column at a time, like a dating app. */
+.su-app-grid[data-tab=duo] > :not(.su-col-duo), .su-app-grid[data-tab=lobby] > :not(.su-col-lobby), .su-app-grid[data-tab=matches] > :not(.su-col-matches) { display:none; }
+.su-col-duo .su-stack { height:calc(100dvh - 300px); min-height:420px; max-height:640px; }
+.su-actions-live { position:sticky; bottom:12px; z-index:5; }
+@media (min-width:1100px) {
+  .su-app-tabs { display:none; }
+  .su-app-grid { grid-template-columns:minmax(0, 1fr) 440px minmax(0, 320px); }
+  .su-app-grid > .su-col { display:grid !important; }
+  .su-col + .su-col { border-left:1px solid #ffffff12; }
+  .su-col-title { display:block; }
+  .su-col-duo .su-stack { height:min(600px, calc(100dvh - 240px)); }
+}
+.su-duo { display:grid; gap:14px; }
+.su-likes { display:flex; align-items:center; gap:10px; font-size:13px; color:#fda4af; }
+.su-empty { display:grid; gap:8px; justify-items:center; text-align:center; padding:48px 16px; color:#a1a1aa; box-shadow:inset 0 0 0 1px #ffffff14; }
+.su-empty strong { color:#fafafa; }
+.su-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.su-hint { color:#71717a; font-size:12px; }
+.su-error { color:#fca5a5; font-size:13px; }
+/* Older Squad Up panels inherit the square, stage-black look inside the app. */
+.su-app .lfg-panel { border-radius:0; background:#111114; border-color:#ffffff14; }
+.su-app .lfg-button { border-radius:0; }
+
+/* Setup sheet and dialogs */
+.su-sheet { background:#09090b !important; color:#fafafa; border-left:1px solid #ffffff14 !important; }
+.su-sheet-title { font-family:var(--font-heading), Poppins, sans-serif; font-weight:900; font-size:24px; }
+.su-setup { display:grid; gap:24px; margin-top:20px; }
+.su-setup fieldset { border:0; padding:0; display:grid; gap:10px; }
+.su-setup legend { font-size:13px; font-weight:600; color:#e4e4e7; margin-bottom:8px; }
+.su-input { width:100%; min-height:40px; padding:8px 12px; background:#111114; color:#fafafa; box-shadow:inset 0 0 0 1px #ffffff1f; font-size:14px; }
+.su-input:focus-visible { outline:2px solid #fafafa; outline-offset:1px; }
+.su-field { display:grid; gap:6px; font-size:13px; color:#d4d4d8; }
+.su-check { display:flex; align-items:center; gap:10px; font-size:14px; }
+.su-rank-range { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.su-countries { display:grid; gap:8px; }
+.su-countries-list { max-height:280px; overflow-y:auto; box-shadow:inset 0 0 0 1px #ffffff14; }
+.su-countries-list details { border-bottom:1px solid #ffffff0f; }
+.su-countries-list summary { display:flex; justify-content:space-between; padding:10px 12px; cursor:pointer; font-size:14px; }
+.su-countries-list ul { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); padding:0 12px 10px; }
+.su-countries-list label { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; cursor:pointer; }
+.su-countries-list img { width:18px; height:12px; object-fit:cover; }
+.su-area-all { margin:0 12px 6px; font-size:12px; color:#e4e4e7; text-decoration:underline; text-underline-offset:3px; }
+.su-dialog-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:12px; }

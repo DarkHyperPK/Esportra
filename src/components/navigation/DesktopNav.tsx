@@ -135,9 +135,22 @@ const DesktopNav = ({
             {activeBar(isActive(["/leaderboards"]))}
           </Link>
 
-          {!user && <Link to="/competitive/lfg" className={linkClass(isActive(["/competitive/lfg", "/competitive/find-teammates"]))}>
-            <Swords className="h-4 w-4" /> Find Teammates {activeBar(isActive(["/competitive/lfg", "/competitive/find-teammates"]))}
-          </Link>}
+          {!user && (
+            <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+              <FramerDropdownTrigger asChild>
+                <button type="button" className={linkClass(isActive(["/competitive/lfg", "/competitive/find-teammates", "/competitive/squad-up"]))}>
+                  <Swords className="h-4 w-4" /> Find Teammates
+                  <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+                </button>
+              </FramerDropdownTrigger>
+              <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+                <div className="space-y-px bg-[#0a0a0c]">
+                  <JackItem to="/competitive/squad-up">Squad Up · Live now</JackItem>
+                  <JackItem to="/competitive/lfg">Browse listings</JackItem>
+                </div>
+              </FramerDropdownContent>
+            </FramerDropdownRoot>
+          )}
 
           {/* Competitive — only for logged-in users on the marketing shell */}
           {user && (
@@ -152,6 +165,7 @@ const DesktopNav = ({
               <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
                 <div className="space-y-px bg-[#0a0a0c]">
                   <JackItem to="/competitive/discover">Discover Players</JackItem>
+                  <JackItem to="/competitive/squad-up">Squad Up · Live now</JackItem>
                   <JackItem to="/competitive/find-teammates">Find Teammates</JackItem>
                   <JackDivider />
                   <JackItem to="/competitive/recruitment">Team Recruitment</JackItem>

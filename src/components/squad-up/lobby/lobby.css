@@ -1,0 +1,17 @@
+.su-lobbies { display:grid; gap:16px; }
+.su-lobbies-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.su-lobby-grid { display:grid; gap:12px; }
+@media (min-width:1100px) { .su-lobby-grid { grid-template-columns:1fr 1fr; } }
+.su-lobby-card, .su-host, .su-create-lobby, .su-joined { background:#111114; box-shadow:inset 0 0 0 1px #ffffff14; padding:16px; display:grid; gap:12px; }
+.su-lobby-card h3, .su-host h3, .su-create-lobby h3 { font-family:var(--font-heading), Poppins, sans-serif; font-weight:800; font-size:18px; }
+.su-host h4 { font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.su-count { min-width:20px; height:20px; display:inline-grid; place-items:center; padding:0 6px; background:#f43f5e; color:#fff; font-size:11px; font-variant-numeric:tabular-nums; }
+.su-flags { display:inline-flex; gap:4px; margin-top:6px; }
+.su-flags img { width:20px; height:14px; object-fit:cover; }
+.su-lobby-ask { display:grid; gap:10px; }
+.su-status { font-size:13px; color:#e4e4e7; }
+.su-people { display:grid; gap:8px; }
+.su-people li { display:flex; align-items:center; gap:10px; }
+.su-people img { width:32px; height:32px; border-radius:999px; background:#27272a; object-fit:cover; }
+.su-people li > span { display:grid; flex:1; min-width:0; font-size:14px; }
+.su-joined p { font-size:14px; }

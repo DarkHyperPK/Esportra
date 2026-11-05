@@ -53,3 +53,21 @@ export function squadUpReportErrorMessage(error: unknown): string {
   if (code && REPORT_MESSAGES[code]) return REPORT_MESSAGES[code];
   return error instanceof Error ? error.message : 'Your report could not be sent. Please try again.';
 }
+
+const LOBBY_MESSAGES: Record<string, string> = {
+  LOBBY_EXISTS: 'You already have a lobby open. Close it before opening another.',
+  LOBBY_FULL: 'That lobby just filled up.',
+  ALREADY_REQUESTED: 'You already asked to join this lobby.',
+  REMOVED_FROM_LOBBY: 'The host removed you from this lobby.',
+  LOBBY_NOT_FOUND: 'That lobby closed or is no longer open to you.',
+  REQUEST_NOT_FOUND: 'That request was already handled.',
+  NOT_A_MEMBER: 'That player is no longer in the lobby.',
+  INVALID_SLOTS: 'Choose between 1 and 4 open slots.',
+  TITLE_TOO_LONG: 'Keep the title under 60 characters.',
+};
+
+export function squadUpLobbyErrorMessage(error: unknown): string {
+  const code = errorCode(error);
+  if (code && LOBBY_MESSAGES[code]) return LOBBY_MESSAGES[code];
+  return squadUpStartErrorMessage(error);
+}

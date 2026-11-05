@@ -38,6 +38,9 @@ export const squadUpKeys = {
   popup: () => ['squad-up', 'popup'] as const,
   reportsMine: () => ['squad-up', 'reports-mine'] as const,
   blocks: () => ['squad-up', 'blocks'] as const,
+  publicStats: () => ['squad-up', 'public-stats'] as const,
+  lobbyBoard: (filters: string) => ['squad-up', 'lobbies', filters] as const,
+  lobbyMine: () => ['squad-up', 'lobbies', 'mine'] as const,
 };
 
 export const squadUpAdminKeys = {

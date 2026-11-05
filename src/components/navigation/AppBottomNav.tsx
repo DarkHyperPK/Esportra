@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, Crosshair, Trophy, Menu, X } from 'lucide-react';
+import { Users, Crosshair, Trophy, Menu, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,6 +15,13 @@ interface BottomTab {
 }
 
 const BOTTOM_TABS: BottomTab[] = [
+  {
+    id: 'squad-up',
+    label: 'Squad Up',
+    icon: Zap,
+    to: '/competitive/squad-up',
+    matchPaths: ['/competitive/squad-up'],
+  },
   {
     id: 'find-teammates',
     label: 'Teammates',
@@ -57,6 +64,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     label: 'Competitive',
     items: [
       { label: 'Discover Players', to: '/competitive/discover' },
+      { label: 'Squad Up · Live now', to: '/competitive/squad-up' },
       { label: 'Find Teammates', to: '/competitive/find-teammates' },
     ],
   },

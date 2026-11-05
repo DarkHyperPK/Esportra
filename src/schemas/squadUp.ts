@@ -1,9 +1,35 @@
 import { z } from 'zod';
 
-/** Form input for entering the Squad Up deck. */
+export const SQUAD_UP_GAMES = [{ slug: 'valorant', name: 'Valorant', live: true }] as const;
+export const squadUpModeSchema = z.enum(['competitive', 'unrated']);
+export type SquadUpMode = z.infer<typeof squadUpModeSchema>;
+
+/** Valorant competitive tiers: 3 (Iron 1) to 27 (Radiant). */
+export const MIN_TIER = 3;
+export const MAX_TIER = 27;
+const tier = z.number().int().min(MIN_TIER).max(MAX_TIER);
+
+/** What a player wants from Squad Up right now. Checked here and again by the server. */
+export const squadUpFiltersSchema = z.object({
+  game: z.literal('valorant'),
+  mode: squadUpModeSchema,
+  wantedCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1, 'Pick at least one country.').max(60),
+  minTier: tier.nullable().optional(),
+  maxTier: tier.nullable().optional(),
+}).refine((value) => value.minTier == null || value.maxTier == null || value.minTier <= value.maxTier, {
+  message: 'The lowest rank must be below the highest.', path: ['maxTier'],
+});
+export type SquadUpFilters = z.infer<typeof squadUpFiltersSchema>;
+
+/** Form input for entering the Squad Up deck. Filters are optional so older callers keep working. */
 export const startSquadUpSchema = z.object({
   micOn: z.boolean(),
   slotsNeeded: z.number().int().min(1).max(4),
+  game: z.literal('valorant').optional(),
+  mode: squadUpModeSchema.optional(),
+  wantedCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).max(60).optional(),
+  minTier: tier.nullable().optional(),
+  maxTier: tier.nullable().optional(),
 });
 export type StartSquadUpInput = z.infer<typeof startSquadUpSchema>;
 
@@ -13,9 +39,14 @@ const nullableString = z.string().nullable().optional();
 export const squadUpSessionSchema = z.object({
   id: z.string(),
   region: z.string(),
-  competitiveTier: z.number(),
+  competitiveTier: z.number().nullable().optional(),
   micOn: z.boolean(),
   slotsNeeded: z.number(),
+  mode: squadUpModeSchema.optional(),
+  countryCode: z.string().nullable().optional(),
+  wantedCountries: z.array(z.string()).optional(),
+  minTier: z.number().nullable().optional(),
+  maxTier: z.number().nullable().optional(),
 });
 export type SquadUpSession = z.infer<typeof squadUpSessionSchema>;
 
@@ -28,8 +59,10 @@ export const squadUpCardSchema = z.object({
   avatarSeed: nullableString,
   avatarUrl: nullableString,
   avatarStyle: nullableString,
-  competitiveTier: z.number(),
+  competitiveTier: nullableNumber,
   competitiveTierName: nullableString,
+  mode: squadUpModeSchema.optional(),
+  countryCode: nullableString,
   winRate: nullableNumber,
   kdRatio: nullableNumber,
   hsPct: nullableNumber,
@@ -80,5 +113,5 @@ export const swipeResultSchema = z.object({
 });
 export type SwipeResult = z.infer<typeof swipeResultSchema>;
 
-export const heartbeatSchema = z.object({ pendingLikes: z.number() });
+export const heartbeatSchema = z.object({ pendingLikes: z.number(), inSession: z.boolean().optional(), hostingLobby: z.boolean().optional() });
 export const pendingLikesSchema = z.object({ count: z.number() });

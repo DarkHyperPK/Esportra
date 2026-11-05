@@ -11,7 +11,7 @@ import { dismissSquadUpLike, dismissSquadUpMatch, useSquadUpPopupState } from '@
 
 import './squad-up.css';
 
-const SQUAD_UP_PATH = '/competitive/lfg/squad-up';
+const SQUAD_UP_PATH = '/competitive/squad-up';
 
 /** Mounted once at the app root: shows match and "liked you" popups on any page. */
 export function SquadUpPopupHost() {

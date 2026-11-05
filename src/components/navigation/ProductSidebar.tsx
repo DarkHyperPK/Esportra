@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Crosshair, Trophy, MapPin, BarChart2, MessageSquare,
-  ChevronDown, Wrench, DollarSign, Info,
+  ChevronDown, Wrench, DollarSign, Info, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,8 +70,10 @@ function buildSections(canManageTournaments: boolean, canManageVenues: boolean):
     },
     {
       id: 'find-teammates', group: 'Play', label: 'Find Teammates', icon: Users,
-      to: '/competitive/lfg',
-      items: [],
+      items: [
+        { label: 'Squad Up · Live now', to: '/competitive/squad-up' },
+        { label: 'Browse listings', to: '/competitive/lfg' },
+      ],
     },
     {
       id: 'scrims', group: 'Play', label: 'Scrims', icon: Crosshair,
@@ -204,6 +206,7 @@ function SidebarSection({ section, collapsed, onExpand }: { section: NavSection;
 // ─── Logged-out sidebar ───────────────────────────────────────────────────────
 
 const PUBLIC_LINKS = [
+  { label: 'Squad Up · Live', to: '/competitive/squad-up', icon: Zap },
   { label: 'Find Teammates', to: '/competitive/lfg', icon: Users },
   { label: 'Scrims', to: '/competitive/scrims', icon: Crosshair },
   { label: 'Tournaments', to: '/tournaments', icon: Trophy },

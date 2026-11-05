@@ -2,8 +2,8 @@
  * useSquadUp.ts
  *
  * Squad Up (live swipe matching). The backend has no "get session" route, so presence is a
- * heartbeat probe: 200 = in the squadUp, 404 = not in the squadUp (never started, ended, or timed out).
- * The heartbeat doubles as keep-alive and carries the pending-likes count.
+ * heartbeat probe: 200 = in Squad Up (a Duo session and/or a hosted lobby), 404 = not in it
+ * (never started, ended, or timed out). The heartbeat doubles as keep-alive and carries the pending-likes count.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +20,8 @@ import {
 const BASE = '/api/competitive/lfg/swipe';
 export const HEARTBEAT_MS = 60_000;
 
-export interface SquadUpPresence { active: boolean; pendingLikes: number }
+/** `active` = in a Duo session. `hostingLobby` = keeping a lobby open. */
+export interface SquadUpPresence { active: boolean; pendingLikes: number; hostingLobby?: boolean }
 
 const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404;
 
@@ -32,13 +33,13 @@ export function useSquadUpPresence(enabled: boolean) {
     queryFn: async (): Promise<SquadUpPresence> => {
       try {
         const data = heartbeatSchema.parse(await api.post<unknown>(`${BASE}/session/heartbeat`));
-        return { active: true, pendingLikes: data.pendingLikes };
+        return { active: data.inSession ?? true, pendingLikes: data.pendingLikes, hostingLobby: data.hostingLobby ?? false };
       } catch (error) {
-        if (isNotFound(error)) return { active: false, pendingLikes: 0 };
+        if (isNotFound(error)) return { active: false, pendingLikes: 0, hostingLobby: false };
         throw error;
       }
     },
-    refetchInterval: (query) => (query.state.data?.active ? HEARTBEAT_MS : false),
+    refetchInterval: (query) => (query.state.data?.active || query.state.data?.hostingLobby ? HEARTBEAT_MS : false),
     staleTime: 0,
     retry: 1,
   });
@@ -56,6 +57,11 @@ export function useStartSquadUp() {
       void qc.invalidateQueries({ queryKey: squadUpKeys.cards() });
     },
   });
+}
+
+/** "Still looking?" — tells the server the player is here, so the 10-minute idle rule restarts. */
+export function useSquadUpStillHere() {
+  return useMutation({ mutationFn: () => api.post<unknown>(`${BASE}/session/active`) });
 }
 
 /** Reads the summary first (DELETE answers with no body through the shared client), then leaves. */

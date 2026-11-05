@@ -167,6 +167,9 @@ const MobileNav = ({
                 </span>
               </Link>
 
+              {!user && <Link to="/competitive/squad-up" className={linkClass(isActive(["/competitive/squad-up"]))} onClick={onClose}>
+                <span className="flex items-center gap-2"><Swords className="h-4 w-4" /> Squad Up <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300">Live</span></span>
+              </Link>}
               {!user && <Link to="/competitive/lfg" className={linkClass(isActive(["/competitive/lfg", "/competitive/find-teammates"]))} onClick={onClose}>
                 <span className="flex items-center gap-2"><Swords className="h-4 w-4" /> Find Teammates</span>
               </Link>}
@@ -194,6 +197,7 @@ const MobileNav = ({
                       <motion.div {...accordionMotion} className="overflow-hidden">
                         <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
                           <JackSubItem to="/competitive/discover">Discover Players</JackSubItem>
+                          <JackSubItem to="/competitive/squad-up">Squad Up · Live now</JackSubItem>
                           <JackSubItem to="/competitive/find-teammates">Find Teammates</JackSubItem>
                           <JackSubItem to="/competitive/recruitment">Team Recruitment</JackSubItem>
                           <JackSubItem to="/competitive/recruitment/my-applications">My Applications</JackSubItem>

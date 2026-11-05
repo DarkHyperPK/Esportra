@@ -1,119 +1,100 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { announceSquadUpMatch } from '@/hooks/competitive/squadUpPopups';
 import { FEATURES, usePlatformFeatures } from '@/hooks/usePlatformFeatures';
 import {
-  useEndSquadUp, useSquadUpCards, useSquadUpMatches, useSquadUpPresence, useSquadUpStats, useSquadUpSwipe, useStartSquadUp,
+  useEndSquadUp, useSquadUpPresence, useSquadUpStats, useSquadUpStillHere, useStartSquadUp,
 } from '@/hooks/competitive/useSquadUp';
-import { LfgWorkspace } from '@/components/competitive/LfgWorkspace';
-import { SquadUpDeck } from '@/components/competitive/squad-up/SquadUpDeck';
-import { SquadUpMatches } from '@/components/competitive/squad-up/SquadUpMatches';
-import { SquadUpStartPanel } from '@/components/competitive/squad-up/SquadUpStartPanel';
-import { SquadUpReportDialog } from '@/components/competitive/squad-up/SquadUpReportDialog';
-import { SquadUpSafetyPanel } from '@/components/competitive/squad-up/SquadUpSafetyPanel';
-import type { ReportTarget } from '@/hooks/competitive/useSquadUpReport';
+import { useSquadUpPublicStats } from '@/hooks/competitive/useSquadUpPublicStats';
+import { useSquadUpFilters } from '@/hooks/competitive/useSquadUpFilters';
+import { useSquadUpIdle } from '@/hooks/competitive/useSquadUpIdle';
+import { CommandButton } from '@/components/management/CommandSurface';
+import CountryPickerModal from '@/components/auth/CountryPickerModal';
+import { SquadUpLanding } from '@/components/squad-up/landing/SquadUpLanding';
+import { SquadUpApp } from '@/components/squad-up/app/SquadUpApp';
+import { SquadUpSetupSheet, type SetupValues } from '@/components/squad-up/app/SquadUpSetupSheet';
+import { StillLookingDialog } from '@/components/squad-up/app/StillLookingDialog';
 import { SquadUpSummary } from '@/components/competitive/squad-up/SquadUpSummary';
-import { squadUpStartErrorMessage, squadUpSwipeErrorMessage } from '@/lib/squadUpErrors';
-import type { SquadUpCard, SquadUpStats } from '@/schemas/squadUp';
-import '@/components/competitive/squad-up/squad-up.css';
+import { squadUpStartErrorMessage } from '@/lib/squadUpErrors';
+import { ApiError } from '@/lib/apiClient';
+import type { SquadUpStats } from '@/schemas/squadUp';
 
+const SIGN_IN = `/auth/signin?redirect=${encodeURIComponent('/competitive/squad-up')}`;
+
+/**
+ * Squad Up. Everyone sees the public page and can try the demo. Signed-in players go live through the setup
+ * sheet; while they're live (a Duo session or a hosted lobby) the page becomes the app.
+ */
 export default function SquadUpPage() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
+  const { user, profile } = useAuth();
   const features = usePlatformFeatures();
   const enabled = !features.isLoading && features.isEnabled(FEATURES.squadUp);
+  const ownCountry = profile?.country_code?.toUpperCase() ?? null;
+  const { filters, remember } = useSquadUpFilters(ownCountry);
+  const stats = useSquadUpPublicStats(enabled);
   const presence = useSquadUpPresence(!!user && enabled);
-  const active = presence.data?.active === true;
-  const [wasActive, setWasActive] = useState(false);
-  if (active && !wasActive) setWasActive(true);
-  const ended = wasActive && presence.data?.active === false;
+  const inDuo = presence.data?.active === true;
+  const live = inDuo || presence.data?.hostingLobby === true;
+  const [wasInDuo, setWasInDuo] = useState(false);
+  if (inDuo && !wasInDuo) setWasInDuo(true);
+  const duoEnded = wasInDuo && !inDuo;
 
   const start = useStartSquadUp();
   const end = useEndSquadUp();
-  const swipe = useSquadUpSwipe();
-  const cards = useSquadUpCards(active);
-  const matches = useSquadUpMatches(!!user && enabled);
-  const savedStats = useSquadUpStats(ended);
+  const stillHere = useSquadUpStillHere();
+  const endedStats = useSquadUpStats(duoEnded);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [leftStats, setLeftStats] = useState<SquadUpStats | null>(null);
-  const [swipeError, setSwipeError] = useState('');
-  const [reporting, setReporting] = useState<ReportTarget | null>(null);
+  const [pendingStart, setPendingStart] = useState<SetupValues | null>(null);
+  const needsCountry = start.error instanceof ApiError && (start.error.body as { error?: string } | null)?.error === 'COUNTRY_REQUIRED';
 
-  function onSwipe(card: SquadUpCard, direction: 'right' | 'left') {
-    setSwipeError('');
-    swipe.mutate({ card, direction }, {
-      onSuccess: (result) => {
-        if (!result?.matched || !result.match) return;
-        announceSquadUpMatch(qc, {
-          matchId: result.match.matchId, conversationId: result.match.conversationId ?? null, title: "It's a match!",
-          message: `You and ${result.match.matchedUsername} want to squad up.`, sessionEnded: result.sessionEnded, details: result.match,
-        });
-      },
-      onError: (error) => setSwipeError(squadUpSwipeErrorMessage(error)),
+  const ping = useCallback(() => { stillHere.mutate(); }, [stillHere]);
+  const idle = useSquadUpIdle(live, ping);
+
+  function goLive(values: SetupValues) {
+    setPendingStart(values);
+    start.mutate(values, {
+      onSuccess: () => { remember({ game: values.game, mode: values.mode, wantedCountries: values.wantedCountries, minTier: values.minTier, maxTier: values.maxTier }); setSetupOpen(false); setLeftStats(null); setWasInDuo(false); idle.markActive(true); },
     });
   }
 
   function leave() {
-    end.mutate(undefined, { onSuccess: (stats) => setLeftStats(stats) });
+    end.mutate(undefined, { onSuccess: (summary) => { setLeftStats(summary); } });
   }
 
-  function restart() { setWasActive(false); setLeftStats(null); start.reset(); }
-
-  function body() {
-    if (!enabled) {
-      return <div className="lfg-panel lfg-empty"><strong>Squad Up isn&apos;t available yet.</strong>Browse listings in the meantime.<Link className="lfg-button" to="/competitive/lfg">Browse listings</Link></div>;
-    }
-    if (presence.isLoading) return <div className="lfg-panel lfg-empty" aria-live="polite">Checking your Squad Up status…</div>;
-    if (ended) return <SquadUpSummary stats={leftStats ?? savedStats.data} onRestart={restart} />;
-    if (!active) {
-      return <SquadUpStartPanel pending={start.isPending} error={start.isError ? squadUpStartErrorMessage(start.error) : undefined}
-        notice={presence.isError ? 'We could not check your Squad Up status. You can still start.' : undefined} onStart={(input) => start.mutate(input)} />;
-    }
-    return <DeckView cards={cards.data} loading={cards.isLoading} error={cards.isError} busy={swipe.isPending} swipeError={swipeError}
-      pendingLikes={presence.data?.pendingLikes ?? 0} leaving={end.isPending} onSwipe={onSwipe}
-      onReport={(card) => setReporting({ userId: card.userId, username: card.username })} onLeave={leave} onRetry={() => void cards.refetch()} />;
-  }
-
-  return (
-    <LfgWorkspace>
-      <header className="lfg-heading"><div><div className="lfg-eyebrow">Esportra / Squad Up</div><h1>Find teammates right now.</h1><p>Swipe on ranked Valorant players in your region and rank. Match, then squadUp.</p></div></header>
-      <div className="squad-shell">
-        <div className="squad-layout">
-          <div>{body()}</div>
-          <div className="squad-side">
-            <SquadUpMatches matches={matches.data ?? []}
-              onReport={(match) => setReporting({ userId: match.matchedUserId, username: match.matchedUsername, matchId: match.matchId })} />
-            <SquadUpSafetyPanel enabled={!!user && enabled} />
-          </div>
-        </div>
-      </div>
-      <SquadUpReportDialog target={reporting} onClose={() => setReporting(null)} />
-    </LfgWorkspace>
+  const setup = (
+    <SquadUpSetupSheet key={setupOpen ? 'open' : 'closed'} open={setupOpen} onOpenChange={setSetupOpen} ownCountry={ownCountry} initial={filters}
+      pending={start.isPending} error={start.isError && !needsCountry ? squadUpStartErrorMessage(start.error) : undefined}
+      submitLabel={inDuo ? 'Update and keep looking' : 'Go live'} onSubmit={goLive} />
   );
-}
+  const countryPrompt = needsCountry && pendingStart && (
+    <CountryPickerModal onSave={() => { start.reset(); goLive(pendingStart); }} />
+  );
 
-interface DeckViewProps {
-  cards: SquadUpCard[] | undefined; loading: boolean; error: boolean; busy: boolean; swipeError: string;
-  pendingLikes: number; leaving: boolean;
-  onSwipe: (card: SquadUpCard, direction: 'right' | 'left') => void; onReport: (card: SquadUpCard) => void; onLeave: () => void; onRetry: () => void;
-}
+  if (user && enabled && (live || duoEnded)) {
+    return (
+      <>
+        <SquadUpApp myId={user.id} filters={filters} inDuo={inDuo} pendingLikes={presence.data?.pendingLikes ?? 0}
+          leaving={end.isPending} onEditFilters={() => setSetupOpen(true)} onLeave={leave} onActivity={() => idle.markActive(true)}
+          duoEnded={<SquadUpSummary stats={leftStats ?? endedStats.data} onRestart={() => setSetupOpen(true)} />} />
+        <StillLookingDialog open={idle.prompt && live} onStay={() => { stillHere.mutate(); idle.markActive(true); }} onLeave={leave} />
+        {setup}
+        {countryPrompt}
+      </>
+    );
+  }
 
-function DeckView({ cards, loading, error, busy, swipeError, pendingLikes, leaving, onSwipe, onReport, onLeave, onRetry }: DeckViewProps) {
-  const top = cards?.[0];
+  const action = !enabled && !features.isLoading
+    ? <CommandButton variant="primary" size="lg" disabled>Opening soon</CommandButton>
+    : !user
+      ? <CommandButton asChild variant="primary" size="lg" slide><Link to={SIGN_IN}>Sign in to start</Link></CommandButton>
+      : <CommandButton variant="primary" size="lg" slide onClick={() => setSetupOpen(true)}>Start Squad Up</CommandButton>;
+
   return (
-    <section className="squad-deck-view" aria-label="Squad Up deck" style={{ display: 'grid', gap: 16 }}>
-      <div className="squad-status">
-        <span className="squad-muted" role="status">
-          {pendingLikes > 0 ? `${pendingLikes} ${pendingLikes === 1 ? 'player liked' : 'players liked'} you` : 'You are live in Squad Up'}
-        </span>
-        <button type="button" className="lfg-button" disabled={leaving} onClick={onLeave}>{leaving ? 'Leaving…' : 'Leave Squad Up'}</button>
-      </div>
-      {swipeError && <p className="squad-error" role="alert">{swipeError}</p>}
-      {loading && !top && <div className="lfg-panel lfg-empty" aria-live="polite">Finding players…</div>}
-      {error && !top && <div className="lfg-panel lfg-empty"><strong>Players could not load.</strong><button type="button" className="lfg-button" onClick={onRetry}>Try again</button></div>}
-      {!loading && !error && !top && <div className="lfg-panel lfg-empty" aria-live="polite"><strong>No one new right now.</strong>Stay on this page. We check for new players every few seconds.</div>}
-      {top && <SquadUpDeck card={top} onSwipe={onSwipe} onReport={onReport} disabled={busy} />}
-    </section>
+    <>
+      <SquadUpLanding stats={stats.data} action={action} />
+      {user && setup}
+      {countryPrompt}
+    </>
   );
 }

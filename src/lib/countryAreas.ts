@@ -1,0 +1,54 @@
+import { countries } from '@/utils/countries';
+
+/**
+ * Countries grouped into areas for the Squad Up country filter. Ordered by where most players are.
+ * Every ISO code in `@/utils/countries` belongs to exactly one area (enforced by a test).
+ */
+export const COUNTRY_AREAS = [
+  { id: 'south-asia', label: 'South Asia', codes: ['PK', 'IN', 'BD', 'LK', 'NP', 'AF', 'BT', 'MV'] },
+  {
+    id: 'middle-east', label: 'Middle East & North Africa',
+    codes: ['AE', 'SA', 'QA', 'KW', 'BH', 'OM', 'JO', 'LB', 'IQ', 'IR', 'IL', 'PS', 'SY', 'YE', 'TR', 'EG', 'MA', 'DZ', 'TN', 'LY', 'SD'],
+  },
+  {
+    id: 'europe', label: 'Europe',
+    codes: ['GB', 'IE', 'FR', 'DE', 'NL', 'BE', 'LU', 'ES', 'PT', 'IT', 'CH', 'AT', 'DK', 'NO', 'SE', 'FI', 'IS', 'PL', 'CZ', 'SK', 'HU', 'RO',
+      'BG', 'GR', 'CY', 'MT', 'SI', 'HR', 'BA', 'RS', 'ME', 'MK', 'AL', 'EE', 'LV', 'LT', 'BY', 'UA', 'MD', 'RU', 'GE', 'AM', 'AZ', 'AD', 'MC',
+      'LI', 'SM', 'VA'],
+  },
+  { id: 'central-asia', label: 'Central Asia', codes: ['KZ', 'UZ', 'KG', 'TJ', 'TM', 'MN'] },
+  { id: 'east-asia', label: 'East Asia', codes: ['JP', 'KR', 'CN', 'KP'] },
+  { id: 'southeast-asia', label: 'Southeast Asia', codes: ['SG', 'MY', 'ID', 'TH', 'VN', 'PH', 'BN', 'KH', 'LA', 'MM', 'TL'] },
+  { id: 'oceania', label: 'Oceania', codes: ['AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'WS', 'TO', 'TV', 'KI', 'NR', 'MH', 'FM', 'PW'] },
+  { id: 'north-america', label: 'North America', codes: ['US', 'CA', 'MX'] },
+  {
+    id: 'latin-america', label: 'Latin America & Caribbean',
+    codes: ['BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'EC', 'BO', 'PY', 'UY', 'GY', 'SR', 'GT', 'HN', 'SV', 'NI', 'CR', 'PA', 'BZ', 'CU', 'DO', 'HT',
+      'JM', 'TT', 'BB', 'BS', 'AG', 'DM', 'GD', 'KN', 'LC', 'VC'],
+  },
+  {
+    id: 'africa', label: 'Sub-Saharan Africa',
+    codes: ['NG', 'KE', 'ZA', 'GH', 'ET', 'TZ', 'UG', 'RW', 'SN', 'CM', 'AO', 'MZ', 'ZM', 'ZW', 'BW', 'NA', 'MG', 'MU', 'SC', 'CV', 'ST', 'GA',
+      'GQ', 'CG', 'CF', 'TD', 'NE', 'ML', 'BF', 'BJ', 'TG', 'GN', 'GW', 'SL', 'LR', 'GM', 'MR', 'DJ', 'ER', 'SO', 'SS', 'BI', 'MW', 'LS', 'SZ', 'KM'],
+  },
+] as const;
+
+export type AreaId = (typeof COUNTRY_AREAS)[number]['id'];
+
+const nameByCode = new Map(countries.map((country) => [country.code, country.name]));
+
+export const countryName = (code: string) => nameByCode.get(code.toUpperCase()) ?? code.toUpperCase();
+
+export function areaOf(code: string): (typeof COUNTRY_AREAS)[number] | undefined {
+  const upper = code.toUpperCase();
+  return COUNTRY_AREAS.find((area) => (area.codes as readonly string[]).includes(upper));
+}
+
+/** Toggles a whole area: selects every country in it, or clears them all if they were all selected. */
+export function toggleArea(selected: string[], areaId: AreaId): string[] {
+  const area = COUNTRY_AREAS.find((item) => item.id === areaId);
+  if (!area) return selected;
+  const codes = area.codes as readonly string[];
+  const allIn = codes.every((code) => selected.includes(code));
+  return allIn ? selected.filter((code) => !codes.includes(code)) : [...new Set([...selected, ...codes])];
+}

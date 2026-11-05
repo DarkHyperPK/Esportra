@@ -52,7 +52,7 @@ describe('SquadUpPopupHost', () => {
     await act(async () => announceSquadUpLike(elsewhere, 2));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '2 players want to squad up' })));
     toast.mockClear();
-    const onPage = mount('/competitive/lfg/squad-up');
+    const onPage = mount('/competitive/squad-up');
     await act(async () => announceSquadUpLike(onPage, 1));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(toast).not.toHaveBeenCalled();

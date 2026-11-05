@@ -596,8 +596,9 @@ const AppContent = React.memo(() => {
                     </ProtectedRoute>
                   } />
                   <Route path="lfg" element={<LfgDiscoveryPage />} />
-                  <Route path="lfg/queue" element={<Navigate to="/competitive/lfg/squad-up" replace />} />
-                  <Route path="lfg/squad-up" element={<ProtectedRoute><SquadUpPage /></ProtectedRoute>} />
+                  <Route path="squad-up" element={<SquadUpPage />} />
+                  <Route path="lfg/queue" element={<Navigate to="/competitive/squad-up" replace />} />
+                  <Route path="lfg/squad-up" element={<Navigate to="/competitive/squad-up" replace />} />
                   <Route path="lfg/requests" element={<ProtectedRoute><LfgRequestsPage /></ProtectedRoute>} />
                   <Route path="lfg/create" element={
                     <ProtectedRoute>
