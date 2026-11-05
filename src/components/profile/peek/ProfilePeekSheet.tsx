@@ -73,6 +73,13 @@ export function ProfilePeekSheet(): React.JSX.Element {
     staleTime: 5 * 60 * 1000,
   });
 
+  const gameStatsQuery = useQuery({
+    queryKey: ['peek-game-stats', peekUserId],
+    queryFn: () => apiClient.get<Record<string, unknown>>(`/api/profiles/${peekUserId}/game-stats?game=valorant`),
+    enabled: !!peekUserId,
+    staleTime: 60 * 1000,
+  });
+
   const isLoading =
     profileQuery.isLoading || statsQuery.isLoading || linkedQuery.isLoading;
   const isError =
@@ -122,6 +129,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
     void linkedQuery.refetch();
     void historyQuery.refetch();
     void teamsQuery.refetch();
+    void gameStatsQuery.refetch();
   };
 
   return (
@@ -198,6 +206,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                   linkedAccounts={linkedQuery.data!}
                   tournamentHistory={historyQuery.data?.items ?? []}
                   teams={teamsQuery.data ?? []}
+                  gameStats={gameStatsQuery.data ?? null}
                   onClose={closePeek}
                 />
               )}
@@ -262,6 +271,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                   linkedAccounts={linkedQuery.data!}
                   tournamentHistory={historyQuery.data?.items ?? []}
                   teams={teamsQuery.data ?? []}
+                  gameStats={gameStatsQuery.data ?? null}
                   onClose={closePeek}
                 />
               )}

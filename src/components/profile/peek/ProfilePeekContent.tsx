@@ -9,12 +9,29 @@ import { useAccentColor } from '@/hooks/useAccentColor';
 import { format, parseISO } from 'date-fns';
 import { getCountryFlagUrl } from '@/utils/countries';
 
+interface GameStatsData {
+  competitive_tier?: number | null;
+  competitive_tier_name?: string | null;
+  win_count?: number | null;
+  loss_count?: number | null;
+  win_rate?: number | null;
+  kd_ratio?: number | null;
+  hs_pct?: number | null;
+  matches_analyzed?: number | null;
+  rank_tier_display_name?: string | null;
+  rank_tier_icon_url?: string | null;
+  region_display_name?: string | null;
+  riot_game_name?: string | null;
+  riot_tag_line?: string | null;
+}
+
 interface ProfilePeekContentProps {
   profile: PublicProfileDto;
   stats: UserStatsDto;
   linkedAccounts: LinkedAccountsDto;
   tournamentHistory: import('@/types/profile').TournamentHistoryEntryDto[];
   teams: import('@/types/profile').TeamMembershipDto[];
+  gameStats: GameStatsData | null;
   onClose: () => void;
 }
 
@@ -28,6 +45,7 @@ export function ProfilePeekContent({
   linkedAccounts,
   tournamentHistory,
   teams,
+  gameStats,
   onClose,
 }: ProfilePeekContentProps): React.JSX.Element {
   const navigate = useNavigate();
@@ -213,6 +231,55 @@ export function ProfilePeekContent({
           >
             {profile.bio!.slice(0, 100)}
             {profile.bio!.length > 100 ? '…' : ''}
+          </div>
+        )}
+
+        {/* Valorant stats */}
+        {gameStats && (gameStats.win_rate != null || gameStats.competitive_tier_name) && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              Valorant
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              {gameStats.rank_tier_icon_url && (
+                <img src={gameStats.rank_tier_icon_url} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+              )}
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
+                {gameStats.competitive_tier_name ?? gameStats.rank_tier_display_name ?? 'Unranked'}
+              </span>
+              {gameStats.region_display_name && (
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{gameStats.region_display_name}</span>
+              )}
+              {gameStats.matches_analyzed != null && gameStats.matches_analyzed > 0 && (
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{gameStats.matches_analyzed} matches</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              {gameStats.win_rate != null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{Math.round(Number(gameStats.win_rate))}%</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>WR</div>
+                </div>
+              )}
+              {gameStats.kd_ratio != null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{Number(gameStats.kd_ratio).toFixed(2)}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>K/D</div>
+                </div>
+              )}
+              {gameStats.hs_pct != null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{Math.round(Number(gameStats.hs_pct))}%</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>HS%</div>
+                </div>
+              )}
+              {gameStats.win_count != null && gameStats.loss_count != null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{gameStats.win_count}W {gameStats.loss_count}L</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>Record</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
