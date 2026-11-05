@@ -43,4 +43,11 @@ describe('Squad Up demo', () => {
     const state = initialDemoState([player('a')]);
     expect(demoReducer(state, { type: 'swipe', id: 'zzz', direction: 'right' })).toBe(state);
   });
+
+  it('brings a picked player to the top of the deck without changing anything else', () => {
+    const state = initialDemoState([player('a'), player('b'), player('c')]);
+    const next = demoReducer(state, { type: 'pick', id: 'c' });
+    expect(next.deck.map((p) => p.id)).toEqual(['c', 'a', 'b']);
+    expect(demoReducer(state, { type: 'pick', id: 'zz' })).toBe(state);
+  });
 });

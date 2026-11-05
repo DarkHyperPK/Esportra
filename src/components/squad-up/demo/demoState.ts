@@ -15,6 +15,7 @@ export interface DemoState {
 export type DemoAction =
   | { type: 'swipe'; id: string; direction: SwipeDirection }
   | { type: 'dismiss' }
+  | { type: 'pick'; id: string }
   | { type: 'reset'; players: SlatePlayer[] };
 
 export const initialDemoState = (players: SlatePlayer[]): DemoState => ({ deck: players, likes: 0, matched: [], justMatched: null });
@@ -26,6 +27,10 @@ export const initialDemoState = (players: SlatePlayer[]): DemoState => ({ deck: 
 export function demoReducer(state: DemoState, action: DemoAction): DemoState {
   if (action.type === 'reset') return initialDemoState(action.players);
   if (action.type === 'dismiss') return { ...state, justMatched: null };
+  if (action.type === 'pick') {
+    const picked = state.deck.find((item) => item.id === action.id);
+    return picked ? { ...state, deck: [picked, ...state.deck.filter((item) => item.id !== action.id)] } : state;
+  }
   const player = state.deck.find((item) => item.id === action.id);
   if (!player) return state;
   const deck = state.deck.filter((item) => item.id !== action.id);

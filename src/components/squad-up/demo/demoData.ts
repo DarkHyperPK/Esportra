@@ -73,5 +73,5 @@ export const DEMO_LOBBY = {
   /** Joins right after the visitor, so they see the lobby fill. */
   lastToJoin: { name: 'Hamza', avatarUrl: avatar('hamza-demo'), role: 'Sentinel' },
   rank: 'Gold 3 – Platinum 3',
-  countries: ['PK', 'AE'],
+  area: 'south-asia',
 };

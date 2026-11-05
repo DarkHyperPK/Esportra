@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { CommandButton } from '@/components/management/CommandSurface';
-import { getCountryFlagUrl } from '@/utils/countries';
-import { countryName } from '@/lib/countryAreas';
+import { areaLabel } from '@/lib/countryAreas';
 import { LobbyRail, type RailSlot } from '../shared/LobbyRail';
 import { DEMO_LOBBY } from './demoData';
 
@@ -42,9 +41,7 @@ export function DemoLobby() {
         <h3>{DEMO_LOBBY.title}</h3>
         <p className="su-demo-lobby-meta">
           <span>{DEMO_LOBBY.rank}</span>
-          <span className="su-demo-flags">
-            {DEMO_LOBBY.countries.map((code) => <img key={code} src={getCountryFlagUrl(code)} alt={countryName(code)} title={countryName(code)} />)}
-          </span>
+          <span>{areaLabel(DEMO_LOBBY.area)}</span>
           <span>Mic required</span>
         </p>
       </header>

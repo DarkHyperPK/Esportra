@@ -68,12 +68,14 @@ function ReportForm({ target, onClose }: { target: ReportTarget; onClose: () => 
 
       <fieldset className="su-report-reasons" disabled={submit.isPending}>
         <legend className="su-report-label">What happened?</legend>
-        {REPORT_REASONS.map((item) => (
-          <label key={item.value} className="su-report-reason">
-            <input type="radio" name="reason" value={item.value} checked={reason === item.value} onChange={() => setReason(item.value)} />
-            <span>{item.label}</span>
-          </label>
-        ))}
+        <div className="su-report-reason-grid">
+          {REPORT_REASONS.map((item) => (
+            <label key={item.value} className="su-report-reason">
+              <input type="radio" name="reason" value={item.value} checked={reason === item.value} onChange={() => setReason(item.value)} />
+              <span>{item.label}</span>
+            </label>
+          ))}
+        </div>
       </fieldset>
 
       <label className="su-report-field">

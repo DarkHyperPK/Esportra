@@ -8,7 +8,7 @@ const SAFETY = [
 ];
 
 const FAQ = [
-  { q: 'Why don\'t I see players from other servers?', a: 'Valorant only lets you party with players on the same server region (for example AP or EU). Squad Up only shows you people you can actually queue with, then lets you narrow it down by country.' },
+  { q: 'Who will I see?', a: 'Players on your Valorant server (for example AP or EU, since you can\'t party across servers) who live in the same area you picked, playing the same mode, near your rank in Competitive.' },
   { q: 'What happens if I tab out to play?', a: 'Nothing for 3 minutes. After that, or after 10 minutes without swiping, you drop out of the pool so nobody matches with someone who is gone. Start again any time.' },
   { q: 'Who sees my reports?', a: 'Only Esportra moderators. The player you report is never told who reported them.' },
   { q: 'Does it cost anything?', a: 'No. Squad Up is free with your Esportra account.' },
@@ -19,6 +19,7 @@ export function SquadUpTrust() {
   return (
     <>
       <section className="su-section" aria-labelledby="su-safety-title">
+        <p className="su-caption">Safety</p>
         <h2 id="su-safety-title">Built to keep lobbies clean</h2>
         <ul className="su-safety">
           {SAFETY.map(({ icon: Icon, title, body }) => (
