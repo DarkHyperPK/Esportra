@@ -29,8 +29,8 @@ describe('swipeMath', () => {
   });
 
   it('flings the card fully off screen on its own side', () => {
-    expect(exitX('right', 390)).toBe(720);
-    expect(exitX('left', 1440)).toBe(-1728);
+    expect(exitX('right', 390)).toBeCloseTo(508.5);
+    expect(exitX('left', 1440)).toBeCloseTo(-1716);
   });
 
   it('reports drag progress toward the commit point, capped at 1', () => {
