@@ -11,7 +11,8 @@ import { NotificationContext, type Notification } from '@/contexts/notification-
 import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { useToast } from '@/hooks/use-toast';
 import { shouldRefreshScrims } from '@/services/scrimLive';
-import { lfgQueueKeys } from '@/hooks/competitive/queryKeys';
+import { squadUpKeys } from '@/hooks/competitive/queryKeys';
+import { announceSquadUpLike, announceSquadUpMatchFromNotification } from '@/hooks/competitive/squadUpPopups';
 
 export type { Notification };
 
@@ -102,11 +103,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         queryClient.invalidateQueries({ queryKey: ['scrims'] });
       }
 
-      // A Queue Now match from the other player's swipe: refresh the deck and match list, and tell the user.
+      // A Squad Up match (both players get this): refresh the deck and match list and raise the app-wide popup.
       if (stub.type === 'lfg_swipe_match') {
-        void queryClient.invalidateQueries({ queryKey: lfgQueueKeys.all() });
+        void queryClient.invalidateQueries({ queryKey: squadUpKeys.matches() });
+        void queryClient.invalidateQueries({ queryKey: squadUpKeys.presence() });
         void queryClient.invalidateQueries({ queryKey: ['conversations'] });
-        toast({ title: stub.title, description: stub.message || undefined, duration: 8000 });
+        announceSquadUpMatchFromNotification(queryClient, { title: stub.title, message: stub.message, data });
       }
 
       // Being removed is high-signal — surface it immediately, not just as a badge
@@ -150,7 +152,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       navigate('/auth/signin', { replace: true });
     };
 
+    // Someone liked this user in Squad Up. Payload is a count only; identities stay hidden until a match.
+    const onSquadUpLike = (payload: { pendingLikes?: number }) => {
+      const count = typeof payload?.pendingLikes === 'number' ? payload.pendingLikes : 1;
+      queryClient.setQueryData<{ active: boolean; pendingLikes: number }>(squadUpKeys.presence(), (old) => (old ? { ...old, pendingLikes: count } : old));
+      announceSquadUpLike(queryClient, count);
+    };
+
     hub.on('NewNotification', onNewNotification);
+    hub.on('SquadUpLike', onSquadUpLike);
     hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
     hub.on('ForceLogout', onForceLogout);
@@ -158,6 +168,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       hub.off('NewNotification', onNewNotification);
+      hub.off('SquadUpLike', onSquadUpLike);
       hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
       hub.off('ForceLogout', onForceLogout);

@@ -24,6 +24,7 @@ import { ProfilePeekSheet } from "@/components/profile/peek/ProfilePeekSheet";
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { SquadUpPopupHost } from "@/components/competitive/squad-up/SquadUpPopupHost";
 import React from 'react';
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
@@ -79,7 +80,7 @@ const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
 // Competitive
 const DiscoverPage = lazyWithRetry(() => import("./pages/competitive/DiscoverPage"));
 const LfgDiscoveryPage = lazyWithRetry(() => import("./pages/competitive/LfgDiscoveryPage"));
-const LfgQueuePage = lazyWithRetry(() => import("./pages/competitive/LfgQueuePage"));
+const SquadUpPage = lazyWithRetry(() => import("./pages/competitive/SquadUpPage"));
 const LfgRequestsPage = lazyWithRetry(() => import("./pages/competitive/LfgRequestsPage"));
 const LfgMyListingsPage = lazyWithRetry(() => import("./pages/competitive/LfgMyListingsPage"));
 const LfgCreateWizardPage = lazyWithRetry(() => import("./pages/competitive/LfgCreateWizardPage"));
@@ -99,6 +100,7 @@ const ScrimCalendarPage = lazyWithRetry(() => import("./pages/competitive/scrims
 const ScrimDataPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimDataPage"));
 const ScrimGameReportPage = lazyWithRetry(() => import("./pages/competitive/scrims/ScrimGameReportPage"));
 const ScrimDisputeAdminPage = lazyWithRetry(() => import("./pages/admin/tools/ScrimDisputeAdminPage"));
+const SquadUpAdminPage = lazyWithRetry(() => import("./pages/admin/tools/SquadUpAdminPage"));
 const CareerTimelinePage = lazyWithRetry(() => import("./pages/competitive/careers/CareerTimelinePage"));
 const ScoutingWorkspacePage = lazyWithRetry(() => import("./pages/competitive/scouting/ScoutingWorkspacePage"));
 
@@ -302,6 +304,7 @@ const AppContent = React.memo(() => {
       <GhostModeBanner />
       <ProfileCompletionPrompt />
       <TournamentInvitePrompt />
+      <SquadUpPopupHost />
       <AvatarFeatureAnnouncement />
       {!isChromelessRoute && !isAdminRoute && (
         <>
@@ -443,6 +446,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/gdpr" element={<AdminRouteGuard requiredPermission="gdpr:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GdprCompliance /></AdminRouteGuard>} />
                   <Route path="tools/anomaly-detection" element={<AdminRouteGuard requiredPermission="system:audit" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AnomalyDetection /></AdminRouteGuard>} />
                   <Route path="tools/public-veto" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><PublicVetoSessions /></AdminRouteGuard>} />
+                  <Route path="tools/squad-up" element={<AdminRouteGuard requiredPermission="squad_up:view"><SquadUpAdminPage /></AdminRouteGuard>} />
                   <Route path="tools/scrim-disputes" element={<AdminRouteGuard requiredPermission="disputes:view" requiredRoles={ADMIN_ROLE_SETS.disputes}><ScrimDisputeAdminPage /></AdminRouteGuard>} />
                   <Route path="tools/avatar-pool" element={<AdminRouteGuard requiredPermission="system:config_view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AvatarPoolManagement /></AdminRouteGuard>} />
 
@@ -592,7 +596,8 @@ const AppContent = React.memo(() => {
                     </ProtectedRoute>
                   } />
                   <Route path="lfg" element={<LfgDiscoveryPage />} />
-                  <Route path="lfg/queue" element={<ProtectedRoute><LfgQueuePage /></ProtectedRoute>} />
+                  <Route path="lfg/queue" element={<Navigate to="/competitive/lfg/squad-up" replace />} />
+                  <Route path="lfg/squad-up" element={<ProtectedRoute><SquadUpPage /></ProtectedRoute>} />
                   <Route path="lfg/requests" element={<ProtectedRoute><LfgRequestsPage /></ProtectedRoute>} />
                   <Route path="lfg/create" element={
                     <ProtectedRoute>

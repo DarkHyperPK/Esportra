@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/apiClient';
-import { lfgQueueKeys } from './queryKeys';
-import { useEndQueue, useQueuePresence, useQueueSwipe, useStartQueue } from './useLfgQueue';
-import type { QueueCard } from '@/schemas/lfgQueue';
+import { squadUpKeys } from './queryKeys';
+import { useEndSquadUp, useSquadUpPresence, useSquadUpSwipe, useStartSquadUp } from './useSquadUp';
+import type { SquadUpCard } from '@/schemas/squadUp';
 
 vi.mock('@/lib/supabase', () => ({ supabase: { auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) } } }));
 
@@ -18,38 +18,38 @@ function setup() {
   return { client, wrapper };
 }
 
-const card = (userId: string): QueueCard => ({
+const card = (userId: string): SquadUpCard => ({
   userId, username: userId, competitiveTier: 15, matchesAnalyzed: 10, micOn: true, slotsNeeded: 1,
   synergyLabel: 'unknown', synergyScore: 0, likedYou: false,
 });
 const notFound = () => new ApiError(404, { error: 'NO_ACTIVE_SESSION' }, 'not found');
 
-describe('Queue Now hooks', () => {
+describe('Squad Up hooks', () => {
   beforeEach(() => { vi.resetAllMocks(); });
 
-  it('treats a 200 heartbeat as in the queue and a 404 as not in the queue', async () => {
+  it('treats a 200 heartbeat as in the squadUp and a 404 as not in the squadUp', async () => {
     api.post.mockResolvedValueOnce({ pendingLikes: 2 });
     const first = setup();
-    const active = renderHook(() => useQueuePresence(true), { wrapper: first.wrapper });
+    const active = renderHook(() => useSquadUpPresence(true), { wrapper: first.wrapper });
     await waitFor(() => expect(active.result.current.data).toEqual({ active: true, pendingLikes: 2 }));
     expect(api.post).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session/heartbeat');
 
     api.post.mockRejectedValueOnce(notFound());
     const second = setup();
-    const inactive = renderHook(() => useQueuePresence(true), { wrapper: second.wrapper });
+    const inactive = renderHook(() => useSquadUpPresence(true), { wrapper: second.wrapper });
     await waitFor(() => expect(inactive.result.current.data).toEqual({ active: false, pendingLikes: 0 }));
   });
 
   it('does not probe presence until enabled', () => {
     const { wrapper } = setup();
-    renderHook(() => useQueuePresence(false), { wrapper });
+    renderHook(() => useSquadUpPresence(false), { wrapper });
     expect(api.post).not.toHaveBeenCalled();
   });
 
   it('validates input before starting and sends the session settings', async () => {
     api.post.mockResolvedValue({ id: 's1', region: 'na', competitiveTier: 15, micOn: true, slotsNeeded: 2 });
     const { wrapper } = setup();
-    const { result } = renderHook(() => useStartQueue(), { wrapper });
+    const { result } = renderHook(() => useStartSquadUp(), { wrapper });
     await act(async () => { await expect(result.current.mutateAsync({ micOn: true, slotsNeeded: 9 })).rejects.toThrow(); });
     expect(api.post).not.toHaveBeenCalled();
     await act(async () => { await result.current.mutateAsync({ micOn: true, slotsNeeded: 2 }); });
@@ -59,20 +59,20 @@ describe('Queue Now hooks', () => {
   it('removes a swiped card immediately and puts it back when the swipe fails', async () => {
     api.post.mockRejectedValue(new ApiError(404, { error: 'TARGET_NOT_ACTIVE' }, 'gone'));
     const { client, wrapper } = setup();
-    client.setQueryData(lfgQueueKeys.cards(), [card('a'), card('b'), card('c')]);
-    const { result } = renderHook(() => useQueueSwipe(), { wrapper });
+    client.setQueryData(squadUpKeys.cards(), [card('a'), card('b'), card('c')]);
+    const { result } = renderHook(() => useSquadUpSwipe(), { wrapper });
     await act(async () => { await result.current.mutateAsync({ card: card('a'), direction: 'right' }).catch(() => undefined); });
     expect(api.post).toHaveBeenCalledWith('/api/competitive/lfg/swipe/a/right');
-    expect(client.getQueryData<QueueCard[]>(lfgQueueKeys.cards())?.map((c) => c.userId)).toEqual(['a', 'b', 'c']);
+    expect(client.getQueryData<SquadUpCard[]>(squadUpKeys.cards())?.map((c) => c.userId)).toEqual(['a', 'b', 'c']);
   });
 
   it('keeps the card out of the deck after a successful left swipe and parses a right-swipe match', async () => {
     const { client, wrapper } = setup();
-    client.setQueryData(lfgQueueKeys.cards(), [card('a'), card('b'), card('c')]);
-    const { result } = renderHook(() => useQueueSwipe(), { wrapper });
+    client.setQueryData(squadUpKeys.cards(), [card('a'), card('b'), card('c')]);
+    const { result } = renderHook(() => useSquadUpSwipe(), { wrapper });
     api.post.mockResolvedValueOnce(undefined);
     await act(async () => { await result.current.mutateAsync({ card: card('a'), direction: 'left' }); });
-    expect(client.getQueryData<QueueCard[]>(lfgQueueKeys.cards())?.map((c) => c.userId)).toEqual(['b', 'c']);
+    expect(client.getQueryData<SquadUpCard[]>(squadUpKeys.cards())?.map((c) => c.userId)).toEqual(['b', 'c']);
 
     api.post.mockResolvedValueOnce({
       matched: true, sessionEnded: false,
@@ -83,16 +83,16 @@ describe('Queue Now hooks', () => {
     expect(outcome).toMatchObject({ matched: true, match: { conversationId: 'c1' } });
   });
 
-  it('reads the summary before leaving the queue', async () => {
+  it('reads the summary before leaving the squadUp', async () => {
     api.get.mockResolvedValue({ swipesRight: 2, swipesLeft: 1, matchesCount: 1, durationSeconds: 300 });
     api.delete.mockResolvedValue(undefined);
     const { client, wrapper } = setup();
-    const { result } = renderHook(() => useEndQueue(), { wrapper });
+    const { result } = renderHook(() => useEndSquadUp(), { wrapper });
     let stats;
     await act(async () => { stats = await result.current.mutateAsync(); });
     expect(stats).toMatchObject({ matchesCount: 1 });
     expect(api.get).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session/stats');
     expect(api.delete).toHaveBeenCalledWith('/api/competitive/lfg/swipe/session');
-    expect(client.getQueryData(lfgQueueKeys.presence())).toEqual({ active: false, pendingLikes: 0 });
+    expect(client.getQueryData(squadUpKeys.presence())).toEqual({ active: false, pendingLikes: 0 });
   });
 });

@@ -55,7 +55,7 @@ export const NOTIFICATION_KINDS: Record<string, NotificationKind> = {
   // Competitive — LFG
   lfg_interest_received: kind(Users, 'accent', 'competitive', 'LFG Interest'),
   lfg_interest_accepted: kind(CheckCircle2, 'success', 'competitive', 'LFG accepted'),
-  lfg_swipe_match: kind(Users, 'success', 'competitive', 'Queue match'),
+  lfg_swipe_match: kind(Users, 'success', 'competitive', 'Squad Up match'),
   // Competitive — Scrims
   scrim_offer_received: kind(Swords, 'accent', 'competitive', 'Scrim offer'),
   scrim_offer_accepted: kind(CheckCircle2, 'success', 'competitive', 'Scrim accepted'),

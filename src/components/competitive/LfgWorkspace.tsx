@@ -11,7 +11,7 @@ import './lfg-glass.css';
 export function LfgWorkspace({ children }: { children: ReactNode }) {
   const { pathname, search } = useLocation();
   const { user } = useAuth();
-  const queueEnabled = usePlatformFeatures().isEnabled(FEATURES.lfgQueue);
+  const squadUpEnabled = usePlatformFeatures().isEnabled(FEATURES.squadUp);
   const protectedTarget = (target: string) => user ? target : `/auth/signin?redirect=${encodeURIComponent(target)}`;
   const params = new URLSearchParams(search);
   const game = params.get('game');
@@ -47,7 +47,7 @@ export function LfgWorkspace({ children }: { children: ReactNode }) {
           <Link className="lfg-wordmark" to={`/competitive/lfg${gameQuery}`}>LFG<span>.</span></Link>
           <div className="lfg-nav-links">
             <Link to={`/competitive/lfg${gameQuery}`} aria-current={discoverActive ? 'page' : undefined}>Discover{discoverActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</Link>
-            {queueEnabled && <NavLink to={protectedTarget(`/competitive/lfg/queue${gameQuery}`)}>{({ isActive }) => <>Queue now{isActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</>}</NavLink>}
+            {squadUpEnabled && <NavLink to={protectedTarget(`/competitive/lfg/squad-up${gameQuery}`)}>{({ isActive }) => <>Squad Up{isActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</>}</NavLink>}
             <Link to={protectedTarget(`/competitive/lfg?saved=1${game ? `&game=${encodeURIComponent(game)}` : ''}`)} aria-current={savedActive ? 'page' : undefined}>Saved{savedActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</Link>
             <NavLink to={protectedTarget(`/competitive/lfg/requests${gameQuery}`)}>{({ isActive }) => <>Requests{isActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</>}</NavLink>
             <NavLink to={protectedTarget(`/competitive/lfg/mine${gameQuery}`)}>{({ isActive }) => <>My listings{isActive && <motion.span className="lfg-nav-marker" layoutId="lfg-nav-marker" transition={{ duration: reduced || document.documentElement.dataset.lfgInput === 'keyboard' ? 0 : .22 }} />}</>}</NavLink>

@@ -26,14 +26,23 @@ export const lfgKeys = {
   saved: (game?: string) => ['lfg', 'saved', game] as const,
 };
 
-export const lfgQueueKeys = {
-  /** Everything under Queue Now — use after a match or when the session ends */
-  all: () => ['lfg-queue'] as const,
+export const squadUpKeys = {
+  /** Everything under SquadUp Now — use after a match or when the session ends */
+  all: () => ['squad-up'] as const,
   /** Presence probe (heartbeat) — also tells us whether a session exists */
-  presence: () => ['lfg-queue', 'presence'] as const,
-  cards: () => ['lfg-queue', 'cards'] as const,
-  matches: () => ['lfg-queue', 'matches'] as const,
-  stats: () => ['lfg-queue', 'stats'] as const,
+  presence: () => ['squad-up', 'presence'] as const,
+  cards: () => ['squad-up', 'cards'] as const,
+  matches: () => ['squad-up', 'matches'] as const,
+  stats: () => ['squad-up', 'stats'] as const,
+  /** Transient app-wide popup state (match / liked-you); never fetched from the server */
+  popup: () => ['squad-up', 'popup'] as const,
+};
+
+export const squadUpAdminKeys = {
+  all: () => ['admin', 'squad-up'] as const,
+  overview: (days: number) => ['admin', 'squad-up', 'overview', days] as const,
+  sessions: () => ['admin', 'squad-up', 'sessions'] as const,
+  matches: () => ['admin', 'squad-up', 'matches'] as const,
 };
 
 export const competitiveProfileKeys = {

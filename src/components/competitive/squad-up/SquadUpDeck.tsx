@@ -1,18 +1,18 @@
 import { motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { Heart, X } from 'lucide-react';
 import { useLfgReducedMotion } from '@/hooks/competitive/useLfgReducedMotion';
-import type { QueueCard as QueueCardData } from '@/schemas/lfgQueue';
-import { QueueCard } from './QueueCard';
+import type { SquadUpCard as SquadUpCardData } from '@/schemas/squadUp';
+import { SquadUpCard } from './SquadUpCard';
 
 const SWIPE_DISTANCE = 120;
 
-interface QueueDeckProps {
-  card: QueueCardData;
-  onSwipe: (card: QueueCardData, direction: 'right' | 'left') => void;
+interface SquadUpDeckProps {
+  card: SquadUpCardData;
+  onSwipe: (card: SquadUpCardData, direction: 'right' | 'left') => void;
   disabled?: boolean;
 }
 
-export function QueueDeck({ card, onSwipe, disabled = false }: QueueDeckProps) {
+export function SquadUpDeck({ card, onSwipe, disabled = false }: SquadUpDeckProps) {
   const reduced = useLfgReducedMotion();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-8, 8]);
@@ -30,8 +30,8 @@ export function QueueDeck({ card, onSwipe, disabled = false }: QueueDeckProps) {
   }
 
   return (
-    <div className="queue-deck" onKeyDown={onKeyDown} role="group" aria-label="Player deck" tabIndex={0}>
-      <div className="queue-stack">
+    <div className="squad-deck" onKeyDown={onKeyDown} role="group" aria-label="Player deck" tabIndex={0}>
+      <div className="squad-stack">
         <motion.div
           key={card.userId}
           style={reduced ? undefined : { x, rotate }}
@@ -42,18 +42,18 @@ export function QueueDeck({ card, onSwipe, disabled = false }: QueueDeckProps) {
           initial={reduced ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <QueueCard card={card} />
+          <SquadUpCard card={card} />
         </motion.div>
       </div>
-      <div className="queue-actions">
+      <div className="squad-actions">
         <button type="button" className="lfg-button" disabled={disabled} onClick={() => onSwipe(card, 'left')}>
           <X size={16} aria-hidden /> Pass
         </button>
         <button type="button" className="lfg-button lfg-button-primary" disabled={disabled} onClick={() => onSwipe(card, 'right')}>
-          <Heart size={16} aria-hidden /> Let&apos;s queue
+          <Heart size={16} aria-hidden /> Let&apos;s squadUp
         </button>
       </div>
-      <p className="queue-hint">Drag the card or use the arrow keys.</p>
+      <p className="squad-hint">Drag the card or use the arrow keys.</p>
     </div>
   );
 }
