@@ -135,6 +135,57 @@ const DesktopNav = ({
             {activeBar(isActive(["/leaderboards"]))}
           </Link>
 
+          {/* Tools */}
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button type="button" className={linkClass(isActive(["/tools"]))}>
+                <Wrench className="h-4 w-4" />
+                Tools
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/tools/map-veto">Map Veto</JackItem>
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+
+          {/* About */}
+          <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+            <FramerDropdownTrigger asChild>
+              <button type="button" className={linkClass(isActive(["/about"]))}>
+                <Info className="h-4 w-4" />
+                About
+                <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              </button>
+            </FramerDropdownTrigger>
+            <FramerDropdownContent className="min-w-[200px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+              <div className="space-y-px bg-[#0a0a0c]">
+                <JackItem to="/about/company">About Us</JackItem>
+                <JackItem to="/about/contact">Contact</JackItem>
+                <JackItem to="/about/faq">FAQ</JackItem>
+                <JackItem to="/help">Help Center</JackItem>
+              </div>
+            </FramerDropdownContent>
+          </FramerDropdownRoot>
+
+          {/* Partners */}
+          <Link to="/partners" className={linkClass(isActive(["/partners"]))}>
+            <Handshake className="h-4 w-4" />
+            Partners
+            {activeBar(isActive(["/partners"]))}
+          </Link>
+
+          {/* Admin */}
+          {admin.isAdmin && (
+            <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))}>
+              <Shield className="h-4 w-4" />
+              Admin
+              {activeBar(isActive(["/admin"]))}
+            </Link>
+          )}
+
           {!user && (
             <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
               <FramerDropdownTrigger asChild>
