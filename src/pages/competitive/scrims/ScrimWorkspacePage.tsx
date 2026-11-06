@@ -25,6 +25,7 @@ import { useNow } from '@/hooks/useNow';
 import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { splitSessions } from '@/services/scrimAgenda';
 import { findOverlappingListings, formatPreferredDays } from '@/services/scrimUtils';
+import { isScrimStaff, scrimGamesOf } from '@/lib/scrimGames';
 
 /** Shape of /api/teams/me (not camel-cased). */
 interface TeamSummary {
@@ -52,7 +53,7 @@ export default function ScrimWorkspacePage() {
   const teamId = selectedTeamId || searchParams.get('team_id') || teams[0]?.id || '';
   const team = teams.find((t) => t.id === teamId) ?? teams[0] ?? null;
   const gameSlug = selectedGame || team?.primary_game_slug || catalog.games[0]?.slug || null;
-  const canManage = team?.my_role === 'captain' || team?.my_role === 'manager';
+  const canManage = isScrimStaff(team?.my_role);
 
   function changeGame(slug: string) {
     setSelectedGame(slug);
@@ -119,7 +120,7 @@ export default function ScrimWorkspacePage() {
               team={{ id: team.id, name: team.name, logoUrl: team.logo_url ?? null }}
               teams={teams.map((t) => ({ id: t.id, name: t.name, logoUrl: t.logo_url ?? null }))}
               onTeamChange={setSelectedTeamId}
-              games={catalog.games.filter((g) => g.slug.toLowerCase().includes('valorant')).map((g) => ({ slug: g.slug, name: g.name }))}
+              games={scrimGamesOf(catalog.games).map((g) => ({ slug: g.slug, name: g.name }))}
               gameSlug={gameSlug}
               onGameChange={changeGame}
               summary={summary}

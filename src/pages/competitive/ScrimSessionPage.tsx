@@ -19,6 +19,7 @@ import { useGameCatalogContext } from '@/hooks/useGameCatalogContext';
 import { useNow } from '@/hooks/useNow';
 import { deriveScrimNextAction } from '@/services/scrimNextAction';
 import { describeNextStep, formatRoomTime } from '@/services/scrimRoomView';
+import { isScrimStaff } from '@/lib/scrimGames';
 
 function SessionSkeleton() {
   return (
@@ -47,7 +48,7 @@ export default function ScrimSessionPage() {
     ? myTeamIds.includes(session.team1Id) ? 1 : myTeamIds.includes(session.team2Id) ? 2 : null
     : null;
   const myTeamId = mySide === 1 ? session?.team1Id ?? null : mySide === 2 ? session?.team2Id ?? null : null;
-  const isCaptain = session?.myRole === 'captain' || session?.myRole === 'manager';
+  const canManage = isScrimStaff(session?.myRole);
 
   const arrive = (delay: number) =>
     reduce ? {} : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, delay } };
@@ -122,7 +123,7 @@ export default function ScrimSessionPage() {
           )}
         </div>
 
-        {!isCaptain && (
+        {!canManage && (
           <InlineNotice tone="neutral">
             Only captains and managers can manage this scrim. You can view the match room and follow along.
           </InlineNotice>
@@ -157,7 +158,7 @@ export default function ScrimSessionPage() {
               callerTeamId={myTeamId ?? ''}
               sessionTeam1Id={session.team1Id}
               sessionId={session.id}
-              isCaptain={isCaptain}
+              isCaptain={canManage}
               onEvidenceSubmitted={() => sessionQuery.refetch()}
             />
           </motion.div>
@@ -166,14 +167,14 @@ export default function ScrimSessionPage() {
         <div className={showResult ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start' : 'max-w-[760px]'}>
           {showResult && (
             <motion.div {...arrive(0.12)} id="room-result" className="order-2 min-w-0 scroll-mt-6 lg:order-1">
-              <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={isCaptain} />
+              <ScrimGamesPanel session={session} myTeamId={myTeamId} isStaff={canManage} />
             </motion.div>
           )}
 
           <div className="order-1 min-w-0 space-y-4 lg:order-2 lg:sticky lg:top-6">
             {showSchedule && (
               <motion.div {...arrive(0.06)} id="room-schedule" className="scroll-mt-6">
-                <ScrimSchedulePanel session={session} myTeamId={myTeamId} opponentName={opponent} isStaff={isCaptain} />
+                <ScrimSchedulePanel session={session} myTeamId={myTeamId} opponentName={opponent} isStaff={canManage} />
               </motion.div>
             )}
 
@@ -185,7 +186,7 @@ export default function ScrimSessionPage() {
                   <ScrimCheckinPanel
                     session={session}
                     callerTeamId={myTeamId ?? ''}
-                    isCaptain={isCaptain}
+                    isCaptain={canManage}
                     onCheckinSuccess={() => sessionQuery.refetch()}
                   />
                 )}
@@ -217,7 +218,7 @@ export default function ScrimSessionPage() {
         </div>
       </div>
 
-      {isCaptain && status !== 'cancelled' && opponent && (
+      {canManage && status !== 'cancelled' && opponent && (
         <ScrimRoomChat sessionId={session.id} opponentName={opponent} openOnArrival={status === 'scheduled' && !session.scheduledAt} />
       )}
     </CompetitivePageShell>
