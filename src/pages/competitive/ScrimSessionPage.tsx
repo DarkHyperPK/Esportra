@@ -207,7 +207,7 @@ export default function ScrimSessionPage() {
 
             {showLobby && (
               <motion.div {...arrive(0.14)} aria-label="Lobby">
-                <ScrimLobbyPanel session={session} />
+                <ScrimLobbyPanel session={session} isStaff={canManage} />
               </motion.div>
             )}
 
