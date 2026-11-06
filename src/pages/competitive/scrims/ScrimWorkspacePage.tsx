@@ -119,7 +119,7 @@ export default function ScrimWorkspacePage() {
               team={{ id: team.id, name: team.name, logoUrl: team.logo_url ?? null }}
               teams={teams.map((t) => ({ id: t.id, name: t.name, logoUrl: t.logo_url ?? null }))}
               onTeamChange={setSelectedTeamId}
-              games={catalog.games.map((g) => ({ slug: g.slug, name: g.name }))}
+              games={catalog.games.filter((g) => g.slug.toLowerCase().includes('valorant')).map((g) => ({ slug: g.slug, name: g.name }))}
               gameSlug={gameSlug}
               onGameChange={changeGame}
               summary={summary}
