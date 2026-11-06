@@ -26,6 +26,8 @@ interface Props {
   verification?: OcrVerification | null;
   onSubmit: () => void;
   onManual: () => void;
+  /** Scrim context: skip full OCR review and submit the raw screenshot with a score only. */
+  onScreenshotOnly?: () => void;
   /** Preview only (staff test bench): no submit or manual-entry actions. */
   readOnly?: boolean;
 }
@@ -85,7 +87,7 @@ function TeamGroup({ slot, players, offset, stats, choices, draft, teamNames, te
 }
 
 export function ScoreboardOcrReview(props: Props) {
-  const { draft, teamNames, teamLogos, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, readOnly = false, verification } = props;
+  const { draft, teamNames, teamLogos, agents, errors, submitting, onScoreChange, onPlayerChange, onSubmit, onManual, onScreenshotOnly, readOnly = false, verification } = props;
 
   const [confirmedEliminationKeys, setConfirmedEliminationKeys] = useState(() => new Set<string>());
 
@@ -179,6 +181,9 @@ export function ScoreboardOcrReview(props: Props) {
       {!readOnly && (
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <GhostButton type="button" onClick={onManual} disabled={submitting}>Enter result manually</GhostButton>
+          {onScreenshotOnly && (
+            <GhostButton type="button" onClick={onScreenshotOnly} disabled={submitting}>Stats wrong? Submit screenshot</GhostButton>
+          )}
           <CtaButton
             type="button"
             onClick={onSubmit}

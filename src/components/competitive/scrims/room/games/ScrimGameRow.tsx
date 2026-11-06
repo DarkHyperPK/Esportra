@@ -99,6 +99,17 @@ export function ScrimGameRow({ sessionId, game, myTeamId, isStaff, team1, team2,
         <InlineNotice tone="warning">Staff will rule on this map. You can keep playing and reporting the other maps.</InlineNotice>
       )}
 
+      {!game.matchData && game.screenshotUrls.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {game.screenshotUrls.map((url, i) => (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+              className="group relative overflow-hidden border border-white/[0.08] bg-black/40 w-28 aspect-video focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-400">
+              <img src={url} alt={`Game ${game.gameNumber} screenshot${game.screenshotUrls.length > 1 ? ` ${i + 1}` : ''}`} className="h-full w-full object-cover transition-opacity group-hover:opacity-75" loading="lazy" />
+              <span className="absolute inset-x-0 bottom-0 bg-black/70 px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-300">View</span>
+            </a>
+          ))}
+        </div>
+      )}
       {game.matchData && (
         <div>
           <button type="button" onClick={() => setShowStats((v) => !v)} aria-expanded={showStats}

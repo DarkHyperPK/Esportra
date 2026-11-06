@@ -28,8 +28,8 @@ const TAB = 'min-h-[36px] rounded-lg px-3.5 text-[13px] font-medium transition-c
 export function ScrimGameReport(props: Props) {
   const { isValorant, gameNumber, onDone, closable = false } = props;
   const [method, setMethod] = useState<Method>(isValorant ? 'riot' : 'manual');
-  const options: Array<{ id: Method; label: string }> = isValorant
-    ? [{ id: 'riot', label: 'Auto-fetch' }, { id: 'screenshot', label: 'Upload screenshot' }, { id: 'manual', label: 'Enter manually' }]
+  const options: Array<{ id: Method; label: string; badge?: string }> = isValorant
+    ? [{ id: 'riot', label: 'Auto-fetch' }, { id: 'screenshot', label: 'Upload screenshot', badge: 'Beta' }, { id: 'manual', label: 'Enter manually' }]
     : [{ id: 'manual', label: 'Enter manually' }];
 
   return (
@@ -50,6 +50,11 @@ export function ScrimGameReport(props: Props) {
               className={cn(TAB, method === o.id ? 'bg-white/[0.12] text-white' : 'text-white/55 hover:bg-white/[0.06] hover:text-white')}
             >
               {o.label}
+              {o.badge && (
+                <span className="ml-1.5 rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-rose-300 bg-rose-400/10">
+                  {o.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>

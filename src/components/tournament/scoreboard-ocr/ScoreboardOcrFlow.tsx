@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { GhostButton } from '@/components/ui/app-buttons';
+import { CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { InlineNotice } from '@/components/ui/kit';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { useValorantAgents } from '@/hooks/useScoreboardOcr';
@@ -38,6 +38,15 @@ interface Props {
   mapId?: string;
   onSubmitted: () => void;
   onManual: () => void;
+  /** Scrim context: allow submitting the raw screenshot + score when OCR stats are wrong. */
+  onScreenshotOnly?: (url: string, scores: { team1Score: number; team2Score: number; mapName?: string | null }) => Promise<void>;
+}
+
+interface ScreenshotOnlyState {
+  url: string;
+  t1: number | null;
+  t2: number | null;
+  mapName: string | null | undefined;
 }
 
 /**
@@ -51,6 +60,9 @@ export function ScoreboardOcrFlow(props: Props) {
   const agents = useValorantAgents(true);
   const [draft, setDraft] = useState<OcrDraft | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [screenshotOnly, setScreenshotOnly] = useState<ScreenshotOnlyState | null>(null);
+  const [screenshotOnlySubmitting, setScreenshotOnlySubmitting] = useState(false);
+  const [screenshotOnlyError, setScreenshotOnlyError] = useState<string | null>(null);
 
   /** The screenshot is provably a game in Riot's history: report it from Riot, like Auto-fetch, with no review. */
   const reportFromRiot = async (result: ScoreboardOcrParse): Promise<boolean> => {
@@ -96,6 +108,58 @@ export function ScoreboardOcrFlow(props: Props) {
     }
   };
 
+  const handleScreenshotOnlySubmit = async () => {
+    if (!screenshotOnly || screenshotOnly.t1 === null || screenshotOnly.t2 === null || !props.onScreenshotOnly) return;
+    setScreenshotOnlySubmitting(true);
+    setScreenshotOnlyError(null);
+    try {
+      await props.onScreenshotOnly(screenshotOnly.url, { team1Score: screenshotOnly.t1, team2Score: screenshotOnly.t2, mapName: screenshotOnly.mapName });
+      onSubmitted();
+    } catch (error) {
+      setScreenshotOnlyError(getApiErrorMessage(error, 'Could not submit. Try again.'));
+    } finally {
+      setScreenshotOnlySubmitting(false);
+    }
+  };
+
+  if (screenshotOnly) {
+    const canSubmit = screenshotOnly.t1 !== null && screenshotOnly.t2 !== null && !screenshotOnlySubmitting;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <a href={screenshotOnly.url} target="_blank" rel="noopener noreferrer" className="shrink-0 overflow-hidden border border-white/[0.07] w-20 aspect-video bg-black/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-400">
+            <img src={screenshotOnly.url} alt="Uploaded screenshot" className="h-full w-full object-cover" loading="lazy" />
+          </a>
+          <p className="text-[13px] leading-relaxed text-zinc-300">Enter the score below. Your screenshot goes to the opponent as evidence — they confirm or dispute.</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-[13px] text-white/60 truncate max-w-[8rem]">{team1Name}</span>
+          <input
+            type="number" min="0" max="99" aria-label={`${team1Name} score`}
+            className="w-14 rounded bg-white/[0.07] px-2 py-1.5 text-center text-[15px] font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-400"
+            value={screenshotOnly.t1 ?? ''}
+            onChange={(e) => setScreenshotOnly((s) => s ? { ...s, t1: e.target.value === '' ? null : Number(e.target.value) } : s)}
+          />
+          <span className="text-white/40">–</span>
+          <input
+            type="number" min="0" max="99" aria-label={`${team2Name} score`}
+            className="w-14 rounded bg-white/[0.07] px-2 py-1.5 text-center text-[15px] font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-400"
+            value={screenshotOnly.t2 ?? ''}
+            onChange={(e) => setScreenshotOnly((s) => s ? { ...s, t2: e.target.value === '' ? null : Number(e.target.value) } : s)}
+          />
+          <span className="text-[13px] text-white/60 truncate max-w-[8rem]">{team2Name}</span>
+        </div>
+        {screenshotOnlyError && <InlineNotice tone="critical">{screenshotOnlyError}</InlineNotice>}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <GhostButton type="button" onClick={() => setScreenshotOnly(null)} disabled={screenshotOnlySubmitting}>Back to review</GhostButton>
+          <CtaButton type="button" onClick={handleScreenshotOnlySubmit} disabled={!canSubmit}>
+            {screenshotOnlySubmitting ? 'Sending…' : 'Submit screenshot'}
+          </CtaButton>
+        </div>
+      </div>
+    );
+  }
+
   if (draft) {
     return (
       <ScoreboardOcrReview
@@ -109,6 +173,9 @@ export function ScoreboardOcrFlow(props: Props) {
         onPlayerChange={(key, patch) => setDraft((d) => (d ? updateDraftPlayer(d, key, patch) : d))}
         onSubmit={send}
         onManual={onManual}
+        onScreenshotOnly={props.onScreenshotOnly
+          ? () => setScreenshotOnly({ url: draft.screenshotUrl, t1: draft.team1Score, t2: draft.team2Score, mapName: draft.mapName })
+          : undefined}
         verification={verification}
       />
     );
