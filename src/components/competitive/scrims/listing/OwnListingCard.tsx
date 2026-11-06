@@ -31,9 +31,10 @@ interface OwnListingCardProps {
   listing: ScrimListing;
   /** Names of other listings whose availability collides with this one. */
   overlappingWith?: string[];
+  canManage?: boolean;
 }
 
-export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCardProps) {
+export function OwnListingCard({ listing, overlappingWith = [], canManage = true }: OwnListingCardProps) {
   const catalog = useGameCatalogContext();
   const offers = useListingOffers(listing.id).data ?? [];
   const [editing, setEditing] = useState(false);
@@ -115,10 +116,10 @@ export function OwnListingCard({ listing, overlappingWith = [] }: OwnListingCard
           )}
         </div>
         {showSlots && recurring && <RecurringSlots listing={listing} />}
-        <OwnListingActions listing={listing} editing={editing} onToggleEdit={() => setEditing((v) => !v)} />
+        {canManage && <OwnListingActions listing={listing} editing={editing} onToggleEdit={() => setEditing((v) => !v)} />}
       </div>
 
-      {editing && <EditListingForm listing={listing} onClose={() => setEditing(false)} />}
+      {canManage && editing && <EditListingForm listing={listing} onClose={() => setEditing(false)} />}
     </article>
   );
 }

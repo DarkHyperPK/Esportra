@@ -47,7 +47,6 @@ export default function ScrimSessionPage() {
     ? myTeamIds.includes(session.team1Id) ? 1 : myTeamIds.includes(session.team2Id) ? 2 : null
     : null;
   const myTeamId = mySide === 1 ? session?.team1Id ?? null : mySide === 2 ? session?.team2Id ?? null : null;
-  // The server only returns the session to captains/managers, so myRole is the source of truth.
   const isCaptain = session?.myRole === 'captain' || session?.myRole === 'manager';
 
   const arrive = (delay: number) =>
@@ -122,6 +121,12 @@ export default function ScrimSessionPage() {
             <span className="text-[11px] text-white/30" aria-live="polite">Updating…</span>
           )}
         </div>
+
+        {!isCaptain && (
+          <InlineNotice tone="neutral">
+            Only captains and managers can manage this scrim. You can view the match room and follow along.
+          </InlineNotice>
+        )}
 
         <motion.div {...arrive(0)} className="space-y-6">
           <ScrimFaceOff

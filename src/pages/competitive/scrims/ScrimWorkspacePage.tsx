@@ -32,6 +32,7 @@ interface TeamSummary {
   name: string;
   logo_url?: string | null;
   primary_game_slug?: string | null;
+  my_role?: string | null;
 }
 
 const RETRY_BUTTON =
@@ -51,6 +52,7 @@ export default function ScrimWorkspacePage() {
   const teamId = selectedTeamId || searchParams.get('team_id') || teams[0]?.id || '';
   const team = teams.find((t) => t.id === teamId) ?? teams[0] ?? null;
   const gameSlug = selectedGame || team?.primary_game_slug || catalog.games[0]?.slug || null;
+  const canManage = team?.my_role === 'captain' || team?.my_role === 'manager';
 
   function changeGame(slug: string) {
     setSelectedGame(slug);
@@ -121,9 +123,15 @@ export default function ScrimWorkspacePage() {
               gameSlug={gameSlug}
               onGameChange={changeGame}
               summary={summary}
-              onNewScrim={() => setShowNewListing(true)}
+              onNewScrim={canManage ? () => setShowNewListing(true) : undefined}
             />
           </motion.div>
+
+          {!canManage && (
+            <InlineNotice tone="neutral">
+              Only captains and managers can create listings, accept offers and manage scrim sessions. Ask your captain if you need changes.
+            </InlineNotice>
+          )}
 
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <div className="min-w-0 space-y-8">
@@ -138,7 +146,7 @@ export default function ScrimWorkspacePage() {
                   <UpNextList items={actionItems} />
                   {receivedOffers.length > 0 && (
                     <div className="grid gap-3 lg:grid-cols-2">
-                      {receivedOffers.map((offer) => <ReceivedOfferCard key={offer.id} offer={offer} />)}
+                      {receivedOffers.map((offer) => <ReceivedOfferCard key={offer.id} offer={offer} canManage={canManage} />)}
                     </div>
                   )}
                 </div>
@@ -183,7 +191,7 @@ export default function ScrimWorkspacePage() {
               ) : (
                 <div className="space-y-3">
                   {listings.map((l) => (
-                    <OwnListingCard key={l.id} listing={l} overlappingWith={listingOverlaps.get(l.id) ?? []} />
+                    <OwnListingCard key={l.id} listing={l} overlappingWith={listingOverlaps.get(l.id) ?? []} canManage={canManage} />
                   ))}
                 </div>
               )}

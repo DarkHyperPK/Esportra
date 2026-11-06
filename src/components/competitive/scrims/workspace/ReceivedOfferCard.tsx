@@ -21,7 +21,7 @@ import { OfferRosterPreview } from './OfferRosterPreview';
 import { TeamRecordStrip } from '../TeamRecordStrip';
 import type { ScrimOffer } from '@/types/competitive';
 
-export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
+export function ReceivedOfferCard({ offer, canManage = true }: { offer: ScrimOffer; canManage?: boolean }) {
   const navigate = useNavigate();
   const accept = useAcceptOffer(offer.id);
   const decline = useDeclineOffer(offer.id);
@@ -88,7 +88,7 @@ export function ReceivedOfferCard({ offer }: { offer: ScrimOffer }) {
 
       {error && <InlineNotice tone="critical">{error}</InlineNotice>}
 
-      {offer.status === 'pending' && (
+      {offer.status === 'pending' && canManage && (
         <div className="space-y-2">
           <div className="flex gap-2">
             <AccentButton size="sm" onClick={onAccept} disabled={busy} className="h-9 px-4 text-[12px] font-semibold rounded-lg font-sans text-[13px] font-semibold normal-case tracking-normal">

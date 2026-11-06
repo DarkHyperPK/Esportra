@@ -25,7 +25,7 @@ interface ScrimTeamHeaderProps {
   onGameChange: (slug: string) => void;
   /** e.g. "2 upcoming · 14 played"; empty while loading. */
   summary: string;
-  onNewScrim: () => void;
+  onNewScrim?: (() => void) | undefined;
 }
 
 const TRIGGER =
@@ -94,9 +94,11 @@ export function ScrimTeamHeader({
           <CalendarDays className="h-4 w-4" aria-hidden="true" />
           Calendar
         </Link>
-        <AccentButton onClick={onNewScrim} className="h-10 rounded-lg px-5 text-[13px] font-semibold normal-case tracking-normal">
-          New scrim
-        </AccentButton>
+        {onNewScrim && (
+          <AccentButton onClick={onNewScrim} className="h-10 rounded-lg px-5 text-[13px] font-semibold normal-case tracking-normal">
+            New scrim
+          </AccentButton>
+        )}
       </div>
     </header>
   );
