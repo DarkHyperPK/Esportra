@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { InlineNotice } from '@/components/ui/kit';
 import { useUpdateSessionLobby } from '@/hooks/competitive/useScrims';
+import { ApiError, getApiErrorMessage } from '@/lib/apiClient';
 import { getLobbyFormat } from '@/services/gameLobbyFormat';
 import { ROOM_EYEBROW, ROOM_FIELD, ROOM_GHOST, ROOM_PANEL } from './roomStyles';
 import type { ScrimSession } from '@/types/competitive';
@@ -18,7 +19,7 @@ function fieldsToPayload(gameSlug: string | null, f1: string, f2: string) {
 }
 
 
-export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
+export function ScrimLobbyPanel({ session, isStaff }: { session: ScrimSession; isStaff: boolean }) {
   const fmt = getLobbyFormat(session.gameSlug ?? '');
   const saved = getLobbyFieldValues(session);
   const [f1, setF1] = useState(saved.field1);
@@ -27,6 +28,11 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
   const update = useUpdateSessionLobby(session.id);
   const locked = session.status === 'completed' || session.status === 'cancelled';
   const dirty = f1 !== saved.field1 || f2 !== saved.field2;
+  const errorMessage = update.isError
+    ? update.error instanceof ApiError && update.error.status === 403
+      ? 'Only team captains or managers can update lobby info. Ask your captain or manager.'
+      : getApiErrorMessage(update.error, 'Could not save lobby info. Try again.')
+    : '';
 
   async function save() {
     setFlash(false);
@@ -40,7 +46,7 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
   return (
     <div className={ROOM_PANEL}>
       <p className={ROOM_EYEBROW}>Lobby</p>
-      {locked ? (
+      {locked || !isStaff ? (
         <div className="space-y-3">
           {[{ label: fmt.fieldOneLabel, val: f1 }, ...(fmt.fieldTwo ? [{ label: fmt.fieldTwo.label, val: f2 }] : [])].map(({ label, val }) => (
             <div key={label} className="space-y-1">
@@ -48,7 +54,11 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
               <p className="text-[14px] text-white/70">{val || <span className="text-white/25">—</span>}</p>
             </div>
           ))}
-          <p className="text-[11px] text-white/30">Session ended.</p>
+          {locked ? (
+            <p className="text-[11px] text-white/30">Session ended.</p>
+          ) : (
+            <InlineNotice tone="neutral">Only team captains or managers can update lobby info. Ask your captain or manager.</InlineNotice>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -69,7 +79,7 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
               <input id="lf2" value={f2} onChange={(e) => setF2(e.target.value)} placeholder={fmt.fieldTwo.hint} className={ROOM_FIELD} />
             </div>
           )}
-          <p className="text-[11px] text-white/30">Either team can update this.</p>
+          <p className="text-[11px] text-white/30">A captain or manager from either team can update this.</p>
           {dirty && (
             <div className="flex justify-end mt-2">
               <button onClick={save} disabled={update.isPending} className={ROOM_GHOST}>
@@ -78,7 +88,7 @@ export function ScrimLobbyPanel({ session }: { session: ScrimSession }) {
             </div>
           )}
           {flash && <InlineNotice tone="success">Lobby info saved.</InlineNotice>}
-          {update.isError && <InlineNotice tone="critical">Could not save lobby info. Try again.</InlineNotice>}
+          {errorMessage && <InlineNotice tone="critical">{errorMessage}</InlineNotice>}
         </div>
       )}
     </div>
