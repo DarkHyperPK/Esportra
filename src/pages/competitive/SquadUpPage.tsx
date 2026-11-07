@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { FEATURES, usePlatformFeatures } from '@/hooks/usePlatformFeatures';
@@ -15,6 +15,7 @@ import { SquadUpSetupSheet, type SetupValues } from '@/components/squad-up/app/S
 import { StillLookingDialog } from '@/components/squad-up/app/StillLookingDialog';
 import { SquadUpSummary } from '@/components/competitive/squad-up/SquadUpSummary';
 import { squadUpStartErrorMessage } from '@/lib/squadUpErrors';
+import { ApiError } from '@/lib/apiClient';
 import type { SquadUpStats } from '@/schemas/squadUp';
 
 const SIGN_IN = `/auth/signin?redirect=${encodeURIComponent('/competitive/squad-up')}`;
@@ -47,11 +48,28 @@ export default function SquadUpPage() {
   const ping = useCallback(() => { stillHere.mutate(); }, [stillHere]);
   const idle = useSquadUpIdle(live, ping);
 
+  const lastValues = useRef<SetupValues | null>(null);
+  const rankSyncing = start.isError && start.error instanceof ApiError && (start.error.body as { error?: string } | null)?.error === 'STATS_NOT_SYNCED';
+
   function goLive(values: SetupValues) {
+    lastValues.current = values;
     start.mutate({ ...values, note: values.note || undefined }, {
       onSuccess: () => { remember(values); setSetupOpen(false); setLeftStats(null); setWasInDuo(false); idle.markActive(true); },
     });
   }
+
+  // Auto-retry when the rank sync is still in progress; the backend triggers the sync on first attempt.
+  useEffect(() => {
+    if (!rankSyncing) return;
+    const values = lastValues.current;
+    if (!values) return;
+    const id = setTimeout(() => {
+      start.mutate({ ...values, note: values.note || undefined }, {
+        onSuccess: () => { remember(values); setSetupOpen(false); setLeftStats(null); setWasInDuo(false); idle.markActive(true); },
+      });
+    }, 4000);
+    return () => clearTimeout(id);
+  }, [rankSyncing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function leave() {
     end.mutate(undefined, { onSuccess: (summary) => { setLeftStats(summary); } });
@@ -59,7 +77,7 @@ export default function SquadUpPage() {
 
   const setup = (
     <SquadUpSetupSheet key={setupOpen ? 'open' : 'closed'} open={setupOpen} onOpenChange={setSetupOpen} initial={lastSetup}
-      pending={start.isPending} error={start.isError ? squadUpStartErrorMessage(start.error) : undefined}
+      pending={start.isPending} rankSyncing={rankSyncing} error={start.isError && !rankSyncing ? squadUpStartErrorMessage(start.error) : undefined}
       submitLabel={inDuo ? 'Update and keep looking' : 'Go live'} onSubmit={goLive} />
   );
 

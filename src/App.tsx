@@ -157,6 +157,7 @@ const AvatarPoolManagement = lazyWithRetry(() => import("./pages/admin/tools/Ava
 
 // New admin pages
 const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
+const Broadcasts = lazyWithRetry(() => import("./pages/admin/operations/Broadcasts"));
 const GhostMode = lazyWithRetry(() => import("./pages/admin/security/GhostMode"));
 const CommandCentre = lazyWithRetry(() => import("./pages/admin/CommandCentre"));
 
@@ -452,6 +453,9 @@ const AppContent = React.memo(() => {
 
                   {/* System */}
                   <Route path="system/feature-flags" element={<AdminRouteGuard requiredPermission="feature_flags:view"><FeatureFlags /></AdminRouteGuard>} />
+
+                  {/* Operations */}
+                  <Route path="operations/broadcasts" element={<AdminRouteGuard requiredPermission="broadcasts:view"><Broadcasts /></AdminRouteGuard>} />
 
                   {/* Security */}
                   <Route path="security/ghost" element={<AdminRouteGuard requiredPermission="users:impersonate" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GhostMode /></AdminRouteGuard>} />

@@ -12,6 +12,7 @@ import {
   Lock,
   LucideIcon,
   MapPin,
+  Megaphone,
   ClipboardList,
   Monitor,
   Scale,
@@ -84,6 +85,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'Disputes', href: '/admin/operations/disputes', icon: AlertTriangle, permission: 'disputes:view' },
       { label: 'Alerts', href: '/admin/operations/alerts', icon: Bell, permission: 'alerts:view' },
       { label: 'Reports', href: '/admin/operations/reports', icon: CalendarClock, permission: 'reports:view' },
+      { label: 'Broadcasts', href: '/admin/operations/broadcasts', icon: Megaphone, permission: 'broadcasts:view' },
     ],
   },
   {

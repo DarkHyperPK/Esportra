@@ -15,6 +15,7 @@ interface SquadUpSetupSheetProps {
   onOpenChange: (open: boolean) => void;
   initial: Partial<SquadUpSetup>;
   pending: boolean;
+  rankSyncing?: boolean;
   error?: string;
   submitLabel: string;
   onSubmit: (values: SquadUpSetup) => void;
@@ -24,7 +25,7 @@ interface SquadUpSetupSheetProps {
  * The quick setup: what you want to play, where you live, one optional line for your card, how many you need,
  * mic. Everything is pre-filled from last time, so going live is usually a single tap.
  */
-export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error, submitLabel, onSubmit }: SquadUpSetupSheetProps) {
+export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, rankSyncing, error, submitLabel, onSubmit }: SquadUpSetupSheetProps) {
   const wide = useMediaQuery('(min-width: 768px)');
   const [mode, setMode] = useState<SquadUpMode>(initial.mode ?? 'competitive');
   const [areas, setAreas] = useState<AreaId[]>(initial.areas ?? []);
@@ -77,8 +78,12 @@ export function SquadUpSetupSheet({ open, onOpenChange, initial, pending, error,
             </button>
           </div>
 
-          {(formError || error) && <p className="su-error" role="alert">{formError || error}</p>}
-          <CommandButton type="submit" variant="primary" size="lg" slide disabled={pending}>{pending ? 'Going live…' : submitLabel}</CommandButton>
+          {rankSyncing
+            ? <p className="su-syncing" role="status" aria-live="polite">Syncing your rank<span className="su-syncing-dots" aria-hidden="true"><span /><span /><span /></span></p>
+            : (formError || error) && <p className="su-error" role="alert">{formError || error}</p>}
+          <CommandButton type="submit" variant="primary" size="lg" slide disabled={pending || rankSyncing}>
+            {pending ? 'Going live…' : rankSyncing ? 'Syncing rank…' : submitLabel}
+          </CommandButton>
         </form>
       </SheetContent>
     </Sheet>
