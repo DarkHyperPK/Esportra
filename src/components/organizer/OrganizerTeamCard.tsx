@@ -9,23 +9,45 @@ interface TeamCardProps {
     renderStatusBadge: (participant: any) => React.ReactNode;
 }
 
+interface MemberInfo {
+    username: string;
+    avatar_url?: string | null;
+    riot_tag?: string | null;
+    discord_handle?: string | null;
+    steam_tag?: string | null;
+}
+
 const ROSTER_PREVIEW = 5;
 
 /** Members arrive as an array, a JSON array string, or a comma list. */
-function getMembers(membersInput: unknown): string[] {
+function getMembers(membersInput: unknown): MemberInfo[] {
     if (!membersInput) return [];
-    const toName = (m: unknown) =>
-        typeof m === 'string' ? m : String((m as { username?: string; name?: string })?.username || (m as { name?: string })?.name || '');
-    if (Array.isArray(membersInput)) return membersInput.map(toName).filter(Boolean);
+    const toMember = (m: unknown): MemberInfo | null => {
+        if (typeof m === 'string') return m ? { username: m } : null;
+        if (m && typeof m === 'object') {
+            const obj = m as Record<string, unknown>;
+            const username = String(obj.username || obj.name || '');
+            if (!username) return null;
+            return {
+                username,
+                avatar_url: (obj.avatar_url as string) ?? null,
+                riot_tag: (obj.riot_tag as string) ?? null,
+                discord_handle: (obj.discord_handle as string) ?? null,
+                steam_tag: (obj.steam_tag as string) ?? null,
+            };
+        }
+        return null;
+    };
+    if (Array.isArray(membersInput)) return membersInput.map(toMember).filter((m): m is MemberInfo => m !== null);
     if (typeof membersInput !== 'string') return [];
     const trimmed = membersInput.trim();
     if (trimmed.startsWith('[')) {
         try {
             const parsed: unknown = JSON.parse(trimmed);
-            if (Array.isArray(parsed)) return parsed.map(toName).filter(Boolean);
+            if (Array.isArray(parsed)) return parsed.map(toMember).filter((m): m is MemberInfo => m !== null);
         } catch { /* fall through to comma split */ }
     }
-    return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    return trimmed.split(',').map((s) => s.trim()).filter(Boolean).map((s) => ({ username: s }));
 }
 
 /**
@@ -83,11 +105,20 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
             {!isSolo && (
                 <div className="mt-4 border-t border-white/[0.06] px-5 py-4">
                     {members.length > 0 ? (
-                        <ol className="space-y-1.5 text-sm">
+                        <ol className="space-y-2 text-sm">
                             {members.slice(0, ROSTER_PREVIEW).map((member, idx) => (
-                                <li key={`${member}-${idx}`} className="flex items-baseline gap-3">
-                                    <span className="w-4 text-right font-mono text-[11px] text-zinc-600">{idx + 1}</span>
-                                    <span className="truncate text-zinc-300">{member}</span>
+                                <li key={`${member.username}-${idx}`} className="flex items-start gap-3">
+                                    <span className="mt-0.5 w-4 text-right font-mono text-[11px] text-zinc-600">{idx + 1}</span>
+                                    <div className="min-w-0 flex-1">
+                                        <span className="truncate text-zinc-300">{member.username}</span>
+                                        {(member.discord_handle || member.riot_tag || member.steam_tag) && (
+                                            <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                                                {member.discord_handle && <span title="Discord">{member.discord_handle}</span>}
+                                                {member.riot_tag && <span title="Riot ID">{member.riot_tag}</span>}
+                                                {member.steam_tag && <span title="Steam">{member.steam_tag}</span>}
+                                            </div>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                             {members.length > ROSTER_PREVIEW && (

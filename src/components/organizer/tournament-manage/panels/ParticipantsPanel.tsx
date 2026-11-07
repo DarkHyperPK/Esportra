@@ -223,19 +223,34 @@ export function ParticipantsPanel({
     }
   };
 
-  const parsedMembers = (p: DashboardParticipant): string[] => {
+  const parsedMembers = (p: DashboardParticipant): { username: string; discord_handle?: string | null; riot_tag?: string | null; steam_tag?: string | null }[] => {
     if (!p.team_members) return [];
+    if (Array.isArray(p.team_members)) {
+      return p.team_members.map((m) => ({
+        username: String((m as Record<string, unknown>).username ?? (m as Record<string, unknown>).name ?? m),
+        discord_handle: (m as Record<string, unknown>).discord_handle as string | null ?? null,
+        riot_tag: (m as Record<string, unknown>).riot_tag as string | null ?? null,
+        steam_tag: (m as Record<string, unknown>).steam_tag as string | null ?? null,
+      })).filter((m) => m.username);
+    }
     try {
       const arr = JSON.parse(p.team_members);
-      return Array.isArray(arr) ? arr.map(String) : [];
+      if (Array.isArray(arr)) return arr.map((m: unknown) => ({
+        username: String((m as Record<string, unknown>)?.username ?? (m as Record<string, unknown>)?.name ?? m),
+        discord_handle: (m as Record<string, unknown>)?.discord_handle as string | null ?? null,
+        riot_tag: (m as Record<string, unknown>)?.riot_tag as string | null ?? null,
+        steam_tag: (m as Record<string, unknown>)?.steam_tag as string | null ?? null,
+      })).filter((m) => m.username);
+      return [];
     } catch {
-      return p.team_members.split(',').map((m) => m.trim()).filter(Boolean);
+      return p.team_members.split(',').map((m) => m.trim()).filter(Boolean).map((s) => ({ username: s }));
     }
   };
 
   const getMemberCount = (p: DashboardParticipant): string => {
     if (p.participant_type === 'solo') return '1';
     if (!p.team_members) return '—';
+    if (Array.isArray(p.team_members)) return String(p.team_members.length);
     try {
       const parsed = JSON.parse(p.team_members);
       if (Array.isArray(parsed)) return String(parsed.length);
@@ -513,9 +528,18 @@ export function ParticipantsPanel({
                 <div className="space-y-1.5">
                   <p className={EYEBROW_CLASS}>Roster</p>
                   {parsedMembers(managedParticipant).length > 0 ? (
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {parsedMembers(managedParticipant).map((m, i) => (
-                        <li key={i} className="text-sm text-zinc-300">{m}</li>
+                        <li key={i}>
+                          <span className="text-sm text-zinc-300">{m.username}</span>
+                          {(m.discord_handle || m.riot_tag || m.steam_tag) && (
+                            <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                              {m.discord_handle && <span title="Discord">{m.discord_handle}</span>}
+                              {m.riot_tag && <span title="Riot ID">{m.riot_tag}</span>}
+                              {m.steam_tag && <span title="Steam">{m.steam_tag}</span>}
+                            </div>
+                          )}
+                        </li>
                       ))}
                     </ul>
                   ) : (

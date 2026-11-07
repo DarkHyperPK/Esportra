@@ -76,7 +76,7 @@ export interface DashboardParticipant {
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;
-    team_members: string | null;
+    team_members: string | Record<string, unknown>[] | null;
     gamer_tag: string | null;
     registered_at: string;
     created_at: string;
