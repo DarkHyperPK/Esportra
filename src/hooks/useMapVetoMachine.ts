@@ -39,7 +39,7 @@ export interface MatchMapVeto {
     team1_link_token: string | null;
     team2_link_token: string | null;
     best_of: 1 | 3 | 5;  // Standardized to NUMBER (was veto_format TEXT)
-    status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+    status: 'pending' | 'pending_toss' | 'toss_choice_pending' | 'in_progress' | 'completed' | 'cancelled';
     current_team_id: string | null;
     current_action: 'ban' | 'pick' | 'pick_side' | null;
     current_action_number: number;
@@ -54,6 +54,8 @@ export interface MatchMapVeto {
     started_at: string | null;
     completed_at: string | null;
     game?: string | null;
+    toss_winner_team_id: string | null;
+    toss_first_actor_team_id: string | null;
 }
 
 // Normalize picked map objects: backend sends { mapId, side }, frontend expects { map_id, side }
@@ -106,9 +108,11 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         team2_picked_maps:     normalizePickedArray(apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps),
         selected_map_id:       apiVeto.selectedMapId ?? apiVeto.selected_map_id ?? null,
         selected_map_pool:     Array.isArray(apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) ? (apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) : [],
-        started_at:            apiVeto.startedAt ?? apiVeto.started_at ?? null,
-        completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
-        game:                  apiVeto.game ?? null,
+        started_at:                apiVeto.startedAt ?? apiVeto.started_at ?? null,
+        completed_at:              apiVeto.completedAt ?? apiVeto.completed_at ?? null,
+        game:                      apiVeto.game ?? null,
+        toss_winner_team_id:       apiVeto.tossWinnerTeamId ?? apiVeto.toss_winner_team_id ?? null,
+        toss_first_actor_team_id:  apiVeto.tossFirstActorTeamId ?? apiVeto.toss_first_actor_team_id ?? null,
     } as MatchMapVeto;
 }
 
@@ -410,6 +414,9 @@ export const useMapVetoMachine = ({
     // Side selection state
     const [showSideDialog, setShowSideDialog] = useState(false);
     const [pendingMapId, setPendingMapId] = useState<string | null>(null);
+
+    // Toss state
+    const [tossLoading, setTossLoading] = useState(false);
 
     // VetoService: uses actual map pool size when maps are loaded, falls back to game default
     const actualPoolSize = allAvailableMaps.length > 0 ? allAvailableMaps.length : undefined;
@@ -839,6 +846,12 @@ export const useMapVetoMachine = ({
             fetchVetoData();
         });
 
+        // Handle match-room toss result — StateSync arriving alongside this updates the veto state
+        connection.on('VetoTossResult', (_payload: { matchId: string; winnerTeamId: string; winnerTeamName: string }) => {
+            if (!mounted) return;
+            // StateSync is broadcast immediately after by the server; no extra fetch needed.
+        });
+
         // Handle veto complete
         connection.on('VetoComplete', (rawVeto: any) => {
             if (!mounted) return;
@@ -1194,6 +1207,35 @@ export const useMapVetoMachine = ({
         setShowRoleSwitchPrompt(false);
     }, [switchRole]);
 
+    const triggerToss = useCallback(async () => {
+        if (!veto || !isOrganizer) return;
+        setTossLoading(true);
+        try {
+            await apiClient.post(`/api/veto/${matchId}/toss`, {});
+            // StateSync + VetoTossResult push the state update
+        } catch (error: any) {
+            toast({ title: 'Toss failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setTossLoading(false);
+        }
+    }, [isOrganizer, matchId, toast, veto]);
+
+    const makeTossChoice = useCallback(async (goFirst: boolean) => {
+        if (!veto) return;
+        setTossLoading(true);
+        try {
+            const url = vetoToken
+                ? `/api/veto/token/${vetoToken}/toss-choice`
+                : `/api/veto/${matchId}/toss-choice`;
+            await apiClient.post(url, { goFirst });
+            // StateSync pushes the in_progress state update
+        } catch (error: any) {
+            toast({ title: 'Choice failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setTossLoading(false);
+        }
+    }, [matchId, toast, veto, vetoToken]);
+
     const getTeamLink = useCallback((token: string | null) => {
         if (!token) return null;
         return `${window.location.origin}/map-veto/${token}`;
@@ -1206,6 +1248,12 @@ export const useMapVetoMachine = ({
         if (copiedLinkTimeoutRef.current) clearTimeout(copiedLinkTimeoutRef.current);
         copiedLinkTimeoutRef.current = setTimeout(() => setCopiedLink(null), 2000);
     }, [toast]);
+
+    const isTossWinner = Boolean(
+        veto?.toss_winner_team_id &&
+        userTeamId &&
+        userTeamId === veto.toss_winner_team_id
+    );
 
     return {
         veto,
@@ -1244,6 +1292,10 @@ export const useMapVetoMachine = ({
         team1Logo,
         team2Logo,
         isTeam1Captain,
-        isTeam2Captain
+        isTeam2Captain,
+        tossLoading,
+        isTossWinner,
+        triggerToss,
+        makeTossChoice,
     };
 };
