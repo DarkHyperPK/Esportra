@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,9 @@ import {
   Edit,
   X,
   Search,
+  ImageIcon,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -63,6 +65,9 @@ interface Broadcast {
   read_count: number;
   created_at: string;
   created_by_name: string | null;
+  hero_image_url: string | null;
+  cta_url: string | null;
+  cta_label: string | null;
 }
 
 interface BroadcastStats {
@@ -154,6 +159,13 @@ export default function Broadcasts() {
   // Delivery channels
   const [formSendEmail, setFormSendEmail] = useState(false);
 
+  // Rich email fields
+  const [formHeroImageUrl, setFormHeroImageUrl] = useState('');
+  const [formCtaUrl, setFormCtaUrl] = useState('');
+  const [formCtaLabel, setFormCtaLabel] = useState('');
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const heroFileRef = useRef<HTMLInputElement>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'broadcasts', activeTab === 'all' ? undefined : activeTab],
     queryFn: () => {
@@ -180,6 +192,24 @@ export default function Broadcasts() {
   });
   const userSearchResults = userSearchResponse?.users ?? [];
 
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingHero(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `broadcast-heroes/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('system.assets.website').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('system.assets.website').getPublicUrl(path);
+      setFormHeroImageUrl(data.publicUrl);
+    } catch {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingHero(false);
+    }
+  };
+
   const createBroadcast = useMutation({
     mutationFn: () =>
       apiClient.post('/api/admin/broadcasts', {
@@ -192,6 +222,9 @@ export default function Broadcasts() {
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
         scheduled_at: formScheduledAt ? new Date(formScheduledAt).toISOString() : undefined,
+        hero_image_url: formHeroImageUrl || undefined,
+        cta_url: formCtaUrl || undefined,
+        cta_label: formCtaLabel || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
@@ -217,6 +250,9 @@ export default function Broadcasts() {
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
         scheduled_at: formScheduledAt ? new Date(formScheduledAt).toISOString() : undefined,
+        hero_image_url: formHeroImageUrl || null,
+        cta_url: formCtaUrl || null,
+        cta_label: formCtaLabel || null,
       });
     },
     onSuccess: () => {
@@ -272,6 +308,9 @@ export default function Broadcasts() {
     setSelectedUsers([]);
     setUserSearch('');
     setFormSendEmail(false);
+    setFormHeroImageUrl('');
+    setFormCtaUrl('');
+    setFormCtaLabel('');
   };
 
   const openEdit = (broadcast: Broadcast) => {
@@ -286,6 +325,10 @@ export default function Broadcasts() {
     setFormSegment((broadcast.target_segment as TargetSegment) ?? {});
     setFormTargetUserIds(broadcast.target_user_ids ?? []);
     setSelectedUsers([]);
+    setFormHeroImageUrl(broadcast.hero_image_url ?? '');
+    setFormCtaUrl(broadcast.cta_url ?? '');
+    setFormCtaLabel(broadcast.cta_label ?? '');
+    setFormSendEmail((broadcast as unknown as { channels?: string[] }).channels?.includes('email') ?? false);
   };
 
   const addUser = (user: UserSearchResult) => {
@@ -501,7 +544,7 @@ export default function Broadcasts() {
           }
         }}
       >
-        <DialogContent className="max-w-lg border-white/10 bg-[#0a0a0c]">
+        <DialogContent className="max-w-lg border-white/10 bg-[#0a0a0c] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingBroadcast ? 'Edit Broadcast' : 'Create Broadcast'}
@@ -716,10 +759,79 @@ export default function Broadcasts() {
                   <label htmlFor="channel-email" className="cursor-pointer text-sm text-white">
                     Email
                   </label>
-                  <span className="text-xs text-zinc-500">(via Resend)</span>
+                  <span className="text-xs text-zinc-500">(via SES)</span>
                 </div>
               </div>
             </Field>
+
+            {formSendEmail && (
+              <CommandPanel className="space-y-4">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Rich Email Template</p>
+
+                <Field label="Hero Image (optional)">
+                  <input
+                    ref={heroFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleHeroUpload}
+                  />
+                  {formHeroImageUrl ? (
+                    <div className="space-y-2">
+                      <img src={formHeroImageUrl} alt="Hero" className="h-28 w-full object-cover border border-white/10" />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => heroFileRef.current?.click()}
+                          className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white"
+                        >
+                          Replace
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormHeroImageUrl('')}
+                          className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => heroFileRef.current?.click()}
+                      disabled={uploadingHero}
+                      className="flex w-full flex-col items-center gap-2 border border-dashed border-white/15 p-6 text-zinc-500 transition-colors hover:border-white/30 hover:text-zinc-300"
+                    >
+                      {uploadingHero ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5" />
+                      )}
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider">
+                        {uploadingHero ? 'Uploading…' : 'Upload image'}
+                      </span>
+                    </button>
+                  )}
+                </Field>
+
+                <Field label="CTA Button URL (optional)">
+                  <Input
+                    placeholder="https://esportra.com/..."
+                    value={formCtaUrl}
+                    onChange={(e) => setFormCtaUrl(e.target.value)}
+                  />
+                </Field>
+
+                <Field label="CTA Button Label (optional)">
+                  <Input
+                    placeholder="e.g. Register Now"
+                    value={formCtaLabel}
+                    onChange={(e) => setFormCtaLabel(e.target.value)}
+                  />
+                </Field>
+              </CommandPanel>
+            )}
 
             <Field label="Schedule (optional)">
               <Input
