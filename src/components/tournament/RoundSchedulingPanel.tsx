@@ -269,7 +269,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
   const allKeys = [...matchesByKey.entries()];
   const setCount = allKeys.filter(([k, ms]) => describe(k, ms).state === 'set').length;
   const windowLabel = tournamentStartDate
-    ? `${format(parseISO(tournamentStartDate), 'MMM d')}${tournamentEndDate ? ` – ${format(parseISO(tournamentEndDate), 'MMM d, yyyy')}` : ''}`
+    ? `${format(parseISO(tournamentStartDate), 'MMM d')}${tournamentEndDate ? ` – ${format(parseISO(tournamentEndDate), 'MMM d, yyyy')}` : ' onwards'}`
     : null;
 
   return (

@@ -17,6 +17,7 @@ import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, Chevro
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
+import StageScheduleSection from './StageScheduleSection';
 import {
     formatBRAdvancementLabel,
     formatBRStageFormatLabel,
@@ -24,6 +25,19 @@ import {
     getBRStageUnitLabels,
 } from '@/utils/brGameContext';
 import type { BRStageFormat } from '@/types/battleRoyale';
+
+interface ScheduleMatch {
+    id: string;
+    stage_id: string;
+    format: string;
+    round_index: number;
+    bracket_type: string | null;
+    scheduled_time: string | null;
+    team1_name: string | null;
+    team2_name: string | null;
+    status: string;
+    match_number: number;
+}
 
 interface StagesTabProps {
     tournamentId: string;
@@ -49,7 +63,12 @@ interface Stage {
     config: any;
     scheduling_config?: {
         self_play_enabled?: boolean;
+        selfPlayEnabled?: boolean;
         checkin_window_minutes?: number;
+        scheduling_mode?: 'round_based' | 'granular';
+        schedulingMode?: 'round_based' | 'granular';
+        round_deadlines?: Record<string, string>;
+        roundDeadlines?: Record<string, string>;
     } | null;
 }
 
@@ -145,6 +164,23 @@ export const StagesTab: React.FC<StagesTabProps> = ({
         enabled: !stagesProp,
         staleTime: 2 * 60_000,
     });
+
+    const { data: scheduleMatches = [] } = useQuery({
+        queryKey: ['tournament-schedule', tournamentId],
+        queryFn: () => apiClient.get<ScheduleMatch[]>(`/api/tournaments/${tournamentId}/schedule`),
+        enabled: !!tournamentId,
+        staleTime: 60_000,
+    });
+
+    const matchesByStage = React.useMemo(() => {
+        const map = new Map<string, ScheduleMatch[]>();
+        for (const m of scheduleMatches) {
+            const arr = map.get(m.stage_id) ?? [];
+            arr.push(m);
+            map.set(m.stage_id, arr);
+        }
+        return map;
+    }, [scheduleMatches]);
 
     const stages = stagesProp ? normalizeStages(stagesProp) : fetchedStages;
     const { unitsLabel } = getBRStageUnitLabels(teamSize, participantMode);
@@ -510,6 +546,12 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                             </div>
                                         )}
                                     </div>
+
+                                    <StageScheduleSection
+                                        stageFormat={stage.format}
+                                        matches={matchesByStage.get(stage.id) ?? []}
+                                        schedulingConfig={stage.scheduling_config}
+                                    />
                                 </div>
                             </div>
 

@@ -913,6 +913,7 @@ const TournamentDetails = () => {
                 />
                 </div>
               </TabsContent>
+
             </>
           )}
 

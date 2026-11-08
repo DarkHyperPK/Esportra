@@ -10,6 +10,7 @@ import { GameModeSection } from './GameModeSection';
 import { BRScoringSection } from './BRScoringSection';
 import { WizardStepFrame } from './WizardStepFrame';
 import { cn } from '@/lib/utils';
+import { RulesFileUpload } from '@/components/ui/RulesFileUpload';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
@@ -244,7 +245,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             )}
 
             <FormSection title="Rules">
-                <Field label="Tournament rules" htmlFor="rules" optional hint="Shown on the public page under Rules. One rule per line reads best.">
+                <Field label="Tournament rules" htmlFor="rules" optional hint="Supports markdown — headings, bold, lists and tables all render on the public page.">
                     <Textarea
                         id="rules"
                         value={data.rules || ''}
@@ -252,6 +253,10 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         placeholder={'1. Check in 30 minutes before your first match.\n2. No third-party software.\n3. Report disputes within 5 minutes of the match ending.'}
                         rows={7}
                         className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')}
+                    />
+                    <RulesFileUpload
+                        onLoad={(text) => updateData({ rules: text })}
+                        className="mt-2"
                     />
                 </Field>
             </FormSection>

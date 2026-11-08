@@ -101,7 +101,6 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
     setIsSubmitting(true);
     try {
       const startDateTime = new Date(`${startDate}T${startTime}`);
-      const endDateTime = new Date(startDateTime.getTime() + 4 * 60 * 60 * 1000);
       const computedDeadline = new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
       const minDeadline = new Date(Date.now() + 15 * 60 * 1000);
       const registrationDeadline = computedDeadline < minDeadline ? minDeadline : computedDeadline;
@@ -115,7 +114,7 @@ export const QuickCreateForm: React.FC<Props> = ({ template, onBack }) => {
         maxTeams: effectiveNumTeams,
         teamSize,
         startDate: startDateTime.toISOString(),
-        endDate: endDateTime.toISOString(),
+        endDate: null,
         registrationDeadline: registrationDeadline.toISOString(),
         status: 'draft',
         isPublic: false,

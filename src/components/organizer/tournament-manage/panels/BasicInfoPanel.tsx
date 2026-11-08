@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FORM_MEASURE_CLASS } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import { PanelSaveBar } from '../PanelSaveBar';
+import { RulesFileUpload } from '@/components/ui/RulesFileUpload';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
@@ -123,6 +124,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
         rules: form.rules.trim() || undefined,
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
+        clearEndDate: !form.endDate,
         region: form.region.trim() || undefined,
         venueAddress: form.isOnline ? undefined : (form.venueAddress.trim() || undefined),
         clearVenueAddress: form.isOnline,
@@ -155,10 +157,14 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
               className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')} />
           </Field>
 
-          <Field label="Rules" htmlFor="bi-rules" hint="Optional. Shown on the tournament page.">
+          <Field label="Rules" htmlFor="bi-rules" hint="Supports markdown — headings, bold, lists and tables all render on the public page.">
             <Textarea id="bi-rules" value={form.rules} onChange={(e) => setForm((s) => ({ ...s, rules: e.target.value }))}
               placeholder="e.g. No subs after round 2. Screenshots required for disputes…" rows={5}
               className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')} />
+            <RulesFileUpload
+              onLoad={(text) => setForm((s) => ({ ...s, rules: text }))}
+              className="mt-2"
+            />
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
