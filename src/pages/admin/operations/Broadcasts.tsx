@@ -30,7 +30,6 @@ import {
   Edit,
   X,
   Search,
-  Upload,
   ImageIcon,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
