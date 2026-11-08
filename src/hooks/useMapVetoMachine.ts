@@ -39,7 +39,7 @@ export interface MatchMapVeto {
     team1_link_token: string | null;
     team2_link_token: string | null;
     best_of: 1 | 3 | 5;  // Standardized to NUMBER (was veto_format TEXT)
-    status: 'pending' | 'pending_toss' | 'toss_choice_pending' | 'in_progress' | 'completed' | 'cancelled';
+    status: 'pending' | 'toss_choice_pending' | 'in_progress' | 'completed' | 'cancelled';
     current_team_id: string | null;
     current_action: 'ban' | 'pick' | 'pick_side' | null;
     current_action_number: number;
@@ -1207,19 +1207,6 @@ export const useMapVetoMachine = ({
         setShowRoleSwitchPrompt(false);
     }, [switchRole]);
 
-    const triggerToss = useCallback(async () => {
-        if (!veto || !isOrganizer) return;
-        setTossLoading(true);
-        try {
-            await apiClient.post(`/api/veto/${matchId}/toss`, {});
-            // StateSync + VetoTossResult push the state update
-        } catch (error: any) {
-            toast({ title: 'Toss failed', description: error.message, variant: 'destructive' });
-        } finally {
-            setTossLoading(false);
-        }
-    }, [isOrganizer, matchId, toast, veto]);
-
     const makeTossChoice = useCallback(async (goFirst: boolean) => {
         if (!veto) return;
         setTossLoading(true);
@@ -1295,7 +1282,6 @@ export const useMapVetoMachine = ({
         isTeam2Captain,
         tossLoading,
         isTossWinner,
-        triggerToss,
         makeTossChoice,
     };
 };
