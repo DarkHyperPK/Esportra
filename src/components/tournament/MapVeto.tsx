@@ -89,7 +89,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     isTeam2Captain,
     tossLoading,
     isTossWinner,
-    triggerToss,
     makeTossChoice,
   } = useMapVetoMachine({
     matchId,
@@ -165,7 +164,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const effectiveIsOrganizer = isOrganizer && !readOnly;
   const isComplete = veto.status === 'completed';
-  const isTossPending = veto.status === 'pending_toss';
   const isTossChoicePending = veto.status === 'toss_choice_pending';
   const tossWinnerTeamName = veto.toss_winner_team_id === veto.team1_id ? team1Name : team2Name;
   const tossOpponentTeamName = veto.toss_winner_team_id === veto.team1_id ? team2Name : team1Name;
@@ -317,18 +315,18 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         />
         {isComplete
           ? completeStage
-          : (isTossPending || isTossChoicePending)
+          : isTossChoicePending
             ? (
-              <VetoTossScreen
-                status={isTossPending ? 'pending_toss' : 'toss_choice_pending'}
-                isOrganizer={effectiveIsOrganizer}
-                isTossWinner={isTossWinner}
-                winnerTeamName={tossWinnerTeamName}
-                opponentTeamName={tossOpponentTeamName}
-                tossLoading={tossLoading}
-                onToss={triggerToss}
-                onTossChoice={makeTossChoice}
-              />
+              <>
+                <VetoTossScreen
+                  isTossWinner={isTossWinner}
+                  winnerTeamName={tossWinnerTeamName}
+                  opponentTeamName={tossOpponentTeamName}
+                  tossLoading={tossLoading}
+                  onTossChoice={makeTossChoice}
+                />
+                {settingsPanel}
+              </>
             )
             : vetoLive
               ? liveStage
