@@ -9,6 +9,7 @@ import { VetoDialogs } from './map-veto/VetoDialogs';
 import { VetoSequence } from './map-veto/VetoSequence';
 import { VetoSettingsPanel } from './map-veto/VetoSettingsPanel';
 import { VetoTurnBanner } from './map-veto/VetoTurnBanner';
+import { VetoTossScreen } from './map-veto/VetoTossScreen';
 import { useVetoSettings } from '@/hooks/useVetoSettings';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -85,7 +86,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     team1Logo,
     team2Logo,
     isTeam1Captain,
-    isTeam2Captain
+    isTeam2Captain,
+    tossLoading,
+    isTossWinner,
+    triggerToss,
+    makeTossChoice,
   } = useMapVetoMachine({
     matchId,
     tournamentId,
@@ -160,6 +165,10 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const effectiveIsOrganizer = isOrganizer && !readOnly;
   const isComplete = veto.status === 'completed';
+  const isTossPending = veto.status === 'pending_toss';
+  const isTossChoicePending = veto.status === 'toss_choice_pending';
+  const tossWinnerTeamName = veto.toss_winner_team_id === veto.team1_id ? team1Name : team2Name;
+  const tossOpponentTeamName = veto.toss_winner_team_id === veto.team1_id ? team2Name : team1Name;
   const vetoLive = isVetoLive(veto);
   const currentBestOf = veto.best_of || bestOf || 1;
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
@@ -306,7 +315,24 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           bestOf={currentBestOf}
           compact={isModal}
         />
-        {isComplete ? completeStage : vetoLive ? liveStage : waitingStage}
+        {isComplete
+          ? completeStage
+          : (isTossPending || isTossChoicePending)
+            ? (
+              <VetoTossScreen
+                status={isTossPending ? 'pending_toss' : 'toss_choice_pending'}
+                isOrganizer={effectiveIsOrganizer}
+                isTossWinner={isTossWinner}
+                winnerTeamName={tossWinnerTeamName}
+                opponentTeamName={tossOpponentTeamName}
+                tossLoading={tossLoading}
+                onToss={triggerToss}
+                onTossChoice={makeTossChoice}
+              />
+            )
+            : vetoLive
+              ? liveStage
+              : waitingStage}
       </div>
 
       {!readOnly && (
