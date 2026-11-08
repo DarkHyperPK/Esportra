@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail, BookOpen } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail, BookOpen, DollarSign } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { SuccessButton } from '@/components/ui/app-buttons';
 import { JackButton } from '@/components/ui/JackButton';
@@ -211,6 +211,16 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {formatCurrency(parseFloat(tournament.prize_pool) || 0, tournament.currency)}
                                     </span>
                                 </div>
+
+                                {parseFloat(tournament.entry_fee || '0') > 0 && (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <DollarSign className="w-5 h-5 text-rose-400 mb-2" />
+                                        <span>Entry Fee</span>
+                                        <span className="text-white text-lg font-bold font-sans">
+                                            {formatCurrency(parseFloat(tournament.entry_fee) || 0, tournament.currency)}
+                                        </span>
+                                    </div>
+                                )}
 
                                 <div className="flex flex-col items-center gap-2">
                                     <Calendar className="w-5 h-5 text-blue-500 mb-2" />
