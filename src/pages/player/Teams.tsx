@@ -540,25 +540,10 @@ const TeamsPage = () => {
 
   const handleLeaveTeam = async () => {
     if (!currentTeam) return;
-
-    try {
-      await leaveTeam(currentTeam.id);
-
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('teamLeft'));
-
-      toast({
-        title: "Success",
-        description: "You have left the team successfully.",
-      });
-      fetchUserTeams();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to leave team",
-        variant: "destructive",
-      });
-    }
+    const success = await leaveTeam(currentTeam.id);
+    if (!success) return;
+    window.dispatchEvent(new CustomEvent('teamLeft'));
+    fetchUserTeams();
   };
 
   const handleRemoveMember = async () => {
@@ -645,26 +630,11 @@ const TeamsPage = () => {
 
   const handleDisbandTeam = async () => {
     if (!currentTeam) return;
-
-    try {
-      await disbandTeam(currentTeam.id);
-
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('teamLeft'));
-
-      toast({
-        title: "Success",
-        description: "Team has been disbanded successfully.",
-      });
-      setShowDisbandTeam(false);
-      fetchUserTeams();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to disband team",
-        variant: "destructive",
-      });
-    }
+    const success = await disbandTeam(currentTeam.id);
+    if (!success) return;
+    window.dispatchEvent(new CustomEvent('teamLeft'));
+    setShowDisbandTeam(false);
+    fetchUserTeams();
   };
 
   const openCreateRoster = () => {
