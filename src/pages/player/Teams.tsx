@@ -57,11 +57,12 @@ const SortablePlayerCard: React.FC<{
 };
 
 function resolveCaptainUserId(
-  ownerId?: string | null,
-  teamMembers?: Array<{ user_id?: string; role?: string }>,
+  captainOrOwnerId?: string | null,
+  teamMembers?: Array<{ user_id?: string; id?: string; role?: string }>,
 ): string | undefined {
-  const byRole = teamMembers?.find((member) => member.role === 'captain')?.user_id;
-  return byRole || ownerId || undefined;
+  const captain = teamMembers?.find((member) => member.role === 'captain');
+  const byRole = captain?.user_id ?? captain?.id;
+  return byRole || captainOrOwnerId || undefined;
 }
 
 function sortCaptainFirst<T extends { user_id: string }>(members: T[], captainId?: string): T[] {
@@ -288,7 +289,14 @@ const TeamsPage = () => {
   const [teamRegistrations, setTeamRegistrations] = useState<RegistrationWithTournament[]>([]);
 
   const currentTeam = userTeams?.[0];
-  const isCaptain = currentTeam?.owner_id === user?.id;
+  const captainUserId = currentTeam
+    ? resolveCaptainUserId(
+        currentTeam.captain_id ?? currentTeam.owner_id,
+        currentTeam.members?.map(m => ({ id: m.id, role: m.role }))
+      )
+    : undefined;
+  const isCaptain = !!captainUserId && captainUserId === user?.id;
+  const isTeamOwner = currentTeam?.owner_id === user?.id;
 
   // Memoized to avoid repeated computation on every keystroke/state change inside the manage roster modal
   const modalLimits = React.useMemo(
@@ -300,8 +308,8 @@ const TeamsPage = () => {
     [manageMembers, manageMemberRoles, manageRoster]
   );
   const membersNotInRoster = React.useMemo(
-    () => teamMembers.filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id),
-    [teamMembers, manageMembers, currentTeam?.owner_id]
+    () => teamMembers.filter(m => !manageMembers.includes(m.user_id) && m.user_id !== captainUserId),
+    [teamMembers, manageMembers, captainUserId]
   );
 
   const fetchTeamStats = useCallback(async () => {
@@ -351,21 +359,22 @@ const TeamsPage = () => {
             roster_role: m.roster_role,
           }));
 
-        if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
-          const ownerMember = currentTeam.members?.find((m: any) =>
-            m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id
+        const teamCaptainId = currentTeam.captain_id || currentTeam.owner_id;
+        if (teamCaptainId && !members.some(m => m.user_id === teamCaptainId)) {
+          const captainMember = currentTeam.members?.find((m: any) =>
+            m.id === teamCaptainId || m.user_id === teamCaptainId
           ) as { username?: string; avatar_url?: string | null; card_image_url?: string | null } | undefined;
           members.unshift({
-            user_id: currentTeam.owner_id,
-            username: ownerMember?.username || 'Captain',
-            avatar_url: ownerMember?.avatar_url || null,
-            card_image_url: ownerMember?.card_image_url || null,
+            user_id: teamCaptainId,
+            username: captainMember?.username || 'Captain',
+            avatar_url: captainMember?.avatar_url || null,
+            card_image_url: captainMember?.card_image_url || null,
             is_starter: true,
             roster_role: 'starter',
           });
         }
 
-        members = sortCaptainFirst(members, currentTeam.owner_id);
+        members = sortCaptainFirst(members, teamCaptainId);
 
         return {
           id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
@@ -470,8 +479,9 @@ const TeamsPage = () => {
       // Fetch captain profile for display
       (async () => {
         try {
-          if (currentTeam?.owner_id) {
-            const data = await apiClient.get<any>(`/api/profiles/${currentTeam.owner_id}`);
+          const profileCaptainId = currentTeam?.captain_id || currentTeam?.owner_id;
+          if (profileCaptainId) {
+            const data = await apiClient.get<any>(`/api/profiles/${profileCaptainId}`);
             if (!cancelled) setOwnerProfile(data || null);
           } else {
             if (!cancelled) setOwnerProfile(null);
@@ -870,7 +880,7 @@ const TeamsPage = () => {
     const { active, over } = event;
     if (!over || active.id === over.id || !currentTeam?.id) return;
 
-    const captainId = resolveCaptainUserId(currentTeam.owner_id, teamMembers);
+    const captainId = resolveCaptainUserId(currentTeam.captain_id ?? currentTeam.owner_id, teamMembers);
     const members = roster.members || [];
     const oldIndex = members.findIndex((m: any) => m.user_id === active.id);
     const newIndex = members.findIndex((m: any) => m.user_id === over.id);
@@ -1076,7 +1086,7 @@ const TeamsPage = () => {
     try {
       const excludedIds = new Set<string>();
       if (user?.id) excludedIds.add(user.id);
-      if (currentTeam?.owner_id) excludedIds.add(currentTeam.owner_id);
+      if (captainUserId) excludedIds.add(captainUserId);
       if (currentTeam?.members) {
         currentTeam.members.forEach((m: any) => {
           if (m?.user_id) excludedIds.add(m.user_id);
@@ -1511,7 +1521,7 @@ const TeamsPage = () => {
                         <SortablePlayerCard
                           key={`${r.id}-${member.user_id}`}
                           id={member.user_id}
-                          disabled={member.user_id === resolveCaptainUserId(currentTeam?.owner_id, teamMembers)}
+                          disabled={member.user_id === captainUserId}
                         >
                           <div className="relative">
                             <PlayerCard
@@ -1520,20 +1530,20 @@ const TeamsPage = () => {
                                 username: member.username,
                                 avatar_url: member.avatar_url || undefined,
                                 card_image_url: member.card_image_url || undefined,
-                                role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
+                                role: member.user_id === captainUserId ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
                                 stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
                                 game: r.game
                               }}
-                              isOwner={member.user_id === currentTeam?.owner_id}
+                              isOwner={member.user_id === captainUserId}
                               isCurrentUser={member.user_id === user?.id}
                               onRemove={
-                                isCaptain && member.user_id !== currentTeam?.owner_id
+                                isCaptain && member.user_id !== captainUserId
                                   ? () => setRosterRemoveTarget({ roster: r, userId: member.user_id, username: member.username || 'Unknown' })
                                   : undefined
                               }
                               className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
                             />
-                            {member.user_id !== currentTeam?.owner_id && (
+                            {member.user_id !== captainUserId && (
                               <Badge
                                 variant="outline"
                                 className={`absolute top-2 right-2 text-[8px] uppercase tracking-wider ${
@@ -1587,7 +1597,7 @@ const TeamsPage = () => {
           ) : (
             <div className="divide-y divide-white/5">
               {teamMembers.map((member) => {
-                const isOwner = member.user_id === currentTeam?.owner_id;
+                const isMemberCaptain = member.user_id === captainUserId;
                 const isSelf = member.user_id === user?.id;
                 return (
                   <div key={member.user_id} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
@@ -1603,15 +1613,16 @@ const TeamsPage = () => {
                         {isSelf && <span className="text-[10px] text-white/30 uppercase tracking-widest">(you)</span>}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {isOwner ? (
+                        {isMemberCaptain ? (
                           <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">Captain</Badge>
                         ) : (
                           <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-white/5 text-white/30 border border-white/10">{member.role || 'Member'}</Badge>
                         )}
                       </div>
                     </div>
-                    {isCaptain && !isOwner && (
+                    {(isCaptain || isTeamOwner) && !isMemberCaptain && !isSelf && (
                       <div className="flex items-center gap-2 shrink-0">
+                        {isTeamOwner && (
                         <GhostButton
                           size="sm"
                           className="h-8 px-3 text-xs rounded-full text-white/40 hover:text-white"
@@ -1619,6 +1630,7 @@ const TeamsPage = () => {
                         >
                           <Crown className="w-3.5 h-3.5 mr-1.5" />Transfer
                         </GhostButton>
+                        )}
                         <DangerButton
                           size="sm"
                           variant="ghost"
@@ -1629,7 +1641,7 @@ const TeamsPage = () => {
                         </DangerButton>
                       </div>
                     )}
-                    {!isCaptain && isSelf && !isOwner && (
+                    {!isCaptain && !isTeamOwner && isSelf && (
                       <DangerButton
                         size="sm"
                         variant="ghost"
@@ -1782,20 +1794,18 @@ const TeamsPage = () => {
 
         {/* Team Actions */}
         <div className="flex justify-center space-x-4">
-          {!isCaptain && (
+          {!isTeamOwner && !isCaptain && (
             <DangerButton onClick={handleLeaveTeam}>
               <UserMinus className="w-4 h-4 mr-2" />
               Leave Team
             </DangerButton>
           )}
 
-          {isCaptain && (
-            <>
-              <DangerButton onClick={() => setShowDisbandTeam(true)}>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Disband Team
-              </DangerButton>
-            </>
+          {isTeamOwner && (
+            <DangerButton onClick={() => setShowDisbandTeam(true)}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Disband Team
+            </DangerButton>
           )}
         </div>
       </div>
@@ -2178,7 +2188,7 @@ const TeamsPage = () => {
                 <div className="space-y-3 max-h-56 overflow-y-auto overscroll-contain custom-scrollbar pr-2" data-lenis-prevent>
                   {/* Captain (Implicit Member) */}
                   {currentTeam && (() => {
-                    const captainId = currentTeam.owner_id;
+                    const captainId = captainUserId || currentTeam.owner_id;
                     const captainData = ownerProfile
                       || currentTeam.members?.find((m: any) => m.id === captainId || m.user_id === captainId)
                       || { username: 'Captain', avatar_url: undefined };
@@ -2211,7 +2221,7 @@ const TeamsPage = () => {
                     </div>
                   ) : (
                     manageMembers
-                      .filter(uid => uid !== currentTeam?.owner_id) // Deduplicate owner from list
+                      .filter(uid => uid !== captainUserId) // Deduplicate captain from list
                       .map(uid => {
                         const member = teamMembers.find(m => m.user_id === uid);
                         if (!member) return null;
@@ -2235,7 +2245,7 @@ const TeamsPage = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-1 relative z-10 opacity-0 group-hover:opacity-100 transition-all">
-                              {isCaptain && uid !== currentTeam?.owner_id && (
+                              {isTeamOwner && uid !== captainUserId && (
                                 <GhostButton
                                   size="sm"
                                   variant="ghost"

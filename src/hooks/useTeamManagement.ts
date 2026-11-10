@@ -42,6 +42,7 @@ export interface Team {
   social_media?: any;
   achievements?: any;
   owner_id: string;
+  captain_id?: string;
   created_at: string;
   updated_at: string;
   is_active: boolean;

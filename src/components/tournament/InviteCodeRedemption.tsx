@@ -145,7 +145,7 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`,
         );
         const team = captainTeams.find((entry) => entry.id === selectedTeamId);
-        const captainId = team?.owner_id;
+        const captainId = team?.captain_id || team?.owner_id;
         const formattedMembers = (members || []).map((member) => ({
           ...member,
           is_captain: member.user_id === captainId,
