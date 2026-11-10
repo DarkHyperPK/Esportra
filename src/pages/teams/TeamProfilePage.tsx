@@ -31,6 +31,7 @@ interface TeamDetail {
     game_format: string | null;
     country_code: string | null;
     owner_id: string;
+    captain_id?: string;
     created_at: string;
     members: TeamMember[];
 }
@@ -198,7 +199,7 @@ export default function TeamProfilePage() {
     const placements = history.map(e => e.placement).filter((p): p is number => p != null);
     const bestPlacement = placements.length > 0 ? Math.min(...placements) : null;
 
-    const isOwner = !!profile && !!team && team.owner_id === profile.id;
+    const isOwner = !!profile && !!team && (team.captain_id || team.owner_id) === profile.id;
 
     return (
         <div className="min-h-screen text-white relative overflow-x-hidden" style={{ background: '#0E0E12' }}>
@@ -297,8 +298,8 @@ export default function TeamProfilePage() {
                                     {team.members.map(member => (
                                         <PlayerHandle key={member.id} userId={member.id}>
                                             <PlayerCard
-                                                member={memberToPlayerCardShape(member, team.owner_id, team.game)}
-                                                isOwner={member.id === team.owner_id}
+                                                member={memberToPlayerCardShape(member, team.captain_id || team.owner_id, team.game)}
+                                                isOwner={member.id === (team.captain_id || team.owner_id)}
                                                 noHoverGlow
                                                 className="transition-all duration-300 hover:scale-[1.03] hover:z-10"
                                             />

@@ -18,6 +18,7 @@ export type CaptainTeamRow = {
   is_solo?: boolean | null;
   games: Record<string, unknown> | string[] | string | null;
   owner_id: string;
+  captain_id?: string | null;
   created_at?: string | null;
   createdAt?: string | null;
 };
@@ -143,7 +144,7 @@ export function useEligibleCaptainTeams({
           const ownedTeams = await apiClient.get<CaptainTeamRow[]>(`/api/teams?${ownedQuery}`);
           teams = mergeUniqueTeams(
             teams,
-            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId || normalizeOwnerId(team.captain_id) === currentUserId),
           );
         } catch {
           // optional lookup
@@ -154,7 +155,7 @@ export function useEligibleCaptainTeams({
         const myTeams = await apiClient.get<CaptainTeamRow[]>('/api/teams/me');
         teams = mergeUniqueTeams(
           teams,
-          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId || normalizeOwnerId(team.captain_id) === currentUserId),
         );
       }
 

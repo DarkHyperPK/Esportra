@@ -69,6 +69,7 @@ type TeamRow = {
   is_solo?: boolean | null;
   games: Record<string, unknown> | null;
   owner_id: string;
+  captain_id?: string | null;
   created_at?: string | null;
   createdAt?: string | null;
 };
@@ -216,7 +217,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         // Also fetch captain's profile
         const team = captainTeams.find(t => t.id === selectedTeamId);
-        const captainId = team?.owner_id;
+        const captainId = team?.captain_id || team?.owner_id;
 
         const allUserIds = (members || []).map((m: RosterMember) => m.user_id).filter(Boolean);
         let verifiedAccounts: RiotAccount[] = [];
@@ -305,7 +306,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?${ownedQuery}`);
           teams = mergeUniqueTeams(
             teams,
-            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId || normalizeOwnerId(team.captain_id) === currentUserId),
           );
         } catch (ownedError) {
           console.warn('Owner team lookup failed:', ownedError);
@@ -316,7 +317,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         const myTeams = await apiClient.get<TeamRow[]>('/api/teams/me');
         teams = mergeUniqueTeams(
           teams,
-          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId || normalizeOwnerId(team.captain_id) === currentUserId),
         );
       }
 
