@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, InlineNotice, ToggleRow } from '@/components/ui/kit';
+import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
@@ -113,7 +113,7 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
     setSaving(true);
     try {
       await apiClient.put(`/api/tournaments/${tournament.id}`, {
-        maxTeams: form.maxTeams > 0 ? form.maxTeams : undefined,
+        maxTeams: form.maxTeams > 0 ? form.maxTeams : 0,
         registrationDeadline: form.registrationDeadline
           ? new Date(form.registrationDeadline).toISOString()
           : undefined,
@@ -174,9 +174,6 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
                   onSelect={() => setForm((s) => ({ ...s, checkInLevel: opt.value, ...(opt.value === 'none' ? { autoRemoveUnchecked: false } : {}) }))} title={opt.label} description={opt.description} />
               ))}
             </ChoiceGroup>
-            <InlineNotice tone="neutral">
-              Per-match check-in is in development. Once it ships, you'll configure it here.
-            </InlineNotice>
             {checkInEnabled && (
               <>
                 <div className="grid gap-5 sm:grid-cols-2">

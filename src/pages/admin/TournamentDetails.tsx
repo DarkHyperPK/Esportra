@@ -12,7 +12,19 @@ import {
 } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
 import { CONTROL_CLASS, EYEBROW_CLASS, StatusPill } from '@/components/ui/kit';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
+const BRACKET_TIERS = [
+  { value: 'free',   label: 'Free (≤32)',     maxTeams: 32 },
+  { value: '<=64',   label: '≤64 teams',      maxTeams: 64 },
+  { value: '<=128',  label: '≤128 teams',     maxTeams: 128 },
+  { value: '<=256',  label: '≤256 teams',     maxTeams: 256 },
+  { value: '<=512',  label: '≤512 teams',     maxTeams: 512 },
+  { value: 'custom', label: 'Custom (no limit)', maxTeams: 0 },
+] as const;
 
 function getTournamentStatus(tournament: any) {
   const status = tournament.status || 'draft';
@@ -40,6 +52,8 @@ const TournamentDetails = () => {
   const [saving, setSaving] = useState(false);
   const [orgProBusy, setOrgProBusy] = useState(false);
   const [hasOrganizerPro, setHasOrganizerPro] = useState(false);
+  const [bracketTier, setBracketTier] = useState('free');
+  const [pendingTier, setPendingTier] = useState('free');
 
   const fetchTournament = useCallback(async () => {
     setLoading(true);
@@ -77,8 +91,12 @@ const TournamentDetails = () => {
 
   const fetchOrganizerPro = useCallback(async () => {
     try {
-      const resp = await apiClient.get<{ hasOrganizerPro: boolean }>(`/api/admin/tournaments/${id}/organizer-pro`);
+      const resp = await apiClient.get<{ hasOrganizerPro: boolean; bracketTier: string; bracketMaxTeams: number }>(
+        `/api/admin/tournaments/${id}/organizer-pro`
+      );
       setHasOrganizerPro(resp?.hasOrganizerPro ?? false);
+      setBracketTier(resp?.bracketTier ?? 'free');
+      setPendingTier(resp?.bracketTier ?? 'free');
     } catch { /* silent — may not exist yet */ }
   }, [id]);
 
@@ -134,14 +152,19 @@ const TournamentDetails = () => {
     }
   };
 
-  const handleToggleOrganizerPro = async (enable: boolean) => {
+  const handleSaveLicense = async (tier: string, proEnabled: boolean) => {
     setOrgProBusy(true);
     try {
-      await apiClient.post(`/api/admin/tournaments/${id}/organizer-pro`, { enabled: enable });
-      await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
-        action: enable ? 'organizer_pro_enabled' : 'organizer_pro_disabled',
+      await apiClient.post(`/api/admin/tournaments/${id}/organizer-pro`, {
+        enabled: proEnabled,
+        bracketTier: tier,
       });
-      toast({ title: enable ? 'Organizer Pro enabled' : 'Organizer Pro disabled' });
+      await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
+        action: 'license_updated',
+        bracket_tier: tier,
+        organizer_pro: proEnabled,
+      });
+      toast({ title: 'License updated' });
       await fetchOrganizerPro();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to update.', variant: 'destructive' });
@@ -292,29 +315,59 @@ const TournamentDetails = () => {
         )}
       </CommandSection>
 
-      {/* Organizer Pro */}
+      {/* Event License */}
       <CommandSection>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className={EYEBROW_CLASS}>Organizer Pro</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Unlocks veto, broadcast, Discord integration and the public veto tool for this event.
-            </p>
+        <h2 className={cn(EYEBROW_CLASS, 'mb-4')}>Event License</h2>
+        <div className="space-y-4">
+          {/* Bracket tier */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white">Bracket tier</p>
+              <p className="mt-0.5 text-xs text-zinc-500">Sets the maximum number of teams allowed to register.</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Select value={pendingTier} onValueChange={setPendingTier} disabled={orgProBusy}>
+                <SelectTrigger className="w-44 rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
+                  {BRACKET_TIERS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className={cn('font-mono text-[10px] font-bold uppercase tracking-[0.3em]', hasOrganizerPro ? 'text-emerald-400' : 'text-zinc-500')}>
-              {hasOrganizerPro ? 'Active' : 'Inactive'}
-            </span>
-            {hasOrganizerPro ? (
-              <CommandButton variant="warning" size="sm" disabled={orgProBusy} onClick={() => handleToggleOrganizerPro(false)}>
-                {orgProBusy ? 'Saving…' : 'Revoke'}
+
+          {/* Organizer Pro features */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white">Organizer Pro features</p>
+              <p className="mt-0.5 text-xs text-zinc-500">Veto, broadcast, Discord integration and the public veto tool.</p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className={cn('font-mono text-[10px] font-bold uppercase tracking-[0.3em]', hasOrganizerPro ? 'text-emerald-400' : 'text-zinc-500')}>
+                {hasOrganizerPro ? 'Active' : 'Inactive'}
+              </span>
+              <CommandButton
+                variant={hasOrganizerPro ? 'warning' : 'primary'}
+                size="sm"
+                disabled={orgProBusy}
+                onClick={() => handleSaveLicense(pendingTier, !hasOrganizerPro)}
+              >
+                {orgProBusy ? 'Saving…' : hasOrganizerPro ? 'Revoke' : 'Grant Pro'}
               </CommandButton>
-            ) : (
-              <CommandButton variant="primary" size="sm" disabled={orgProBusy} onClick={() => handleToggleOrganizerPro(true)}>
-                {orgProBusy ? 'Saving…' : 'Grant Pro'}
-              </CommandButton>
-            )}
+            </div>
           </div>
+
+          {/* Save tier button — only show when tier changed */}
+          {pendingTier !== bracketTier && (
+            <div className="flex justify-end pt-1 border-t border-white/5">
+              <CommandButton size="sm" disabled={orgProBusy} onClick={() => handleSaveLicense(pendingTier, hasOrganizerPro)}>
+                {orgProBusy ? 'Saving…' : 'Save tier'}
+              </CommandButton>
+            </div>
+          )}
         </div>
       </CommandSection>
 
