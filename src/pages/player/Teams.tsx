@@ -60,9 +60,9 @@ function resolveCaptainUserId(
   captainOrOwnerId?: string | null,
   teamMembers?: Array<{ user_id?: string; id?: string; role?: string }>,
 ): string | undefined {
+  if (captainOrOwnerId) return captainOrOwnerId;
   const captain = teamMembers?.find((member) => member.role === 'captain');
-  const byRole = captain?.user_id ?? captain?.id;
-  return byRole || captainOrOwnerId || undefined;
+  return captain?.user_id ?? captain?.id ?? undefined;
 }
 
 function sortCaptainFirst<T extends { user_id: string }>(members: T[], captainId?: string): T[] {
