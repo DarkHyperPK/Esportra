@@ -165,6 +165,16 @@ export const useTeamManagement = () => {
     onError: (e: Error) => toast({ title: 'Transfer failed', description: e.message, variant: 'destructive' }),
   });
 
+  const transferOwnershipMutation = useMutation({
+    mutationFn: ({ teamId, newOwnerId }: { teamId: string; newOwnerId: string }) =>
+      apiClient.post(`/api/teams/${teamId}/transfer-ownership`, { newOwnerId }),
+    onSuccess: () => {
+      invalidateTeams();
+      toast({ title: 'Ownership Transferred', description: 'Team ownership transferred successfully.' });
+    },
+    onError: (e: Error) => toast({ title: 'Transfer failed', description: e.message, variant: 'destructive' }),
+  });
+
   const inviteMutation = useMutation({
     mutationFn: ({ teamId, userId, message }: { teamId: string; userId: string; message?: string }) =>
       apiClient.post(`/api/teams/${teamId}/invite`, { userId, message }),
@@ -228,6 +238,11 @@ export const useTeamManagement = () => {
     try   { await transferMutation.mutateAsync({ teamId, newCaptainId }); return true; }
     catch { return false; }
   }, [transferMutation]);
+
+  const transferOwnership = useCallback(async (teamId: string, newOwnerId: string): Promise<boolean> => {
+    try   { await transferOwnershipMutation.mutateAsync({ teamId, newOwnerId }); return true; }
+    catch { return false; }
+  }, [transferOwnershipMutation]);
 
   const inviteUserToTeam = useCallback(async (teamId: string, userId: string, message?: string): Promise<boolean> => {
     try   { await inviteMutation.mutateAsync({ teamId, userId, message }); return true; }
@@ -307,6 +322,7 @@ export const useTeamManagement = () => {
     removeTeamMember,
     removeMemberFromTeam: removeTeamMember,
     transferCaptaincy,
+    transferOwnership,
     changeRole,
     updateRosterMemberRole,
     getVerifiedUsers,

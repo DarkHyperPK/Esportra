@@ -165,6 +165,7 @@ const TeamsPage = () => {
     inviteUserToTeam,
     removeMemberFromTeam,
     transferCaptaincy,
+    transferOwnership,
     updateRosterMemberRole,
     disbandTeam,
     leaveTeam,
@@ -201,6 +202,8 @@ const TeamsPage = () => {
   type TeamMember = TeamMemberRecord | null;
   const [memberToRemove, setMemberToRemove] = useState<TeamMember>(null);
   const [showTransferCaptaincy, setShowTransferCaptaincy] = useState(false);
+  const [showTransferOwnership, setShowTransferOwnership] = useState(false);
+  const [ownershipTarget, setOwnershipTarget] = useState<{ id: string; username: string } | null>(null);
   const [showDisbandTeam, setShowDisbandTeam] = useState(false);
 
   const [showTeamCreationWizard, setShowTeamCreationWizard] = useState(false);
@@ -636,6 +639,15 @@ const TeamsPage = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!currentTeam || !ownershipTarget) return;
+    const success = await transferOwnership(currentTeam.id, ownershipTarget.id);
+    if (!success) return;
+    setShowTransferOwnership(false);
+    setOwnershipTarget(null);
+    fetchUserTeams();
   };
 
   const handleDisbandTeam = async () => {
@@ -1613,9 +1625,13 @@ const TeamsPage = () => {
                         {isSelf && <span className="text-[10px] text-white/30 uppercase tracking-widest">(you)</span>}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {isMemberCaptain ? (
+                        {isMemberCaptain && (
                           <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">Captain</Badge>
-                        ) : (
+                        )}
+                        {member.user_id === currentTeam?.owner_id && (
+                          <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20">Owner</Badge>
+                        )}
+                        {!isMemberCaptain && member.user_id !== currentTeam?.owner_id && (
                           <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-widest bg-white/5 text-white/30 border border-white/10">{member.role || 'Member'}</Badge>
                         )}
                       </div>
@@ -1802,10 +1818,16 @@ const TeamsPage = () => {
           )}
 
           {isTeamOwner && (
-            <DangerButton onClick={() => setShowDisbandTeam(true)}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Disband Team
-            </DangerButton>
+            <>
+              <OutlineButton onClick={() => setShowTransferOwnership(true)}>
+                <Shield className="w-4 h-4 mr-2" />
+                Transfer Ownership
+              </OutlineButton>
+              <DangerButton onClick={() => setShowDisbandTeam(true)}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Disband Team
+              </DangerButton>
+            </>
           )}
         </div>
       </div>
@@ -2515,7 +2537,53 @@ const TeamsPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-
+      {/* Transfer Ownership */}
+      <AlertDialog open={showTransferOwnership} onOpenChange={(open) => { setShowTransferOwnership(open); if (!open) setOwnershipTarget(null); }}>
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <AlertDialogHeader className="relative z-10">
+            <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Transfer Ownership</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
+              {ownershipTarget
+                ? <>Transfer ownership to <span className="text-rose-400 font-medium">{ownershipTarget.username}</span>? You will no longer be the team owner and can then leave the team.</>
+                : 'Select a member to become the new team owner.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {!ownershipTarget && (
+            <div className="relative z-10 mt-4 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+              {teamMembers.filter(m => m.user_id !== user?.id).map(member => (
+                <button
+                  key={member.user_id}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all text-left"
+                  onClick={() => setOwnershipTarget({ id: member.user_id, username: member.username })}
+                >
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs bg-white/10">{member.username?.[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-white/80">{member.username}</span>
+                  {member.user_id === captainUserId && (
+                    <Badge className="ml-auto h-4 px-1.5 text-[9px] uppercase tracking-widest bg-rose-500/10 text-rose-400 border border-rose-500/20">Captain</Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-11 rounded-xl px-6" onClick={() => setOwnershipTarget(null)}>Cancel</AlertDialogCancel>
+            {ownershipTarget && (
+              <AlertDialogAction
+                onClick={handleTransferOwnership}
+                className="h-11 rounded-xl px-6 text-xs transition-all hover:scale-105"
+              >
+                TRANSFER OWNERSHIP
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <EditTeamDialog
         open={showEditTeam}
