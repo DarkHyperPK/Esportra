@@ -14,6 +14,7 @@ import { useExpressInterest, useWithdrawInterest } from '@/hooks/competitive/use
 import { LfgRoster } from './LfgRoster';
 import { LfgRankRange } from './LfgRankRange';
 import { LfgOverallStats } from './LfgOverallStats';
+import { LfgStatsSync } from './LfgStatsSync';
 import type { CatalogGameRole, LfgListing } from '@/types/competitive';
 
 export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink = true, inline = false }: { listing: LfgListing; roles: CatalogGameRole[]; currentUserId?: string; showOwnerLink?: boolean; inline?: boolean }) {
@@ -56,7 +57,7 @@ export function LfgListingDetail({ listing, roles, currentUserId, showOwnerLink 
       {!team && <LfgOverallStats listing={listing} canSync={!!currentUserId} />}
       <h3>About this listing</h3><p className="lfg-description">{listing.description || 'No description provided.'}</p>
       {inline && roleNames.length > 0 && <><h3>Roles</h3><p className="lfg-description">{roleNames.join(', ')}</p></>}
-      {team && <><h3>Team roster</h3><LfgRoster listing={listing} viewerScope={currentUserId || 'guest'} /></>}
+      {team && <><h3>Team roster</h3><LfgRoster listing={listing} viewerScope={currentUserId || 'guest'} />{listing.gameSlug === 'valorant' && currentUserId && <LfgStatsSync listingId={listing.id} syncedAt={null} roster />}</>}
       {listing.gameSlug === 'valorant' && listing.intent === 'looking_for_team' && agentIds.length > 0 && <><h3>Preferred agents</h3><div className="lfg-agent-breakdown">{agentIds.map(id => { const stats = agentStats.find(agent => agent.agentId.toLowerCase() === id.toLowerCase()); const agent = agentCatalog.data?.[id.toLowerCase()]; const fallback = resolveAgent(id); const name = agent?.displayName || fallback?.displayName || stats?.displayName || 'Agent'; const icon = getValorantAgentIcon(id, agent?.displayIcon || fallback?.iconUrl || stats?.iconUrl); return <p key={id}><strong className="lfg-detail-agent">{icon && <img src={icon} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}{name}</strong><span>{stats?.gamesPlayed ? `${stats.gamesPlayed} games · ${Math.round(stats.wins / stats.gamesPlayed * 100)}% WR · ${stats.kdRatio != null ? Number(stats.kdRatio).toFixed(2) : '—'} K/D` : listing.statsSyncStatus === 'complete' ? 'No recorded matches' : 'Stats unavailable'}</span></p>; })}</div></>}
       {!!listing.languages?.length && <><h3>Languages</h3><p className="lfg-description">{listing.languages.map(code => LFG_LANGUAGES.find(item => item.code === code)?.label ?? code).join(', ')}</p></>}
       {!currentUserId ? <Link className="lfg-button lfg-button-primary" to={signIn}>Sign in to connect</Link> : own ? showOwnerLink && <Link className="lfg-button lfg-button-primary" to={`/competitive/lfg/${listing.id}`}>Manage listing</Link> : listing.viewerInterestStatus && listing.viewerInterestStatus !== 'withdrawn' ? <>

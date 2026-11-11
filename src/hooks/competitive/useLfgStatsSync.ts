@@ -5,14 +5,16 @@ import { useSyncCooldown } from './useSyncCooldown';
 import { refreshLfgStats, useLfgSyncTracking, type LfgSyncAttempt, type LfgSyncState } from './useLfgSyncTracking';
 
 /** Share the saved snapshot for one hour; follow newly queued work through completion. */
-export function useLfgStatsSync(listingId?: string) {
+export function useLfgStatsSync(listingId?: string, roster?: boolean) {
   const client = useQueryClient();
   const [attempt, setAttempt] = useState<LfgSyncAttempt | null>(null);
   const [feedback, setFeedback] = useState('');
   const { seconds, setAvailableAt } = useSyncCooldown();
   const submitting = useRef(false);
-  useLfgSyncTracking(listingId, attempt, setAttempt, setFeedback, setAvailableAt);
-  const path = listingId ? `/api/competitive/lfg/${listingId}/sync-stats` : '/api/competitive/game-stats/sync';
+  useLfgSyncTracking(roster ? undefined : listingId, attempt, setAttempt, setFeedback, setAvailableAt);
+  const path = roster && listingId
+    ? `/api/competitive/lfg/${listingId}/sync-roster-stats`
+    : listingId ? `/api/competitive/lfg/${listingId}/sync-stats` : '/api/competitive/game-stats/sync';
   const mutation = useMutation({ mutationFn: () => api.post<LfgSyncState>(path, {}) });
 
   async function sync() {
@@ -22,6 +24,7 @@ export function useLfgStatsSync(listingId?: string) {
       const result = await mutation.mutateAsync();
       setAvailableAt(Date.now() + result.retryAfterSeconds * 1000);
       if (result.status === 'cooldown' || result.status === 'cached') setFeedback(result.syncedAt ? 'Stats updated.' : 'Stats are unavailable. Try again later.');
+      else if (roster) { setFeedback('Syncing team stats…'); setAttempt(null); refreshLfgStats(client); }
       else setAttempt({ started: Date.now(), baseline: result.syncedAt });
       refreshLfgStats(client);
     } catch (cause) {
