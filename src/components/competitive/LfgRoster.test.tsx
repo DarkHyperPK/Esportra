@@ -16,10 +16,10 @@ describe('game roster', () => {
     expect(screen.getByText(/resolve duplicate game rosters/)).toBeInTheDocument();
   });
 
-  it('shows unavailable member stats without inventing values', () => {
+  it('shows not-synced message when member has no stats', () => {
     query.value.data = { status:'available', members:[{ userId:'member', username:'Rook', rosterRole:'starter', isStarter:true, kdRatio:null, winRate:null }] };
     render(<LfgRoster listing={listing} />);
     expect(screen.getByText('Rook')).toBeInTheDocument();
-    expect(screen.getByText(/K\/D unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/Stats not synced/)).toBeInTheDocument();
   });
 });
