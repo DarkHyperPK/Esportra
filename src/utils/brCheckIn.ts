@@ -4,6 +4,8 @@ const INACTIVE_REGISTRATION_STATUSES = new Set([
   'cancelled',
   'disqualified',
   'withdrawn',
+  'pending',
+  'withdrawal_pending',
 ]);
 
 export function isActiveRegistration(status?: string | null): boolean {
