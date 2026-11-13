@@ -80,6 +80,7 @@ export interface DashboardParticipant {
     gamer_tag: string | null;
     solo_riot_tag?: string | null;
     discord_handle?: string | null;
+    solo_steam_tag?: string | null;
     display_name?: string | null;
     display_logo_url?: string | null;
     entry_kind?: string | null;
@@ -198,6 +199,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 gamer_tag:        p.gamer_tag ?? null,
                 solo_riot_tag:    p.solo_riot_tag ?? null,
                 discord_handle:   p.discord_handle ?? null,
+                solo_steam_tag:   p.solo_steam_tag ?? null,
                 display_name:     p.display_name ?? null,
                 display_logo_url: p.display_logo_url ?? null,
                 entry_kind:       p.entry_kind ?? null,

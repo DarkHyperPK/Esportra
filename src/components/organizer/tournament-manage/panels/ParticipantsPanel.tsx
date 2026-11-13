@@ -527,7 +527,7 @@ export function ParticipantsPanel({
               {managedParticipant.participant_type === 'solo' && (() => {
                 const riot = managedParticipant.solo_riot_tag || managedParticipant.user?.riot_tag || managedParticipant.gamer_tag;
                 const discord = managedParticipant.discord_handle || managedParticipant.user?.discord_handle;
-                const steam = managedParticipant.user?.steam_tag;
+                const steam = managedParticipant.solo_steam_tag || managedParticipant.user?.steam_tag;
                 if (!riot && !discord && !steam) return null;
                 return (
                   <div className="space-y-1.5">

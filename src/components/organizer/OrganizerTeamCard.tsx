@@ -105,7 +105,7 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
         ? (participant.discord_handle || participant.user?.discord_handle || null)
         : null;
     const soloSteam: string | null = isSolo
-        ? (participant.user?.steam_tag || null)
+        ? (participant.solo_steam_tag || participant.user?.steam_tag || null)
         : null;
 
     return (
