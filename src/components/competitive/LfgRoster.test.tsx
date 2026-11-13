@@ -16,10 +16,17 @@ describe('game roster', () => {
     expect(screen.getByText(/resolve duplicate game rosters/)).toBeInTheDocument();
   });
 
-  it('shows not-synced message when member has no stats', () => {
-    query.value.data = { status:'available', members:[{ userId:'member', username:'Rook', rosterRole:'starter', isStarter:true, kdRatio:null, winRate:null }] };
+  it('shows not-synced message when linked member has no stats', () => {
+    query.value.data = { status:'available', members:[{ userId:'member', username:'Rook', rosterRole:'starter', isStarter:true, hasRiotAccount:true, kdRatio:null, winRate:null }] };
     render(<LfgRoster listing={listing} />);
     expect(screen.getByText('Rook')).toBeInTheDocument();
     expect(screen.getByText(/Stats not synced/)).toBeInTheDocument();
+  });
+
+  it('shows account-not-linked message when member has no Riot account', () => {
+    query.value.data = { status:'available', members:[{ userId:'unlinked', username:'Nova', rosterRole:'starter', isStarter:true, hasRiotAccount:false, kdRatio:null, winRate:null }] };
+    render(<LfgRoster listing={listing} />);
+    expect(screen.getByText('Nova')).toBeInTheDocument();
+    expect(screen.getByText(/Account not linked/)).toBeInTheDocument();
   });
 });

@@ -473,6 +473,7 @@ export interface LfgRosterMember {
   avatarStyle: string | null;
   rosterRole: string | null;
   isStarter: boolean;
+  hasRiotAccount: boolean;
   competitiveTier: number | null;
   competitiveTierName: string | null;
   kdRatio: number | null;
