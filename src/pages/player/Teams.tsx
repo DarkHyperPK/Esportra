@@ -1636,9 +1636,9 @@ const TeamsPage = () => {
                         )}
                       </div>
                     </div>
-                    {(isCaptain || isTeamOwner) && !isMemberCaptain && !isSelf && (
+                    {(isCaptain || isTeamOwner) && !isMemberCaptain && (
                       <div className="flex items-center gap-2 shrink-0">
-                        {isTeamOwner && (
+                        {isTeamOwner && !isSelf && (
                         <GhostButton
                           size="sm"
                           className="h-8 px-3 text-xs rounded-full text-white/40 hover:text-white"
@@ -1647,6 +1647,16 @@ const TeamsPage = () => {
                           <Crown className="w-3.5 h-3.5 mr-1.5" />Transfer
                         </GhostButton>
                         )}
+                        {isTeamOwner && isSelf && !isCaptain && (
+                        <GhostButton
+                          size="sm"
+                          className="h-8 px-3 text-xs rounded-full text-white/40 hover:text-white"
+                          onClick={() => { setMemberToRemove(member); setShowTransferCaptaincy(true); }}
+                        >
+                          <Crown className="w-3.5 h-3.5 mr-1.5" />Reclaim Captain
+                        </GhostButton>
+                        )}
+                        {!isSelf && (
                         <DangerButton
                           size="sm"
                           variant="ghost"
@@ -1655,6 +1665,7 @@ const TeamsPage = () => {
                         >
                           <UserMinus className="w-3.5 h-3.5 mr-1.5" />Remove
                         </DangerButton>
+                        )}
                       </div>
                     )}
                     {!isCaptain && !isTeamOwner && isSelf && (
