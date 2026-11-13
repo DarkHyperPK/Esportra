@@ -568,7 +568,7 @@ export function ParticipantsPanel({
                         <li key={i}>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-zinc-300">{m.username}</span>
-                            {(m.roster_role === 'captain' || m.roster_role === 'substitute' || m.roster_role === 'coach') && (
+                            {m.roster_role && m.roster_role !== 'member' && (
                               <span className="shrink-0 text-[11px] text-zinc-500">
                                 · {m.roster_role === 'substitute' ? 'sub' : m.roster_role}
                               </span>
