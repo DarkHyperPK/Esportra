@@ -523,6 +523,39 @@ export function ParticipantsPanel({
                 {renderStatusBadge(managedParticipant)}
               </div>
 
+              {/* Game IDs — solo */}
+              {managedParticipant.participant_type === 'solo' && (() => {
+                const riot = managedParticipant.solo_riot_tag || managedParticipant.user?.riot_tag || managedParticipant.gamer_tag;
+                const discord = managedParticipant.discord_handle || managedParticipant.user?.discord_handle;
+                const steam = managedParticipant.user?.steam_tag;
+                if (!riot && !discord && !steam) return null;
+                return (
+                  <div className="space-y-1.5">
+                    <p className={EYEBROW_CLASS}>Game IDs</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-300">
+                      {discord && (
+                        <span className="inline-flex items-center gap-1.5" title="Discord">
+                          <img src="/discord-icon.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          {discord}
+                        </span>
+                      )}
+                      {riot && (
+                        <span className="inline-flex items-center gap-1.5" title="Riot ID">
+                          <img src="/riot-icon.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          {riot}
+                        </span>
+                      )}
+                      {steam && (
+                        <span className="inline-flex items-center gap-1.5" title="Steam">
+                          <img src="/steam-icon.svg" alt="" className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          {steam}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Members */}
               {managedParticipant.participant_type !== 'solo' && (
                 <div className="space-y-1.5">
@@ -534,9 +567,24 @@ export function ParticipantsPanel({
                           <span className="text-sm text-zinc-300">{m.username}</span>
                           {(m.discord_handle || m.riot_tag || m.steam_tag) && (
                             <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
-                              {m.discord_handle && <span title="Discord">{m.discord_handle}</span>}
-                              {m.riot_tag && <span title="Riot ID">{m.riot_tag}</span>}
-                              {m.steam_tag && <span title="Steam">{m.steam_tag}</span>}
+                              {m.discord_handle && (
+                                <span className="inline-flex items-center gap-1" title="Discord">
+                                  <img src="/discord-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  {m.discord_handle}
+                                </span>
+                              )}
+                              {m.riot_tag && (
+                                <span className="inline-flex items-center gap-1" title="Riot ID">
+                                  <img src="/riot-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  {m.riot_tag}
+                                </span>
+                              )}
+                              {m.steam_tag && (
+                                <span className="inline-flex items-center gap-1" title="Steam">
+                                  <img src="/steam-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  {m.steam_tag}
+                                </span>
+                              )}
                             </div>
                           )}
                         </li>

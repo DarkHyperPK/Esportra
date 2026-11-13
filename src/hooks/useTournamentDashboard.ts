@@ -78,6 +78,11 @@ export interface DashboardParticipant {
     team_logo: string | null;
     team_members: string | Record<string, unknown>[] | null;
     gamer_tag: string | null;
+    solo_riot_tag?: string | null;
+    discord_handle?: string | null;
+    display_name?: string | null;
+    display_logo_url?: string | null;
+    entry_kind?: string | null;
     registered_at: string;
     created_at: string;
     checked_in_at: string | null;
@@ -97,6 +102,9 @@ export interface DashboardParticipant {
         username: string;
         avatar_url: string | null;
         full_name: string | null;
+        riot_tag?: string | null;
+        discord_handle?: string | null;
+        steam_tag?: string | null;
     };
     teams?: {
         logo_url: string | null;
@@ -188,6 +196,11 @@ export function useTournamentDashboard(slug: string | undefined) {
                 team_logo:        p.team_logo ?? null,
                 team_members:     p.team_members ?? null,
                 gamer_tag:        p.gamer_tag ?? null,
+                solo_riot_tag:    p.solo_riot_tag ?? null,
+                discord_handle:   p.discord_handle ?? null,
+                display_name:     p.display_name ?? null,
+                display_logo_url: p.display_logo_url ?? null,
+                entry_kind:       p.entry_kind ?? null,
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,
                 checked_in_at:    p.checked_in_at ?? null,
@@ -203,7 +216,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 withdrawal_reason:        p.withdrawal_reason ?? null,
                 refund_proof_url:         p.refund_proof_url ?? null,
                 refund_processed_at:      p.refund_processed_at ?? null,
-                user:             p.username ? { username: p.username, avatar_url: (p as any).user_avatar_url ?? null, full_name: (p as any).user_full_name ?? null } : undefined,
+                user:             p.username ? { username: p.username, avatar_url: (p as any).user_avatar_url ?? null, full_name: (p as any).user_full_name ?? null, riot_tag: (p as any).user_riot_tag ?? null, discord_handle: (p as any).user_discord_handle ?? null, steam_tag: (p as any).user_steam_tag ?? null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 

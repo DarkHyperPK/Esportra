@@ -50,6 +50,32 @@ function getMembers(membersInput: unknown): MemberInfo[] {
     return trimmed.split(',').map((s) => s.trim()).filter(Boolean).map((s) => ({ username: s }));
 }
 
+function PlatformIds({ discord, riot, steam }: { discord?: string | null; riot?: string | null; steam?: string | null }) {
+    if (!discord && !riot && !steam) return null;
+    return (
+        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+            {discord && (
+                <span className="inline-flex items-center gap-1" title="Discord">
+                    <img src="/discord-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {discord}
+                </span>
+            )}
+            {riot && (
+                <span className="inline-flex items-center gap-1" title="Riot ID">
+                    <img src="/riot-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {riot}
+                </span>
+            )}
+            {steam && (
+                <span className="inline-flex items-center gap-1" title="Steam">
+                    <img src="/steam-icon.svg" alt="" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {steam}
+                </span>
+            )}
+        </div>
+    );
+}
+
 /**
  * One registration in the participants grid. Identity first (logo, name),
  * then status, then the roster — all visible at once, no hover-to-reveal,
@@ -71,6 +97,16 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
     const members = isSolo ? [] : getMembers(participant.team_members);
     const joined = participant.registered_at ? new Date(participant.registered_at).toLocaleDateString() : null;
     const FallbackIcon = isSolo ? User : Users;
+
+    const soloRiot: string | null = isSolo
+        ? (participant.solo_riot_tag || participant.user?.riot_tag || participant.gamer_tag || null)
+        : null;
+    const soloDiscord: string | null = isSolo
+        ? (participant.discord_handle || participant.user?.discord_handle || null)
+        : null;
+    const soloSteam: string | null = isSolo
+        ? (participant.user?.steam_tag || null)
+        : null;
 
     return (
         <div
@@ -102,6 +138,12 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
 
             <div className="flex flex-wrap gap-1.5 px-5">{renderStatusBadge(participant)}</div>
 
+            {isSolo && (soloDiscord || soloRiot || soloSteam) && (
+                <div className="mt-3 border-t border-white/[0.06] px-5 py-3">
+                    <PlatformIds discord={soloDiscord} riot={soloRiot} steam={soloSteam} />
+                </div>
+            )}
+
             {!isSolo && (
                 <div className="mt-4 border-t border-white/[0.06] px-5 py-4">
                     {members.length > 0 ? (
@@ -111,13 +153,7 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                                     <span className="mt-0.5 w-4 text-right font-mono text-[11px] text-zinc-600">{idx + 1}</span>
                                     <div className="min-w-0 flex-1">
                                         <span className="truncate text-zinc-300">{member.username}</span>
-                                        {(member.discord_handle || member.riot_tag || member.steam_tag) && (
-                                            <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
-                                                {member.discord_handle && <span title="Discord">{member.discord_handle}</span>}
-                                                {member.riot_tag && <span title="Riot ID">{member.riot_tag}</span>}
-                                                {member.steam_tag && <span title="Steam">{member.steam_tag}</span>}
-                                            </div>
-                                        )}
+                                        <PlatformIds discord={member.discord_handle} riot={member.riot_tag} steam={member.steam_tag} />
                                     </div>
                                 </li>
                             ))}
