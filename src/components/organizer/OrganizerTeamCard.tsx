@@ -157,12 +157,8 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                                         <div className="flex items-center gap-2">
                                             <span className="truncate text-zinc-300">{member.username}</span>
                                             {(member.roster_role === 'coach' || member.roster_role === 'substitute') && (
-                                                <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
-                                                    member.roster_role === 'coach'
-                                                        ? 'bg-amber-500/15 text-amber-400'
-                                                        : 'bg-zinc-700 text-zinc-400'
-                                                }`}>
-                                                    {member.roster_role === 'substitute' ? 'Sub' : 'Coach'}
+                                                <span className="shrink-0 text-[11px] text-zinc-500">
+                                                    {member.roster_role === 'substitute' ? '· sub' : '· coach'}
                                                 </span>
                                             )}
                                         </div>
