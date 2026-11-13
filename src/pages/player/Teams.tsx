@@ -536,7 +536,7 @@ const TeamsPage = () => {
       setOwnerProfile(null);
       setTeamMembers([]);
     }
-  }, [currentTeam, isCaptain, fetchTeamRegistrations, fetchRosters, fetchTeamPendingInvites]);
+  }, [currentTeam, isCaptain, isTeamOwner, fetchTeamRegistrations, fetchRosters, fetchTeamPendingInvites]);
 
   useEffect(() => {
     const fetchInvites = async () => {
