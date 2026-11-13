@@ -476,7 +476,7 @@ const TeamsPage = () => {
       Promise.all([
         fetchTeamRegistrations(),
         fetchRosters(),
-        isCaptain ? fetchTeamPendingInvites() : Promise.resolve()
+        (isCaptain || isTeamOwner) ? fetchTeamPendingInvites() : Promise.resolve()
       ]);
 
       // Fetch captain profile for display
@@ -1073,7 +1073,7 @@ const TeamsPage = () => {
   };
 
   const cancelRosterInvite = async (inviteId: string) => {
-    if (!isCaptain) return;
+    if (!isCaptain && !isTeamOwner) return;
     try {
       const success = await revokeTeamInvite(inviteId);
       if (success) {
@@ -1375,7 +1375,7 @@ const TeamsPage = () => {
                     <Users className="w-10 h-10 text-white/20" />
                   )}
                 </div>
-                {isCaptain && (
+                {(isCaptain || isTeamOwner) && (
                   <button
                     onClick={() => setShowEditTeam(true)}
                     className="absolute -bottom-2 -right-2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
@@ -1488,7 +1488,7 @@ const TeamsPage = () => {
         {/* Core Roster Cards Section */}
         <div className="mb-4 flex items-center justify-between">
           <div />
-          {isCaptain && rosters.length < 3 && (
+          {(isCaptain || isTeamOwner) && rosters.length < 3 && (
             <OutlineButton onClick={openCreateRoster} className="rounded-full px-6">
               <Plus className="w-4 h-4 mr-2" />
               CREATE ROSTER
@@ -1499,7 +1499,7 @@ const TeamsPage = () => {
           <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-12 mb-8 text-center">
             <Gamepad2 className="w-10 h-10 text-white/20 mx-auto mb-4" />
             <p className="text-white/40 font-light tracking-wide uppercase text-sm">No rosters yet</p>
-            {isCaptain && <p className="text-white/20 text-xs mt-2">Create a roster to organize your lineup by game.</p>}
+            {(isCaptain || isTeamOwner) && <p className="text-white/20 text-xs mt-2">Create a roster to organize your lineup by game.</p>}
           </div>
         ) : (
           <div className="space-y-12 mb-12">
@@ -1512,7 +1512,7 @@ const TeamsPage = () => {
                     <span className="text-white/20 ml-3 text-[10px]">{r.member_count || 0}/{getRosterCapacity(r).totalSlots}</span>
                   </h2>
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  {isCaptain && (
+                  {(isCaptain || isTeamOwner) && (
                     <div className="flex items-center gap-2 shrink-0">
                       <GhostButton size="sm" className="h-8 px-3 text-xs rounded-full" onClick={() => openManageRoster(r)}>
                         <Edit className="w-3.5 h-3.5 mr-1.5" />Manage
@@ -1549,7 +1549,7 @@ const TeamsPage = () => {
                               isOwner={member.user_id === captainUserId}
                               isCurrentUser={member.user_id === user?.id}
                               onRemove={
-                                isCaptain && member.user_id !== captainUserId
+                                (isCaptain || isTeamOwner) && member.user_id !== captainUserId
                                   ? () => setRosterRemoveTarget({ roster: r, userId: member.user_id, username: member.username || 'Unknown' })
                                   : undefined
                               }
@@ -2297,7 +2297,7 @@ const TeamsPage = () => {
                 </div>
 
                 {/* Team Members NOT in this roster */}
-                {isCaptain && membersNotInRoster.length > 0 && (
+                {(isCaptain || isTeamOwner) && membersNotInRoster.length > 0 && (
                   <div className="space-y-3 mt-6">
                     <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">Add Team Members</Label>
                     <div className="grid grid-cols-1 gap-2">
@@ -2409,7 +2409,7 @@ const TeamsPage = () => {
 
 
               {/* Pending roster invites (owner view) */}
-              {isCaptain && rosterInvites.length > 0 && (
+              {(isCaptain || isTeamOwner) && rosterInvites.length > 0 && (
                 <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
                   <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">Pending Inbound</Label>
                   <div className="space-y-2">
