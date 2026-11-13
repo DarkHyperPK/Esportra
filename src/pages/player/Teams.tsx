@@ -613,11 +613,11 @@ const TeamsPage = () => {
   const handleTransferCaptaincy = async () => {
     if (!currentTeam || !memberToRemove) return;
 
-    // Prevent transferring captaincy to yourself
-    if (memberToRemove.user_id === user?.id) {
+    // Block no-op: already the captain
+    if (memberToRemove.user_id === user?.id && isCaptain) {
       toast({
         title: "Invalid Action",
-        description: "You cannot transfer captaincy to yourself.",
+        description: "You are already the captain.",
         variant: "destructive",
       });
       setShowTransferCaptaincy(false);
