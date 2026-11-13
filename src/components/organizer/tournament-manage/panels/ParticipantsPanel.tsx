@@ -223,7 +223,7 @@ export function ParticipantsPanel({
     }
   };
 
-  const parsedMembers = (p: DashboardParticipant): { username: string; discord_handle?: string | null; riot_tag?: string | null; steam_tag?: string | null }[] => {
+  const parsedMembers = (p: DashboardParticipant): { username: string; discord_handle?: string | null; riot_tag?: string | null; steam_tag?: string | null; roster_role?: string | null }[] => {
     if (!p.team_members) return [];
     if (Array.isArray(p.team_members)) {
       return p.team_members.map((m) => ({
@@ -231,6 +231,7 @@ export function ParticipantsPanel({
         discord_handle: (m as Record<string, unknown>).discord_handle as string | null ?? null,
         riot_tag: (m as Record<string, unknown>).riot_tag as string | null ?? null,
         steam_tag: (m as Record<string, unknown>).steam_tag as string | null ?? null,
+        roster_role: (m as Record<string, unknown>).roster_role as string | null ?? null,
       })).filter((m) => m.username);
     }
     try {
@@ -240,6 +241,7 @@ export function ParticipantsPanel({
         discord_handle: (m as Record<string, unknown>)?.discord_handle as string | null ?? null,
         riot_tag: (m as Record<string, unknown>)?.riot_tag as string | null ?? null,
         steam_tag: (m as Record<string, unknown>)?.steam_tag as string | null ?? null,
+        roster_role: (m as Record<string, unknown>)?.roster_role as string | null ?? null,
       })).filter((m) => m.username);
       return [];
     } catch {
@@ -564,7 +566,18 @@ export function ParticipantsPanel({
                     <ul className="space-y-2">
                       {parsedMembers(managedParticipant).map((m, i) => (
                         <li key={i}>
-                          <span className="text-sm text-zinc-300">{m.username}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-zinc-300">{m.username}</span>
+                            {m.roster_role && m.roster_role !== 'starter' && (
+                              <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                                m.roster_role === 'coach'
+                                  ? 'bg-amber-500/15 text-amber-400'
+                                  : 'bg-zinc-700 text-zinc-400'
+                              }`}>
+                                {m.roster_role === 'substitute' ? 'Sub' : m.roster_role}
+                              </span>
+                            )}
+                          </div>
                           {(m.discord_handle || m.riot_tag || m.steam_tag) && (
                             <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
                               {m.discord_handle && (

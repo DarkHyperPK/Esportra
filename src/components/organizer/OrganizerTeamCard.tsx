@@ -15,6 +15,7 @@ interface MemberInfo {
     riot_tag?: string | null;
     discord_handle?: string | null;
     steam_tag?: string | null;
+    roster_role?: string | null;
 }
 
 const ROSTER_PREVIEW = 5;
@@ -34,6 +35,7 @@ function getMembers(membersInput: unknown): MemberInfo[] {
                 riot_tag: (obj.riot_tag as string) ?? null,
                 discord_handle: (obj.discord_handle as string) ?? null,
                 steam_tag: (obj.steam_tag as string) ?? null,
+                roster_role: (obj.roster_role as string) ?? null,
             };
         }
         return null;
@@ -152,7 +154,18 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                                 <li key={`${member.username}-${idx}`} className="flex items-start gap-3">
                                     <span className="mt-0.5 w-4 text-right font-mono text-[11px] text-zinc-600">{idx + 1}</span>
                                     <div className="min-w-0 flex-1">
-                                        <span className="truncate text-zinc-300">{member.username}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="truncate text-zinc-300">{member.username}</span>
+                                            {member.roster_role && member.roster_role !== 'starter' && (
+                                                <span className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                                                    member.roster_role === 'coach'
+                                                        ? 'bg-amber-500/15 text-amber-400'
+                                                        : 'bg-zinc-700 text-zinc-400'
+                                                }`}>
+                                                    {member.roster_role === 'substitute' ? 'Sub' : member.roster_role}
+                                                </span>
+                                            )}
+                                        </div>
                                         <PlatformIds discord={member.discord_handle} riot={member.riot_tag} steam={member.steam_tag} />
                                     </div>
                                 </li>
