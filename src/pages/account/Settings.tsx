@@ -97,6 +97,27 @@ export default function AccountSettings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
+    // ── Supabase OAuth error (e.g. Discord identity already linked to another account) ──
+    const oauthError = params.get('error');
+    const oauthErrorDescription = params.get('error_description');
+    if (oauthError) {
+      setActiveTab('connected_accounts');
+      window.history.replaceState({}, '', window.location.pathname);
+      const errorCode = params.get('error_code');
+      const isIdentityConflict =
+        errorCode === 'identity_already_exists' ||
+        oauthError === 'identity_already_exists' ||
+        oauthErrorDescription?.toLowerCase().includes('identity') ||
+        oauthErrorDescription?.toLowerCase().includes('already');
+      toast({
+        title: 'Discord linking failed',
+        description: isIdentityConflict
+          ? 'That Discord account is already linked to another Esportra account.'
+          : (oauthErrorDescription || 'Something went wrong. Please try again.'),
+        variant: 'destructive',
+      });
+    }
+
     // ── Riot OAuth result ──
     const riotLinked = params.get('riot_linked');
     if (riotLinked) {
