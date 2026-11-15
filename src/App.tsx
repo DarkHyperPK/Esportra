@@ -154,6 +154,7 @@ const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/Ga
 const MapManagement = lazyWithRetry(() => import("./pages/admin/tools/MapManagement"));
 const PublicVetoSessions = lazyWithRetry(() => import("./pages/admin/tools/PublicVetoSessions"));
 const AvatarPoolManagement = lazyWithRetry(() => import("./pages/admin/tools/AvatarPoolManagement"));
+const OrgManagement = lazyWithRetry(() => import("./pages/admin/tools/OrgManagement"));
 
 // New admin pages
 const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
@@ -421,6 +422,7 @@ const AppContent = React.memo(() => {
                   {/* Tools */}
                   <Route path="tools/user-management" element={<AdminRouteGuard requiredPermission="users:view" requiredRoles={ADMIN_ROLE_SETS.userManagement}><UserManagementTool /></AdminRouteGuard>} />
                   <Route path="tools/tournament-management" element={<AdminRouteGuard requiredPermission="tournaments:view" requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}><TournamentManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/org-management" element={<AdminRouteGuard requiredPermission="organizations:view" requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}><OrgManagement /></AdminRouteGuard>} />
                   <Route path="tools/team-management" element={<AdminRouteGuard requiredPermission="teams:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><TeamManagementTool /></AdminRouteGuard>} />
                   <Route path="tools/alerts" element={<AdminRouteGuard requiredPermission="alerts:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AlertsManagementTool /></AdminRouteGuard>} />
                   <Route path="tools/venue-management" element={<AdminRouteGuard requiredPermission="venues:view" requiredRoles={ADMIN_ROLE_SETS.venueManagement}><VenueManagementTool /></AdminRouteGuard>} />
@@ -476,6 +478,7 @@ const AppContent = React.memo(() => {
                   <Route path="content/teams" element={<Navigate to="/admin/tools/team-management" replace />} />
                   <Route path="content/venues" element={<Navigate to="/admin/tools/venue-management" replace />} />
                   <Route path="content/games" element={<Navigate to="/admin/tools/game-catalog" replace />} />
+                  <Route path="content/organizations" element={<Navigate to="/admin/tools/org-management" replace />} />
                   <Route path="content/moderation" element={<Navigate to="/admin/tools/moderation" replace />} />
                   <Route path="partners/sponsors" element={<AdminRouteGuard requiredPermission="sponsors:view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorsHub /></AdminRouteGuard>}>
                   <Route index element={<Navigate to="/admin/partners/sponsors/overview" replace />} />
