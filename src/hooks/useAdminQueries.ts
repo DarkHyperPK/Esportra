@@ -19,6 +19,11 @@ export const adminKeys = {
   sponsorApplications: () => [...adminKeys.all, 'sponsor-applications'] as const,
   sponsorInvitations: () => [...adminKeys.all, 'sponsor-invitations'] as const,
 
+  organizations: (params?: Record<string, any>) =>
+    [...adminKeys.all, 'organizations', params ?? {}] as const,
+  organizationDetail: (id: string) =>
+    [...adminKeys.all, 'organization-detail', id] as const,
+
   auditLogs: (params?: { limit?: number; offset?: number; search?: string; target_type?: string; from?: string; to?: string }) =>
     [...adminKeys.all, 'audit-logs', params ?? {}] as const,
 
@@ -190,6 +195,93 @@ export const useAdminSponsorApplications = () =>
     queryFn: () => apiClient.get<any[]>('/api/sponsors/applications'),
     staleTime: 1000 * 30,
   });
+
+// ── Organizations ──────────────────────────────────────────────────────
+interface AdminOrganizationsParams {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  subscription_tier?: string;
+  is_verified?: string;
+  has_custom_quota?: string;
+  sort_by?: string;
+  sort_dir?: string;
+}
+
+interface AdminOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  owner_id: string;
+  owner_name: string;
+  owner_avatar: string | null;
+  subscription_tier: string;
+  is_verified: boolean;
+  monthly_event_quota: number | null;
+  effective_quota: number;
+  used_this_month: number;
+  tournament_count: number;
+  staff_count: number;
+  created_at: string;
+}
+
+interface AdminOrganizationsResponse {
+  organizations: AdminOrganization[];
+  total: number;
+  tierCounts: Record<string, number>;
+}
+
+interface AdminOrganizationDetail extends AdminOrganization {
+  description: string | null;
+  banner_url: string | null;
+  social_links: Record<string, string>;
+  owner_email: string;
+  owner_full_name: string | null;
+}
+
+export const useAdminOrganizations = (params: AdminOrganizationsParams = {}) =>
+  useQuery({
+    queryKey: adminKeys.organizations(params),
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (params.limit) qs.set('limit', String(params.limit));
+      if (params.offset !== undefined) qs.set('offset', String(params.offset));
+      if (params.search) qs.set('search', params.search);
+      if (params.subscription_tier) qs.set('subscription_tier', params.subscription_tier);
+      if (params.is_verified) qs.set('is_verified', params.is_verified);
+      if (params.has_custom_quota) qs.set('has_custom_quota', params.has_custom_quota);
+      if (params.sort_by) qs.set('sort_by', params.sort_by);
+      if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
+      return apiClient.get<AdminOrganizationsResponse>(`/api/admin/organizations?${qs}`);
+    },
+    staleTime: 1000 * 30,
+    placeholderData: keepPreviousData,
+  });
+
+export const useAdminOrganizationDetail = (id: string | null) =>
+  useQuery({
+    queryKey: adminKeys.organizationDetail(id ?? ''),
+    queryFn: () => apiClient.get<AdminOrganizationDetail>(`/api/admin/organizations/${id}`),
+    enabled: !!id,
+    staleTime: 1000 * 30,
+  });
+
+export const useAdminUpdateOrgQuota = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ id, monthlyLimit }: { id: string; monthlyLimit: number }) =>
+      apiClient.patch(`/api/admin/organizations/${id}/event-quota`, { monthlyLimit }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.organizations() });
+      toast({ title: 'Quota updated', description: 'Organization monthly event quota has been updated.' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to update quota', description: err?.message ?? 'Unknown error', variant: 'destructive' });
+    },
+  });
+};
 
 // ── Verification Requests ───────────────────────────────────────────────────
 export const useAdminVerificationRequests = () =>
