@@ -87,7 +87,7 @@ export default function OrgManagement() {
   // Filters
   const [tierFilter, setTierFilter] = useState("all");
   const [verifiedFilter, setVerifiedFilter] = useState("all");
-  const [customQuotaFilter, setCustomQuotaFilter] = useState("all");
+  const [customQuotaFilter, _setCustomQuotaFilter] = useState("all");
 
   // Sort
   const [sortBy, setSortBy] = useState("created_at");
