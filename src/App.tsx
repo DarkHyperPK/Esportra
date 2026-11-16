@@ -139,6 +139,7 @@ const ProposalsHistory = lazyWithRetry(() => import("./pages/admin/proposals/Pro
 const ProposalEditor = lazyWithRetry(() => import("./pages/admin/proposals/ProposalEditor"));
 const ProposalView = lazyWithRetry(() => import("./pages/admin/proposals/ProposalView"));
 const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
+const AirAccessTool = lazyWithRetry(() => import("./pages/admin/tools/AirAccess"));
 const ProEventRequestsTool = lazyWithRetry(() => import("./pages/admin/tools/ProEventRequests"));
 const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
@@ -436,6 +437,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/sponsor-ad-manager" element={<Navigate to="/admin/partners/sponsors/placements" replace />} />
                   <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />
                   <Route path="tools/map-management" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><MapManagement /></AdminRouteGuard>} />
+                  <Route path="air" element={<AdminRouteGuard requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AirAccessTool /></AdminRouteGuard>} />
                   <Route path="tools/license-management" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><LicenseManagementTool /></AdminRouteGuard>} />
                   <Route path="tools/pro-event-requests" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><ProEventRequestsTool /></AdminRouteGuard>} />
                   <Route path="tools/system-settings" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SystemSettings /></AdminRouteGuard>} />
