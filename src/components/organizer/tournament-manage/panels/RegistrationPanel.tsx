@@ -177,8 +177,8 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
             {checkInEnabled && (
               <>
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field label="Check-in opens" htmlFor="rg-window" hint="Minutes before the start (or each match). 5 to 120.">
-                    <Input id="rg-window" type="number" min={5} max={120} value={form.checkInWindowMinutes}
+                  <Field label="Check-in opens" htmlFor="rg-window" hint="Minutes before the start (or each match). At least 5.">
+                    <Input id="rg-window" type="number" min={5} value={form.checkInWindowMinutes}
                       onChange={(e) => setForm((s) => ({ ...s, checkInWindowMinutes: parseInt(e.target.value, 10) || 30 }))}
                       className={cn(CONTROL_CLASS, 'w-32')} />
                   </Field>

@@ -33,8 +33,7 @@ export const basicInfoSchema = basicInfoBase.refine(
 const formatRulesBase = z.object({
     bracketType: z.enum(['single_elimination', 'double_elimination', 'swiss', 'round_robin']).optional().default('single_elimination'),
     maxTeams: z.number()
-        .min(4, 'Minimum 4 teams')
-        .max(1024, 'Maximum 1024 teams allowed'),
+        .min(0, 'Must be 0 (unlimited) or at least 4 teams'),
     teamSize: z.number().min(1).max(10),
 });
 
@@ -89,11 +88,11 @@ export const registrationSchema = registrationSchemaBase
     .refine(
         (data) => {
             if (data.checkInRequired) {
-                return data.checkInWindowMinutes >= 5 && data.checkInWindowMinutes <= 120;
+                return data.checkInWindowMinutes >= 5;
             }
             return true;
         },
-        { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] },
+        { message: 'Check-in window must be at least 5 minutes', path: ['checkInWindowMinutes'] },
     )
     .refine(
         (data) => !data.invitedTeamsEnabled || (data.reservedInviteSlots ?? 0) >= 1,

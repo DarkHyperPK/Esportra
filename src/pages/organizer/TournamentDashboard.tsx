@@ -26,6 +26,7 @@ import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
 import { useTournamentOverviewModel } from '@/hooks/useTournamentOverviewModel';
 import { useStageRealtime } from '@/hooks/useStageRealtime';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { makePrivateUpdatePayload } from '@/utils/tournamentVisibilityUtils';
 import {
   buildDashboardNav,
   listReachableTargets,
@@ -220,6 +221,63 @@ const TournamentDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ['tournament-dashboard', slug] });
   };
 
+  // PROJ-078: Lifecycle actions ported from TournamentManage.tsx
+  const handleCancelTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'cancelled' });
+      void refetchDashboard();
+      toast({ title: 'Tournament Cancelled', description: 'The tournament has been cancelled. You can reopen it later if needed.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getApiErrorMessage(error, { context: 'generic' }), variant: 'destructive' });
+    }
+  };
+
+  const handleCompleteTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'completed' });
+      void refetchDashboard();
+      toast({ title: 'Tournament Completed', description: 'The tournament has been marked as finished.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getApiErrorMessage(error, { context: 'generic' }), variant: 'destructive' });
+    }
+  };
+
+  const handleReopenTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open' });
+      void refetchDashboard();
+      toast({ title: 'Tournament Reopened', description: 'The tournament is open again. Stages have been unlocked.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getApiErrorMessage(error, { context: 'generic' }), variant: 'destructive' });
+    }
+  };
+
+  const handleMakePublic = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { isPublic: true });
+      void refetchDashboard();
+      toast({ title: 'Tournament is now public', description: 'It is now visible in browse and search.' });
+    } catch (error) {
+      toast({ title: 'Update failed', description: getApiErrorMessage(error, { context: 'generic' }), variant: 'destructive' });
+    }
+  };
+
+  const handleMakePrivate = async () => {
+    if (!tournament) return;
+    try {
+      const payload = makePrivateUpdatePayload(tournament.status);
+      await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
+      void refetchDashboard();
+      toast({ title: 'Tournament is now private', description: 'It remains accessible via direct link but is hidden from public listings.' });
+    } catch (error) {
+      toast({ title: 'Update failed', description: getApiErrorMessage(error, { context: 'generic' }), variant: 'destructive' });
+    }
+  };
+
   // Loading state
   if (dashboardLoading || accessLoading || roleLoading || admin.loading) {
     return <DashboardLoadingState />;
@@ -250,6 +308,11 @@ const TournamentDashboard = () => {
       phaseTone={overview.phaseTone}
       staffSummary={staffSummary}
       userId={profile?.id}
+      onCancel={handleCancelTournament}
+      onFinish={handleCompleteTournament}
+      onReopen={handleReopenTournament}
+      onMakePublic={handleMakePublic}
+      onMakePrivate={handleMakePrivate}
     >
       <PanelRouter
         activeTab={activeTab}

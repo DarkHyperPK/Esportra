@@ -69,6 +69,11 @@ interface TournamentDashboardShellProps {
   staffSummary?: string | null;
   userId?: string;
   children: React.ReactNode;
+  onCancel?: () => Promise<void>;
+  onFinish?: () => Promise<void>;
+  onReopen?: () => Promise<void>;
+  onMakePublic?: () => Promise<void>;
+  onMakePrivate?: () => Promise<void>;
 }
 
 const panelVariants = {
@@ -95,6 +100,11 @@ export function TournamentDashboardShell({
   staffSummary,
   userId,
   children,
+  onCancel,
+  onFinish,
+  onReopen,
+  onMakePublic,
+  onMakePrivate,
 }: TournamentDashboardShellProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -209,6 +219,12 @@ export function TournamentDashboardShell({
             staffSummary={staffSummary}
             publishSlot={isDraft && canActAsOwner ? publishButton : null}
             onOpenTour={handleOpenTour}
+            canActAsOwner={canActAsOwner}
+            onCancel={onCancel}
+            onFinish={onFinish}
+            onReopen={onReopen}
+            onMakePublic={onMakePublic}
+            onMakePrivate={onMakePrivate}
           />
 
           {/* Completion Banner */}
