@@ -58,6 +58,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { label: 'All Users', href: '/admin/users', icon: Users, permission: 'users:view' },
       { label: 'Verifications', href: '/admin/users/verifications', icon: ShieldCheck, permission: 'verification:view' },
       { label: 'Licenses', href: '/admin/users/licenses', icon: Scale, permission: 'licenses:view' },
+      { label: 'Esportra Air', href: '/admin/air', icon: Monitor, superOnly: true },
       { label: 'Pro Events', href: '/admin/tools/pro-event-requests', icon: ClipboardList, permission: 'licenses:view' },
       { label: 'Sessions', href: '/admin/users/sessions', icon: Monitor, permission: 'security:view_sessions' },
     ],
