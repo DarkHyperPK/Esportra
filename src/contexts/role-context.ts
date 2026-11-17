@@ -19,6 +19,8 @@ export interface RoleContextType {
   canJoinTeams: boolean;
   canReportScores: boolean;
   canVerifyResults: boolean;
+  /** Org's bracket team limit. 0 = unlimited, undefined = not loaded yet. */
+  bracketMaxTeams?: number;
 }
 
 export const RoleContext = createContext<RoleContextType | undefined>(undefined);

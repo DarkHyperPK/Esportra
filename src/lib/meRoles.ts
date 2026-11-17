@@ -37,6 +37,7 @@ export interface MeRolesResponse {
   hasOrganization?: boolean;
   hasApprovedLicense?: boolean;
   canCreateTournament?: boolean;
+  bracketMaxTeams?: number | null;
 }
 
 export const meRolesQueryKey = ['me-roles'] as const;
