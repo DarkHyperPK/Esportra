@@ -157,7 +157,7 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
   const handleSendCodes = async () => {
     const emails = [...stagedEmails];
     if (emails.length === 0) return;
-    if (remainingSlots <= 0) {
+    if (remainingSlots < 0) {
       toast({ title: 'No slots available', description: 'All reserved invite slots are taken.', variant: 'destructive' });
       return;
     }
@@ -335,7 +335,7 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <CommandButton variant="primary" size="sm" slide onClick={handleSendCodes} disabled={stagedEmails.length === 0 || isSending || remainingSlots <= 0}>
+              <CommandButton variant="primary" size="sm" slide onClick={handleSendCodes} disabled={stagedEmails.length === 0 || isSending || remainingSlots < 0}>
                 {isSending ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Sending" /> : <Send className="h-4 w-4" aria-hidden />}
                 {stagedEmails.length > 0 ? `Send ${stagedEmails.length} invite${stagedEmails.length > 1 ? 's' : ''}` : 'Send invites'}
               </CommandButton>

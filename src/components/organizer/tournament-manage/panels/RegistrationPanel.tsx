@@ -10,6 +10,7 @@ import { CommandHeader, CommandSection } from '@/components/management/CommandSu
 import { Input } from '@/components/ui/input';
 import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
+import { useRole } from '@/hooks/useRole';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
@@ -64,6 +65,11 @@ function resolveCheckInLevel(t: DashboardTournament): CheckInLevel {
 export function RegistrationPanel({ tournament, editableFields, onSave }: RegistrationPanelProps) {
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
+  const { bracketMaxTeams: orgBracketMax } = useRole();
+  // Per-tournament license takes precedence over org default.
+  // 0 = unlimited in both cases; null/undefined = fall back to org.
+  const licenseMax = tournament.licenseBracketMax;
+  const effectiveBracketMax = licenseMax != null ? licenseMax : (orgBracketMax ?? 32);
   const [saving, setSaving] = useState(false);
 
   const getInitial = (t: DashboardTournament): FormState => ({
@@ -154,8 +160,8 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
         <div className={cn(FORM_MEASURE_CLASS)}>
           <FormSection title="Capacity and deadline">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Maximum teams" htmlFor="rg-max" hint="Leave empty for no limit." lockedReason={isFieldLocked('max_teams') ? lockNote : undefined}>
-                <Input id="rg-max" type="number" min={0} value={form.maxTeams === 0 ? '' : form.maxTeams} placeholder="No limit"
+              <Field label="Maximum teams" htmlFor="rg-max" hint={effectiveBracketMax === 0 ? 'Leave empty for no limit.' : `Up to ${effectiveBracketMax} on your plan.`} lockedReason={isFieldLocked('max_teams') ? lockNote : undefined}>
+                <Input id="rg-max" type="number" min={0} max={effectiveBracketMax > 0 ? effectiveBracketMax : undefined} value={form.maxTeams === 0 ? '' : form.maxTeams} placeholder="No limit"
                   onChange={(e) => setForm((s) => ({ ...s, maxTeams: parseInt(e.target.value, 10) || 0 }))}
                   disabled={isFieldLocked('max_teams')} className={CONTROL_CLASS} />
               </Field>
@@ -177,8 +183,8 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
             {checkInEnabled && (
               <>
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <Field label="Check-in opens" htmlFor="rg-window" hint="Minutes before the start (or each match). 5 to 120.">
-                    <Input id="rg-window" type="number" min={5} max={120} value={form.checkInWindowMinutes}
+                  <Field label="Check-in opens" htmlFor="rg-window" hint="Minutes before the start (or each match). At least 5.">
+                    <Input id="rg-window" type="number" min={5} value={form.checkInWindowMinutes}
                       onChange={(e) => setForm((s) => ({ ...s, checkInWindowMinutes: parseInt(e.target.value, 10) || 30 }))}
                       className={cn(CONTROL_CLASS, 'w-32')} />
                   </Field>

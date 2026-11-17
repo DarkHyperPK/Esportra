@@ -262,6 +262,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const canJoinTeams = currentRole === 'casual' || isSuperAdmin;
   const canReportScores = currentRole === 'casual' || isSuperAdmin;
   const canVerifyResults = currentRole === 'organizer' || isSuperAdmin;
+  const bracketMaxTeams = rolesDataRef.current?.bracketMaxTeams ?? undefined;
 
   // Resolve once auth + /api/me/roles have settled. Intentionally omit rolesData from deps
   // so background refetches do not re-run role resolution and clobber manual picks.
@@ -292,6 +293,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     canJoinTeams,
     canReportScores,
     canVerifyResults,
+    bracketMaxTeams,
   }), [
     currentRole,
     isLoading,
@@ -304,6 +306,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     canJoinTeams,
     canReportScores,
     canVerifyResults,
+    bracketMaxTeams,
   ]);
 
   return (

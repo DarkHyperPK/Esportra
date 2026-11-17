@@ -81,10 +81,10 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors,
                             checked={data.checkInRequired}
                             onCheckedChange={(checked) => updateData({ checkInRequired: checked, autoRemoveUnchecked: checked ? (data.autoRemoveUnchecked ?? true) : false })}
                         >
-                            <Field label="Check-in opens" htmlFor="checkInWindow" hint="Minutes before the start time. Between 5 and 120.">
+                            <Field label="Check-in opens" htmlFor="checkInWindow" hint="Minutes before the start time. At least 5.">
                                 <div className="flex items-center gap-3">
                                     <Input
-                                        id="checkInWindow" type="number" min={5} max={120} value={data.checkInWindowMinutes}
+                                        id="checkInWindow" type="number" min={5} value={data.checkInWindowMinutes}
                                         onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value, 10) || 30 })}
                                         className={cn(CONTROL_CLASS, 'w-24')}
                                     />

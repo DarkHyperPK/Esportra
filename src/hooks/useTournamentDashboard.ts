@@ -66,6 +66,8 @@ export interface DashboardTournament {
     pendingEscalations?: number;
     unseededMatchCount?: number;
     unscheduledFirstRoundCount?: number;
+    /** Per-tournament license bracket cap. 0 = unlimited (custom tier). null = not loaded. */
+    licenseBracketMax?: number | null;
 }
 
 export interface DashboardParticipant {
@@ -163,6 +165,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 staffPermissions: string[] | null;
                 staffRole?: string | null;
                 mockCount?: number;
+                licenseBracketMax?: number | null;
             }>(`/api/tournaments/${encodeURIComponent(identifier)}`);
 
             const t = result.tournament;
@@ -185,6 +188,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 registration_open:     t.status === 'open' ||
                                        (t.status === 'published' && !!t.registration_deadline && new Date(t.registration_deadline) > new Date()),
                 current_participants:  t.current_participants ?? result.participants.length,
+                licenseBracketMax:     result.licenseBracketMax ?? null,
             };
 
             const mappedParticipants: DashboardParticipant[] = result.participants.map((p: any) => ({
