@@ -66,8 +66,10 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
   const { bracketMaxTeams: orgBracketMax } = useRole();
-  const tournamentIsUnlimited = (tournament.max_teams ?? 0) === 0;
-  const effectiveBracketMax = tournamentIsUnlimited ? 0 : (orgBracketMax ?? 32);
+  // Per-tournament license takes precedence over org default.
+  // 0 = unlimited in both cases; null/undefined = fall back to org.
+  const licenseMax = tournament.licenseBracketMax;
+  const effectiveBracketMax = licenseMax != null ? licenseMax : (orgBracketMax ?? 32);
   const [saving, setSaving] = useState(false);
 
   const getInitial = (t: DashboardTournament): FormState => ({
