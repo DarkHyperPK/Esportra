@@ -3,6 +3,7 @@ import { Bot, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,7 +31,11 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
     const { generate, clear } = useMockTournament({ tournamentId, slug, userId: user?.id });
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
+    const isUnlimited = maxTeams === 0;
+    const [customCount, setCustomCount] = useState(32);
     const hasMock = mockCount > 0;
+
+    const effectiveCount = isUnlimited ? customCount : maxTeams;
 
     return (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
@@ -54,18 +59,31 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
                     </p>
 
                     <div className="mt-4 flex items-center gap-2 flex-wrap">
+                        {canGenerate && isUnlimited && (
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    min={2}
+                                    max={1024}
+                                    value={customCount}
+                                    onChange={(e) => setCustomCount(Math.max(2, Math.min(1024, parseInt(e.target.value, 10) || 2)))}
+                                    className="h-8 w-20 border-amber-500/30 bg-transparent text-xs text-amber-200"
+                                />
+                                <span className="text-xs text-zinc-500">teams</span>
+                            </div>
+                        )}
                         {canGenerate && (
                             <button type="button"
                                 className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs')}
                                 disabled={generate.isPending}
-                                onClick={() => generate.mutate(maxTeams)}
+                                onClick={() => generate.mutate(effectiveCount)}
                             >
                                 <Bot className="mr-1.5 h-3.5 w-3.5" />
                                 {generate.isPending
                                     ? 'Generating...'
                                     : hasMock
                                         ? 'Regenerate mock teams'
-                                        : `Generate ${maxTeams} mock teams`}
+                                        : `Generate ${effectiveCount} mock teams`}
                             </button>
                         )}
 
