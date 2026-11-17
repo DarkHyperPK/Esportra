@@ -22,9 +22,9 @@ const Footer = () => {
             </p>
             <div className="flex gap-5">
               {[
-                { Icon: Twitter, href: '#' },
-                { Icon: Instagram, href: '#' },
-                { Icon: Facebook, href: '#' },
+                { Icon: Twitter, href: 'https://twitter.com/esportapk' },
+                { Icon: Instagram, href: 'https://www.instagram.com/esportapk' },
+                { Icon: Facebook, href: 'https://www.facebook.com/esportra' },
                 { Icon: Github, href: '#' },
               ].map(({ Icon, href }, i) => (
                 <a key={i} href={href} className="text-white/30 transition-colors duration-300 hover:text-white">
@@ -85,9 +85,14 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-12 md:flex-row">
-          <p className="text-white/20 text-xs font-light tracking-widest uppercase">
-            © {new Date().getFullYear()} eSPORTRA. All rights reserved.
-          </p>
+          <div className="flex flex-col gap-1 items-center md:items-start">
+            <p className="text-white/20 text-xs font-light tracking-widest uppercase">
+              © {new Date().getFullYear()} eSPORTRA. All rights reserved.
+            </p>
+            <address className="not-italic text-white/20 text-xs font-light">
+              House #147/B, Unit #4, Latifabad, Hyderabad, Pakistan
+            </address>
+          </div>
           <div className="flex items-center gap-8">
             <span className="text-[10px] text-white/10 tracking-[0.3em] uppercase hidden md:block">Esports. Elevated.</span>
             <div className="flex items-center gap-2 border border-white/10 bg-white/[0.02] px-3 py-1">
