@@ -65,7 +65,9 @@ function resolveCheckInLevel(t: DashboardTournament): CheckInLevel {
 export function RegistrationPanel({ tournament, editableFields, onSave }: RegistrationPanelProps) {
   const { toast } = useToast();
   const { setDirty } = useDirtyState();
-  const { bracketMaxTeams } = useRole();
+  const { bracketMaxTeams: orgBracketMax } = useRole();
+  const tournamentIsUnlimited = (tournament.max_teams ?? 0) === 0;
+  const effectiveBracketMax = tournamentIsUnlimited ? 0 : (orgBracketMax ?? 32);
   const [saving, setSaving] = useState(false);
 
   const getInitial = (t: DashboardTournament): FormState => ({
@@ -156,8 +158,8 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
         <div className={cn(FORM_MEASURE_CLASS)}>
           <FormSection title="Capacity and deadline">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Maximum teams" htmlFor="rg-max" hint={bracketMaxTeams === 0 ? 'Leave empty for no limit.' : bracketMaxTeams ? `Up to ${bracketMaxTeams} on your plan.` : 'Leave empty for no limit.'} lockedReason={isFieldLocked('max_teams') ? lockNote : undefined}>
-                <Input id="rg-max" type="number" min={0} max={bracketMaxTeams && bracketMaxTeams > 0 ? bracketMaxTeams : undefined} value={form.maxTeams === 0 ? '' : form.maxTeams} placeholder={bracketMaxTeams === 0 ? 'No limit' : 'No limit'}
+              <Field label="Maximum teams" htmlFor="rg-max" hint={effectiveBracketMax === 0 ? 'Leave empty for no limit.' : `Up to ${effectiveBracketMax} on your plan.`} lockedReason={isFieldLocked('max_teams') ? lockNote : undefined}>
+                <Input id="rg-max" type="number" min={0} max={effectiveBracketMax > 0 ? effectiveBracketMax : undefined} value={form.maxTeams === 0 ? '' : form.maxTeams} placeholder="No limit"
                   onChange={(e) => setForm((s) => ({ ...s, maxTeams: parseInt(e.target.value, 10) || 0 }))}
                   disabled={isFieldLocked('max_teams')} className={CONTROL_CLASS} />
               </Field>
